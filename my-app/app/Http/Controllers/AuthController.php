@@ -167,14 +167,18 @@ class AuthController extends Controller
             }
         } else {
             // Send OTP via email
+            $emailSent = false;
             try {
                 Mail::to($data['email'])->send(
                     new ParticipantVerificationEmail($verificationCode, $data['name'])
                 );
+                $emailSent = true;
             } catch (\Exception $e) {
-                \Log::error("Failed to send verification email: " . $e->getMessage());
-                // Still log for development fallback
-                \Log::info("Email OTP for {$data['email']}: {$verificationCode}");
+                \Log::error("Failed to send verification email to {$data['email']}: " . $e->getMessage());
+                // In development, show the OTP to the user
+                if (config('app.debug')) {
+                    \Log::warning("Development mode: OTP displayed to user. Code: {$verificationCode}");
+                }
             }
         }
 
@@ -191,7 +195,9 @@ class AuthController extends Controller
 
         return redirect()->route('participant.register.verify')
             ->with('verification_method', $verificationMethod)
-            ->with('contact', $verificationMethod === 'email' ? $data['email'] : $data['phone']);
+            ->with('contact', $verificationMethod === 'email' ? $data['email'] : $data['phone'])
+            ->with('debug_otp', config('app.debug') ? $verificationCode : null)
+            ->with('email_sent', $emailSent ?? true);
     }
 
     /**

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Mail, Phone, AlertCircle, CheckCircle2, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, AlertCircle, CheckCircle2, ArrowLeft, ShieldCheck, Info } from 'lucide-react';
 
-export function ParticipantRegisterVerify({ verificationMethod = 'email', contact = '', errors = {} }) {
+export function ParticipantRegisterVerify({ verificationMethod = 'email', contact = '', errors = {}, debugOtp = '', emailSent = 'true' }) {
     const [otp, setOtp] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
+    const hasDebugOtp = debugOtp && debugOtp.length === 6;
+    const sentSuccessfully = emailSent === 'true' || emailSent === true;
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -72,6 +74,28 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
                         </div>
                     </div>
                 </div>
+
+                {!sentSuccessfully && hasDebugOtp && (
+                    <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-md">
+                        <div className="flex items-start gap-3">
+                            <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-semibold text-amber-900 mb-2">
+                                    ⚠️ Email Delivery Issue
+                                </p>
+                                <p className="text-sm text-amber-800 mb-3">
+                                    We couldn't send the email, but here's your verification code for testing:
+                                </p>
+                                <div className="bg-white border border-amber-200 rounded px-3 py-2 text-center font-mono text-lg font-bold tracking-wider text-amber-900">
+                                    {debugOtp}
+                                </div>
+                                <p className="text-xs text-amber-700 mt-2">
+                                    <strong>Fix:</strong> Check your Gmail account settings. You may need to use an App Password instead of your regular password.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {Object.keys(errors).length > 0 && (
                     <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">

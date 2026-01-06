@@ -12,6 +12,8 @@
             id="participant-register-verify-root"
             data-verification-method="{{ $verification_method ?? 'email' }}"
             data-contact="{{ $contact ?? '' }}"
+            data-debug-otp="{{ $debug_otp ?? '' }}"
+            data-email-sent="{{ $email_sent ?? 'true' }}"
             data-errors='@json($errors->getMessages() ?: [])'
         ></div>
     </body>

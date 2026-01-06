@@ -2515,6 +2515,7 @@ function ScenarioCreateForm({ modules }) {
     const [selectedModuleId, setSelectedModuleId] = React.useState('');
     const [isDirty, setIsDirty] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [isGenerating, setIsGenerating] = React.useState(false);
     const formRef = React.useRef(null);
     const skipPromptRef = React.useRef(false);
     const publishedModules = (modules || []).filter((m) => m.status === 'published');
@@ -2583,6 +2584,81 @@ function ScenarioCreateForm({ modules }) {
         setIsSubmitting(true);
         setIsDirty(false);
         skipPromptRef.current = true;
+    };
+
+    const handleGenerateWithAi = async () => {
+        if (!selectedModuleId) {
+            Swal.fire({
+                title: 'Select a Module',
+                text: 'Please select a training module first.',
+                icon: 'warning',
+                confirmButtonText: 'OK',
+            });
+            return;
+        }
+
+        setIsGenerating(true);
+        try {
+            const difficultySelect = document.getElementById('scenario_difficulty');
+            const difficulty = difficultySelect?.value || 'Medium';
+
+            const response = await fetch('/scenarios/generate-with-ai', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({
+                    disaster_type: derivedDisasterType,
+                    difficulty: difficulty === 'Basic' ? 'Easy' : difficulty === 'Intermediate' ? 'Medium' : 'Hard',
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Failed to generate scenario');
+            }
+
+            const data = result.data;
+
+            // Fill form fields with generated data
+            document.getElementById('scenario_title').value = data.title;
+            document.getElementById('scenario_short_description').value = data.short_description;
+            document.getElementById('affected_area').value = data.affected_area;
+            document.getElementById('incident_time_text').value = data.incident_time_text;
+            document.getElementById('general_situation').value = data.general_situation;
+            document.getElementById('severity_level').value = data.severity_level;
+            document.getElementById('intended_participants').value = data.intended_participants;
+            
+            const injuredInput = document.querySelector('input[name="injured_victims_count"]');
+            if (injuredInput) injuredInput.value = data.injured_victims_count;
+            
+            const trappedInput = document.querySelector('input[name="trapped_persons_count"]');
+            if (trappedInput) trappedInput.value = data.trapped_persons_count;
+            
+            document.getElementById('infrastructure_damage').value = data.infrastructure_damage;
+            document.getElementById('communication_status').value = data.communication_status;
+
+            setIsDirty(true);
+
+            Swal.fire({
+                title: 'Scenario Generated!',
+                text: 'Your scenario has been generated with AI. Review and customize as needed before saving.',
+                icon: 'success',
+                confirmButtonText: 'Got it',
+            });
+        } catch (error) {
+            console.error('Generation error:', error);
+            Swal.fire({
+                title: 'Generation Failed',
+                text: error.message || 'Unable to generate scenario. Please make sure you have a valid Gemini API key configured.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+            });
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
@@ -2853,6 +2929,24 @@ function ScenarioCreateForm({ modules }) {
                     >
                         Cancel
                     </a>
+                    <button
+                        type="button"
+                        onClick={handleGenerateWithAi}
+                        disabled={!selectedModuleId || isGenerating}
+                        className="inline-flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 hover:bg-blue-100 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 text-blue-700 text-sm font-medium px-4 py-1.5 transition-colors"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                <span>Generating...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>✨</span>
+                                <span>AI Generate</span>
+                            </>
+                        )}
+                    </button>
                     <button
                         type="submit"
                         className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
