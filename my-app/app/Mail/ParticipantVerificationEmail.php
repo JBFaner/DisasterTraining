@@ -12,15 +12,15 @@ class ParticipantVerificationEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $verificationUrl;
+    public $verificationCode;
     public $name;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(string $verificationUrl, string $name)
+    public function __construct(string $verificationCode, string $name)
     {
-        $this->verificationUrl = $verificationUrl;
+        $this->verificationCode = $verificationCode;
         $this->name = $name;
     }
 

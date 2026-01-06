@@ -32,7 +32,6 @@ Route::post('/participant/register/start', [AuthController::class, 'participantR
 
 Route::get('/participant/register/verify', [AuthController::class, 'showParticipantRegisterVerify'])->name('participant.register.verify');
 Route::post('/participant/register/verify', [AuthController::class, 'participantRegisterVerify'])->name('participant.register.verify.post');
-Route::get('/participant/register/verify-email/{token}', [AuthController::class, 'participantRegisterVerifyEmail'])->name('participant.register.verify.email');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -169,6 +168,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/resources/export/csv', [ResourceController::class, 'export'])->name('resources.export');
     Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('resources.destroy');
 
+    // User self-profile (for logged-in participants/account holders)
+    Route::get('/profile', function () {
+        $user = auth()->user();
+
+        return view('app', [
+            'section' => 'profile',
+            'participant' => $user,
+        ]);
+    })->name('profile');
     Route::get('/evaluation', function () {
         return view('app', ['section' => 'evaluation']);
     })->name('evaluation');

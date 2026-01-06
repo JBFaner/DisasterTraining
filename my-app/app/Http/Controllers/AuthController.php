@@ -151,12 +151,11 @@ class AuthController extends Controller
         // Determine verification method
         $verificationMethod = isset($data['email']) ? 'email' : 'phone';
         $verificationCode = null;
-        $verificationToken = null;
+
+        // Generate 6-digit OTP for both email and phone
+        $verificationCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 
         if ($verificationMethod === 'phone') {
-            // Generate 6-digit OTP
-            $verificationCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-            
             // Send OTP via SMS
             try {
                 $smsService = new SmsService();
@@ -167,23 +166,15 @@ class AuthController extends Controller
                 \Log::info("OTP for {$data['phone']}: {$verificationCode}");
             }
         } else {
-            // Generate email verification token
-            $verificationToken = \Illuminate\Support\Str::random(64);
-            
-            // Generate verification URL
-            $verificationUrl = route('participant.register.verify.email', ['token' => $verificationToken]);
-            
-            // Send verification email
+            // Send OTP via email
             try {
                 Mail::to($data['email'])->send(
-                    new ParticipantVerificationEmail($verificationUrl, $data['name'])
+                    new ParticipantVerificationEmail($verificationCode, $data['name'])
                 );
             } catch (\Exception $e) {
                 \Log::error("Failed to send verification email: " . $e->getMessage());
                 // Still log for development fallback
-                \Log::info("Email verification for {$data['email']}:");
-                \Log::info("Token: {$verificationToken}");
-                \Log::info("URL: {$verificationUrl}");
+                \Log::info("Email OTP for {$data['email']}: {$verificationCode}");
             }
         }
 
@@ -195,7 +186,6 @@ class AuthController extends Controller
             'password' => $data['password'],
             'verification_method' => $verificationMethod,
             'verification_code' => $verificationCode,
-            'verification_token' => $verificationToken,
             'expires_at' => now()->addMinutes(15), // 15 minutes expiry
         ]);
 
@@ -248,38 +238,19 @@ class AuthController extends Controller
 
         $verificationMethod = $registrationData['verification_method'];
 
-        if ($verificationMethod === 'phone') {
-            // Validate OTP
-            $request->validate([
-                'otp' => ['required', 'string', 'size:6'],
-            ], [
-                'otp.required' => 'Please enter the verification code.',
-                'otp.size' => 'Verification code must be 6 digits.',
-            ]);
+        // Validate OTP for both email and phone
+        $request->validate([
+            'otp' => ['required', 'string', 'size:6'],
+        ], [
+            'otp.required' => 'Please enter the verification code.',
+            'otp.size' => 'Verification code must be 6 digits.',
+        ]);
 
-            if ($request->otp !== $registrationData['verification_code']) {
-                return back()
-                    ->withErrors(['otp' => 'Invalid verification code. Please try again.'])
-                    ->with('verification_method', $verificationMethod)
-                    ->with('contact', $registrationData['phone']);
-            }
-        } else {
-            // Validate email token (can come from form or URL)
-            $token = $request->input('token') ?? $request->query('token');
-            
-            if (!$token) {
-                return back()
-                    ->withErrors(['token' => 'Verification token is required.'])
-                    ->with('verification_method', $verificationMethod)
-                    ->with('contact', $registrationData['email']);
-            }
-
-            if ($token !== $registrationData['verification_token']) {
-                return back()
-                    ->withErrors(['token' => 'Invalid verification link. Please check your email again.'])
-                    ->with('verification_method', $verificationMethod)
-                    ->with('contact', $registrationData['email']);
-            }
+        if ($request->otp !== $registrationData['verification_code']) {
+            return back()
+                ->withErrors(['otp' => 'Invalid verification code. Please try again.'])
+                ->with('verification_method', $verificationMethod)
+                ->with('contact', $verificationMethod === 'email' ? $registrationData['email'] : $registrationData['phone']);
         }
 
         // All verified - create the user
@@ -308,57 +279,6 @@ class AuthController extends Controller
     /**
      * Handle email verification via link (GET request)
      */
-    public function participantRegisterVerifyEmail(Request $request, $token)
-    {
-        $registrationData = $request->session()->get('participant_registration');
-
-        if (!$registrationData) {
-            return redirect()->route('participant.register')
-                ->withErrors(['form' => 'Registration session expired. Please start again.']);
-        }
-
-        // Check expiry
-        if (now()->isAfter($registrationData['expires_at'])) {
-            $request->session()->forget('participant_registration');
-            return redirect()->route('participant.register')
-                ->withErrors(['form' => 'Verification link expired. Please start registration again.']);
-        }
-
-        if ($registrationData['verification_method'] !== 'email') {
-            return redirect()->route('participant.register.verify')
-                ->withErrors(['form' => 'Invalid verification method.']);
-        }
-
-        if ($token !== $registrationData['verification_token']) {
-            return redirect()->route('participant.register.verify')
-                ->withErrors(['token' => 'Invalid verification link.'])
-                ->with('verification_method', 'email')
-                ->with('contact', $registrationData['email']);
-        }
-
-        // Token is valid - complete registration
-        $participantId = $this->generateParticipantId();
-
-        $user = User::create([
-            'name' => $registrationData['name'],
-            'email' => $registrationData['email'],
-            'phone' => $registrationData['phone'],
-            'password' => $registrationData['password'],
-            'role' => 'PARTICIPANT',
-            'participant_id' => $participantId,
-            'status' => 'active',
-            'registered_at' => now(),
-        ]);
-
-        // Clear session
-        $request->session()->forget('participant_registration');
-
-        Auth::login($user);
-
-        return redirect('/dashboard')
-            ->with('status', 'Registration successful! Welcome to the training platform.');
-    }
-
     private function generateParticipantId()
     {
         do {
