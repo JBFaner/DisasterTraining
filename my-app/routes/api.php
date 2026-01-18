@@ -16,6 +16,7 @@ Route::get('/resources/available', function () {
     return response()->json(['resources' => $resources]);
 });
 Route::get('/simulation-events', [ResourceApiController::class, 'getEvents']);
+Route::get('/simulation-events/completed-with-resources', [ResourceApiController::class, 'getCompletedEventResources']);
 Route::get('/resources/{resource}/history', function (Resource $resource) {
     return response()->json([
         'resource' => $resource->load(['maintenanceLogs']),

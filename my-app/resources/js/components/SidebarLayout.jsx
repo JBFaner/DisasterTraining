@@ -427,7 +427,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={ClipboardList}
                         label="Evaluation Results"
-                        href="/evaluation"
+                        href="/evaluations"
                         active={currentSection === 'evaluation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -506,7 +506,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={ClipboardList}
                         label="Evaluation & Scoring System"
-                        href="/evaluation"
+                        href="/evaluations"
                         active={currentSection === 'evaluation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}

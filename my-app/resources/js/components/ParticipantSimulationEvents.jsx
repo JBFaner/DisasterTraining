@@ -266,20 +266,25 @@ export function ParticipantSimulationEventDetail({ event, role }) {
     const isCancelled = registrationStatus === 'cancelled';
     const isRejected = registrationStatus === 'rejected';
     
-    const eventDate = new Date(event.event_date);
-    const isUpcoming = eventDate >= new Date();
+    // Check if event hasn't started yet (event date + start time)
+    const now = new Date();
+    const eventDateOnly = new Date(event.event_date);
+    eventDateOnly.setHours(0, 0, 0, 0);
+    
+    // Parse start time (format: HH:MM)
+    const [startHour, startMinute] = (event.start_time || '00:00').split(':').map(Number);
+    const eventStartDateTime = new Date(event.event_date);
+    eventStartDateTime.setHours(startHour, startMinute, 0, 0);
+    
+    // Event is upcoming if it hasn't started yet
+    const isUpcoming = now < eventStartDateTime;
     const canRegister = isUpcoming && event.self_registration_enabled && (!isRegistered || isCancelled || isRejected);
     const canCancelRegistration = isRegistered && (isPending || isApproved);
 
     // Admin/Trainer: Calculate if Start Event button should be visible
-    const now = new Date();
-    const eventDateOnly = new Date(event.event_date);
-    eventDateOnly.setHours(0, 0, 0, 0);
     const todayOnly = new Date();
     todayOnly.setHours(0, 0, 0, 0);
     
-    // Parse start time (format: HH:MM)
-    const [startHour, startMinute] = event.start_time.split(':').map(Number);
     const eventStartTime = new Date(event.event_date);
     eventStartTime.setHours(startHour, startMinute, 0, 0);
     
@@ -367,6 +372,39 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                                 </button>
                             </form>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Admin: Complete Event Banner */}
+            {role !== 'PARTICIPANT' && event.status === 'ongoing' && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-800">
+                                Event Status: Ongoing
+                            </p>
+                            <p className="text-xs text-slate-600 mt-1">
+                                The event is currently in progress. Mark it as completed when the event has ended and attendance is finalized.
+                            </p>
+                        </div>
+                        <form 
+                            method="POST" 
+                            action={`/simulation-events/${event.id}/complete`}
+                            onSubmit={(e) => {
+                                if (!confirm('Are you sure you want to mark this event as completed? This will allow evaluation to begin.')) {
+                                    e.preventDefault();
+                                }
+                            }}
+                        >
+                            <input type="hidden" name="_token" value={csrf} />
+                            <button
+                                type="submit"
+                                className="inline-flex items-center rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-2 transition-colors"
+                            >
+                                Complete Event
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}

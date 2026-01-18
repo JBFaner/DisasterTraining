@@ -52,7 +52,8 @@ class ParticipantController extends Controller
                     $query->where('status', 'approved');
                 }
             ])
-            ->whereIn('status', ['published', 'archived'])
+            // Show active lifecycle events for admin registration/attendance management
+            ->whereIn('status', ['published', 'ongoing', 'completed'])
             ->orderByDesc('event_date')
             ->get();
 
@@ -189,6 +190,7 @@ class ParticipantController extends Controller
     public function myAttendance()
     {
         $user = Auth::user();
+        /** @var \App\Models\User|null $user */
         if (!$user || $user->role !== 'PARTICIPANT') {
             abort(403, 'Unauthorized access.');
         }

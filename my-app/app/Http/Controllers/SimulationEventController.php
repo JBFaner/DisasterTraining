@@ -37,7 +37,12 @@ class SimulationEventController extends Controller
         // Admin/Trainer see all events
         $this->authorizeEventAccess();
 
-        $events = SimulationEvent::with(['scenario', 'creator'])
+        // Auto-complete ongoing events that have passed their end time
+        $this->autoCompleteExpiredEvents();
+
+        $events = SimulationEvent::with(['scenario', 'creator', 'resources' => function ($query) {
+            $query->withPivot('quantity_needed', 'quantity_assigned', 'status', 'notes');
+        }])
             ->withCount([
                 'registrations',
                 'registrations as approved_registrations_count' => function ($query) {
@@ -120,15 +125,32 @@ class SimulationEventController extends Controller
         $event = SimulationEvent::create($data);
 
         // Handle resource assignments if provided
-        if ($request->has('resources')) {
-            $resources = json_decode($request->input('resources'), true);
-            if (is_array($resources)) {
+        if ($request->has('resources') && $request->input('resources')) {
+            $resourcesJson = $request->input('resources');
+            $resources = json_decode($resourcesJson, true);
+            
+            \Log::info('Creating event - Resources received:', [
+                'raw' => $resourcesJson,
+                'parsed' => $resources,
+                'is_array' => is_array($resources),
+                'count' => is_array($resources) ? count($resources) : 0
+            ]);
+            
+            if (is_array($resources) && count($resources) > 0) {
+                $syncData = [];
                 foreach ($resources as $resourceData) {
-                    $event->resources()->attach($resourceData['id'], [
-                        'quantity_needed' => $resourceData['quantity'] ?? 1,
-                        'quantity_assigned' => 0,
-                        'status' => 'Planned',
-                    ]);
+                    if (isset($resourceData['id'])) {
+                        $syncData[$resourceData['id']] = [
+                            'quantity_needed' => $resourceData['quantity'] ?? 1,
+                            'quantity_assigned' => 0,
+                            'status' => 'Planned',
+                        ];
+                    }
+                }
+                if (!empty($syncData)) {
+                    \Log::info('Syncing resources to event:', ['event_id' => $event->id, 'sync_data' => $syncData]);
+                    $event->resources()->sync($syncData);
+                    \Log::info('Resources synced. Event now has ' . $event->resources()->count() . ' resources');
                 }
             }
         }
@@ -154,9 +176,56 @@ class SimulationEventController extends Controller
                 ->with('status', 'This event cannot be edited. Unpublish or restore it first.');
         }
 
+        // Load event with resources and ensure pivot data is included
+        $simulationEvent->load(['scenario']);
+        $simulationEvent->load(['resources' => function ($query) {
+            $query->withPivot('quantity_needed', 'quantity_assigned', 'status', 'notes');
+        }]);
+        
+        \Log::info('Editing event - Resources count:', [
+            'event_id' => $simulationEvent->id,
+            'resources_count' => $simulationEvent->resources->count(),
+            'resources' => $simulationEvent->resources->toArray()
+        ]);
+        
+        // Manually ensure resources array is properly formatted with pivot data
+        $resourcesArray = $simulationEvent->resources->map(function ($resource) {
+            $pivotData = [
+                'quantity_needed' => $resource->pivot->quantity_needed ?? 1,
+                'quantity_assigned' => $resource->pivot->quantity_assigned ?? 0,
+                'status' => $resource->pivot->status ?? 'Planned',
+                'notes' => $resource->pivot->notes ?? null,
+            ];
+            
+            return [
+                'id' => $resource->id,
+                'name' => $resource->name,
+                'category' => $resource->category,
+                'available' => $resource->available,
+                'quantity' => $resource->quantity,
+                'pivot' => $pivotData
+            ];
+        })->toArray();
+        
+        \Log::info('Formatted resources array for edit:', ['resources' => $resourcesArray]);
+        
+        // Create event array with resources
+        // First, unset the resources relationship to avoid conflicts
+        $simulationEvent->unsetRelation('resources');
+        $eventArray = $simulationEvent->toArray();
+        // Now set our manually formatted resources array
+        $eventArray['resources'] = $resourcesArray;
+        
+        \Log::info('Final event array for edit:', [
+            'event_id' => $eventArray['id'] ?? null,
+            'has_resources_key' => isset($eventArray['resources']),
+            'resources_count' => isset($eventArray['resources']) ? count($eventArray['resources']) : 0,
+            'resources_sample' => isset($eventArray['resources']) && count($eventArray['resources']) > 0 ? $eventArray['resources'][0] : null
+        ]);
+        
         return view('app', [
             'section' => 'simulation_edit',
-            'event' => $simulationEvent->load(['scenario', 'resources']),
+            'event' => $eventArray,
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
         ]);
     }
@@ -228,21 +297,46 @@ class SimulationEventController extends Controller
         $simulationEvent->update($data);
 
         // Handle resource assignments if provided
-        if ($request->has('resources')) {
-            $resources = json_decode($request->input('resources'), true);
+        if ($request->has('resources') && $request->input('resources')) {
+            $resourcesJson = $request->input('resources');
+            $resources = json_decode($resourcesJson, true);
+            
+            \Log::info('Updating event - Resources received:', [
+                'event_id' => $simulationEvent->id,
+                'raw' => $resourcesJson,
+                'parsed' => $resources,
+                'is_array' => is_array($resources),
+                'count' => is_array($resources) ? count($resources) : 0
+            ]);
+            
             $syncData = [];
             
-            if (is_array($resources)) {
+            if (is_array($resources) && count($resources) > 0) {
                 foreach ($resources as $resourceData) {
-                    $syncData[$resourceData['id']] = [
-                        'quantity_needed' => $resourceData['quantity'] ?? 1,
-                        'quantity_assigned' => 0,
-                        'status' => 'Planned',
-                    ];
+                    if (isset($resourceData['id'])) {
+                        $syncData[$resourceData['id']] = [
+                            'quantity_needed' => $resourceData['quantity'] ?? 1,
+                            'quantity_assigned' => 0,
+                            'status' => 'Planned',
+                        ];
+                    }
                 }
             }
             
-            $simulationEvent->resources()->sync($syncData);
+            // Only sync if we have resources to sync, otherwise preserve existing
+            if (!empty($syncData)) {
+                \Log::info('Syncing resources to event (update):', ['event_id' => $simulationEvent->id, 'sync_data' => $syncData]);
+                $simulationEvent->resources()->sync($syncData);
+                \Log::info('Resources synced. Event now has ' . $simulationEvent->resources()->count() . ' resources');
+            } elseif (is_array($resources) && count($resources) === 0) {
+                // Explicitly empty array means clear all resources
+                \Log::info('Clearing all resources from event:', ['event_id' => $simulationEvent->id]);
+                $simulationEvent->resources()->sync([]);
+            } else {
+                \Log::info('No resources to sync, preserving existing:', ['event_id' => $simulationEvent->id, 'existing_count' => $simulationEvent->resources()->count()]);
+            }
+        } else {
+            \Log::info('No resources field in request:', ['event_id' => $simulationEvent->id, 'has_resources' => $request->has('resources')]);
         }
 
         // If event is newly published, auto-assign resources
@@ -350,14 +444,25 @@ class SimulationEventController extends Controller
                 ->with('status', 'Event can only be started on the scheduled event date.');
         }
 
-        // Check current time is >= scheduled start time
+        // Check current time is >= start time
         $startTime = $simulationEvent->start_time; // format: HH:MM
-        $currentTime = now()->format('H:i');
-        if ($currentTime < $startTime) {
+        $now = now();
+        
+        // Parse start time and compare properly
+        [$startHour, $startMinute] = explode(':', $startTime);
+        $startDateTime = $eventDate->copy()->setTime((int)$startHour, (int)$startMinute, 0);
+        
+        if ($now->lt($startDateTime)) {
             return redirect()->back()
                 ->with('status', 'Event cannot be started before the scheduled start time.');
         }
 
+        // Ensure resources are assigned before starting (in case they weren't assigned on publish)
+        $this->autoAssignResources($simulationEvent);
+        
+        // Reload resources to get updated pivot data
+        $simulationEvent->load('resources');
+        
         // Update status to ongoing and log start details
         $simulationEvent->update([
             'status' => 'ongoing',
@@ -367,7 +472,62 @@ class SimulationEventController extends Controller
         ]);
 
         return redirect()->back()
-            ->with('status', 'Event started successfully. Status changed to Ongoing.');
+            ->with('status', 'Event started successfully. Status changed to Ongoing. Resources have been assigned.');
+    }
+
+    public function complete(SimulationEvent $simulationEvent)
+    {
+        $this->authorizeEventAccess();
+
+        // Check event status is ongoing
+        if ($simulationEvent->status !== 'ongoing') {
+            return redirect()->back()
+                ->with('status', 'Only ongoing events can be marked as completed.');
+        }
+
+        // Update status to completed
+        $simulationEvent->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'updated_by' => Auth::id(),
+        ]);
+
+        return redirect()->back()
+            ->with('status', 'Event marked as completed. Evaluation can now be started.');
+    }
+
+    /**
+     * Automatically complete ongoing events that have passed their end time
+     */
+    protected function autoCompleteExpiredEvents()
+    {
+        $now = now();
+        
+        SimulationEvent::where('status', 'ongoing')
+            ->whereDate('event_date', '<=', $now->toDateString())
+            ->get()
+            ->each(function ($event) use ($now) {
+                // Parse end time
+                $endTime = $event->end_time; // Format: HH:MM
+                if (!$endTime) return;
+                
+                try {
+                    [$endHour, $endMinute] = explode(':', $endTime);
+                    $eventEndDateTime = $event->event_date->copy()->setTime((int)$endHour, (int)$endMinute, 0);
+                    
+                    // Check if current time is past the end time on the same date
+                    if ($now->greaterThanOrEqualTo($eventEndDateTime)) {
+                        $event->update([
+                            'status' => 'completed',
+                            'completed_at' => $now,
+                            'updated_by' => Auth::id(),
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    // Skip events with invalid time format
+                    return;
+                }
+            });
     }
 
     protected function authorizeEventAccess(): void
@@ -424,6 +584,12 @@ class SimulationEventController extends Controller
         // Admin/Trainer view published/archived/cancelled events (read-only)
         $this->authorizeEventAccess();
         
+        // Auto-complete if this event is ongoing and past end time
+        $this->autoCompleteExpiredEvents();
+        
+        // Reload the event to get updated status
+        $simulationEvent->refresh();
+        
         $simulationEvent->load([
             'scenario.trainingModule.lessons' => function ($query) {
                 $query->orderBy('order');
@@ -453,6 +619,16 @@ class SimulationEventController extends Controller
         // Check if event is published and open for registration
         if ($simulationEvent->status !== 'published') {
             return back()->with('status', 'This event is not open for registration.');
+        }
+
+        // Check if event hasn't started yet (event date + start time)
+        $eventDate = new \DateTime($simulationEvent->event_date);
+        $startTime = $simulationEvent->start_time ? explode(':', $simulationEvent->start_time) : [0, 0];
+        $eventStartDateTime = clone $eventDate;
+        $eventStartDateTime->setTime((int)$startTime[0], (int)$startTime[1], 0);
+        
+        if (now() >= $eventStartDateTime) {
+            return back()->with('status', 'Registration is closed. This event has already started.');
         }
 
         // Check if self-registration is enabled
@@ -524,7 +700,7 @@ class SimulationEventController extends Controller
     }
 
     /**
-     * Auto-assign resources to event when published
+     * Auto-assign resources to event when published or started
      */
     protected function autoAssignResources(SimulationEvent $event)
     {
@@ -532,30 +708,46 @@ class SimulationEventController extends Controller
         
         foreach ($event->resources as $resource) {
             $quantityNeeded = $resource->pivot->quantity_needed;
+            $quantityAssigned = $resource->pivot->quantity_assigned ?? 0;
+            
+            // Skip if already assigned
+            if ($quantityAssigned >= $quantityNeeded) {
+                continue;
+            }
+            
             $availableQty = $resource->getAvailableQuantity();
             
             // Check if resource has enough available quantity
             if ($availableQty >= $quantityNeeded) {
-                // Assign the resource
+                // Assign the resource - this updates the 'available' field and creates assignment record
                 $success = $resource->assignToEvent($event, $quantityNeeded);
                 
                 if ($success) {
-                    // Update resource status to "In Use"
-                    $resource->update(['status' => 'In Use']);
-                    
-                    // Update pivot table
+                    // Update pivot table to reflect assignment
                     $event->resources()->updateExistingPivot($resource->id, [
                         'quantity_assigned' => $quantityNeeded,
                         'status' => 'Assigned',
                     ]);
                 }
             } else {
-                // Mark as partially assigned or insufficient
-                $event->resources()->updateExistingPivot($resource->id, [
-                    'quantity_assigned' => 0,
-                    'status' => 'Insufficient',
-                    'notes' => "Not enough available. Needed: {$quantityNeeded}, Available: {$availableQty}",
-                ]);
+                // Try to assign what's available
+                $assignQty = min($availableQty, $quantityNeeded);
+                if ($assignQty > 0) {
+                    $success = $resource->assignToEvent($event, $assignQty);
+                    if ($success) {
+                        $event->resources()->updateExistingPivot($resource->id, [
+                            'quantity_assigned' => $assignQty,
+                            'status' => $assignQty < $quantityNeeded ? 'Partially Assigned' : 'Assigned',
+                        ]);
+                    }
+                } else {
+                    // Mark as insufficient
+                    $event->resources()->updateExistingPivot($resource->id, [
+                        'quantity_assigned' => 0,
+                        'status' => 'Insufficient',
+                        'notes' => "Not enough available. Needed: {$quantityNeeded}, Available: {$availableQty}",
+                    ]);
+                }
             }
         }
     }

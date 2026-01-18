@@ -7,7 +7,7 @@ import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } fro
 import { ResourceInventory } from './pages/ResourceInventory';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -15,19 +15,19 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
     });
 }
 
 function formatDateTime(dateString) {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
+    return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
@@ -107,11 +107,10 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
                         <button
                             key={page}
                             onClick={() => onPageChange(page)}
-                            className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${
-                                page === currentPage
-                                    ? 'bg-emerald-600 text-white border-emerald-600'
-                                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                            }`}
+                            className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${page === currentPage
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                                }`}
                         >
                             {page}
                         </button>
@@ -203,6 +202,10 @@ if (rootElement) {
     if (eventJson) {
         try {
             currentEvent = JSON.parse(eventJson);
+            // Debug: Log event resources when editing
+            if (currentEvent && currentEvent.resources) {
+                console.log('Parsed event from JSON - resources:', currentEvent.resources, 'Type:', typeof currentEvent.resources, 'Is Array:', Array.isArray(currentEvent.resources));
+            }
         } catch (e) {
             console.error('Failed to parse event JSON', e);
         }
@@ -228,6 +231,100 @@ if (rootElement) {
             console.error('Failed to parse registrations JSON', e);
         }
     }
+
+    // Parse evaluation data
+    let evaluation = null;
+    let criteria = null;
+    let attendances = null;
+    let participantEvaluations = null;
+    let currentUser = null;
+    let currentAttendance = null;
+    let currentParticipantEvaluation = null;
+    let currentScores = null;
+    let currentCriterionAverages = null;
+    let currentTotalParticipants = null;
+    let currentPassedCount = null;
+    let currentFailedCount = null;
+    let currentOverallAverage = null;
+
+    const evaluationJson = rootElement.getAttribute('data-evaluation');
+    const criteriaJson = rootElement.getAttribute('data-criteria');
+    const attendancesJson = rootElement.getAttribute('data-attendances');
+    const participantEvaluationsJson = rootElement.getAttribute('data-participant-evaluations');
+    const userJson = rootElement.getAttribute('data-user');
+    const attendanceJson = rootElement.getAttribute('data-attendance');
+    const participantEvaluationJson = rootElement.getAttribute('data-participant-evaluation');
+    const scoresJson = rootElement.getAttribute('data-scores');
+    const criterionAveragesJson = rootElement.getAttribute('data-criterion-averages');
+
+    if (evaluationJson) {
+        try {
+            evaluation = JSON.parse(evaluationJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation JSON', e);
+        }
+    }
+    if (criteriaJson) {
+        try {
+            criteria = JSON.parse(criteriaJson);
+        } catch (e) {
+            console.error('Failed to parse criteria JSON', e);
+        }
+    }
+    if (attendancesJson) {
+        try {
+            attendances = JSON.parse(attendancesJson);
+        } catch (e) {
+            console.error('Failed to parse attendances JSON', e);
+        }
+    }
+    if (participantEvaluationsJson) {
+        try {
+            participantEvaluations = JSON.parse(participantEvaluationsJson);
+        } catch (e) {
+            console.error('Failed to parse participantEvaluations JSON', e);
+        }
+    }
+    if (userJson) {
+        try {
+            currentUser = JSON.parse(userJson);
+        } catch (e) {
+            console.error('Failed to parse user JSON', e);
+        }
+    }
+    if (attendanceJson) {
+        try {
+            currentAttendance = JSON.parse(attendanceJson);
+        } catch (e) {
+            console.error('Failed to parse attendance JSON', e);
+        }
+    }
+    if (participantEvaluationJson) {
+        try {
+            currentParticipantEvaluation = JSON.parse(participantEvaluationJson);
+        } catch (e) {
+            console.error('Failed to parse participantEvaluation JSON', e);
+        }
+    }
+    if (scoresJson) {
+        try {
+            currentScores = JSON.parse(scoresJson);
+        } catch (e) {
+            console.error('Failed to parse scores JSON', e);
+        }
+    }
+    if (criterionAveragesJson) {
+        try {
+            currentCriterionAverages = JSON.parse(criterionAveragesJson);
+        } catch (e) {
+            console.error('Failed to parse criterionAverages JSON', e);
+        }
+    }
+
+    currentTotalParticipants = rootElement.getAttribute('data-total-participants');
+    currentPassedCount = rootElement.getAttribute('data-passed-count');
+    currentFailedCount = rootElement.getAttribute('data-failed-count');
+    currentOverallAverage = rootElement.getAttribute('data-overall-average');
 
     const role =
         roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
@@ -271,20 +368,21 @@ if (rootElement) {
 
     const navSection =
         sectionAttr.startsWith('training') ? 'training' :
-        sectionAttr.startsWith('scenario') ? 'scenario' :
-        sectionAttr.startsWith('simulation') ? 'simulation' :
-        sectionAttr.startsWith('participant') ? 'participants' :
-        sectionAttr.startsWith('event_registration') ? 'participants' :
-        sectionAttr.startsWith('event_attendance') ? 'participants' :
-        sectionAttr.startsWith('resources') ? 'resources' :
-        sectionAttr;
+            sectionAttr.startsWith('scenario') ? 'scenario' :
+                sectionAttr.startsWith('simulation') ? 'simulation' :
+                    sectionAttr.startsWith('participant') ? 'participants' :
+                        sectionAttr.startsWith('event_registration') ? 'participants' :
+                            sectionAttr.startsWith('event_attendance') ? 'participants' :
+                                sectionAttr.startsWith('resources') ? 'resources' :
+                                    sectionAttr.startsWith('evaluation') ? 'evaluation' :
+                                        sectionAttr;
 
     // Breadcrumb configuration
     const getBreadcrumbs = () => {
         if (sectionAttr === 'dashboard') {
             return [{ label: 'Dashboard', href: '/dashboard' }];
         }
-        
+
         if (sectionAttr === 'training') {
             return [{ label: 'Training Module Management', href: '/training-modules' }];
         }
@@ -306,7 +404,7 @@ if (rootElement) {
                 { label: currentModule?.title || 'Details', href: null }
             ];
         }
-        
+
         if (sectionAttr === 'scenario') {
             return [{ label: 'Scenario-based Exercise Design', href: '/scenarios' }];
         }
@@ -328,7 +426,7 @@ if (rootElement) {
                 { label: currentScenario?.title || 'Details', href: null }
             ];
         }
-        
+
         if (sectionAttr === 'simulation') {
             return [{ label: 'Simulation Event Planning', href: '/simulation-events' }];
         }
@@ -350,7 +448,7 @@ if (rootElement) {
                 { label: currentEvent?.title || 'Details', href: null }
             ];
         }
-        
+
         if (sectionAttr === 'participants') {
             return [{ label: 'Participant Registration & Attendance', href: '/participants' }];
         }
@@ -374,24 +472,45 @@ if (rootElement) {
                 { label: 'Attendance', href: null }
             ];
         }
-        
+
         if (sectionAttr === 'resources') {
             return [{ label: 'Resource & Equipment Inventory', href: '/resources' }];
         }
-        
-        if (sectionAttr === 'evaluation') {
-            return [{ label: 'Evaluation & Scoring System', href: '/evaluation' }];
+
+        if (sectionAttr === 'evaluation_dashboard') {
+            return [{ label: 'Evaluation & Scoring System', href: '/evaluations' }];
         }
-        
+
+        if (sectionAttr === 'evaluation_participants') {
+            return [
+                { label: 'Evaluation & Scoring System', href: '/evaluations' },
+                { label: 'Participants', href: null }
+            ];
+        }
+
+        if (sectionAttr === 'evaluation_form') {
+            return [
+                { label: 'Evaluation & Scoring System', href: '/evaluations' },
+                { label: 'Evaluate Participant', href: null }
+            ];
+        }
+
+        if (sectionAttr === 'evaluation_summary') {
+            return [
+                { label: 'Evaluation & Scoring System', href: '/evaluations' },
+                { label: 'Summary', href: null }
+            ];
+        }
+
         if (sectionAttr === 'certification') {
             return [{ label: 'Certification Issuance', href: '/certification' }];
         }
-        
+
         return [{ label: 'Dashboard', href: '/dashboard' }];
     };
 
     const breadcrumbs = getBreadcrumbs();
-    
+
     // Generate page title from breadcrumbs
     const getPageTitle = () => {
         if (breadcrumbs.length === 1) {
@@ -408,7 +527,7 @@ if (rootElement) {
         }
         return last.label;
     };
-    
+
     const pageTitle = getPageTitle();
 
     ReactDOM.createRoot(rootElement).render(
@@ -438,7 +557,7 @@ if (rootElement) {
                                 </React.Fragment>
                             ))}
                         </nav>
-                        
+
                         {/* Page Title */}
                         <h1 className="text-2xl font-semibold text-slate-800 mb-4">
                             {pageTitle}
@@ -517,7 +636,7 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'simulation_detail' && currentEvent && (
-                            <ParticipantSimulationEventDetail event={currentEvent} />
+                            <ParticipantSimulationEventDetail event={currentEvent} role={role} />
                         )}
 
                         {sectionAttr === 'participants' && (
@@ -538,6 +657,46 @@ if (rootElement) {
 
                         {sectionAttr === 'event_attendance' && currentEvent && registrations && (
                             <EventAttendanceTable event={currentEvent} registrations={registrations} />
+                        )}
+
+                        {sectionAttr === 'evaluation_dashboard' && (
+                            <EvaluationDashboard events={events} />
+                        )}
+
+                        {sectionAttr === 'evaluation_participants' && (
+                            <EvaluationParticipantsList
+                                event={currentEvent}
+                                evaluation={evaluation}
+                                criteria={criteria}
+                                attendances={attendances}
+                                participantEvaluations={participantEvaluations}
+                            />
+                        )}
+
+                        {sectionAttr === 'evaluation_form' && (
+                            <EvaluationForm
+                                event={currentEvent}
+                                evaluation={evaluation}
+                                user={currentUser}
+                                attendance={currentAttendance}
+                                participantEvaluation={currentParticipantEvaluation}
+                                criteria={criteria}
+                                scores={currentScores}
+                            />
+                        )}
+
+                        {sectionAttr === 'evaluation_summary' && (
+                            <EvaluationSummary
+                                event={currentEvent}
+                                evaluation={evaluation}
+                                participantEvaluations={currentParticipantEvaluations}
+                                criteria={criteria}
+                                criterionAverages={currentCriterionAverages}
+                                totalParticipants={currentTotalParticipants}
+                                passedCount={currentPassedCount}
+                                failedCount={currentFailedCount}
+                                overallAverage={currentOverallAverage}
+                            />
                         )}
                     </div>
                 </SidebarLayout>
@@ -635,11 +794,10 @@ function DashboardOverview({ modules, events, participants, role }) {
                                                 <p className="text-sm font-medium text-slate-900">{module.title}</p>
                                                 <p className="text-xs text-slate-500 mt-1">{module.disaster_type} • {module.lessons?.length || 0} lessons</p>
                                             </div>
-                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                                                module.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${module.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
                                                 module.status === 'archived' ? 'bg-slate-100 text-slate-600' :
-                                                'bg-yellow-100 text-yellow-800'
-                                            }`}>
+                                                    'bg-yellow-100 text-yellow-800'
+                                                }`}>
                                                 {module.status}
                                             </span>
                                         </div>
@@ -701,11 +859,10 @@ function DashboardOverview({ modules, events, participants, role }) {
                                         <div className="flex gap-4 mt-2">
                                             <span className="text-xs text-slate-500">📅 {formatDate(event.scheduled_date)}</span>
                                             <span className="text-xs text-slate-500">⏰ {event.start_time || 'TBA'}</span>
-                                            <span className={`text-xs font-medium ${
-                                                event.status === 'published' ? 'text-emerald-600' :
+                                            <span className={`text-xs font-medium ${event.status === 'published' ? 'text-emerald-600' :
                                                 event.status === 'draft' ? 'text-slate-600' :
-                                                event.status === 'in_progress' ? 'text-blue-600' : 'text-gray-600'
-                                            }`}>
+                                                    event.status === 'in_progress' ? 'text-blue-600' : 'text-gray-600'
+                                                }`}>
                                                 {event.status}
                                             </span>
                                         </div>
@@ -786,13 +943,13 @@ function TrainingModulesTable({ modules = [] }) {
 
     // Filter modules
     const filteredModules = (modules || []).filter((module) => {
-        const matchesSearch = !searchQuery || 
+        const matchesSearch = !searchQuery ||
             module.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (module.description && module.description.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesStatus = !filterStatus || module.status === filterStatus;
         const matchesDifficulty = !filterDifficulty || module.difficulty === filterDifficulty;
         const matchesDisasterType = !filterDisasterType || module.category === filterDisasterType;
-        
+
         return matchesSearch && matchesStatus && matchesDifficulty && matchesDisasterType;
     });
 
@@ -818,7 +975,7 @@ function TrainingModulesTable({ modules = [] }) {
                     + Create Training Module
                 </a>
             </div>
-            
+
             {/* Search and Filter Bar */}
             <div className="mb-4 flex items-center gap-3">
                 <div className="flex-1 relative">
@@ -928,24 +1085,23 @@ function TrainingModulesTable({ modules = [] }) {
                                     colSpan={7}
                                     className="px-4 py-6 text-center text-slate-500 text-sm"
                                 >
-                                    {(modules || []).length === 0 
+                                    {(modules || []).length === 0
                                         ? 'No training modules yet. Click "Create Training Module" to add one.'
                                         : 'No modules match your search or filter criteria.'}
                                 </td>
                             </tr>
                         ) : (
                             paginatedModules.map((module) => (
-                                <tr
-                                    key={module.id}
-                                    className="border-t border-slate-100 hover:bg-slate-50"
-                                >
+                                <tr key={module.id} className="border-t border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-2 font-medium text-slate-800">
-                                        <a
-                                            href={`/training-modules/${module.id}`}
-                                            className="text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
-                                        >
-                                            {module.title}
-                                        </a>
+                                        <div className="flex flex-col">
+                                            <span
+                                                className="text-sm font-semibold text-slate-800 truncate max-w-[200px]"
+                                                title={module.title}
+                                            >
+                                                {module.title}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600">
                                         {module.category ?? '—'}
@@ -956,17 +1112,17 @@ function TrainingModulesTable({ modules = [] }) {
                                     <td className="px-4 py-2">
                                         <span
                                             className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ' +
+                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold border ' +
                                                 (module.status === 'published'
-                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                                                     : module.status === 'draft'
-                                                    ? 'bg-slate-100 text-slate-600'
-                                                    : 'bg-amber-50 text-amber-700')
+                                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                                        : 'border-slate-200 bg-slate-50 text-slate-600')
                                             }
                                         >
                                             {module.status
                                                 ? module.status.charAt(0).toUpperCase() +
-                                                  module.status.slice(1)
+                                                module.status.slice(1)
                                                 : '—'}
                                         </span>
                                     </td>
@@ -979,12 +1135,21 @@ function TrainingModulesTable({ modules = [] }) {
                                     <td className="px-4 py-2 text-slate-600">
                                         <div className="flex gap-2 justify-start">
                                             <a
-                                                href={`/training-modules/${module.id}/edit`}
-                                                className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
-                                                title="Edit"
+                                                href={`/training-modules/${module.id}`}
+                                                className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                title="View Lessons"
                                             >
-                                                <Pencil className="w-3.5 h-3.5" />
+                                                <Eye className="w-3.5 h-3.5" />
                                             </a>
+                                            {module.status !== 'published' && (
+                                                <a
+                                                    href={`/training-modules/${module.id}/edit`}
+                                                    className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                    title="Edit"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                </a>
+                                            )}
                                             <form
                                                 method="POST"
                                                 action={`/training-modules/${module.id}/archive`}
@@ -1008,7 +1173,7 @@ function TrainingModulesTable({ modules = [] }) {
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <button
                                                     type="submit"
-                                                    className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
+                                                    className="p-1.5 rounded-md text-amber-600 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
                                                     title="Archive"
                                                 >
                                                     <Archive className="w-3.5 h-3.5" />
@@ -1038,7 +1203,7 @@ function TrainingModulesTable({ modules = [] }) {
                                                 <input type="hidden" name="_method" value="DELETE" />
                                                 <button
                                                     type="submit"
-                                                    className="inline-flex items-center justify-center rounded-md border border-rose-500/60 bg-rose-50 p-2 text-rose-800 hover:bg-rose-100 transition-colors"
+                                                    className="p-1.5 rounded-md text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all"
                                                     title="Delete"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1376,11 +1541,10 @@ function ParticipantTrainingLessonView({ module }) {
                                     return (
                                         <li
                                             key={lesson.id}
-                                            className={`px-4 py-3 text-sm cursor-pointer transition-colors ${
-                                                isSelected
-                                                    ? 'bg-emerald-50 border-l-2 border-emerald-500'
-                                                    : 'hover:bg-slate-50'
-                                            }`}
+                                            className={`px-4 py-3 text-sm cursor-pointer transition-colors ${isSelected
+                                                ? 'bg-emerald-50 border-l-2 border-emerald-500'
+                                                : 'hover:bg-slate-50'
+                                                }`}
                                             onClick={() =>
                                                 handleLessonSelect(lesson.id)
                                             }
@@ -1452,11 +1616,11 @@ function ParticipantTrainingLessonView({ module }) {
                             <div className="space-y-4">
                                 {(!selectedLesson.materials ||
                                     selectedLesson.materials.length === 0) && (
-                                    <p className="text-sm text-slate-500">
-                                        No learning materials have been added to
-                                        this lesson yet.
-                                    </p>
-                                )}
+                                        <p className="text-sm text-slate-500">
+                                            No learning materials have been added to
+                                            this lesson yet.
+                                        </p>
+                                    )}
 
                                 {selectedLesson.materials &&
                                     selectedLesson.materials.map((mat) => (
@@ -1510,7 +1674,7 @@ function StatusToast({ message }) {
 function TrainingModuleCreateForm() {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    
+
     const [showObjectives, setShowObjectives] = React.useState(false);
     const [objectives, setObjectives] = React.useState(['']);
 
@@ -1635,17 +1799,17 @@ function TrainingModuleCreateForm() {
                         </select>
                     </div>
                     <div>
-                                <label
-                                    className="block text-xs font-semibold text-slate-600 mb-1"
-                                    htmlFor="category"
-                                >
-                                    Disaster type
-                                </label>
+                        <label
+                            className="block text-xs font-semibold text-slate-600 mb-1"
+                            htmlFor="category"
+                        >
+                            Disaster type
+                        </label>
                         <input
                             id="category"
                             name="category"
                             type="text"
-                                    placeholder="e.g. Earthquake, Fire"
+                            placeholder="e.g. Earthquake, Fire"
                             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                     </div>
@@ -1708,12 +1872,12 @@ function TrainingModuleCreateForm() {
 function TrainingModuleEditForm({ module }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    
+
     // Parse existing learning_objectives from module (already cast to array by model)
     const initialObjectives = module.learning_objectives && Array.isArray(module.learning_objectives)
         ? module.learning_objectives.filter(obj => obj && obj.trim() !== '')
         : [];
-    
+
     const [showObjectives, setShowObjectives] = React.useState(initialObjectives.length > 0);
     const [objectives, setObjectives] = React.useState(
         initialObjectives.length > 0 ? initialObjectives : ['']
@@ -2064,7 +2228,7 @@ function TrainingModuleDetail({ module }) {
                                         key={lesson.id}
                                         className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-slate-50"
                                     >
-                                        <div 
+                                        <div
                                             className="flex-1 cursor-pointer"
                                             onClick={() => handleLessonClick(lesson)}
                                         >
@@ -2511,13 +2675,13 @@ function ScenariosTable({ scenarios = [], role }) {
 
     // Filter scenarios
     const filteredScenarios = (scenarios || []).filter((scenario) => {
-        const matchesSearch = !searchQuery || 
+        const matchesSearch = !searchQuery ||
             scenario.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (scenario.short_description && scenario.short_description.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesStatus = !filterStatus || scenario.status === filterStatus;
         const matchesDifficulty = !filterDifficulty || scenario.difficulty === filterDifficulty;
         const matchesDisasterType = !filterDisasterType || scenario.disaster_type === filterDisasterType;
-        
+
         return matchesSearch && matchesStatus && matchesDifficulty && matchesDisasterType;
     });
 
@@ -2543,7 +2707,7 @@ function ScenariosTable({ scenarios = [], role }) {
                     + Create Scenario
                 </a>
             </div>
-            
+
             {/* Search and Filter Bar */}
             <div className="mb-4 flex items-center gap-3">
                 <div className="flex-1 relative">
@@ -2652,7 +2816,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                     colSpan={7}
                                     className="px-4 py-6 text-center text-slate-500 text-sm"
                                 >
-                                    {(scenarios || []).length === 0 
+                                    {(scenarios || []).length === 0
                                         ? 'No scenarios yet. Click "Create Scenario" to add one.'
                                         : 'No scenarios match your search or filter criteria.'}
                                 </td>
@@ -2664,12 +2828,14 @@ function ScenariosTable({ scenarios = [], role }) {
                                     className="border-t border-slate-100 hover:bg-slate-50"
                                 >
                                     <td className="px-4 py-2 font-medium text-slate-800">
-                                        <a
-                                            href={`/scenarios/${s.id}`}
-                                            className="text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
-                                        >
-                                            {s.title}
-                                        </a>
+                                        <div className="flex flex-col">
+                                            <span
+                                                className="text-sm font-semibold text-slate-800 truncate max-w-[200px]"
+                                                title={s.title}
+                                            >
+                                                {s.title}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600">
                                         {s.training_module?.title ?? '—'}
@@ -2683,15 +2849,15 @@ function ScenariosTable({ scenarios = [], role }) {
                                     <td className="px-4 py-2 text-slate-600">
                                         <span
                                             className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ' +
+                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold border ' +
                                                 (s.status === 'published'
-                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                                                     : s.status === 'draft'
-                                                    ? 'bg-slate-100 text-slate-600'
-                                                    : 'bg-amber-50 text-amber-700')
+                                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                                        : 'border-slate-200 bg-slate-50 text-slate-600')
                                             }
                                         >
-                                            {s.status}
+                                            {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-slate-500">
@@ -2700,46 +2866,51 @@ function ScenariosTable({ scenarios = [], role }) {
                                     <td className="px-4 py-2 text-slate-600">
                                         <div className="flex gap-2 items-center">
                                             <a
-                                                href={`/scenarios/${s.id}/edit`}
-                                                className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
-                                                title="Edit"
+                                                href={`/scenarios/${s.id}`}
+                                                className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                title="View Scenario"
                                             >
-                                                <Pencil className="w-3.5 h-3.5" />
+                                                <Eye className="w-3.5 h-3.5" />
                                             </a>
+                                            {s.status !== 'published' && (
+                                                <>
+                                                    <a
+                                                        href={`/scenarios/${s.id}/edit`}
+                                                        className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                        title="Edit"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </a>
 
-                                            <form
-                                                method="POST"
-                                                action={`/scenarios/${s.id}/publish`}
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const result = await Swal.fire({
-                                                        title: 'Warning!',
-                                                        text: 'Publish this scenario? It will become selectable for events.',
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Yes, publish',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#16a34a',
-                                                        cancelButtonColor: '#64748b',
-                                                    });
-                                                    if (result.isConfirmed) e.target.submit();
-                                                }}
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button
-                                                    type="submit"
-                                                    disabled={s.status === 'published'}
-                                                    className={[
-                                                        'inline-flex items-center justify-center rounded-md border p-2 transition-colors',
-                                                        s.status === 'published'
-                                                            ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
-                                                            : 'border-sky-500/60 bg-sky-50 text-sky-800 hover:bg-sky-100',
-                                                    ].join(' ')}
-                                                    title="Publish"
-                                                >
-                                                    <Send className="w-3.5 h-3.5" />
-                                                </button>
-                                            </form>
+                                                    <form
+                                                        method="POST"
+                                                        action={`/scenarios/${s.id}/publish`}
+                                                        onSubmit={async (e) => {
+                                                            e.preventDefault();
+                                                            const result = await Swal.fire({
+                                                                title: 'Warning!',
+                                                                text: 'Publish this scenario? It will become selectable for events.',
+                                                                icon: 'warning',
+                                                                showCancelButton: true,
+                                                                confirmButtonText: 'Yes, publish',
+                                                                cancelButtonText: 'Cancel',
+                                                                confirmButtonColor: '#16a34a',
+                                                                cancelButtonColor: '#64748b',
+                                                            });
+                                                            if (result.isConfirmed) e.target.submit();
+                                                        }}
+                                                    >
+                                                        <input type="hidden" name="_token" value={csrf} />
+                                                        <button
+                                                            type="submit"
+                                                            className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                            title="Publish"
+                                                        >
+                                                            <Send className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </form>
+                                                </>
+                                            )}
 
                                             <form
                                                 method="POST"
@@ -2762,7 +2933,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <button
                                                     type="submit"
-                                                    className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
+                                                    className="p-1.5 rounded-md text-amber-600 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
                                                     title="Archive"
                                                 >
                                                     <Archive className="w-3.5 h-3.5" />
@@ -2792,7 +2963,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                                     <input type="hidden" name="_method" value="DELETE" />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center justify-center rounded-md border border-rose-500/60 bg-rose-50 p-2 text-rose-800 hover:bg-rose-100 transition-colors"
+                                                        className="p-1.5 rounded-md text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all"
                                                         title="Delete"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -2828,12 +2999,29 @@ function ScenarioCreateForm({ modules }) {
     const [aiPrompt, setAiPrompt] = React.useState('');
     const [aiGenerating, setAiGenerating] = React.useState(false);
     const [aiError, setAiError] = React.useState(null);
+    const [showCriteria, setShowCriteria] = React.useState(true);
+    const [criteria, setCriteria] = React.useState(['']);
     const publishedModules = (modules || []).filter((m) => m.status === 'published');
     const selectedModule =
         publishedModules.find((m) => String(m.id) === String(selectedModuleId)) || null;
-    const derivedDisasterType = selectedModule?.disaster_type || '';
+    const derivedDisasterType = selectedModule?.category || '';
+    const learningObjectives = selectedModule?.learning_objectives || [];
 
     const formRef = React.useRef(null);
+
+    const addCriterion = () => {
+        setCriteria([...criteria, '']);
+    };
+
+    const removeCriterion = (index) => {
+        setCriteria(criteria.filter((_, i) => i !== index));
+    };
+
+    const updateCriterion = (index, value) => {
+        const newCriteria = [...criteria];
+        newCriteria[index] = value;
+        setCriteria(newCriteria);
+    };
 
     const handleGenerateWithAi = async (e) => {
         e.preventDefault();
@@ -3044,6 +3232,170 @@ function ScenarioCreateForm({ modules }) {
                     />
                 </div>
 
+                {/* Training Module and Disaster Type Section */}
+                <div className="border-t border-slate-200 pt-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                className="block text-xs font-semibold text-slate-600 mb-1"
+                                htmlFor="training_module_id"
+                            >
+                                Training Module <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="training_module_id"
+                                name="training_module_id"
+                                required
+                                value={selectedModuleId}
+                                onChange={(e) => setSelectedModuleId(e.target.value)}
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="">Select a training module…</option>
+                                {publishedModules.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.title}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="mt-1 text-[0.7rem] text-slate-500">
+                                This scenario will be the practical application of the selected training module.
+                            </p>
+                        </div>
+                        <div>
+                            <label
+                                className="block text-xs font-semibold text-slate-600 mb-1"
+                                htmlFor="scenario_difficulty"
+                            >
+                                Difficulty <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="scenario_difficulty"
+                                name="difficulty"
+                                required
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="Basic">Basic</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                            Disaster type (from training module)
+                        </label>
+                        <input
+                            type="text"
+                            value={derivedDisasterType || ''}
+                            disabled
+                            placeholder="Select a training module to auto-fill"
+                            className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+                        />
+                    </div>
+
+                    {/* Learning Objectives from Training Module */}
+                    {selectedModule && learningObjectives && learningObjectives.length > 0 && (
+                        <div className="mt-4">
+                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                                Learning Objectives <span className="text-red-500">*</span>
+                            </label>
+                            <div className="rounded-md border border-slate-300 bg-slate-50 p-3">
+                                <ul className="space-y-2">
+                                    {learningObjectives.map((objective, index) => (
+                                        <li key={index} className="text-sm text-slate-700 flex items-start gap-2">
+                                            <span className="text-emerald-600 mt-0.5">•</span>
+                                            <span>{objective}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <p className="mt-1 text-[0.7rem] text-slate-500">
+                                Learning objectives from the selected training module.
+                            </p>
+                        </div>
+                    )}
+                    {selectedModule && (!learningObjectives || learningObjectives.length === 0) && (
+                        <div className="mt-4">
+                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                                Learning Objectives <span className="text-red-500">*</span>
+                            </label>
+                            <div className="rounded-md border border-rose-200 bg-rose-50 p-3">
+                                <p className="text-sm text-rose-700">
+                                    No learning objectives found in the selected training module. Please add learning objectives to the training module first.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    {!selectedModule && (
+                        <div className="mt-4">
+                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                                Learning Objectives <span className="text-red-500">*</span>
+                            </label>
+                            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                <p className="text-sm text-slate-500">
+                                    Please select a training module to view learning objectives.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Criteria Section */}
+                    <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-xs font-semibold text-slate-600">
+                                Criterion <span className="text-red-500">*</span>
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setShowCriteria(!showCriteria)}
+                                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:border-emerald-700 transition-colors"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                Criteria
+                            </button>
+                        </div>
+                        {showCriteria && (
+                            <div className="space-y-2">
+                                {criteria.map((criterion, index) => (
+                                    <div key={index} className="flex items-start gap-2">
+                                        <input
+                                            type="text"
+                                            name={`criteria[${index}]`}
+                                            value={criterion}
+                                            onChange={(e) => updateCriterion(index, e.target.value)}
+                                            placeholder={`Criterion ${index + 1}`}
+                                            required
+                                            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                        {criteria.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removeCriterion(index)}
+                                                className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={addCriterion}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900"
+                                >
+                                    <Plus className="w-3 h-3" />
+                                    Add another criterion
+                                </button>
+                            </div>
+                        )}
+                        {!showCriteria && (
+                            <p className="text-[0.7rem] text-rose-600">
+                                Criteria is required. Please click "+ Criteria" to add at least one criterion.
+                            </p>
+                        )}
+                    </div>
+                </div>
+
                 {/* Scenario Overview Section */}
                 <div className="border-t border-slate-200 pt-4 mt-4">
                     <h3 className="text-sm font-semibold text-slate-700 mb-3">Scenario Overview</h3>
@@ -3187,65 +3539,6 @@ function ScenarioCreateForm({ modules }) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="training_module_id"
-                        >
-                            Training Module <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="training_module_id"
-                            name="training_module_id"
-                            required
-                            value={selectedModuleId}
-                            onChange={(e) => setSelectedModuleId(e.target.value)}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="">Select a training module…</option>
-                            {publishedModules.map((m) => (
-                                <option key={m.id} value={m.id}>
-                                    {m.title}
-                                </option>
-                            ))}
-                        </select>
-                        <p className="mt-1 text-[0.7rem] text-slate-500">
-                            This scenario will be the practical application of the selected training module.
-                        </p>
-                    </div>
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="scenario_difficulty"
-                        >
-                            Difficulty <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="scenario_difficulty"
-                            name="difficulty"
-                            required
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="Basic">Basic</option>
-                            <option value="Intermediate">Intermediate</option>
-                            <option value="Advanced">Advanced</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                        Disaster type (from training module)
-                    </label>
-                    <input
-                        type="text"
-                        value={derivedDisasterType || ''}
-                        disabled
-                        placeholder="Select a training module to auto-fill"
-                        className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600"
-                    />
-                </div>
                 <div>
                     <label
                         className="block text-xs font-semibold text-slate-600 mb-1"
@@ -3288,7 +3581,31 @@ function ScenarioEditForm({ scenario, modules }) {
     );
     const selectedModule =
         (modules || []).find((m) => String(m.id) === String(selectedModuleId)) || null;
-    const derivedDisasterType = selectedModule?.disaster_type || scenario.disaster_type || '';
+    const derivedDisasterType = selectedModule?.category || scenario.disaster_type || '';
+    const learningObjectives = selectedModule?.learning_objectives || [];
+
+    // Initialize criteria from existing scenario data
+    const initialCriteria = scenario.criteria && Array.isArray(scenario.criteria)
+        ? scenario.criteria.filter(c => c && c.trim() !== '')
+        : [];
+    const [showCriteria, setShowCriteria] = React.useState(initialCriteria.length > 0 || true);
+    const [criteria, setCriteria] = React.useState(
+        initialCriteria.length > 0 ? initialCriteria : ['']
+    );
+
+    const addCriterion = () => {
+        setCriteria([...criteria, '']);
+    };
+
+    const removeCriterion = (index) => {
+        setCriteria(criteria.filter((_, i) => i !== index));
+    };
+
+    const updateCriterion = (index, value) => {
+        const newCriteria = [...criteria];
+        newCriteria[index] = value;
+        setCriteria(newCriteria);
+    };
 
     return (
         <div className="py-2">
@@ -3329,6 +3646,169 @@ function ScenarioEditForm({ scenario, modules }) {
                         defaultValue={scenario.short_description || ''}
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
+                </div>
+
+                {/* Training Module and Disaster Type Section */}
+                <div className="border-t border-slate-200 pt-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="training_module_id_edit">
+                                Training Module <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="training_module_id_edit"
+                                name="training_module_id"
+                                required
+                                value={selectedModuleId}
+                                onChange={(e) => setSelectedModuleId(e.target.value)}
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="">Select a training module…</option>
+                                {(modules || []).map((m) => (
+                                    <option
+                                        key={m.id}
+                                        value={m.id}
+                                        disabled={m.status !== 'published'}
+                                    >
+                                        {m.title}{m.status !== 'published' ? ' (Not published)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="mt-1 text-[0.7rem] text-slate-500">
+                                This scenario will be the practical application of the selected training module.
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="scenario_difficulty_edit">
+                                Difficulty <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="scenario_difficulty_edit"
+                                name="difficulty"
+                                required
+                                defaultValue={scenario.difficulty}
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="Basic">Basic</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                            Disaster type (from training module)
+                        </label>
+                        <input
+                            type="text"
+                            value={derivedDisasterType || ''}
+                            disabled
+                            placeholder="Select a training module to auto-fill"
+                            className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+                        />
+                    </div>
+
+                    {/* Learning Objectives from Training Module */}
+                    {selectedModule && learningObjectives && learningObjectives.length > 0 && (
+                        <div className="mt-4">
+                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                                Learning Objectives <span className="text-red-500">*</span>
+                            </label>
+                            <div className="rounded-md border border-slate-300 bg-slate-50 p-3">
+                                <ul className="space-y-2">
+                                    {learningObjectives.map((objective, index) => (
+                                        <li key={index} className="text-sm text-slate-700 flex items-start gap-2">
+                                            <span className="text-emerald-600 mt-0.5">•</span>
+                                            <span>{objective}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <p className="mt-1 text-[0.7rem] text-slate-500">
+                                Learning objectives from the selected training module.
+                            </p>
+                        </div>
+                    )}
+                    {selectedModule && (!learningObjectives || learningObjectives.length === 0) && (
+                        <div className="mt-4">
+                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                                Learning Objectives <span className="text-red-500">*</span>
+                            </label>
+                            <div className="rounded-md border border-rose-200 bg-rose-50 p-3">
+                                <p className="text-sm text-rose-700">
+                                    No learning objectives found in the selected training module. Please add learning objectives to the training module first.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    {!selectedModule && (
+                        <div className="mt-4">
+                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                                Learning Objectives <span className="text-red-500">*</span>
+                            </label>
+                            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                <p className="text-sm text-slate-500">
+                                    Please select a training module to view learning objectives.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Criteria Section */}
+                    <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-xs font-semibold text-slate-600">
+                                Criterion <span className="text-red-500">*</span>
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setShowCriteria(!showCriteria)}
+                                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:border-emerald-700 transition-colors"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                Criteria
+                            </button>
+                        </div>
+                        {showCriteria && (
+                            <div className="space-y-2">
+                                {criteria.map((criterion, index) => (
+                                    <div key={index} className="flex items-start gap-2">
+                                        <input
+                                            type="text"
+                                            name={`criteria[${index}]`}
+                                            value={criterion}
+                                            onChange={(e) => updateCriterion(index, e.target.value)}
+                                            placeholder={`Criterion ${index + 1}`}
+                                            required
+                                            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                        {criteria.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removeCriterion(index)}
+                                                className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={addCriterion}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900"
+                                >
+                                    <Plus className="w-3 h-3" />
+                                    Add another criterion
+                                </button>
+                            </div>
+                        )}
+                        {!showCriteria && (
+                            <p className="text-[0.7rem] text-rose-600">
+                                Criteria is required. Please click "+ Criteria" to add at least one criterion.
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Scenario Overview Section */}
@@ -3520,31 +4000,6 @@ function ScenarioEditForm({ scenario, modules }) {
                         defaultValue={scenario.intended_participants || ''}
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="training_module_id_edit">
-                        Training Module (required)
-                    </label>
-                    <select
-                        id="training_module_id_edit"
-                        name="training_module_id"
-                        required
-                        value={selectedModuleId}
-                        onChange={(e) => setSelectedModuleId(e.target.value)}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                        <option value="">Select a training module…</option>
-                        {(modules || []).map((m) => (
-                            <option
-                                key={m.id}
-                                value={m.id}
-                                disabled={m.status !== 'published'}
-                            >
-                                {m.title}{m.status !== 'published' ? ' (Not published)' : ''}
-                            </option>
-                        ))}
-                    </select>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
@@ -3768,250 +4223,6 @@ function ScenarioDetail({ scenario }) {
                 </div>
             )}
 
-            {/* Injects and Expected Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                {/* Injects Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-slate-800">Injects</h3>
-                    </div>
-                    <div className="rounded-xl bg-white border border-slate-200 shadow-sm">
-                        {(() => {
-                            // Handle both camelCase and snake_case from Laravel
-                            const injects = scenario.injects || [];
-                            return injects.length > 0 ? (
-                            <ul className="divide-y divide-slate-100">
-                                {injects.map((inject) => (
-                                    <li
-                                        key={inject.id}
-                                        className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-slate-50"
-                                    >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-sm font-medium text-slate-800">
-                                                    {inject.title}
-                                                </span>
-                                                <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-700">
-                                                    {inject.trigger_time_text}
-                                                </span>
-                                            </div>
-                                            {inject.description && (
-                                                <p className="text-xs text-slate-600 whitespace-pre-line">
-                                                    {inject.description}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <form
-                                            method="POST"
-                                            action={`/scenarios/${scenario.id}/injects/${inject.id}`}
-                                            onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const result = await Swal.fire({
-                                                    title: 'Warning!',
-                                                    text: 'Remove this inject from the scenario?',
-                                                    icon: 'warning',
-                                                    showCancelButton: true,
-                                                    confirmButtonText: 'Yes, remove it',
-                                                    cancelButtonText: 'Cancel',
-                                                    confirmButtonColor: '#dc2626',
-                                                    cancelButtonColor: '#64748b',
-                                                });
-                                                if (result.isConfirmed) {
-                                                    e.target.submit();
-                                                }
-                                            }}
-                                        >
-                                            <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                                            <input type="hidden" name="_method" value="DELETE" />
-                                            <button
-                                                type="submit"
-                                                className="text-[0.7rem] font-medium text-rose-700 hover:text-rose-900"
-                                            >
-                                                Remove
-                                            </button>
-                                        </form>
-                                    </li>
-                                ))}
-                            </ul>
-                            ) : (
-                                <div className="px-4 py-6 text-sm text-slate-500 text-center">
-                                    No injects yet. Use the form below to add one.
-                                </div>
-                            );
-                        })()}
-                    </div>
-                    <div className="rounded-xl bg-white border border-slate-200 p-4 shadow-sm">
-                        <h4 className="text-xs font-semibold text-slate-700 mb-3">Add Inject</h4>
-                        <form
-                            method="POST"
-                            action={`/scenarios/${scenario.id}/injects`}
-                            className="space-y-3"
-                        >
-                            <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="inject_title">
-                                    Title
-                                </label>
-                                <input
-                                    id="inject_title"
-                                    name="title"
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Aftershock occurs"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="inject_trigger_time">
-                                    Trigger time
-                                </label>
-                                <input
-                                    id="inject_trigger_time"
-                                    name="trigger_time_text"
-                                    type="text"
-                                    required
-                                    placeholder="e.g. after 20 minutes"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="inject_description">
-                                    Description (optional)
-                                </label>
-                                <textarea
-                                    id="inject_description"
-                                    name="description"
-                                    rows={2}
-                                    placeholder="Additional details about this inject"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full inline-flex items-center justify-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2"
-                            >
-                                Add Inject
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                {/* Expected Actions Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-slate-800">Expected Actions</h3>
-                    </div>
-                    <div className="rounded-xl bg-white border border-slate-200 shadow-sm">
-                        {(() => {
-                            const expectedActions = scenario.expectedActions || scenario.expected_actions || [];
-                            return expectedActions.length > 0 ? (
-                            <ul className="divide-y divide-slate-100">
-                                {expectedActions.map((action, index) => (
-                                    <li
-                                        key={action.id}
-                                        className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-slate-50"
-                                    >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs text-slate-400">#{index + 1}</span>
-                                                <span className="text-sm font-medium text-slate-800">
-                                                    {action.description}
-                                                </span>
-                                                {action.category && (
-                                                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600 capitalize">
-                                                        {action.category}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <form
-                                            method="POST"
-                                            action={`/scenarios/${scenario.id}/expected-actions/${action.id}`}
-                                            onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const result = await Swal.fire({
-                                                    title: 'Warning!',
-                                                    text: 'Remove this expected action from the scenario?',
-                                                    icon: 'warning',
-                                                    showCancelButton: true,
-                                                    confirmButtonText: 'Yes, remove it',
-                                                    cancelButtonText: 'Cancel',
-                                                    confirmButtonColor: '#dc2626',
-                                                    cancelButtonColor: '#64748b',
-                                                });
-                                                if (result.isConfirmed) {
-                                                    e.target.submit();
-                                                }
-                                            }}
-                                        >
-                                            <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                                            <input type="hidden" name="_method" value="DELETE" />
-                                            <button
-                                                type="submit"
-                                                className="text-[0.7rem] font-medium text-rose-700 hover:text-rose-900"
-                                            >
-                                                Remove
-                                            </button>
-                                        </form>
-                                    </li>
-                                ))}
-                            </ul>
-                            ) : (
-                                <div className="px-4 py-6 text-sm text-slate-500 text-center">
-                                    No expected actions yet. Use the form below to add one.
-                                </div>
-                            );
-                        })()}
-                    </div>
-                    <div className="rounded-xl bg-white border border-slate-200 p-4 shadow-sm">
-                        <h4 className="text-xs font-semibold text-slate-700 mb-3">Add Expected Action</h4>
-                        <form
-                            method="POST"
-                            action={`/scenarios/${scenario.id}/expected-actions`}
-                            className="space-y-3"
-                        >
-                            <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="expected_action_description">
-                                    Description
-                                </label>
-                                <input
-                                    id="expected_action_description"
-                                    name="description"
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Perform Duck–Cover–Hold"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="expected_action_category">
-                                    Category (optional)
-                                </label>
-                                <select
-                                    id="expected_action_category"
-                                    name="category"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                >
-                                    <option value="">Select category…</option>
-                                    <option value="evacuation">Evacuation</option>
-                                    <option value="triage">Triage</option>
-                                    <option value="communication">Communication</option>
-                                    <option value="coordination">Coordination</option>
-                                    <option value="rescue">Rescue</option>
-                                    <option value="first_aid">First Aid</option>
-                                </select>
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full inline-flex items-center justify-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2"
-                            >
-                                Add Expected Action
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }
@@ -4053,14 +4264,14 @@ function SimulationEventsTable({ events, role }) {
 
     // Filter events
     const filteredEvents = events.filter((event) => {
-        const matchesSearch = !searchQuery || 
+        const matchesSearch = !searchQuery ||
             event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
             (event.location && event.location.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesStatus = !filterStatus || event.status === filterStatus;
         const matchesDisasterType = !filterDisasterType || event.disaster_type === filterDisasterType;
         const matchesCategory = !filterCategory || event.event_category === filterCategory;
-        
+
         return matchesSearch && matchesStatus && matchesDisasterType && matchesCategory;
     });
 
@@ -4096,7 +4307,7 @@ function SimulationEventsTable({ events, role }) {
             });
 
             const data = await response.json();
-            
+
             if (data.success) {
                 setAutoApprovalEnabled(data.enabled);
                 Swal.fire({
@@ -4131,23 +4342,21 @@ function SimulationEventsTable({ events, role }) {
                             type="button"
                             onClick={handleToggleAutoApproval}
                             disabled={isLoadingToggle}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-                                autoApprovalEnabled ? 'bg-emerald-600' : 'bg-slate-300'
-                            } ${isLoadingToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${autoApprovalEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                                } ${isLoadingToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                             role="switch"
                             aria-checked={autoApprovalEnabled}
                         >
                             <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    autoApprovalEnabled ? 'translate-x-6' : 'translate-x-1'
-                                }`}
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoApprovalEnabled ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
                             />
                         </button>
                         <span className="text-xs text-slate-500">
                             {autoApprovalEnabled ? '(All events)' : '(Manual approval)'}
                         </span>
                     </div>
-                    
+
                     <a
                         href="/simulation-events/create"
                         className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5"
@@ -4156,7 +4365,7 @@ function SimulationEventsTable({ events, role }) {
                     </a>
                 </div>
             </div>
-            
+
             {/* Search and Filter Bar */}
             <div className="mb-4 flex items-center gap-3">
                 <div className="flex-1 relative">
@@ -4270,7 +4479,7 @@ function SimulationEventsTable({ events, role }) {
                         {filteredEvents.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {events.length === 0 
+                                    {events.length === 0
                                         ? 'No simulation events yet. Click "Create Event" to add one.'
                                         : 'No events match your search or filter criteria.'}
                                 </td>
@@ -4299,13 +4508,17 @@ function SimulationEventsTable({ events, role }) {
                                                 'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ' +
                                                 (event.status === 'published'
                                                     ? 'bg-emerald-50 text-emerald-700'
-                                                    : event.status === 'draft'
-                                                    ? 'bg-slate-100 text-slate-600'
-                                                    : event.status === 'archived'
-                                                    ? 'bg-amber-50 text-amber-700'
-                                                    : event.status === 'cancelled'
-                                                    ? 'bg-rose-50 text-rose-700'
-                                                    : 'bg-slate-100 text-slate-600')
+                                                    : event.status === 'ongoing'
+                                                        ? 'bg-blue-50 text-blue-700'
+                                                        : event.status === 'completed'
+                                                            ? 'bg-indigo-50 text-indigo-700'
+                                                            : event.status === 'draft'
+                                                                ? 'bg-slate-100 text-slate-600'
+                                                                : event.status === 'archived'
+                                                                    ? 'bg-amber-50 text-amber-700'
+                                                                    : event.status === 'cancelled'
+                                                                        ? 'bg-rose-50 text-rose-700'
+                                                                        : 'bg-slate-100 text-slate-600')
                                             }
                                         >
                                             {event.status}
@@ -4313,11 +4526,18 @@ function SimulationEventsTable({ events, role }) {
                                     </td>
                                     <td className="px-4 py-2">
                                         <div className="flex gap-2 items-center">
+                                            <a
+                                                href={`/simulation-events/${event.id}`}
+                                                className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                title="View Event"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                            </a>
                                             {/* Edit - Only for draft events */}
                                             {event.status === 'draft' && (
                                                 <a
                                                     href={`/simulation-events/${event.id}/edit`}
-                                                    className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                    className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
                                                     title="Edit"
                                                 >
                                                     <Pencil className="w-3.5 h-3.5" />
@@ -4330,6 +4550,26 @@ function SimulationEventsTable({ events, role }) {
                                                     action={`/simulation-events/${event.id}/publish`}
                                                     onSubmit={async (e) => {
                                                         e.preventDefault();
+
+                                                        // Validation: Check required fields
+                                                        const missingFields = [];
+                                                        if (!event.title) missingFields.push('Event Title');
+                                                        if (!event.disaster_type) missingFields.push('Disaster Type');
+                                                        if (!event.event_category) missingFields.push('Event Category');
+                                                        if (!event.event_date) missingFields.push('Event Date');
+                                                        if (!event.start_time) missingFields.push('Start Time');
+                                                        if (!event.end_time) missingFields.push('End Time');
+
+                                                        if (missingFields.length > 0) {
+                                                            Swal.fire({
+                                                                title: 'Validation Error!',
+                                                                html: `Please fill in the following required fields before publishing:<br><br>${missingFields.map(f => `• ${f}`).join('<br>')}`,
+                                                                icon: 'error',
+                                                                confirmButtonColor: '#64748b',
+                                                            });
+                                                            return;
+                                                        }
+
                                                         const result = await Swal.fire({
                                                             title: 'Warning!',
                                                             text: 'Publish this simulation event? It will become visible to participants.',
@@ -4346,43 +4586,72 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center justify-center rounded-md border border-sky-500/60 bg-sky-50 p-2 text-sky-800 hover:bg-sky-100 transition-colors"
+                                                        className="p-1.5 rounded-md text-sky-600 bg-sky-50 border border-sky-200 hover:bg-sky-100 transition-all"
                                                         title="Publish"
                                                     >
                                                         <Send className="w-3.5 h-3.5" />
                                                     </button>
                                                 </form>
                                             )}
-                                            {/* Unpublish - Only for published events */}
-                                            {event.status === 'published' && (
-                                                <form
-                                                    method="POST"
-                                                    action={`/simulation-events/${event.id}/unpublish`}
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Warning!',
-                                                            text: 'Unpublish this event? It will be hidden from participants and changed to draft. You can edit and republish later.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, unpublish',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#f97316',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) e.target.submit();
-                                                    }}
-                                                >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
-                                                        title="Unpublish"
+                                            {/* Start - Only for published events when time matches */}
+                                            {event.status === 'published' && (() => {
+                                                // Check if event date matches today
+                                                const eventDate = new Date(event.event_date);
+                                                const today = new Date();
+                                                const isEventDateToday = eventDate.toDateString() === today.toDateString();
+
+                                                if (!isEventDateToday) return null;
+
+                                                // Parse start time (format: HH:MM) and create full datetime
+                                                const parseTime = (timeStr) => {
+                                                    if (!timeStr) return null;
+                                                    const [hours, minutes] = timeStr.split(':').map(Number);
+                                                    // Create datetime using the event date, not today
+                                                    const eventDate = new Date(event.event_date);
+                                                    const time = new Date(eventDate);
+                                                    time.setHours(hours, minutes, 0, 0);
+                                                    return time;
+                                                };
+
+                                                const startTime = parseTime(event.start_time);
+                                                const now = new Date();
+
+                                                // Check if current time is >= start time (on the event date)
+                                                // Allow starting when time is equal or after start time
+                                                const canStart = startTime && now.getTime() >= startTime.getTime();
+
+                                                if (!canStart) return null;
+
+                                                return (
+                                                    <form
+                                                        method="POST"
+                                                        action={`/simulation-events/${event.id}/start`}
+                                                        onSubmit={async (e) => {
+                                                            e.preventDefault();
+                                                            const result = await Swal.fire({
+                                                                title: 'Start Event!',
+                                                                text: 'Are you sure you want to start this simulation event? Status will change to Ongoing.',
+                                                                icon: 'question',
+                                                                showCancelButton: true,
+                                                                confirmButtonText: 'Yes, start event',
+                                                                cancelButtonText: 'Cancel',
+                                                                confirmButtonColor: '#16a34a',
+                                                                cancelButtonColor: '#64748b',
+                                                            });
+                                                            if (result.isConfirmed) e.target.submit();
+                                                        }}
                                                     >
-                                                        <Undo2 className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </form>
-                                            )}
+                                                        <input type="hidden" name="_token" value={csrf} />
+                                                        <button
+                                                            type="submit"
+                                                            className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                            title="Start Event"
+                                                        >
+                                                            <Play className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </form>
+                                                );
+                                            })()}
                                             {/* Cancel - For published and draft events (not archived/cancelled) */}
                                             {(event.status === 'published' || event.status === 'draft') && (
                                                 <form
@@ -4406,7 +4675,7 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center justify-center rounded-md border border-rose-500/60 bg-rose-50 p-2 text-rose-800 hover:bg-rose-100 transition-colors"
+                                                        className="p-1.5 rounded-md text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all"
                                                         title="Cancel"
                                                     >
                                                         <XCircle className="w-3.5 h-3.5" />
@@ -4436,7 +4705,7 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
+                                                        className="p-1.5 rounded-md text-amber-600 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
                                                         title="Archive"
                                                     >
                                                         <Archive className="w-3.5 h-3.5" />
@@ -4466,22 +4735,38 @@ function SimulationEventsTable({ events, role }) {
 
 // Resource Selection Component
 function ResourceSelectionSection({ eventResources = [] }) {
-    const [selectedResources, setSelectedResources] = React.useState(() => {
-        // Initialize with existing event resources if editing
-        if (eventResources && eventResources.length > 0) {
-            return eventResources.map(r => {
-                // Handle both direct resource objects and pivot relationships
-                const resource = r.resource || r;
-                return {
-                    id: resource.id || r.resource_id || r.id,
-                    name: resource.name || r.name,
-                    category: resource.category || r.category,
-                    quantity: r.pivot?.quantity_needed || resource.pivot?.quantity_needed || 1,
-                    available: resource.available || r.available || 1,
-                };
-            });
+    const parseEventResources = (resources) => {
+        if (!resources || !Array.isArray(resources) || resources.length === 0) {
+            console.log('parseEventResources: No resources or empty array', resources);
+            return [];
         }
-        return [];
+
+        console.log('parseEventResources: Raw resources data', resources);
+
+        const parsed = resources.map(r => {
+            // Handle both direct resource objects and pivot relationships
+            // Laravel returns resources with pivot data when using belongsToMany
+            const resource = r.resource || r;
+            const pivot = r.pivot || resource.pivot || {};
+
+            const parsedResource = {
+                id: resource.id || r.resource_id || r.id,
+                name: resource.name || r.name,
+                category: resource.category || r.category,
+                quantity: pivot.quantity_needed || resource.quantity_needed || r.quantity_needed || 1,
+                available: resource.available || r.available || resource.quantity || r.quantity || 1,
+            };
+
+            console.log('parseEventResources: Parsed resource', parsedResource, 'from raw', r);
+            return parsedResource;
+        });
+
+        console.log('parseEventResources: Final parsed array', parsed);
+        return parsed;
+    };
+
+    const [selectedResources, setSelectedResources] = React.useState(() => {
+        return parseEventResources(eventResources);
     });
     const [showModal, setShowModal] = React.useState(false);
     const [resources, setResources] = React.useState([]);
@@ -4489,6 +4774,52 @@ function ResourceSelectionSection({ eventResources = [] }) {
     const [categoryFilter, setCategoryFilter] = React.useState('all');
     const [loading, setLoading] = React.useState(false);
     const [tempSelections, setTempSelections] = React.useState({});
+
+    // Track if we've initialized from eventResources to prevent infinite loops
+    const initializedRef = React.useRef(false);
+    const eventResourcesStringRef = React.useRef(JSON.stringify(eventResources || []));
+    const isManualUpdateRef = React.useRef(false);
+    const selectedResourcesRef = React.useRef(parseEventResources(eventResources));
+
+    // Keep ref updated with latest selectedResources
+    React.useEffect(() => {
+        selectedResourcesRef.current = selectedResources;
+    }, [selectedResources]);
+
+    // Update selectedResources when eventResources prop changes (e.g., when editing)
+    React.useEffect(() => {
+        // Skip if this is a manual update from the modal
+        if (isManualUpdateRef.current) {
+            isManualUpdateRef.current = false;
+            return;
+        }
+
+        // Create a stable string representation for comparison
+        const currentResourcesString = JSON.stringify(eventResources || []);
+
+        // Only update if the content actually changed (not just reference)
+        if (currentResourcesString !== eventResourcesStringRef.current) {
+            eventResourcesStringRef.current = currentResourcesString;
+
+            if (eventResources && eventResources.length > 0) {
+                const parsed = parseEventResources(eventResources);
+                if (parsed.length > 0) {
+                    console.log('Loading event resources:', eventResources, 'Parsed:', parsed);
+                    setSelectedResources(parsed);
+                    initializedRef.current = true;
+                } else {
+                    console.warn('parseEventResources returned empty array for:', eventResources);
+                }
+            } else {
+                console.log('No eventResources provided or empty array:', eventResources);
+                if (!initializedRef.current) {
+                    // Only reset if we haven't initialized yet
+                    setSelectedResources([]);
+                    initializedRef.current = true;
+                }
+            }
+        }
+    }, [eventResources]);
 
     // Fetch available resources
     React.useEffect(() => {
@@ -4503,8 +4834,8 @@ function ResourceSelectionSection({ eventResources = [] }) {
             const response = await fetch('/api/resources?status=Available');
             const data = await response.json();
             // Only show resources with available quantity > 0
-            const available = (data.resources || data).filter(r => 
-                (r.status === 'Available' || r.status === 'Partially Assigned') && 
+            const available = (data.resources || data).filter(r =>
+                (r.status === 'Available' || r.status === 'Partially Assigned') &&
                 (r.available || r.quantity) > 0
             );
             setResources(available);
@@ -4517,7 +4848,7 @@ function ResourceSelectionSection({ eventResources = [] }) {
     };
 
     const filteredResources = resources.filter(r => {
-        const matchesSearch = !searchQuery || 
+        const matchesSearch = !searchQuery ||
             r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (r.serial_number && r.serial_number.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesCategory = categoryFilter === 'all' || r.category === categoryFilter;
@@ -4538,7 +4869,7 @@ function ResourceSelectionSection({ eventResources = [] }) {
 
     const handleToggleResource = (resource) => {
         const availableQty = resource.available || resource.quantity;
-        
+
         if (tempSelections[resource.id]) {
             // Remove from selection
             const newTemp = { ...tempSelections };
@@ -4593,9 +4924,66 @@ function ResourceSelectionSection({ eventResources = [] }) {
         }
     };
 
+    // Function to ensure hidden input exists and is updated
+    const ensureHiddenInput = (resourcesToSave) => {
+        let hiddenInput = document.getElementById('selected_resources_input');
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'resources';
+            hiddenInput.id = 'selected_resources_input';
+
+            // Find the simulation event form specifically (not logout form or other forms)
+            // Priority 1: Forms with specific IDs
+            let form = document.getElementById('simulation-event-create-form') ||
+                document.getElementById('simulation-event-edit-form');
+
+            // Priority 2: Forms with action containing "simulation-events"
+            if (!form) {
+                form = document.querySelector('form[action*="simulation-events"]');
+            }
+
+            // Fallback: find form with POST/PUT method that's not logout
+            if (!form) {
+                const allForms = document.querySelectorAll('form[method="POST"], form[method="PUT"]');
+                form = Array.from(allForms).find(f =>
+                    f.action &&
+                    !f.action.includes('/logout') &&
+                    (f.action.includes('simulation-events') || f.closest('.py-2'))
+                );
+            }
+
+            // Last resort: find any form in the main content area (not in header/sidebar)
+            if (!form) {
+                const mainContent = document.querySelector('main, .py-2, [class*="space-y-6"]');
+                if (mainContent) {
+                    form = mainContent.querySelector('form');
+                }
+            }
+
+            if (form) {
+                form.appendChild(hiddenInput);
+                console.log('Created hidden input for resources in form:', form, 'Action:', form.action);
+            } else {
+                console.warn('No simulation event form found to attach resources input');
+                return;
+            }
+        }
+
+        // Use provided resources, or fall back to ref (which always has latest value)
+        const resourcesToUse = resourcesToSave || selectedResourcesRef.current;
+        const resourcesData = resourcesToUse.map(r => ({
+            id: r.id,
+            quantity: r.quantity || 1,
+        }));
+        hiddenInput.value = JSON.stringify(resourcesData);
+        console.log('Updated hidden input with resources:', resourcesData);
+    };
+
     const handleSaveResources = () => {
         const newResources = Object.keys(tempSelections).map(id => {
             const resource = resources.find(r => r.id === parseInt(id));
+            if (!resource) return null;
             return {
                 id: parseInt(id),
                 name: resource.name,
@@ -4603,44 +4991,86 @@ function ResourceSelectionSection({ eventResources = [] }) {
                 quantity: tempSelections[id],
                 available: resource.available || resource.quantity,
             };
-        });
+        }).filter(Boolean);
 
+        // Mark as manual update to prevent useEffect from overriding
+        isManualUpdateRef.current = true;
         setSelectedResources(newResources);
         setShowModal(false);
         setTempSelections({});
+
+        console.log('Saved resources:', newResources);
+
+        // Force update hidden input immediately - try multiple times to ensure it works
+        ensureHiddenInput(newResources);
+        setTimeout(() => ensureHiddenInput(newResources), 10);
+        setTimeout(() => ensureHiddenInput(newResources), 100);
     };
 
     const handleRemoveResource = (resourceId) => {
-        setSelectedResources(selectedResources.filter(r => r.id !== resourceId));
+        // Mark as manual update to prevent useEffect from overriding
+        isManualUpdateRef.current = true;
+        const updatedResources = selectedResources.filter(r => r.id !== resourceId);
+        setSelectedResources(updatedResources);
+        // Update hidden input immediately
+        setTimeout(() => ensureHiddenInput(updatedResources), 10);
     };
 
     // Store selected resources in hidden input for form submission
     React.useEffect(() => {
-        const updateHiddenInput = () => {
-            let hiddenInput = document.getElementById('selected_resources_input');
-            if (!hiddenInput) {
-                hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.name = 'resources';
-                hiddenInput.id = 'selected_resources_input';
-                const form = document.querySelector('form[method="POST"]');
-                if (form) {
-                    form.appendChild(hiddenInput);
-                }
-            }
-            if (hiddenInput) {
-                hiddenInput.value = JSON.stringify(selectedResources.map(r => ({
-                    id: r.id,
-                    quantity: r.quantity,
-                })));
-            }
-        };
-        
-        // Try immediately and also after a short delay to ensure form exists
-        updateHiddenInput();
-        const timeout = setTimeout(updateHiddenInput, 100);
+        // Skip if this is a manual update (handled by handleSaveResources/handleRemoveResource)
+        if (isManualUpdateRef.current) {
+            isManualUpdateRef.current = false;
+            return;
+        }
+
+        // Update hidden input
+        ensureHiddenInput();
+
+        // Also try after a short delay to ensure form exists
+        const timeout = setTimeout(() => ensureHiddenInput(), 100);
         return () => clearTimeout(timeout);
     }, [selectedResources]);
+
+    // Set up form submit listener to ensure resources are included before submission
+    React.useEffect(() => {
+        const handleFormSubmitBeforeSend = (e) => {
+            // Only handle simulation event forms
+            const form = e.target;
+            if (!form || !form.action || !form.action.includes('simulation-events')) {
+                return;
+            }
+
+            // Ensure hidden input exists and is updated right before form submits
+            // Use the ref to get the latest value
+            ensureHiddenInput(selectedResourcesRef.current);
+            console.log('Form submit event - ensuring resources are included:', selectedResourcesRef.current);
+        };
+
+        // Find the simulation event form specifically
+        let form = document.getElementById('simulation-event-create-form') ||
+            document.getElementById('simulation-event-edit-form') ||
+            document.querySelector('form[action*="simulation-events"]');
+
+        if (!form) {
+            // Try again after a delay
+            const timeout = setTimeout(() => {
+                const retryForm = document.getElementById('simulation-event-create-form') ||
+                    document.getElementById('simulation-event-edit-form') ||
+                    document.querySelector('form[action*="simulation-events"]');
+                if (retryForm) {
+                    retryForm.addEventListener('submit', handleFormSubmitBeforeSend, true);
+                }
+            }, 500);
+            return () => clearTimeout(timeout);
+        }
+
+        form.addEventListener('submit', handleFormSubmitBeforeSend, true);
+
+        return () => {
+            form.removeEventListener('submit', handleFormSubmitBeforeSend, true);
+        };
+    }, []); // Empty deps - we use ref for latest value
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -4693,7 +5123,7 @@ function ResourceSelectionSection({ eventResources = [] }) {
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-                            
+
                             <div className="p-6 flex-1 overflow-y-auto">
                                 {/* Search and Filter */}
                                 <div className="mb-4 space-y-3">
@@ -4736,11 +5166,10 @@ function ResourceSelectionSection({ eventResources = [] }) {
                                             return (
                                                 <div
                                                     key={resource.id}
-                                                    className={`p-4 rounded-md border-2 transition-colors ${
-                                                        isSelected
-                                                            ? 'border-emerald-500 bg-emerald-50'
-                                                            : 'border-slate-200 hover:border-slate-300'
-                                                    }`}
+                                                    className={`p-4 rounded-md border-2 transition-colors ${isSelected
+                                                        ? 'border-emerald-500 bg-emerald-50'
+                                                        : 'border-slate-200 hover:border-slate-300'
+                                                        }`}
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <input
@@ -4816,13 +5245,41 @@ function SimulationEventCreateForm({ scenarios }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [selectedScenarioId, setSelectedScenarioId] = React.useState('');
     const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
+    const formRef = React.useRef(null);
+
+    const handleFormSubmit = (e) => {
+        // Ensure resources hidden input is updated before submission
+        // Find the ResourceSelectionSection component's selected resources
+        // We'll trigger an update by dispatching a custom event or accessing the component's state
+        const hiddenInput = document.getElementById('selected_resources_input');
+        if (hiddenInput && formRef.current) {
+            const resourcesData = hiddenInput.value ? JSON.parse(hiddenInput.value) : [];
+            console.log('Form submitting with resources:', resourcesData);
+
+            if (resourcesData.length === 0) {
+                console.warn('No resources selected, but form will submit anyway');
+            }
+        } else {
+            console.warn('Hidden input not found before form submission - resources may not be saved');
+            // Try to create it one more time
+            setTimeout(() => {
+                const input = document.getElementById('selected_resources_input');
+                if (!input) {
+                    console.error('Failed to create resources input before submission');
+                }
+            }, 0);
+        }
+    };
 
     return (
         <div className="py-2">
             <form
+                id="simulation-event-create-form"
+                ref={formRef}
                 method="POST"
                 action="/simulation-events"
                 className="space-y-6"
+                onSubmit={handleFormSubmit}
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="status" value="draft" />
@@ -5202,11 +5659,13 @@ function SimulationEventEditForm({ event, scenarios }) {
     return (
         <div className="py-2">
             <form
+                id="simulation-event-edit-form"
                 method="POST"
                 action={`/simulation-events/${event.id}`}
                 className="space-y-6"
             >
                 <input type="hidden" name="_token" value={csrf} />
+                <input type="hidden" name="_method" value="PUT" />
                 <input type="hidden" name="_method" value="PUT" />
 
                 {/* Section 1: Basic Event Information */}
@@ -5558,6 +6017,7 @@ function SimulationEventEditForm({ event, scenarios }) {
 
                 {/* Section 10: Resources */}
                 <ResourceSelectionSection eventResources={(event.resources && Array.isArray(event.resources)) ? event.resources : []} />
+                {console.log('SimulationEventEditForm - event.resources:', event.resources, 'Type:', typeof event.resources, 'Is Array:', Array.isArray(event.resources))}
 
                 {/* Section 12: Publishing Controls */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -5590,37 +6050,34 @@ function ParticipantRegistrationAttendanceModule({ events = [], participants = [
     return (
         <div>
             <h2 className="text-lg font-semibold text-slate-800 mb-4">Participant Registration & Management</h2>
-            
+
             {/* Tabs */}
             <div className="mb-4 border-b border-slate-200">
                 <div className="flex gap-4">
                     <button
                         onClick={() => setActiveTab('participants')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                            activeTab === 'participants'
-                                ? 'border-emerald-500 text-emerald-700'
-                                : 'border-transparent text-slate-600 hover:text-slate-800'
-                        }`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'participants'
+                            ? 'border-emerald-500 text-emerald-700'
+                            : 'border-transparent text-slate-600 hover:text-slate-800'
+                            }`}
                     >
                         👥 Participant List
                     </button>
                     <button
                         onClick={() => setActiveTab('registrations')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                            activeTab === 'registrations'
-                                ? 'border-emerald-500 text-emerald-700'
-                                : 'border-transparent text-slate-600 hover:text-slate-800'
-                        }`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'registrations'
+                            ? 'border-emerald-500 text-emerald-700'
+                            : 'border-transparent text-slate-600 hover:text-slate-800'
+                            }`}
                     >
                         📋 Event Registrations
                     </button>
                     <button
                         onClick={() => setActiveTab('attendance')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                            activeTab === 'attendance'
-                                ? 'border-emerald-500 text-emerald-700'
-                                : 'border-transparent text-slate-600 hover:text-slate-800'
-                        }`}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'attendance'
+                            ? 'border-emerald-500 text-emerald-700'
+                            : 'border-transparent text-slate-600 hover:text-slate-800'
+                            }`}
                     >
                         ✓ Event Attendance
                     </button>
@@ -5646,7 +6103,7 @@ function ParticipantsListTab({ participants = [] }) {
     const [statusFilter, setStatusFilter] = React.useState('all');
 
     const filteredParticipants = participants.filter((p) => {
-        const matchesSearch = !searchTerm || 
+        const matchesSearch = !searchTerm ||
             p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.participant_id?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -5710,7 +6167,7 @@ function ParticipantsListTab({ participants = [] }) {
                         {filteredParticipants.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {participants.length === 0 
+                                    {participants.length === 0
                                         ? 'No participants registered yet. Participants will appear here after self-registration.'
                                         : 'No participants match your search criteria.'}
                                 </td>
@@ -5732,9 +6189,8 @@ function ParticipantsListTab({ participants = [] }) {
                                     <td className="px-4 py-2 text-slate-600 text-xs">{participant.email}</td>
                                     <td className="px-4 py-2 text-slate-600 text-xs">{participant.phone || '—'}</td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${
-                                            participant.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                        }`}>
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${participant.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                            }`}>
                                             {participant.status || 'active'}
                                         </span>
                                     </td>
@@ -5820,7 +6276,17 @@ function ParticipantsListTab({ participants = [] }) {
 
 // Registrations Tab - Shows events with registration management
 function RegistrationEventsTable({ events = [] }) {
-    const publishedEvents = events.filter(e => e.status === 'published' || e.status === 'archived');
+    const ITEMS_PER_PAGE = 10;
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const visibleEvents = events.filter(e => ['published', 'ongoing', 'completed'].includes(e.status));
+    const totalItems = visibleEvents.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const pageEvents = visibleEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    React.useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(1);
+    }, [currentPage, totalPages]);
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -5835,14 +6301,14 @@ function RegistrationEventsTable({ events = [] }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {publishedEvents.length === 0 ? (
+                    {pageEvents.length === 0 ? (
                         <tr>
                             <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                No published events yet.
+                                No published/ongoing/completed events yet.
                             </td>
                         </tr>
                     ) : (
-                        publishedEvents.map((event) => (
+                        pageEvents.map((event) => (
                             <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
                                 <td className="px-4 py-2 text-slate-600">
@@ -5868,13 +6334,30 @@ function RegistrationEventsTable({ events = [] }) {
                     )}
                 </tbody>
             </table>
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                itemsPerPage={ITEMS_PER_PAGE}
+                totalItems={totalItems}
+            />
         </div>
     );
 }
 
 // Attendance Tab - Shows events with attendance tracking
 function AttendanceEventsTable({ events = [] }) {
-    const publishedEvents = events.filter(e => e.status === 'published' || e.status === 'archived');
+    const ITEMS_PER_PAGE = 10;
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const visibleEvents = events.filter(e => ['published', 'ongoing', 'completed'].includes(e.status));
+    const totalItems = visibleEvents.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const pageEvents = visibleEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    React.useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(1);
+    }, [currentPage, totalPages]);
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -5889,14 +6372,14 @@ function AttendanceEventsTable({ events = [] }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {publishedEvents.length === 0 ? (
+                    {pageEvents.length === 0 ? (
                         <tr>
                             <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                No published events yet.
+                                No published/ongoing/completed events yet.
                             </td>
                         </tr>
                     ) : (
-                        publishedEvents.map((event) => (
+                        pageEvents.map((event) => (
                             <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
                                 <td className="px-4 py-2 text-slate-600">
@@ -5922,6 +6405,13 @@ function AttendanceEventsTable({ events = [] }) {
                     )}
                 </tbody>
             </table>
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                itemsPerPage={ITEMS_PER_PAGE}
+                totalItems={totalItems}
+            />
         </div>
     );
 }
@@ -5932,7 +6422,7 @@ function ParticipantsTable({ participants = [], role }) {
     const [statusFilter, setStatusFilter] = React.useState('all');
 
     const filteredParticipants = participants.filter((p) => {
-        const matchesSearch = !searchTerm || 
+        const matchesSearch = !searchTerm ||
             p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.participant_id?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -6007,7 +6497,7 @@ function ParticipantsTable({ participants = [], role }) {
                         {filteredParticipants.length === 0 ? (
                             <tr>
                                 <td colSpan={8} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {participants.length === 0 
+                                    {participants.length === 0
                                         ? 'No participants registered yet.'
                                         : 'No participants match your search criteria.'}
                                 </td>
@@ -6188,14 +6678,14 @@ function ParticipantDetail({ participant }) {
 
 function EventRegistrationsTable({ event, registrations = [] }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    
+
     // Calculate registration statistics
     const pendingCount = registrations.filter(r => r.status === 'pending').length;
     const approvedCount = registrations.filter(r => r.status === 'approved').length;
     const rejectedCount = registrations.filter(r => r.status === 'rejected').length;
     const totalSlots = event.max_participants || 'Unlimited';
     const slotsUsed = approvedCount;
-    
+
     return (
         <div>
             <div className="mb-4">
@@ -6203,12 +6693,23 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                     ← Back to Participants
                 </a>
             </div>
-            
+
             {/* Event Info Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-2">{event.title}</h3>
+                        <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-slate-800">{event.title}</h3>
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${event.status === 'published' ? 'bg-blue-50 text-blue-700' :
+                                event.status === 'ongoing' ? 'bg-emerald-50 text-emerald-700' :
+                                    event.status === 'completed' ? 'bg-indigo-50 text-indigo-700' :
+                                        event.status === 'draft' ? 'bg-slate-50 text-slate-700' :
+                                            event.status === 'cancelled' ? 'bg-rose-50 text-rose-700' :
+                                                'bg-slate-100 text-slate-600'
+                                }`}>
+                                {event.status}
+                            </span>
+                        </div>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <span className="text-slate-600">Date:</span>
@@ -6250,7 +6751,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                     </div>
                 </div>
             </div>
-            
+
             {/* Registrations Table */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="min-w-full text-sm">
@@ -6274,12 +6775,11 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                     <td className="px-4 py-2 font-medium text-slate-800">{reg.user?.name || 'N/A'}</td>
                                     <td className="px-4 py-2 text-slate-600">{reg.user?.email || 'N/A'}</td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${
-                                            reg.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${reg.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
                                             reg.status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                                            reg.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
-                                            'bg-slate-100 text-slate-600'
-                                        }`}>
+                                                reg.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
+                                                    'bg-slate-100 text-slate-600'
+                                            }`}>
                                             {reg.status}
                                         </span>
                                     </td>
@@ -6336,7 +6836,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
 
 function EventAttendanceTable({ event, registrations = [] }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    
+
     // Calculate attendance statistics
     const approvedRegistrations = registrations.filter(reg => reg.status === 'approved');
     const totalRegistered = approvedRegistrations.length;
@@ -6346,7 +6846,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
     const excusedCount = approvedRegistrations.filter(reg => reg.attendance?.status === 'excused').length;
     const notMarkedCount = approvedRegistrations.filter(reg => !reg.attendance || !reg.attendance.status).length;
     const attendanceRate = totalRegistered > 0 ? Math.round(((presentCount + lateCount) / totalRegistered) * 100) : 0;
-    
+
     return (
         <div>
             <div className="mb-4 flex items-center justify-between">
@@ -6367,13 +6867,24 @@ function EventAttendanceTable({ event, registrations = [] }) {
                     </form>
                 </div>
             </div>
-            
+
             {/* Event Info */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">Event: {event.title}</h3>
+                <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-sm font-semibold text-slate-800">Event: {event.title}</h3>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${event.status === 'published' ? 'bg-blue-50 text-blue-700' :
+                        event.status === 'ongoing' ? 'bg-emerald-50 text-emerald-700' :
+                            event.status === 'completed' ? 'bg-indigo-50 text-indigo-700' :
+                                event.status === 'draft' ? 'bg-slate-50 text-slate-700' :
+                                    event.status === 'cancelled' ? 'bg-rose-50 text-rose-700' :
+                                        'bg-slate-100 text-slate-600'
+                        }`}>
+                        {event.status}
+                    </span>
+                </div>
                 <div className="text-xs text-slate-600">{formatDate(event.event_date)} • {event.location || 'Location TBD'}</div>
             </div>
-            
+
             {/* Attendance Summary Statistics */}
             <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl shadow-sm border border-emerald-200 p-6 mb-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-4">📊 Attendance Summary</h3>
@@ -6405,14 +6916,14 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         <span className="text-xl font-bold text-emerald-600">{attendanceRate}%</span>
                     </div>
                     <div className="mt-2 w-full bg-slate-200 rounded-full h-2">
-                        <div 
+                        <div
                             className="bg-emerald-500 h-2 rounded-full transition-all"
                             style={{ width: `${attendanceRate}%` }}
                         ></div>
                     </div>
                 </div>
             </div>
-            
+
             {/* Attendance Table */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="min-w-full text-sm">
@@ -6437,12 +6948,11 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                         <td className="px-4 py-2 font-medium text-slate-800">{reg.user?.name || 'N/A'}</td>
                                         <td className="px-4 py-2">
                                             {isMarked ? (
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${
-                                                    attendance.status === 'present' ? 'bg-emerald-50 text-emerald-700' :
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${attendance.status === 'present' ? 'bg-emerald-50 text-emerald-700' :
                                                     attendance.status === 'late' ? 'bg-amber-50 text-amber-700' :
-                                                    attendance.status === 'absent' ? 'bg-rose-50 text-rose-700' :
-                                                    attendance.status === 'excused' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'
-                                                }`}>
+                                                        attendance.status === 'absent' ? 'bg-rose-50 text-rose-700' :
+                                                            attendance.status === 'excused' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'
+                                                    }`}>
                                                     {attendance.status}
                                                 </span>
                                             ) : (
@@ -6537,6 +7047,696 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         )}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    );
+}
+
+// Evaluation Dashboard Component
+function EvaluationDashboard({ events }) {
+    const [search, setSearch] = React.useState(new URLSearchParams(window.location.search).get('search') || '');
+    const [statusFilter, setStatusFilter] = React.useState(new URLSearchParams(window.location.search).get('status') || '');
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 10;
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'not_started':
+                return 'bg-slate-100 text-slate-700';
+            case 'in_progress':
+                return 'bg-blue-100 text-blue-700';
+            case 'completed':
+                return 'bg-emerald-100 text-emerald-700';
+            case 'locked':
+                return 'bg-amber-100 text-amber-700';
+            default:
+                return 'bg-slate-100 text-slate-700';
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'not_started':
+                return 'Not Started';
+            case 'in_progress':
+                return 'In Progress';
+            case 'completed':
+                return 'Completed';
+            case 'locked':
+                return 'Locked';
+            default:
+                return 'Not Started';
+        }
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        const url = new URL(window.location.href);
+        if (search) url.searchParams.set('search', search);
+        else url.searchParams.delete('search');
+        if (statusFilter) url.searchParams.set('status', statusFilter);
+        else url.searchParams.delete('status');
+        url.searchParams.delete('page'); // Reset page on new search
+        window.location.href = url.toString();
+    };
+
+    const totalPages = Math.ceil((events?.length || 0) / itemsPerPage);
+    const paginatedEvents = events?.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || [];
+
+    return (
+        <div className="space-y-4">
+            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-4">
+                <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search by event title..."
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <select
+                            className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="not_started">Not Started</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="locked">Locked</option>
+                        </select>
+                        <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm font-medium text-sm transition-colors"
+                        >
+                            <Filter className="w-4 h-4" />
+                            Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div className="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-800">
+                            Simulation Events for Evaluation
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Events that are published, ongoing, or completed and ready for evaluation
+                        </p>
+                    </div>
+                </div>
+                {events && events.length > 0 ? (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-slate-200">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Event Details</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Eval Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Event State</th>
+                                        <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Participants</th>
+                                        <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-100">
+                                    {paginatedEvents.map((event) => (
+                                        <tr key={event.id} className="hover:bg-slate-50 transition-colors group">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-semibold text-slate-800">{event.title}</span>
+                                                    <span className="text-[10px] text-slate-500 mt-0.5">
+                                                        {formatDate(event.event_date)} | {event.scenario_name}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${getStatusColor(event.evaluation_status)}`}>
+                                                    {getStatusLabel(event.evaluation_status)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${event.status === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+                                                    event.status === 'ongoing' ? 'border-blue-200 bg-blue-50 text-blue-700' :
+                                                        'border-slate-200 bg-slate-50 text-slate-600'
+                                                    }`}>
+                                                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-600">
+                                                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                                                    <span>{event.participant_count}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <div className="flex items-center justify-end gap-2 text-xs">
+                                                    <a
+                                                        href={`/simulation-events/${event.id}/evaluation`}
+                                                        className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-sm"
+                                                        title="Open Evaluation"
+                                                    >
+                                                        <ClipboardCheck className="w-4 h-4" />
+                                                    </a>
+                                                    {event.evaluation && (
+                                                        <a
+                                                            href={`/simulation-events/${event.id}/evaluation/summary`}
+                                                            className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all shadow-sm"
+                                                            title="View Summary"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {totalPages > 1 && (
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={(page) => setCurrentPage(page)}
+                                itemsPerPage={itemsPerPage}
+                                totalItems={events.length}
+                            />
+                        )}
+                    </>
+                ) : (
+                    <div className="px-6 py-8 text-center text-sm text-slate-500">
+                        No events matching your search or filters.
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// Evaluation Participants List Component
+function EvaluationParticipantsList({ event, evaluation, criteria, attendances, participantEvaluations }) {
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const getEvaluationStatus = (userId) => {
+        // Handle both object and array formats
+        const pe = participantEvaluations?.find ?
+            participantEvaluations.find(p => String(p.user_id) === String(userId)) :
+            participantEvaluations?.[userId] || participantEvaluations?.[String(userId)];
+        if (!pe) return { label: 'Not Evaluated', color: 'text-slate-500' };
+        if (pe.status === 'draft') return { label: 'Draft', color: 'text-amber-600' };
+        if (pe.status === 'submitted') return { label: 'Submitted', color: 'text-emerald-600' };
+        return { label: 'Not Evaluated', color: 'text-slate-500' };
+    };
+
+    const handleLockEvaluation = async () => {
+        if (!confirm('Are you sure you want to lock this evaluation? Once locked, scores cannot be modified.')) {
+            return;
+        }
+
+        try {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/evaluations/${evaluation.id}/lock`;
+
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = '_token';
+            tokenInput.value = csrf;
+            form.appendChild(tokenInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        } catch (error) {
+            alert('Failed to lock evaluation');
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-800">
+                            {event.title}
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Scenario: {event.scenario?.title || 'N/A'} |
+                            Date: {formatDate(event.event_date)}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${evaluation.status === 'locked' ? 'bg-amber-100 text-amber-700' :
+                            evaluation.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                evaluation.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-slate-100 text-slate-700'
+                            }`}>
+                            {evaluation.status === 'locked' ? 'Locked' :
+                                evaluation.status === 'completed' ? 'Completed' :
+                                    evaluation.status === 'in_progress' ? 'In Progress' :
+                                        'Not Started'}
+                        </span>
+                        {evaluation.status !== 'locked' && !evaluation.locked_at && (
+                            <button
+                                onClick={handleLockEvaluation}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-all shadow-sm"
+                                title="Lock Evaluation"
+                            >
+                                <Lock className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {!criteria || criteria.length === 0 ? (
+                    <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
+                        <p className="text-sm text-rose-700">
+                            <strong>Warning:</strong> This scenario does not have evaluation criteria defined.
+                            Please add criteria to the scenario before evaluating participants.
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="mb-4">
+                            <p className="text-xs font-semibold text-slate-600 mb-2">Evaluation Criteria:</p>
+                            <ul className="space-y-1">
+                                {criteria.map((criterion, index) => (
+                                    <li key={index} className="text-xs text-slate-600 flex items-start gap-2">
+                                        <span className="text-emerald-600 mt-0.5">•</span>
+                                        <span>{criterion}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        <div className="border-t border-slate-200 pt-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-xs font-semibold text-slate-800">
+                                    Participant Evaluation List ({attendances?.length || 0})
+                                </h4>
+                                <a
+                                    href={`/simulation-events/${event.id}/attendance`}
+                                    className="text-[10px] font-medium text-emerald-600 hover:text-emerald-700 hover:underline transition-all"
+                                >
+                                    Manage All Attendance
+                                </a>
+                            </div>
+                            {attendances && attendances.length > 0 ? (
+                                <div className="rounded-md border border-slate-200 overflow-hidden">
+                                    <table className="min-w-full divide-y divide-slate-200">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Attendance</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Evaluation Status</th>
+                                                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-slate-100">
+                                            {attendances.map((attendance) => {
+                                                const evalStatus = getEvaluationStatus(attendance.user_id);
+                                                const isPresent = attendance.status === 'present' || attendance.status === 'completed';
+
+                                                return (
+                                                    <tr key={attendance.id || `user-${attendance.user_id}`} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-4 py-3 text-sm text-slate-800">
+                                                            {attendance.user?.name || 'Unknown'}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                                                }`}>
+                                                                {isPresent ? 'Present' : 'Not Marked'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={`text-xs font-medium ${evalStatus.color}`}>
+                                                                {evalStatus.label}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            {isPresent ? (
+                                                                <a
+                                                                    href={`/simulation-events/${event.id}/evaluation/${attendance.user_id}`}
+                                                                    className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100 transition-all shadow-sm"
+                                                                >
+                                                                    {(() => {
+                                                                        const pe = participantEvaluations?.find ?
+                                                                            participantEvaluations.find(p => String(p.user_id) === String(attendance.user_id)) :
+                                                                            participantEvaluations?.[attendance.user_id] || participantEvaluations?.[String(attendance.user_id)];
+                                                                        return pe ? 'Edit Score' : 'Evaluate';
+                                                                    })()}
+                                                                </a>
+                                                            ) : (
+                                                                <a
+                                                                    href={`/simulation-events/${event.id}/attendance`}
+                                                                    className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-all shadow-sm"
+                                                                >
+                                                                    <Play className="w-3 h-3 text-blue-500" />
+                                                                    Track Attendance
+                                                                </a>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">No approved participants found for this event.</p>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// Evaluation Form Component
+function EvaluationForm({ event, evaluation, user, attendance, participantEvaluation, criteria, scores }) {
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const [formScores, setFormScores] = React.useState(() => {
+        const initial = {};
+        // Convert scores array to object if needed
+        const scoresObj = scores?.reduce ? scores.reduce((acc, score) => {
+            acc[score.criterion_name] = score;
+            return acc;
+        }, {}) : scores || {};
+
+        criteria?.forEach((criterion) => {
+            const criterionName = criterion;
+            const existingScore = scoresObj?.[criterionName] || scoresObj?.[String(criterionName)];
+            initial[criterionName] = {
+                score: existingScore?.score || '',
+                comment: existingScore?.comment || '',
+            };
+        });
+        return initial;
+    });
+    const [overallFeedback, setOverallFeedback] = React.useState(participantEvaluation?.overall_feedback || '');
+    const [status, setStatus] = React.useState(participantEvaluation?.status || 'draft');
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    const handleScoreChange = (criterion, field, value) => {
+        setFormScores(prev => ({
+            ...prev,
+            [criterion]: {
+                ...prev[criterion],
+                [field]: value,
+            },
+        }));
+    };
+
+    const handleSubmit = async (e, submitStatus) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('_token', csrf);
+
+            Object.keys(formScores).forEach(criterion => {
+                formData.append(`scores[${criterion}][score]`, formScores[criterion].score || 0);
+                formData.append(`scores[${criterion}][comment]`, formScores[criterion].comment || '');
+            });
+
+            formData.append('overall_feedback', overallFeedback);
+            formData.append('status', submitStatus);
+
+            const response = await fetch(`/simulation-events/${event.id}/evaluation/${user.id}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (response.ok) {
+                window.location.href = `/simulation-events/${event.id}/evaluation`;
+            } else {
+                alert('Failed to save evaluation');
+            }
+        } catch (error) {
+            alert('Error saving evaluation');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const isLocked = evaluation?.status === 'locked' || evaluation?.locked_at;
+
+    return (
+        <div className="space-y-4">
+            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6">
+                <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                        Evaluate Participant: {user?.name}
+                    </h3>
+                    <div className="text-xs text-slate-600 space-y-1">
+                        <p><strong>Event:</strong> {event?.title}</p>
+                        <p><strong>Scenario:</strong> {event?.scenario?.title || 'N/A'}</p>
+                        <p><strong>Date:</strong> {formatDate(event?.event_date)}</p>
+                    </div>
+                </div>
+
+                {isLocked && (
+                    <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-sm text-amber-700">
+                            <strong>Locked:</strong> This evaluation is locked and cannot be modified.
+                        </p>
+                    </div>
+                )}
+
+                <form onSubmit={(e) => handleSubmit(e, status)} className="space-y-6">
+                    {criteria && criteria.length > 0 ? (
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-semibold text-slate-800">Evaluation Criteria</h4>
+                            {criteria.map((criterion, index) => {
+                                const criterionName = criterion;
+                                const scoreData = formScores[criterionName] || { score: '', comment: '' };
+                                return (
+                                    <div key={index} className="border border-slate-200 rounded-md p-4">
+                                        <div className="mb-3">
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                {criterionName} <span className="text-red-500">*</span>
+                                            </label>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 mb-3">
+                                            <div>
+                                                <label className="block text-xs text-slate-600 mb-1">Score (0-10)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="10"
+                                                    step="0.1"
+                                                    value={scoreData.score}
+                                                    onChange={(e) => handleScoreChange(criterionName, 'score', e.target.value)}
+                                                    disabled={isLocked}
+                                                    required
+                                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-slate-600 mb-1">Comment (Optional)</label>
+                                            <textarea
+                                                rows={2}
+                                                value={scoreData.comment}
+                                                onChange={(e) => handleScoreChange(criterionName, 'comment', e.target.value)}
+                                                disabled={isLocked}
+                                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100"
+                                                placeholder="Add comments about this criterion..."
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
+                            <p className="text-sm text-rose-700">
+                                No evaluation criteria defined for this scenario.
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="border-t border-slate-200 pt-4">
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                            Overall Feedback
+                        </label>
+                        <textarea
+                            rows={4}
+                            value={overallFeedback}
+                            onChange={(e) => setOverallFeedback(e.target.value)}
+                            disabled={isLocked}
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100"
+                            placeholder="Provide overall feedback for this participant..."
+                        />
+                    </div>
+
+                    {!isLocked && (
+                        <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200">
+                            <a
+                                href={`/simulation-events/${event.id}/evaluation`}
+                                className="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                            >
+                                Cancel
+                            </a>
+                            <button
+                                type="button"
+                                onClick={(e) => handleSubmit(e, 'draft')}
+                                disabled={isSubmitting}
+                                className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Saving...' : 'Save Draft'}
+                            </button>
+                            <button
+                                type="submit"
+                                onClick={(e) => handleSubmit(e, 'submitted')}
+                                disabled={isSubmitting}
+                                className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Submitting...' : 'Submit Final Score'}
+                            </button>
+                        </div>
+                    )}
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// Evaluation Summary Component
+function EvaluationSummary({ event, evaluation, participantEvaluations, criteria, criterionAverages, totalParticipants, passedCount, failedCount, overallAverage }) {
+    const handleExport = (format) => {
+        window.location.href = `/simulation-events/${event.id}/evaluation/export/${format}`;
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-800">
+                            Evaluation Summary: {event?.title}
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Scenario: {event?.scenario?.title || 'N/A'} |
+                            Date: {formatDate(event?.event_date)}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => handleExport('csv')}
+                            className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                            Export CSV
+                        </button>
+                    </div>
+                </div>
+
+                {/* Statistics */}
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                    <div className="rounded-md border border-slate-200 p-4">
+                        <p className="text-xs text-slate-600 mb-1">Total Participants</p>
+                        <p className="text-2xl font-bold text-slate-800">{totalParticipants || 0}</p>
+                    </div>
+                    <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="text-xs text-emerald-600 mb-1">Passed</p>
+                        <p className="text-2xl font-bold text-emerald-700">{passedCount || 0}</p>
+                    </div>
+                    <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
+                        <p className="text-xs text-rose-600 mb-1">Failed</p>
+                        <p className="text-2xl font-bold text-rose-700">{failedCount || 0}</p>
+                    </div>
+                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
+                        <p className="text-xs text-blue-600 mb-1">Average Score</p>
+                        <p className="text-2xl font-bold text-blue-700">{overallAverage?.toFixed(2) || '0.00'}%</p>
+                    </div>
+                </div>
+
+                {/* Criterion Averages */}
+                {criteria && criteria.length > 0 && (
+                    <div className="mb-6">
+                        <h4 className="text-xs font-semibold text-slate-800 mb-3">Average Scores by Criterion</h4>
+                        <div className="space-y-2">
+                            {criteria.map((criterion, index) => {
+                                const criterionName = criterion;
+                                const avg = criterionAverages?.[criterionName] || 0;
+                                return (
+                                    <div key={index} className="flex items-center justify-between p-3 border border-slate-200 rounded-md">
+                                        <span className="text-sm text-slate-700">{criterionName}</span>
+                                        <span className="text-sm font-semibold text-slate-800">{avg.toFixed(2)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Participant Results */}
+                <div>
+                    <h4 className="text-xs font-semibold text-slate-800 mb-3">Participant Results</h4>
+                    <div className="rounded-md border border-slate-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Total Score</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Average Score</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Result</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Certification Eligible</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-100">
+                                {participantEvaluations && participantEvaluations.length > 0 ? (
+                                    participantEvaluations.map((pe) => (
+                                        <tr key={pe.id} className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 text-sm text-slate-800">
+                                                {pe.user?.name || 'Unknown'}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">
+                                                {pe.total_score?.toFixed(2) || '0.00'}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">
+                                                {pe.average_score?.toFixed(2) || '0.00'}%
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${pe.result === 'passed'
+                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                    : 'bg-rose-50 text-rose-700'
+                                                    }`}>
+                                                    {pe.result === 'passed' ? 'Passed' : 'Failed'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {pe.is_eligible_for_certification ? (
+                                                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                                        Yes
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-slate-500">No</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="5" className="px-4 py-8 text-center text-sm text-slate-500">
+                                            No evaluations submitted yet.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     );

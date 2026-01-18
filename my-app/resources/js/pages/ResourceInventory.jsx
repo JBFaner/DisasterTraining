@@ -113,6 +113,7 @@ export function ResourceInventory() {
     const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(true);
     const [events, setEvents] = useState([]);
+    const [completedEventsWithResources, setCompletedEventsWithResources] = useState([]);
     const [selectedResourceHistory, setSelectedResourceHistory] = useState(null);
 
     const resourceTypes = ['PPE', 'Fire Equipment', 'Medical', 'Communication', 'Vehicles', 'Tools', 'Other'];
@@ -123,6 +124,7 @@ export function ResourceInventory() {
     useEffect(() => {
         fetchResources();
         fetchEvents();
+        fetchCompletedEventsWithResources();
     }, []);
 
 
@@ -173,6 +175,18 @@ export function ResourceInventory() {
             }
         } catch (error) {
             console.error('Error fetching events:', error);
+        }
+    };
+
+    const fetchCompletedEventsWithResources = async () => {
+        try {
+            const response = await fetch('/api/simulation-events/completed-with-resources');
+            if (response.ok) {
+                const data = await response.json();
+                setCompletedEventsWithResources(data.events || []);
+            }
+        } catch (error) {
+            console.error('Error fetching completed events with resources:', error);
         }
     };
 
@@ -248,7 +262,13 @@ export function ResourceInventory() {
             resource._name.includes(query) ||
             resource._serial.includes(query);
         const matchesType = resourceTypeFilter === 'all' || resource.category === resourceTypeFilter;
-        const matchesStatus = statusFilter === 'all' || resource.status === statusFilter;
+        
+        // Handle special 'in_use_all' filter for all assigned statuses
+        let matchesStatus = statusFilter === 'all' || resource.status === statusFilter;
+        if (statusFilter === 'in_use_all') {
+            matchesStatus = resource.status === 'In Use' || resource.status === 'Partially Assigned' || resource.status === 'Fully Assigned';
+        }
+        
         const matchesCondition = conditionFilter === 'all' || resource.condition === conditionFilter;
 
         return matchesSearch && matchesType && matchesStatus && matchesCondition;
@@ -722,7 +742,7 @@ export function ResourceInventory() {
     const stats = {
         total: resources.length,
         available: resources.filter((r) => r.status === 'Available').length,
-        inUse: resources.filter((r) => r.status === 'In Use').length,
+        inUse: resources.filter((r) => r.status === 'In Use' || r.status === 'Partially Assigned' || r.status === 'Fully Assigned').length,
         needsRepair: resources.filter((r) => r.condition === 'Needs Repair').length,
     };
 
@@ -770,8 +790,8 @@ export function ResourceInventory() {
                     label="In Use" 
                     value={stats.inUse} 
                     color="bg-indigo-50 text-indigo-700"
-                    onClick={() => setStatusFilter('In Use')}
-                    isActive={statusFilter === 'In Use'}
+                    onClick={() => setStatusFilter('in_use_all')}
+                    isActive={statusFilter === 'in_use_all'}
                 />
                 <StatCard 
                     icon={AlertTriangle} 
@@ -1096,76 +1116,108 @@ export function ResourceInventory() {
 
                     <div className="bg-white p-6 rounded-lg border border-slate-200">
                         <h2 className="text-lg font-semibold text-slate-900 mb-4">Post-Event Resource Return</h2>
-                        <div className="space-y-3">
-                            {resources.filter(r => r.status === 'In Use' || r.status === 'Reserved' || r.status === 'Partially Assigned' || r.status === 'Fully Assigned').length > 0 ? (
-                                resources
-                                    .filter(r => r.status === 'In Use' || r.status === 'Reserved' || r.status === 'Partially Assigned' || r.status === 'Fully Assigned')
-                                    .map(r => (
-                                        <div key={r.id} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
-                                            <div>
-                                                <p className="font-medium text-slate-900">{r.name}</p>
-                                                <p className="text-xs text-slate-600">{r.serial_number}</p>
+                        <p className="text-sm text-slate-600 mb-4">
+                            Resources from completed simulation events that need to be returned to inventory.
+                        </p>
+                        <div className="space-y-4">
+                            {completedEventsWithResources.length > 0 ? (
+                                completedEventsWithResources.map(event => (
+                                    <div key={event.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                                        <div className="bg-indigo-50 px-4 py-3 border-b border-slate-200">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="font-medium text-indigo-900">{event.title}</h3>
+                                                    <p className="text-xs text-indigo-700">
+                                                        Event Date: {new Date(event.event_date).toLocaleDateString()}
+                                                        {event.completed_at && ` • Completed: ${new Date(event.completed_at).toLocaleDateString()}`}
+                                                    </p>
+                                                </div>
+                                                <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
+                                                    {event.resources.length} resource(s)
+                                                </span>
                                             </div>
-                                            <button
-                                                onClick={() => {
-                                                    Swal.fire({
-                                                        title: 'Return Resource from Event',
-                                                        html: `
-                                                            <form class="text-left space-y-3">
-                                                                <label class="block">
-                                                                    <span class="text-sm font-medium text-slate-700">Condition after use:</span>
-                                                                    <select id="newCondition" class="w-full px-3 py-2 border border-slate-300 rounded-md mt-1">
-                                                                        <option value="Good">Good - No issues</option>
-                                                                        <option value="Needs Repair">Needs Repair - Minor damage</option>
-                                                                        <option value="Damaged">Damaged - Major damage</option>
-                                                                    </select>
-                                                                </label>
-                                                                <label class="block">
-                                                                    <span class="text-sm font-medium text-slate-700">Remarks:</span>
-                                                                    <textarea id="remarks" placeholder="Enter any damage or usage notes..." class="w-full px-3 py-2 border border-slate-300 rounded-md mt-1" rows="3"></textarea>
-                                                                </label>
-                                                            </form>
-                                                        `,
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Return Resource',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#10b981',
-                                                        preConfirm: async () => {
-                                                            const newCondition = document.getElementById('newCondition').value;
-                                                            const remarks = document.getElementById('remarks').value;
-                                                            
-                                                            try {
-                                                                const response = await fetch(`/resources/${r.id}/return-from-event`, {
-                                                                    method: 'POST',
-                                                                    headers: {
-                                                                        'Content-Type': 'application/json',
-                                                                        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
-                                                                    },
-                                                                    body: JSON.stringify({
-                                                                        condition: newCondition,
-                                                                        damage_report: remarks,
-                                                                    }),
-                                                                });
-
-                                                                if (!response.ok) throw new Error('Failed to return resource');
-                                                                
-                                                                fetchResources();
-                                                                Swal.fire('Success', 'Resource returned successfully', 'success');
-                                                            } catch (error) {
-                                                                Swal.showValidationMessage(error.message);
-                                                                return false;
-                                                            }
-                                                        },
-                                                    });
-                                                }}
-                                                className="px-3 py-1 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
-                                            >
-                                                <RotateCcw className="w-4 h-4 inline mr-1" /> Return
-                                            </button>
                                         </div>
-                                    ))
+                                        <div className="p-4 space-y-2">
+                                            {event.resources.map((r, idx) => (
+                                                <div key={`${event.id}-${r.id}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-medium text-slate-900">{r.name}</p>
+                                                            <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                                                                Qty: {r.quantity_assigned}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-600">{r.category} {r.serial_number && `• ${r.serial_number}`}</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            Swal.fire({
+                                                                title: 'Return Resource from Event',
+                                                                html: `
+                                                                    <div class="text-left mb-4">
+                                                                        <p class="text-sm text-slate-600">Returning <strong>${r.name}</strong> (${r.quantity_assigned} unit(s)) from <strong>${event.title}</strong></p>
+                                                                    </div>
+                                                                    <form class="text-left space-y-3">
+                                                                        <label class="block">
+                                                                            <span class="text-sm font-medium text-slate-700">Condition after use:</span>
+                                                                            <select id="newCondition" class="w-full px-3 py-2 border border-slate-300 rounded-md mt-1">
+                                                                                <option value="Good">Good - No issues</option>
+                                                                                <option value="Needs Repair">Needs Repair - Minor damage</option>
+                                                                                <option value="Damaged">Damaged - Major damage</option>
+                                                                            </select>
+                                                                        </label>
+                                                                        <label class="block">
+                                                                            <span class="text-sm font-medium text-slate-700">Remarks:</span>
+                                                                            <textarea id="remarks" placeholder="Enter any damage or usage notes..." class="w-full px-3 py-2 border border-slate-300 rounded-md mt-1" rows="3"></textarea>
+                                                                        </label>
+                                                                    </form>
+                                                                `,
+                                                                showCancelButton: true,
+                                                                confirmButtonText: 'Return Resource',
+                                                                cancelButtonText: 'Cancel',
+                                                                confirmButtonColor: '#10b981',
+                                                                preConfirm: async () => {
+                                                                    const newCondition = document.getElementById('newCondition').value;
+                                                                    const remarks = document.getElementById('remarks').value;
+                                                                    
+                                                                    try {
+                                                                        const response = await fetch(`/resources/${r.id}/return-from-event`, {
+                                                                            method: 'POST',
+                                                                            headers: {
+                                                                                'Content-Type': 'application/json',
+                                                                                'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
+                                                                            },
+                                                                            body: JSON.stringify({
+                                                                                condition: newCondition,
+                                                                                damage_report: remarks,
+                                                                                event_id: event.id,
+                                                                                quantity: r.quantity_assigned,
+                                                                            }),
+                                                                        });
+
+                                                                        if (!response.ok) throw new Error('Failed to return resource');
+                                                                        
+                                                                        fetchResources();
+                                                                        fetchCompletedEventsWithResources();
+                                                                        Swal.fire('Success', 'Resource returned successfully', 'success');
+                                                                    } catch (error) {
+                                                                        Swal.showValidationMessage(error.message);
+                                                                        return false;
+                                                                    }
+                                                                },
+                                                            });
+                                                        }}
+                                                        className="px-3 py-1 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
+                                                    >
+                                                        <RotateCcw className="w-4 h-4 inline mr-1" /> Return
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))
                             ) : (
-                                <p className="text-slate-500 text-sm">No resources to return</p>
+                                <p className="text-slate-500 text-sm">No resources to return from completed events</p>
                             )}
                         </div>
                     </div>

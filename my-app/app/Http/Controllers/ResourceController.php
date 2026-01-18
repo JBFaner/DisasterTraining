@@ -266,8 +266,37 @@ class ResourceController extends Controller
         $validated = $request->validate([
             'condition' => 'nullable|string',
             'damage_report' => 'nullable|string',
+            'event_id' => 'nullable|exists:simulation_events,id',
+            'quantity' => 'nullable|integer|min:1',
         ]);
 
+        $eventId = $validated['event_id'] ?? null;
+        $quantity = $validated['quantity'] ?? null;
+
+        // If event_id is provided, update the specific assignment
+        if ($eventId) {
+            // Update the resource_event_assignments table
+            $assignment = \App\Models\ResourceEventAssignment::where('resource_id', $resource->id)
+                ->where('event_id', $eventId)
+                ->where('status', 'Active')
+                ->first();
+
+            if ($assignment) {
+                $assignment->update([
+                    'status' => 'Returned',
+                    'returned_by' => auth()->id(),
+                    'returned_at' => now(),
+                    'notes' => $validated['damage_report'] ?? 'Returned after event completion',
+                ]);
+            }
+
+            // Update the event_resource pivot table if it exists
+            $resource->plannedEvents()->updateExistingPivot($eventId, [
+                'status' => 'Returned',
+            ]);
+        }
+
+        // Call the model's returnFromEvent method
         $resource->returnFromEvent(
             $validated['condition'] ?? null,
             $validated['damage_report'] ?? null

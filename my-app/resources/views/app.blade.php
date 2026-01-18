@@ -51,6 +51,45 @@
             @isset($resource)
                 data-resource='@json($resource)'
             @endisset
+            @isset($evaluation)
+                data-evaluation='@json($evaluation)'
+            @endisset
+            @isset($criteria)
+                data-criteria='@json($criteria)'
+            @endisset
+            @isset($attendances)
+                data-attendances='@json($attendances)'
+            @endisset
+            @isset($participantEvaluations)
+                data-participant-evaluations='@json($participantEvaluations)'
+            @endisset
+            @isset($user)
+                data-user='@json($user)'
+            @endisset
+            @isset($attendance)
+                data-attendance='@json($attendance)'
+            @endisset
+            @isset($participantEvaluation)
+                data-participant-evaluation='@json($participantEvaluation)'
+            @endisset
+            @isset($scores)
+                data-scores='@json($scores)'
+            @endisset
+            @isset($criterionAverages)
+                data-criterion-averages='@json($criterionAverages)'
+            @endisset
+            @isset($totalParticipants)
+                data-total-participants="{{ $totalParticipants }}"
+            @endisset
+            @isset($passedCount)
+                data-passed-count="{{ $passedCount }}"
+            @endisset
+            @isset($failedCount)
+                data-failed-count="{{ $failedCount }}"
+            @endisset
+            @isset($overallAverage)
+                data-overall-average="{{ $overallAverage }}"
+            @endisset
             @if (session('status'))
                 data-status="{{ session('status') }}"
             @endif

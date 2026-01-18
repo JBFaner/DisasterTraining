@@ -27,11 +27,16 @@ class Scenario extends Model
         'communication_status',
         'learning_objectives',
         'target_competencies',
+        'criteria',
         'training_module_id',
         'is_required_for_module',
         'status',
         'created_by',
         'updated_by',
+    ];
+
+    protected $casts = [
+        'criteria' => 'array',
     ];
 
     public function trainingModule()

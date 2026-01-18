@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('disaster_type');
             $table->text('description')->nullable();
             $table->string('event_category'); // Drill, Full-scale Exercise, Tabletop, Training Session
-            $table->string('status')->default('draft'); // draft, published, completed, archived, cancelled
+            $table->string('status')->default('draft'); // draft, published, ongoing, completed, archived, cancelled
             
             // Section 2: Event Schedule
             $table->date('event_date');

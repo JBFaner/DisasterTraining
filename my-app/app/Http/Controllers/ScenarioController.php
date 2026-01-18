@@ -53,12 +53,31 @@ class ScenarioController extends Controller
             'trapped_persons_count' => ['nullable', 'integer', 'min:0'],
             'infrastructure_damage' => ['nullable', 'string'],
             'communication_status' => ['nullable', 'string', 'in:working,unstable,down'],
+            'criteria' => ['required', 'array', 'min:1'],
+            'criteria.*' => ['required', 'string', 'max:500'],
             // Enforce published-only linkage (draft modules cannot be linked)
             'training_module_id' => ['required', Rule::exists('training_modules', 'id')->where('status', 'published')],
         ]);
 
         $module = TrainingModule::findOrFail($data['training_module_id']);
-        $data['disaster_type'] = $module->disaster_type ?? 'Unknown';
+        $data['disaster_type'] = $module->category ?? 'Unknown';
+
+        // Validate that training module has learning objectives
+        if (!$module->learning_objectives || empty($module->learning_objectives)) {
+            return redirect()->back()
+                ->withErrors(['training_module_id' => 'The selected training module must have learning objectives.'])
+                ->withInput();
+        }
+
+        // Filter out empty criteria and convert to JSON
+        if (isset($data['criteria'])) {
+            $data['criteria'] = array_values(array_filter($data['criteria']));
+            if (empty($data['criteria'])) {
+                return redirect()->back()
+                    ->withErrors(['criteria' => 'At least one criterion is required.'])
+                    ->withInput();
+            }
+        }
 
         $data['status'] = 'draft';
         $data['created_by'] = Auth::id();
@@ -112,11 +131,31 @@ class ScenarioController extends Controller
             'trapped_persons_count' => ['nullable', 'integer', 'min:0'],
             'infrastructure_damage' => ['nullable', 'string'],
             'communication_status' => ['nullable', 'string', 'in:working,unstable,down'],
+            'criteria' => ['required', 'array', 'min:1'],
+            'criteria.*' => ['required', 'string', 'max:500'],
             'training_module_id' => ['required', Rule::exists('training_modules', 'id')->where('status', 'published')],
         ]);
 
         $module = TrainingModule::findOrFail($data['training_module_id']);
-        $data['disaster_type'] = $module->disaster_type ?? 'Unknown';
+        $data['disaster_type'] = $module->category ?? 'Unknown';
+
+        // Validate that training module has learning objectives
+        if (!$module->learning_objectives || empty($module->learning_objectives)) {
+            return redirect()->back()
+                ->withErrors(['training_module_id' => 'The selected training module must have learning objectives.'])
+                ->withInput();
+        }
+
+        // Filter out empty criteria and convert to JSON
+        if (isset($data['criteria'])) {
+            $data['criteria'] = array_values(array_filter($data['criteria']));
+            if (empty($data['criteria'])) {
+                return redirect()->back()
+                    ->withErrors(['criteria' => 'At least one criterion is required.'])
+                    ->withInput();
+            }
+        }
+
         $data['updated_by'] = Auth::id();
 
         $scenario->update($data);

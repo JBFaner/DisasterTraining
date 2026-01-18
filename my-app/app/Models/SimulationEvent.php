@@ -128,4 +128,9 @@ class SimulationEvent extends Model
         }
         return $this->registeredParticipantsCount() >= $this->max_participants;
     }
+
+    public function evaluation()
+    {
+        return $this->hasOne(Evaluation::class, 'simulation_event_id');
+    }
 }

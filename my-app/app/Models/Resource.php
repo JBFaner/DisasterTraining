@@ -161,16 +161,20 @@ class Resource extends Model
         }
 
         return DB::transaction(function () use ($event, $quantity, $handler) {
-            // Create an assignment record to track this allocation
+            // Create or update an assignment record to track this allocation
             try {
-                ResourceEventAssignment::create([
-                    'resource_id' => $this->id,
-                    'event_id' => $event->id,
-                    'quantity_assigned' => $quantity,
-                    'status' => 'Active',
-                    'notes' => null,
-                    'assigned_by' => auth()->id(),
-                ]);
+                ResourceEventAssignment::updateOrCreate(
+                    [
+                        'resource_id' => $this->id,
+                        'event_id' => $event->id,
+                    ],
+                    [
+                        'quantity_assigned' => $quantity,
+                        'status' => 'Active',
+                        'notes' => null,
+                        'assigned_by' => auth()->id(),
+                    ]
+                );
             } catch (\Exception $e) {
                 // If assignment table isn't ready, continue with legacy fields
             }

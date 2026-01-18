@@ -11,6 +11,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\LessonCompletionController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
+use App\Http\Controllers\EvaluationController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -117,6 +118,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/simulation-events/{simulationEvent}/cancel', [SimulationEventController::class, 'cancel'])->name('simulation.events.cancel');
     Route::post('/simulation-events/{simulationEvent}/archive', [SimulationEventController::class, 'archive'])->name('simulation.events.archive');
     Route::post('/simulation-events/{simulationEvent}/start', [SimulationEventController::class, 'start'])->name('simulation.events.start');
+    Route::post('/simulation-events/{simulationEvent}/complete', [SimulationEventController::class, 'complete'])->name('simulation.events.complete');
     Route::delete('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'destroy'])->name('simulation.events.destroy');
     
     // Participant Event Registration
@@ -170,9 +172,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/resources/export/csv', [ResourceController::class, 'export'])->name('resources.export');
     Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('resources.destroy');
 
-    Route::get('/evaluation', function () {
-        return view('app', ['section' => 'evaluation']);
-    })->name('evaluation');
+    // Evaluation & Scoring System
+    Route::get('/evaluations', [EvaluationController::class, 'index'])->name('evaluations.index');
+    Route::get('/simulation-events/{simulationEvent}/evaluation', [EvaluationController::class, 'show'])->name('evaluations.show');
+    Route::get('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'evaluate'])->name('evaluations.evaluate');
+    Route::post('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'storeEvaluation'])->name('evaluations.store');
+    Route::put('/evaluations/{evaluation}/status', [EvaluationController::class, 'updateStatus'])->name('evaluations.update.status');
+    Route::post('/evaluations/{evaluation}/lock', [EvaluationController::class, 'lock'])->name('evaluations.lock');
+    Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [EvaluationController::class, 'summary'])->name('evaluations.summary');
+    Route::get('/simulation-events/{simulationEvent}/evaluation/export/{format?}', [EvaluationController::class, 'export'])->name('evaluations.export');
 
     Route::get('/certification', function () {
         return view('app', ['section' => 'certification']);
