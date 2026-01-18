@@ -89,6 +89,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/scenarios', [ScenarioController::class, 'index'])->name('scenarios.index');
     Route::get('/scenarios/create', [ScenarioController::class, 'create'])->name('scenarios.create');
     Route::post('/scenarios', [ScenarioController::class, 'store'])->name('scenarios.store');
+    Route::post('/scenarios/generate-ai', [ScenarioController::class, 'generateAiScenario'])->name('scenarios.generate-ai');
     Route::get('/scenarios/{scenario}', [ScenarioController::class, 'show'])->name('scenarios.show');
     Route::get('/scenarios/{scenario}/edit', [ScenarioController::class, 'edit'])->name('scenarios.edit');
     Route::put('/scenarios/{scenario}', [ScenarioController::class, 'update'])->name('scenarios.update');

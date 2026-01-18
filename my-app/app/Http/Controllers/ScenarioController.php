@@ -6,6 +6,7 @@ use App\Models\Scenario;
 use App\Models\ScenarioInject;
 use App\Models\ScenarioExpectedAction;
 use App\Models\TrainingModule;
+use App\Services\GeminiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -231,6 +232,39 @@ class ScenarioController extends Controller
 
         return redirect()->route('scenarios.show', $scenario)
             ->with('status', 'Expected action removed successfully.');
+    }
+
+    /**
+     * Generate scenario using AI based on user prompt
+     */
+    public function generateAiScenario(Request $request)
+    {
+        $this->authorizeScenarioWrite();
+
+        $data = $request->validate([
+            'prompt' => ['required', 'string', 'min:10', 'max:1000'],
+            'disaster_type' => ['nullable', 'string', 'max:255'],
+            'difficulty' => ['nullable', 'string', 'in:Basic,Intermediate,Advanced'],
+        ]);
+
+        try {
+            $geminiService = new GeminiService();
+            $scenarioData = $geminiService->generateScenarioFromPrompt(
+                $data['prompt'],
+                $data['disaster_type'] ?? null,
+                $data['difficulty'] ?? 'Medium'
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $scenarioData,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     protected function authorizeScenarioDelete(): void

@@ -2687,17 +2687,190 @@ function ScenarioCreateForm({ modules }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [selectedModuleId, setSelectedModuleId] = React.useState('');
+    const [showAiChat, setShowAiChat] = React.useState(false);
+    const [aiPrompt, setAiPrompt] = React.useState('');
+    const [aiGenerating, setAiGenerating] = React.useState(false);
+    const [aiError, setAiError] = React.useState(null);
     const publishedModules = (modules || []).filter((m) => m.status === 'published');
     const selectedModule =
         publishedModules.find((m) => String(m.id) === String(selectedModuleId)) || null;
     const derivedDisasterType = selectedModule?.disaster_type || '';
 
+    const formRef = React.useRef(null);
+
+    const handleGenerateWithAi = async (e) => {
+        e.preventDefault();
+        if (!aiPrompt.trim()) {
+            setAiError('Please enter a scenario description');
+            return;
+        }
+
+        setAiGenerating(true);
+        setAiError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('prompt', aiPrompt);
+            formData.append('disaster_type', derivedDisasterType || '');
+            formData.append('difficulty', formRef.current?.querySelector('[name="difficulty"]')?.value || 'Medium');
+            formData.append('_token', csrf);
+
+            const response = await fetch('/scenarios/generate-ai', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to generate scenario');
+            }
+
+            // Populate form fields with generated data
+            const data = result.data;
+            if (formRef.current) {
+                if (data.title) formRef.current.querySelector('[name="title"]').value = data.title;
+                if (data.short_description) formRef.current.querySelector('[name="short_description"]').value = data.short_description;
+                if (data.affected_area) formRef.current.querySelector('[name="affected_area"]').value = data.affected_area;
+                if (data.incident_time_text) formRef.current.querySelector('[name="incident_time_text"]').value = data.incident_time_text;
+                if (data.general_situation) formRef.current.querySelector('[name="general_situation"]').value = data.general_situation;
+                if (data.severity_level) formRef.current.querySelector('[name="severity_level"]').value = data.severity_level;
+                if (data.difficulty) formRef.current.querySelector('[name="difficulty"]').value = data.difficulty;
+                if (data.intended_participants) formRef.current.querySelector('[name="intended_participants"]').value = data.intended_participants;
+                if (data.injured_victims_count !== undefined) formRef.current.querySelector('[name="injured_victims_count"]').value = data.injured_victims_count;
+                if (data.trapped_persons_count !== undefined) formRef.current.querySelector('[name="trapped_persons_count"]').value = data.trapped_persons_count;
+                if (data.infrastructure_damage) formRef.current.querySelector('[name="infrastructure_damage"]').value = data.infrastructure_damage;
+                if (data.communication_status) formRef.current.querySelector('[name="communication_status"]').value = data.communication_status;
+            }
+
+            // Close chat popup
+            setShowAiChat(false);
+            setAiPrompt('');
+
+            // Show success message (optional - could use a toast notification)
+            alert('Scenario generated successfully! Please review and adjust the fields before saving.');
+        } catch (error) {
+            setAiError(error.message || 'Failed to generate scenario. Please try again.');
+        } finally {
+            setAiGenerating(false);
+        }
+    };
+
     return (
         <div className="py-2">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                Create Scenario
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-800">
+                    Create Scenario
+                </h2>
+                <button
+                    type="button"
+                    onClick={() => setShowAiChat(true)}
+                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Generate with AI
+                </button>
+            </div>
+
+            {/* AI Chat Popup */}
+            {showAiChat && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                            <h3 className="text-lg font-semibold text-slate-800">
+                                AI Scenario Generator
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowAiChat(false);
+                                    setAiPrompt('');
+                                    setAiError(null);
+                                }}
+                                className="text-slate-400 hover:text-slate-600"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-slate-600 mb-2">
+                                    Describe the scenario you want to generate:
+                                </label>
+                                <textarea
+                                    value={aiPrompt}
+                                    onChange={(e) => setAiPrompt(e.target.value)}
+                                    placeholder="e.g., A magnitude 7.2 earthquake strikes downtown at 2:30 PM during business hours. Multiple buildings collapse, roads are damaged, power is out, and there are reports of trapped people. The scenario should focus on emergency response coordination."
+                                    rows={6}
+                                    disabled={aiGenerating}
+                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                />
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Be as detailed as possible. The AI will generate a complete scenario with all relevant fields populated.
+                                </p>
+                            </div>
+
+                            {aiError && (
+                                <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
+                                    {aiError}
+                                </div>
+                            )}
+
+                            {selectedModule && (
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700">
+                                    <strong>Note:</strong> Disaster type from selected module ({selectedModule.title}): {derivedDisasterType || 'N/A'}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowAiChat(false);
+                                    setAiPrompt('');
+                                    setAiError(null);
+                                }}
+                                disabled={aiGenerating}
+                                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleGenerateWithAi}
+                                disabled={aiGenerating || !aiPrompt.trim()}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm font-medium"
+                            >
+                                {aiGenerating ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Generating...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <span>Generate Scenario</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <form
+                ref={formRef}
                 method="POST"
                 action="/scenarios"
                 className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
