@@ -7,7 +7,7 @@ import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } fro
 import { ResourceInventory } from './pages/ResourceInventory';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -1788,6 +1788,7 @@ function TrainingModuleDetail({ module }) {
     const lessons = module.lessons || [];
     const [selectedLesson, setSelectedLesson] = React.useState(null);
     const [isEditMode, setIsEditMode] = React.useState(false);
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
     const [editFormData, setEditFormData] = React.useState({
         title: '',
         description: '',
@@ -1850,7 +1851,7 @@ function TrainingModuleDetail({ module }) {
 
             <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
-                    <div>
+                    <div className="flex-1">
                         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
                             Training module
                         </div>
@@ -1858,9 +1859,29 @@ function TrainingModuleDetail({ module }) {
                             {module.title}
                         </h2>
                         {module.description && (
-                            <p className="mt-1 text-sm text-slate-600 whitespace-pre-line">
-                                {module.description}
-                            </p>
+                            <div className="mt-1 relative">
+                                <p className={`text-sm text-slate-600 whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-4' : ''}`}>
+                                    {module.description}
+                                </p>
+                                <div className="flex justify-end mt-1">
+                                    <button
+                                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
+                                    >
+                                        {isDescriptionExpanded ? (
+                                            <>
+                                                See less
+                                                <ChevronUp className="w-3 h-3" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                See more
+                                                <ChevronDown className="w-3 h-3" />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
                         )}
                     </div>
                     <a
@@ -1924,7 +1945,7 @@ function TrainingModuleDetail({ module }) {
                                                 )}
                                             </div>
                                             {lesson.description && (
-                                                <p className="mt-1 text-xs text-slate-600 whitespace-pre-line">
+                                                <p className="mt-1 text-xs text-slate-600 whitespace-pre-line line-clamp-4">
                                                     {lesson.description}
                                                 </p>
                                             )}
