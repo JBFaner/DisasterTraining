@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { Mail, Phone, AlertCircle, CheckCircle2, ArrowLeft, ShieldCheck, Info } from 'lucide-react';
+import { Mail, Phone, AlertCircle, CheckCircle2, ArrowLeft, ShieldCheck } from 'lucide-react';
 
-export function ParticipantRegisterVerify({ verificationMethod = 'email', contact = '', errors = {}, debugOtp = '', emailSent = 'true' }) {
+export function ParticipantRegisterVerify({ verificationMethod = 'email', contact = '', errors = {} }) {
     const [otp, setOtp] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
-    const hasDebugOtp = debugOtp && debugOtp.length === 6;
-    const sentSuccessfully = emailSent === 'true' || emailSent === true;
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -55,7 +53,9 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
                         Verify Your {verificationMethod === 'email' ? 'Email' : 'Phone'}
                     </h1>
                     <p className="text-sm text-slate-500 text-center">
-                        We've sent a 6-digit verification code to your {verificationMethod === 'email' ? 'email address' : 'phone number'}.
+                        {verificationMethod === 'email' 
+                            ? `We've sent a verification link to your email address.`
+                            : `We've sent a 6-digit code to your phone number.`}
                     </p>
                 </div>
 
@@ -75,28 +75,6 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
                     </div>
                 </div>
 
-                {!sentSuccessfully && hasDebugOtp && (
-                    <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-md">
-                        <div className="flex items-start gap-3">
-                            <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-xs font-semibold text-amber-900 mb-2">
-                                    ⚠️ Email Delivery Issue
-                                </p>
-                                <p className="text-sm text-amber-800 mb-3">
-                                    We couldn't send the email, but here's your verification code for testing:
-                                </p>
-                                <div className="bg-white border border-amber-200 rounded px-3 py-2 text-center font-mono text-lg font-bold tracking-wider text-amber-900">
-                                    {debugOtp}
-                                </div>
-                                <p className="text-xs text-amber-700 mt-2">
-                                    <strong>Fix:</strong> Check your Gmail account settings. You may need to use an App Password instead of your regular password.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {Object.keys(errors).length > 0 && (
                     <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
                         <div className="flex items-start gap-2">
@@ -114,63 +92,96 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
                     </div>
                 )}
 
-                <form method="POST" action="/participant/register/verify" onSubmit={handleSubmit} className="space-y-4">
-                    <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                    
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="otp">
-                            Enter 6-digit code
-                        </label>
-                        <input
-                            id="otp"
-                            name="otp"
-                            type="text"
-                            value={otp}
-                            onChange={handleOtpChange}
-                            required
-                            maxLength={6}
-                            autoFocus
-                            placeholder="000000"
-                            className={`w-full rounded-md border ${
-                                getFieldError('otp') ? 'border-rose-300' : 'border-slate-300'
-                            } px-4 py-3 text-center text-2xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                        />
-                        {getFieldError('otp') && (
-                            <p className="mt-1 text-xs text-rose-600">{getFieldError('otp')}</p>
-                        )}
-                    </div>
+                {verificationMethod === 'phone' ? (
+                    <form method="POST" action="/participant/register/verify" onSubmit={handleSubmit} className="space-y-4">
+                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                        
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="otp">
+                                Enter 6-digit code
+                            </label>
+                            <input
+                                id="otp"
+                                name="otp"
+                                type="text"
+                                value={otp}
+                                onChange={handleOtpChange}
+                                required
+                                maxLength={6}
+                                autoFocus
+                                placeholder="000000"
+                                className={`w-full rounded-md border ${
+                                    getFieldError('otp') ? 'border-rose-300' : 'border-slate-300'
+                                } px-4 py-3 text-center text-2xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                            />
+                            {getFieldError('otp') && (
+                                <p className="mt-1 text-xs text-rose-600">{getFieldError('otp')}</p>
+                            )}
+                        </div>
 
-                    <button
-                        type="submit"
-                        disabled={isSubmitting || otp.length !== 6}
-                        className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-colors"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                <span>Verifying...</span>
-                            </>
-                        ) : (
-                            <>
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>Verify & Complete Registration</span>
-                            </>
-                        )}
-                    </button>
-
-                    <div className="text-center">
                         <button
-                            type="button"
-                            onClick={handleResend}
-                            disabled={resendCooldown > 0}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
+                            type="submit"
+                            disabled={isSubmitting || otp.length !== 6}
+                            className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-colors"
                         >
-                            {resendCooldown > 0 
-                                ? `Resend code in ${resendCooldown}s`
-                                : 'Resend verification code'}
+                            {isSubmitting ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Verifying...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span>Verify & Complete Registration</span>
+                                </>
+                            )}
                         </button>
+
+                        <div className="text-center">
+                            <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={resendCooldown > 0}
+                                className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
+                            >
+                                {resendCooldown > 0 
+                                    ? `Resend code in ${resendCooldown}s`
+                                    : 'Resend verification code'}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-md">
+                            <p className="text-sm text-slate-600 text-center mb-2">
+                                Please check your email inbox and click on the verification link we sent.
+                            </p>
+                            <p className="text-xs text-slate-500 text-center">
+                                If you didn't receive the email, check your spam folder or click "Resend verification email" below.
+                            </p>
+                        </div>
+
+                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                            <p className="text-xs text-blue-700 text-center">
+                                <strong>Note:</strong> For development, check your Laravel logs for the verification token. 
+                                In production, you'll receive an email with a verification link.
+                            </p>
+                        </div>
+
+                        <div className="text-center">
+                            <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={resendCooldown > 0}
+                                className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
+                            >
+                                {resendCooldown > 0 
+                                    ? `Resend email in ${resendCooldown}s`
+                                    : 'Resend verification email'}
+                            </button>
+                        </div>
                     </div>
-                </form>
+                )}
 
                 <div className="mt-6 pt-6 border-t border-slate-200">
                     <a

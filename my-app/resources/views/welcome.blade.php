@@ -150,7 +150,7 @@
                     <a href="/participant/register" class="bg-white text-teal-700 px-10 py-4 rounded-lg text-lg font-bold hover:bg-gray-100 transition shadow-xl hover:shadow-2xl transform hover:scale-105">
                         ✅ Register as Participant
                     </a>
-                    <a href="/participant/login" class="bg-white/10 backdrop-blur-md text-white border-2 border-teal/50 px-10 py-4 rounded-lg text-lg font-bold hover:bg-white/20 transition shadow-xl">
+                    <a href="/participant/login" class="bg-white/10 backdrop-blur-md text-white border-2 border-white/50 px-10 py-4 rounded-lg text-lg font-bold hover:bg-white/20 transition shadow-xl">
                         LOGIN
                     </a>
                 </div>

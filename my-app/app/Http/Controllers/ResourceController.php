@@ -72,16 +72,66 @@ class ResourceController extends Controller
             'quantity' => 'required|integer|min:1',
             'condition' => 'required|in:New,Good,Needs Repair,Damaged',
             'location' => 'required|string|max:255',
-            'serial_number' => 'nullable|string|unique:resources',
+            'serial_number' => 'nullable|string',
             'image_url' => 'nullable|url',
         ]);
+
+        // Check for duplication: same name + serial_number combination
+        $duplicateQuery = Resource::where('name', $validated['name'])
+            ->where('category', $validated['category']);
+        
+        // If serial number is provided, check for exact match
+        if (!empty($validated['serial_number'])) {
+            $duplicateQuery->where('serial_number', $validated['serial_number']);
+            
+            // Also check if serial number already exists (unique constraint)
+            $existingSerial = Resource::where('serial_number', $validated['serial_number'])->first();
+            if ($existingSerial) {
+                if ($request->expectsJson() || $request->is('api/*')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'A resource with this serial number already exists: ' . $existingSerial->name,
+                        'duplicate' => $existingSerial,
+                    ], 422);
+                }
+                return back()->withErrors(['serial_number' => 'A resource with this serial number already exists: ' . $existingSerial->name])->withInput();
+            }
+        }
+        
+        // Check for duplicate name + category combination
+        $duplicate = $duplicateQuery->first();
+        if ($duplicate) {
+            $message = 'A resource with the same name and category already exists';
+            if (!empty($validated['serial_number'])) {
+                $message .= '. Serial number must be unique.';
+            } else {
+                $message .= '. Consider adding a serial number to distinguish this resource.';
+            }
+            
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'duplicate' => $duplicate,
+                ], 422);
+            }
+            return back()->withErrors(['name' => $message])->withInput();
+        }
 
         $validated['available'] = $validated['quantity'];
         $validated['status'] = 'Available';
         $validated['created_by'] = auth()->id();
         $validated['updated_by'] = auth()->id();
 
-        Resource::create($validated);
+        $resource = Resource::create($validated);
+
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Resource created successfully',
+                'resource' => $resource,
+            ], 201);
+        }
 
         return redirect()->route('resources.index')->with('success', 'Resource created successfully');
     }
@@ -149,7 +199,31 @@ class ResourceController extends Controller
             'event_id' => 'required|exists:simulation_events,id',
             'handler_id' => 'nullable|exists:users,id',
             'quantity' => 'required|integer|min:1',
+            'assignment_date' => 'nullable|date',
+            'expected_return_date' => 'nullable|date|after_or_equal:assignment_date',
         ]);
+
+        // Check for existing active assignments to prevent double assignment
+        $existingAssignment = \App\Models\ResourceEventAssignment::where('resource_id', $resource->id)
+            ->where('event_id', $validated['event_id'])
+            ->where('status', 'Active')
+            ->first();
+
+        if ($existingAssignment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This resource is already assigned to this event. Please return it first before reassigning.',
+            ], 422);
+        }
+
+        // Check available quantity
+        $availableQty = $resource->getAvailableQuantity();
+        if ($availableQty < $validated['quantity']) {
+            return response()->json([
+                'success' => false,
+                'message' => "Insufficient quantity. Available: {$availableQty}, Requested: {$validated['quantity']}",
+            ], 400);
+        }
 
         $event = SimulationEvent::findOrFail($validated['event_id']);
         $handler = isset($validated['handler_id']) ? User::find($validated['handler_id']) : null;
@@ -157,13 +231,30 @@ class ResourceController extends Controller
         if (!$resource->assignToEvent($event, $validated['quantity'], $handler)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Insufficient resource quantity available',
+                'message' => 'Failed to assign resource to event',
             ], 400);
         }
 
+        // Update assignment record with dates if provided
+        $assignment = \App\Models\ResourceEventAssignment::where('resource_id', $resource->id)
+            ->where('event_id', $validated['event_id'])
+            ->where('status', 'Active')
+            ->latest()
+            ->first();
+
+        if ($assignment && ($validated['assignment_date'] || $validated['expected_return_date'])) {
+            $assignment->update([
+                'assigned_at' => $validated['assignment_date'] ?? now(),
+                'expected_return_date' => $validated['expected_return_date'] ?? null,
+            ]);
+        }
+
+        // Automatically change status to "In Use"
+        $resource->update(['status' => 'In Use']);
+
         return response()->json([
             'success' => true,
-            'message' => 'Resource assigned to event successfully',
+            'message' => 'Resource assigned to event successfully. Status changed to "In Use".',
         ]);
     }
 

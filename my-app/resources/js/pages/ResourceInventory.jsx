@@ -15,15 +15,101 @@ import {
     Home,
     Link2,
     RotateCcw,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+
+// Pagination Component
+function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems }) {
+    const maxVisiblePages = typeof window !== 'undefined' && window.innerWidth >= 768 ? 7 : 5;
+    const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    const pages = [];
+    for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+    }
+
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    // Always show pagination when there are items, even if only one page
+    if (totalItems === 0) return null;
+
+    return (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-slate-200 bg-slate-50">
+            <div className="text-sm text-slate-600">
+                Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
+                <span className="font-medium">{totalItems}</span> results
+            </div>
+            {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                <button
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="inline-flex items-center px-2 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    <ChevronLeft className="w-4 h-4" />
+                </button>
+                {startPage > 1 && (
+                    <>
+                        <button
+                            onClick={() => onPageChange(1)}
+                            className="px-3 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                            1
+                        </button>
+                        {startPage > 2 && <span className="text-slate-400">...</span>}
+                    </>
+                )}
+                {pages.map((page) => (
+                    <button
+                        key={page}
+                        onClick={() => onPageChange(page)}
+                        className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                            page === currentPage
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                    >
+                        {page}
+                    </button>
+                ))}
+                {endPage < totalPages && (
+                    <>
+                        {endPage < totalPages - 1 && <span className="text-slate-400">...</span>}
+                        <button
+                            onClick={() => onPageChange(totalPages)}
+                            className="px-3 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                            {totalPages}
+                        </button>
+                    </>
+                )}
+                <button
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="inline-flex items-center px-2 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    <ChevronRight className="w-4 h-4" />
+                </button>
+            </div>
+            )}
+        </div>
+    );
+}
 
 export function ResourceInventory() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
     const [resourceTypeFilter, setResourceTypeFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [conditionFilter, setConditionFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10; // Fixed to 10 items per page
+    const filterRef = React.useRef(null);
     const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(true);
     const [events, setEvents] = useState([]);
@@ -38,6 +124,24 @@ export function ResourceInventory() {
         fetchResources();
         fetchEvents();
     }, []);
+
+
+    // Close filter dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (filterRef.current && !filterRef.current.contains(event.target)) {
+                setShowFilters(false);
+            }
+        };
+
+        if (showFilters) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFilters]);
 
     const fetchResources = async () => {
         try {
@@ -150,6 +254,17 @@ export function ResourceInventory() {
         return matchesSearch && matchesType && matchesStatus && matchesCondition;
     });
 
+    // Pagination
+    const totalPages = Math.ceil(filteredResources.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedResources = filteredResources.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, resourceTypeFilter, statusFilter, conditionFilter]);
+
     // Suggestions for typeahead dropdown (startsWith)
     const searchSuggestions = searchQuery
         ? normalizedResources
@@ -177,6 +292,8 @@ export function ResourceInventory() {
                         ${conditionOptions.map((cond) => `<option value="${cond}">${cond}</option>`).join('')}
                     </select>
                     <input type="text" id="location" placeholder="Storage Location (e.g., Warehouse A, Shelf 3)" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                    <textarea id="description" placeholder="Description (Optional)" class="w-full px-3 py-2 border border-slate-300 rounded-md" rows="3"></textarea>
+                    <input type="url" id="imageUrl" placeholder="Image URL (Optional)" class="w-full px-3 py-2 border border-slate-300 rounded-md">
                 </form>
             `,
             showCancelButton: true,
@@ -190,6 +307,8 @@ export function ResourceInventory() {
                 const serialNumber = document.getElementById('serialNumber').value;
                 const condition = document.getElementById('resourceCondition').value;
                 const location = document.getElementById('location').value;
+                const description = document.getElementById('description').value;
+                const imageUrl = document.getElementById('imageUrl').value;
 
                 if (!name || !category || !quantity || !condition || !location) {
                     Swal.showValidationMessage('Please fill in all required fields');
@@ -202,6 +321,7 @@ export function ResourceInventory() {
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
+                            'Accept': 'application/json',
                         },
                         body: JSON.stringify({
                             name,
@@ -210,15 +330,33 @@ export function ResourceInventory() {
                             serial_number: serialNumber,
                             condition,
                             location,
+                            description: description || null,
+                            image_url: imageUrl || null,
                         }),
                     });
 
-                    if (!response.ok) throw new Error('Failed to add resource');
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        // Handle duplication error
+                        if (data.message && (data.message.includes('already exists') || data.message.includes('duplicate'))) {
+                            let errorMsg = data.message;
+                            if (data.duplicate) {
+                                errorMsg += `\n\nExisting Resource:\n- Name: ${data.duplicate.name}\n- Category: ${data.duplicate.category}`;
+                                if (data.duplicate.serial_number) {
+                                    errorMsg += `\n- Serial: ${data.duplicate.serial_number}`;
+                                }
+                            }
+                            Swal.showValidationMessage(errorMsg);
+                            return false;
+                        }
+                        throw new Error(data.message || 'Failed to add resource');
+                    }
                     
                     fetchResources();
                     Swal.fire('Success', 'Resource added successfully', 'success');
                 } catch (error) {
-                    Swal.showValidationMessage(error.message);
+                    Swal.showValidationMessage(error.message || 'An error occurred while adding the resource');
                     return false;
                 }
             },
@@ -301,6 +439,114 @@ export function ResourceInventory() {
         });
     };
 
+    const handleViewResource = (resource) => {
+        // Fetch full resource details including assignments
+        fetch(`/api/resources/${resource.id}/history`)
+            .then(res => res.json())
+            .then(data => {
+                const resourceData = data.resource || resource;
+                const history = data.history || [];
+                const assignments = resourceData.eventAssignments || [];
+                
+                Swal.fire({
+                    title: resourceData.name,
+                    html: `
+                        <div class="text-left space-y-4 max-h-[70vh] overflow-y-auto">
+                            ${resourceData.image_url ? `
+                                <div class="mb-4">
+                                    <img src="${resourceData.image_url}" alt="${resourceData.name}" class="w-full h-48 object-cover rounded-lg border border-slate-200">
+                                </div>
+                            ` : ''}
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Resource ID</p>
+                                    <p class="text-sm font-medium text-slate-900">#${resourceData.id}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Category</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.category}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Quantity</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.quantity} units</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Available</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.available || resourceData.quantity} units</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Status</p>
+                                    <span class="inline-block px-2 py-1 text-xs font-medium rounded ${getStatusColor(resourceData.status).split(' ').join(' ')}">
+                                        ${resourceData.status}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Condition</p>
+                                    <span class="inline-block px-2 py-1 text-xs font-medium rounded ${getConditionColor(resourceData.condition).split(' ').join(' ')}">
+                                        ${resourceData.condition}
+                                    </span>
+                                </div>
+                                ${resourceData.serial_number ? `
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Serial Number</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.serial_number}</p>
+                                </div>
+                                ` : ''}
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Location</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.location}</p>
+                                </div>
+                            </div>
+                            ${resourceData.description ? `
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Description</p>
+                                <p class="text-sm text-slate-700">${resourceData.description}</p>
+                            </div>
+                            ` : ''}
+                            ${assignments.length > 0 ? `
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Assigned to Events</p>
+                                <div class="space-y-2">
+                                    ${assignments.map(a => `
+                                        <div class="p-2 bg-slate-50 rounded border border-slate-200">
+                                            <p class="text-sm font-medium text-slate-900">Event ID: ${a.event_id}</p>
+                                            <p class="text-xs text-slate-600">Quantity: ${a.quantity_assigned} | Status: ${a.status}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                            ${history.length > 0 ? `
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Maintenance History</p>
+                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                    ${history.slice(0, 5).map(log => `
+                                        <div class="p-2 border-l-4 border-slate-300 bg-slate-50 rounded">
+                                            <p class="text-sm font-medium text-slate-900">${log.action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                                            <p class="text-xs text-slate-600">${log.notes || 'No notes'}</p>
+                                            <p class="text-xs text-slate-500 mt-1">${new Date(log.created_at).toLocaleString()}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `,
+                    width: 700,
+                    showConfirmButton: false,
+                    showCancelButton: true,
+                    cancelButtonText: 'Close',
+                    customClass: {
+                        popup: 'text-left',
+                    },
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching resource details:', error);
+                Swal.fire('Error', 'Failed to load resource details', 'error');
+            });
+    };
+
     const handleDeleteResource = (resource) => {
         Swal.fire({
             title: 'Delete Resource?',
@@ -363,21 +609,60 @@ export function ResourceInventory() {
             return;
         }
 
+        // Check if resource is already assigned to an event
+        const activeAssignments = resource.eventAssignments?.filter(a => a.status === 'Active') || [];
+        if (activeAssignments.length > 0) {
+            Swal.fire({
+                title: 'Resource Already Assigned',
+                html: `
+                    <p class="text-left mb-3">This resource is currently assigned to:</p>
+                    <ul class="text-left list-disc list-inside mb-3">
+                        ${activeAssignments.map(a => `<li>Event ID: ${a.event_id} (Quantity: ${a.quantity_assigned})</li>`).join('')}
+                    </ul>
+                    <p class="text-left text-sm text-slate-600">Please return the resource from existing assignments before assigning to a new event.</p>
+                `,
+                icon: 'warning',
+                confirmButtonText: 'OK',
+            });
+            return;
+        }
+
+        const availableQty = resource.available || resource.quantity;
+        const today = new Date().toISOString().split('T')[0];
+
         Swal.fire({
             title: 'Assign Resource to Event',
             html: `
                 <form id="assignResourceForm" class="text-left space-y-4">
-                    <select id="eventId" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
-                        <option value="">Select Simulation Event</option>
-                        ${events.map((event) => `<option value="${event.id}">${event.title} - ${event.event_date}</option>`).join('')}
-                    </select>
-                    <input type="number" id="quantity" placeholder="Quantity to assign" value="1" class="w-full px-3 py-2 border border-slate-300 rounded-md" required min="1" max="${resource.available}">
-                    <select id="handlerId" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
-                        <option value="">Select Resource Handler</option>
-                        <option value="1">Handler 1</option>
-                        <option value="2">Handler 2</option>
-                        <option value="3">Handler 3</option>
-                    </select>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Simulation Event <span class="text-rose-500">*</span></label>
+                        <select id="eventId" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                            <option value="">Select Simulation Event</option>
+                            ${events.map((event) => `<option value="${event.id}">${event.title} - ${new Date(event.event_date).toLocaleDateString()}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Quantity to Assign <span class="text-rose-500">*</span></label>
+                        <input type="number" id="quantity" placeholder="Quantity to assign" value="1" class="w-full px-3 py-2 border border-slate-300 rounded-md" required min="1" max="${availableQty}">
+                        <p class="text-xs text-slate-500 mt-1">Available: ${availableQty} units</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Responsible Staff <span class="text-rose-500">*</span></label>
+                        <select id="handlerId" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                            <option value="">Select Resource Handler</option>
+                            <option value="1">Staff Member 1</option>
+                            <option value="2">Staff Member 2</option>
+                            <option value="3">Staff Member 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Assignment Date</label>
+                        <input type="date" id="assignmentDate" value="${today}" class="w-full px-3 py-2 border border-slate-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Expected Return Date</label>
+                        <input type="date" id="expectedReturnDate" class="w-full px-3 py-2 border border-slate-300 rounded-md">
+                    </div>
                 </form>
             `,
             showCancelButton: true,
@@ -388,9 +673,16 @@ export function ResourceInventory() {
                 const eventId = document.getElementById('eventId').value;
                 const quantity = parseInt(document.getElementById('quantity').value);
                 const handlerId = document.getElementById('handlerId').value;
+                const assignmentDate = document.getElementById('assignmentDate').value;
+                const expectedReturnDate = document.getElementById('expectedReturnDate').value;
 
                 if (!eventId || !handlerId || quantity < 1) {
-                    Swal.showValidationMessage('Please fill in all fields');
+                    Swal.showValidationMessage('Please fill in all required fields');
+                    return false;
+                }
+
+                if (quantity > availableQty) {
+                    Swal.showValidationMessage(`Cannot assign ${quantity} units. Only ${availableQty} available.`);
                     return false;
                 }
 
@@ -400,20 +692,27 @@ export function ResourceInventory() {
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
+                            'Accept': 'application/json',
                         },
                         body: JSON.stringify({
                             event_id: eventId,
                             handler_id: handlerId,
                             quantity,
+                            assignment_date: assignmentDate || null,
+                            expected_return_date: expectedReturnDate || null,
                         }),
                     });
 
-                    if (!response.ok) throw new Error('Failed to assign resource');
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Failed to assign resource');
+                    }
                     
                     fetchResources();
-                    Swal.fire('Success', 'Resource assigned to event', 'success');
+                    Swal.fire('Success', 'Resource assigned to event successfully. Status changed to "In Use".', 'success');
                 } catch (error) {
-                    Swal.showValidationMessage(error.message);
+                    Swal.showValidationMessage(error.message || 'An error occurred while assigning the resource');
                     return false;
                 }
             },
@@ -444,12 +743,44 @@ export function ResourceInventory() {
                 </button>
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats Cards - Clickable Filters */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <StatCard icon={Package} label="Total Resources" value={stats.total} color="bg-blue-50 text-blue-700" />
-                <StatCard icon={CheckCircle} label="Available" value={stats.available} color="bg-emerald-50 text-emerald-700" />
-                <StatCard icon={Clock} label="In Use" value={stats.inUse} color="bg-indigo-50 text-indigo-700" />
-                <StatCard icon={AlertTriangle} label="Needs Repair" value={stats.needsRepair} color="bg-yellow-50 text-yellow-700" />
+                <StatCard 
+                    icon={Package} 
+                    label="Total Resources" 
+                    value={stats.total} 
+                    color="bg-blue-50 text-blue-700" 
+                    onClick={() => {
+                        setStatusFilter('all');
+                        setResourceTypeFilter('all');
+                        setConditionFilter('all');
+                    }}
+                    isActive={statusFilter === 'all' && resourceTypeFilter === 'all' && conditionFilter === 'all'}
+                />
+                <StatCard 
+                    icon={CheckCircle} 
+                    label="Available" 
+                    value={stats.available} 
+                    color="bg-emerald-50 text-emerald-700"
+                    onClick={() => setStatusFilter('Available')}
+                    isActive={statusFilter === 'Available'}
+                />
+                <StatCard 
+                    icon={Clock} 
+                    label="In Use" 
+                    value={stats.inUse} 
+                    color="bg-indigo-50 text-indigo-700"
+                    onClick={() => setStatusFilter('In Use')}
+                    isActive={statusFilter === 'In Use'}
+                />
+                <StatCard 
+                    icon={AlertTriangle} 
+                    label="Needs Repair" 
+                    value={stats.needsRepair} 
+                    color="bg-yellow-50 text-yellow-700"
+                    onClick={() => setConditionFilter('Needs Repair')}
+                    isActive={conditionFilter === 'Needs Repair'}
+                />
             </div>
 
             {/* Tabs */}
@@ -473,83 +804,112 @@ export function ResourceInventory() {
             {activeTab === 'dashboard' && (
                 <div className="space-y-6">
                     {/* Search & Filters */}
-                    <div className="space-y-4 bg-white p-4 rounded-lg border border-slate-200">
-                        <div className="flex gap-3">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by resource name or ID..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                />
-                                {searchSuggestions.length > 0 && (
-                                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
-                                        {searchSuggestions.map((res) => (
-                                            <button
-                                                key={res.id}
-                                                type="button"
-                                                onClick={() => setSearchQuery(res.name)}
-                                                className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50"
-                                            >
-                                                <div className="font-medium text-slate-900">{res.name}</div>
-                                                <div className="text-xs text-slate-500">{res.serialNumber || res.serial_number || 'No ID'} • {res.category}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <button className="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50 flex items-center gap-2 font-medium">
+                    <div className="mb-4 flex items-center gap-3">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search by resource name or ID..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                            {searchSuggestions.length > 0 && (
+                                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
+                                    {searchSuggestions.map((res) => (
+                                        <button
+                                            key={res.id}
+                                            type="button"
+                                            onClick={() => setSearchQuery(res.name)}
+                                            className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50"
+                                        >
+                                            <div className="font-medium text-slate-900">{res.name}</div>
+                                            <div className="text-xs text-slate-500">{res.serialNumber || res.serial_number || 'No ID'} • {res.category}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="relative" ref={filterRef}>
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
                                 <Filter className="w-4 h-4" />
                                 Filters
                             </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <select
-                                value={resourceTypeFilter}
-                                onChange={(e) => setResourceTypeFilter(e.target.value)}
-                                className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            >
-                                <option value="all">All Resource Types</option>
-                                {resourceTypes.map((type) => (
-                                    <option key={type} value={type}>
-                                        {type}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            >
-                                <option value="all">All Status</option>
-                                {statusOptions.map((status) => (
-                                    <option key={status} value={status}>
-                                        {status}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={conditionFilter}
-                                onChange={(e) => setConditionFilter(e.target.value)}
-                                className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            >
-                                <option value="all">All Conditions</option>
-                                {conditionOptions.map((condition) => (
-                                    <option key={condition} value={condition}>
-                                        {condition}
-                                    </option>
-                                ))}
-                            </select>
+                            {showFilters && (
+                                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Resource Type
+                                            </label>
+                                            <select
+                                                value={resourceTypeFilter}
+                                                onChange={(e) => setResourceTypeFilter(e.target.value)}
+                                                className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            >
+                                                <option value="all">All Resource Types</option>
+                                                {resourceTypes.map((type) => (
+                                                    <option key={type} value={type}>
+                                                        {type}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Status
+                                            </label>
+                                            <select
+                                                value={statusFilter}
+                                                onChange={(e) => setStatusFilter(e.target.value)}
+                                                className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            >
+                                                <option value="all">All Status</option>
+                                                {statusOptions.map((status) => (
+                                                    <option key={status} value={status}>
+                                                        {status}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                Condition
+                                            </label>
+                                            <select
+                                                value={conditionFilter}
+                                                onChange={(e) => setConditionFilter(e.target.value)}
+                                                className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            >
+                                                <option value="all">All Conditions</option>
+                                                {conditionOptions.map((condition) => (
+                                                    <option key={condition} value={condition}>
+                                                        {condition}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setResourceTypeFilter('all');
+                                                setStatusFilter('all');
+                                                setConditionFilter('all');
+                                            }}
+                                            className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
+                                        >
+                                            Clear filters
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Resources Table */}
-                    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                    <div className="bg-white rounded-lg border border-slate-200">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead className="bg-slate-50 border-b border-slate-200">
@@ -566,7 +926,7 @@ export function ResourceInventory() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
                                     {filteredResources.length > 0 ? (
-                                        filteredResources.map((resource) => (
+                                        paginatedResources.map((resource) => (
                                             <tr key={resource.id} className="hover:bg-slate-50 transition-colors">
                                                 <td className="px-6 py-4">
                                                     <div>
@@ -665,6 +1025,15 @@ export function ResourceInventory() {
                                 </tbody>
                             </table>
                         </div>
+                        {filteredResources.length > 0 && (
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                itemsPerPage={itemsPerPage}
+                                totalItems={filteredResources.length}
+                            />
+                        )}
                     </div>
                 </div>
             )}
@@ -978,9 +1347,22 @@ export function ResourceInventory() {
     );
 }
 
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, color, onClick, isActive }) {
     return (
-        <div className={`${color} rounded-lg p-6 border border-slate-200`}>
+        <div 
+            className={`${color} rounded-lg p-6 border-2 transition-all cursor-pointer ${
+                isActive ? 'border-emerald-500 shadow-lg scale-105' : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
+            }`}
+            onClick={onClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onClick?.();
+                }
+            }}
+        >
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-sm font-medium opacity-75">{label}</p>

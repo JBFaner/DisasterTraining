@@ -103,21 +103,22 @@
         <div class="content">
             <p>Hello {{ $name }},</p>
             
-            <p>Thank you for registering as a participant! To complete your registration, please enter the verification code below:</p>
+            <p>Thank you for registering as a participant! To complete your registration, please verify your email address by clicking the button below:</p>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #3b82f6; background-color: #eff6ff; padding: 20px; border-radius: 8px;">
-                    {{ $verificationCode }}
-                </div>
+            <div style="text-align: center;">
+                <a href="{{ $verificationUrl }}" class="button">Verify Email Address</a>
             </div>
 
-            <p style="text-align: center; margin-top: 20px;">This is your one-time verification code. Enter this code on the verification page to complete your registration.</p>
+            <p>Or copy and paste this link into your browser:</p>
+            <div class="link-box">
+                {{ $verificationUrl }}
+            </div>
 
             <div class="warning">
-                <strong>⚠️ Important:</strong> This verification code will expire in 15 minutes. If you didn't create an account, please ignore this email.
+                <strong>⚠️ Important:</strong> This verification link will expire in 15 minutes. If you didn't create an account, please ignore this email.
             </div>
 
-            <p>If you did not request this verification code, please disregard this email.</p>
+            <p>If the button doesn't work, you can also verify by visiting the verification page and entering the token manually.</p>
         </div>
 
         <div class="footer">

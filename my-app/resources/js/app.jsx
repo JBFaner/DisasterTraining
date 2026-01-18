@@ -7,10 +7,9 @@ import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } fro
 import { ResourceInventory } from './pages/ResourceInventory';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Search } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
-import { Html5Qrcode } from 'html5-qrcode';
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -47,6 +46,98 @@ function formatTime(timeString) {
         return `${hour12}:${minutes} ${ampm}`;
     }
     return timeString;
+}
+
+// Pagination Component
+function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems }) {
+    const getItemsPerPage = () => {
+        // Responsive items per page based on screen size
+        if (typeof window !== 'undefined') {
+            const width = window.innerWidth;
+            if (width >= 1920) return 20; // Large monitors
+            if (width >= 1440) return 15; // Desktop
+            if (width >= 1024) return 10; // Laptop
+            return 5; // Tablet/Mobile
+        }
+        return 10; // Default
+    };
+
+    const maxVisiblePages = typeof window !== 'undefined' && window.innerWidth >= 768 ? 7 : 5;
+    const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    const pages = [];
+    for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+    }
+
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    // Always show pagination when there are items, even if only one page
+    if (totalItems === 0) return null;
+
+    return (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-slate-200 bg-slate-50">
+            <div className="text-sm text-slate-600">
+                Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
+                <span className="font-medium">{totalItems}</span> results
+            </div>
+            {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => onPageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="inline-flex items-center px-2 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {startPage > 1 && (
+                        <>
+                            <button
+                                onClick={() => onPageChange(1)}
+                                className="px-3 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
+                                1
+                            </button>
+                            {startPage > 2 && <span className="text-slate-400">...</span>}
+                        </>
+                    )}
+                    {pages.map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => onPageChange(page)}
+                            className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                                page === currentPage
+                                    ? 'bg-emerald-600 text-white border-emerald-600'
+                                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                            }`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    {endPage < totalPages && (
+                        <>
+                            {endPage < totalPages - 1 && <span className="text-slate-400">...</span>}
+                            <button
+                                onClick={() => onPageChange(totalPages)}
+                                className="px-3 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
+                                {totalPages}
+                            </button>
+                        </>
+                    )}
+                    <button
+                        onClick={() => onPageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="inline-flex items-center px-2 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
 }
 
 const rootElement = document.getElementById('app');
@@ -183,34 +274,175 @@ if (rootElement) {
         sectionAttr.startsWith('scenario') ? 'scenario' :
         sectionAttr.startsWith('simulation') ? 'simulation' :
         sectionAttr.startsWith('participant') ? 'participants' :
-        sectionAttr.startsWith('my_attendance') ? 'participants' :
         sectionAttr.startsWith('event_registration') ? 'participants' :
         sectionAttr.startsWith('event_attendance') ? 'participants' :
+        sectionAttr.startsWith('resources') ? 'resources' :
         sectionAttr;
 
-    const sectionHeader =
-        sectionAttr === 'scenario_create' ? { title: 'Create Scenario', description: 'Create a realistic, scripted disaster scenario linked to a training module.' } :
-        sectionAttr === 'scenario_edit' ? { title: 'Edit Scenario', description: 'Update scenario details and module linkage.' } :
-        sectionAttr === 'scenario_detail' ? { title: 'Scenario Details', description: 'View and manage scenario overview, core details, injects, and expected actions.' } :
-        sectionAttr === 'simulation_create' ? { title: 'Create Simulation Event', description: 'Plan and configure a disaster preparedness simulation event with scenarios, resources, and participants.' } :
-        sectionAttr === 'simulation_edit' ? { title: 'Edit Simulation Event', description: 'Update event details, schedule, and configuration.' } :
-        sectionAttr === 'simulation_detail' ? { title: 'Event Details', description: 'View event information, scenario overview, and registration details.' } :
-        sectionAttr === 'my_attendance' ? { title: 'My Attendance', description: 'Scan your QR code and review your attendance history.' } :
-        sectionConfig[sectionAttr] || sectionConfig.dashboard;
+    // Breadcrumb configuration
+    const getBreadcrumbs = () => {
+        if (sectionAttr === 'dashboard') {
+            return [{ label: 'Dashboard', href: '/dashboard' }];
+        }
+        
+        if (sectionAttr === 'training') {
+            return [{ label: 'Training Module Management', href: '/training-modules' }];
+        }
+        if (sectionAttr === 'training_create') {
+            return [
+                { label: 'Training Module Management', href: '/training-modules' },
+                { label: 'Create', href: null }
+            ];
+        }
+        if (sectionAttr === 'training_edit') {
+            return [
+                { label: 'Training Module Management', href: '/training-modules' },
+                { label: 'Edit', href: null }
+            ];
+        }
+        if (sectionAttr === 'training_detail') {
+            return [
+                { label: 'Training Module Management', href: '/training-modules' },
+                { label: currentModule?.title || 'Details', href: null }
+            ];
+        }
+        
+        if (sectionAttr === 'scenario') {
+            return [{ label: 'Scenario-based Exercise Design', href: '/scenarios' }];
+        }
+        if (sectionAttr === 'scenario_create') {
+            return [
+                { label: 'Scenario-based Exercise Design', href: '/scenarios' },
+                { label: 'Create', href: null }
+            ];
+        }
+        if (sectionAttr === 'scenario_edit') {
+            return [
+                { label: 'Scenario-based Exercise Design', href: '/scenarios' },
+                { label: 'Edit', href: null }
+            ];
+        }
+        if (sectionAttr === 'scenario_detail') {
+            return [
+                { label: 'Scenario-based Exercise Design', href: '/scenarios' },
+                { label: currentScenario?.title || 'Details', href: null }
+            ];
+        }
+        
+        if (sectionAttr === 'simulation') {
+            return [{ label: 'Simulation Event Planning', href: '/simulation-events' }];
+        }
+        if (sectionAttr === 'simulation_create') {
+            return [
+                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: 'Create', href: null }
+            ];
+        }
+        if (sectionAttr === 'simulation_edit') {
+            return [
+                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: 'Edit', href: null }
+            ];
+        }
+        if (sectionAttr === 'simulation_detail') {
+            return [
+                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: currentEvent?.title || 'Details', href: null }
+            ];
+        }
+        
+        if (sectionAttr === 'participants') {
+            return [{ label: 'Participant Registration & Attendance', href: '/participants' }];
+        }
+        if (sectionAttr === 'participant_detail') {
+            return [
+                { label: 'Participant Registration & Attendance', href: '/participants' },
+                { label: currentParticipant?.name || 'Details', href: null }
+            ];
+        }
+        if (sectionAttr === 'event_registrations') {
+            return [
+                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: currentEvent?.title || 'Event', href: null },
+                { label: 'Registrations', href: null }
+            ];
+        }
+        if (sectionAttr === 'event_attendance') {
+            return [
+                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: currentEvent?.title || 'Event', href: null },
+                { label: 'Attendance', href: null }
+            ];
+        }
+        
+        if (sectionAttr === 'resources') {
+            return [{ label: 'Resource & Equipment Inventory', href: '/resources' }];
+        }
+        
+        if (sectionAttr === 'evaluation') {
+            return [{ label: 'Evaluation & Scoring System', href: '/evaluation' }];
+        }
+        
+        if (sectionAttr === 'certification') {
+            return [{ label: 'Certification Issuance', href: '/certification' }];
+        }
+        
+        return [{ label: 'Dashboard', href: '/dashboard' }];
+    };
 
-    const { title, description } = sectionHeader;
+    const breadcrumbs = getBreadcrumbs();
+    
+    // Generate page title from breadcrumbs
+    const getPageTitle = () => {
+        if (breadcrumbs.length === 1) {
+            return breadcrumbs[0].label;
+        }
+        // For multi-level breadcrumbs, combine them (e.g., "Training Module / Create" -> "Create Training Module")
+        const last = breadcrumbs[breadcrumbs.length - 1];
+        const parent = breadcrumbs[breadcrumbs.length - 2];
+        if (last.label === 'Create') {
+            return `Create ${parent.label}`;
+        }
+        if (last.label === 'Edit') {
+            return `Edit ${parent.label}`;
+        }
+        return last.label;
+    };
+    
+    const pageTitle = getPageTitle();
 
     ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
             <Toast.Provider swipeDirection="right">
                 <SidebarLayout role={role} currentSection={navSection}>
                     <div className="max-w-6xl mx-auto">
-                        <h1 className="text-2xl font-semibold text-slate-800 mb-2">
-                            {title}
+                        {/* Breadcrumb Navigation */}
+                        <nav className="flex items-center gap-2 text-sm text-slate-600 mb-4">
+                            {breadcrumbs.map((crumb, index) => (
+                                <React.Fragment key={index}>
+                                    {index > 0 && (
+                                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                                    )}
+                                    {crumb.href ? (
+                                        <a
+                                            href={crumb.href}
+                                            className="hover:text-slate-900 hover:underline underline-offset-2 transition-colors"
+                                        >
+                                            {crumb.label}
+                                        </a>
+                                    ) : (
+                                        <span className="text-slate-900 font-medium">
+                                            {crumb.label}
+                                        </span>
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </nav>
+                        
+                        {/* Page Title */}
+                        <h1 className="text-2xl font-semibold text-slate-800 mb-4">
+                            {pageTitle}
                         </h1>
-                        <p className="text-sm text-slate-600 mb-4">
-                            {description}
-                        </p>
 
                         {sectionAttr === 'dashboard' && (
                             <DashboardOverview modules={modules} events={events} participants={participants} role={role} />
@@ -218,9 +450,9 @@ if (rootElement) {
 
                         {sectionAttr === 'training' && (
                             role === 'PARTICIPANT' ? (
-                                <ParticipantTrainingModulesList modules={modules} />
+                                <ParticipantTrainingModulesList modules={modules || []} />
                             ) : (
-                                <TrainingModulesTable modules={modules} />
+                                <TrainingModulesTable modules={modules || []} />
                             )
                         )}
 
@@ -232,16 +464,22 @@ if (rootElement) {
                             <TrainingModuleEditForm module={currentModule} />
                         )}
 
-                        {sectionAttr === 'training_detail' && currentModule && (
-                            role === 'PARTICIPANT' ? (
-                                <ParticipantTrainingLessonView module={currentModule} />
+                        {sectionAttr === 'training_detail' && (
+                            currentModule ? (
+                                role === 'PARTICIPANT' ? (
+                                    <ParticipantTrainingLessonView module={currentModule} />
+                                ) : (
+                                    <TrainingModuleDetail module={currentModule} />
+                                )
                             ) : (
-                                <TrainingModuleDetail module={currentModule} />
+                                <div className="rounded-xl bg-white border border-slate-200 p-6 text-center">
+                                    <p className="text-slate-600">Loading module details...</p>
+                                </div>
                             )
                         )}
 
                         {sectionAttr === 'scenario' && (
-                            <ScenariosTable scenarios={scenarios} role={role} />
+                            <ScenariosTable scenarios={scenarios || []} role={role} />
                         )}
 
                         {sectionAttr === 'scenario_create' && (
@@ -252,8 +490,14 @@ if (rootElement) {
                             <ScenarioEditForm scenario={currentScenario} modules={modules} />
                         )}
 
-                        {sectionAttr === 'scenario_detail' && currentScenario && (
-                            <ScenarioDetail scenario={currentScenario} />
+                        {sectionAttr === 'scenario_detail' && (
+                            currentScenario ? (
+                                <ScenarioDetail scenario={currentScenario} />
+                            ) : (
+                                <div className="rounded-xl bg-white border border-slate-200 p-6 text-center">
+                                    <p className="text-slate-600">Loading scenario details...</p>
+                                </div>
+                            )
                         )}
 
                         {sectionAttr === 'simulation' && (
@@ -273,27 +517,19 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'simulation_detail' && currentEvent && (
-                            <ParticipantSimulationEventDetail event={currentEvent} role={role} />
-                        )}
-
-                        {sectionAttr === 'resources' && (
-                            <ResourceInventory />
+                            <ParticipantSimulationEventDetail event={currentEvent} />
                         )}
 
                         {sectionAttr === 'participants' && (
-                            role === 'PARTICIPANT' ? (
-                                <ParticipantMyAttendance participant={currentParticipant || participants?.[0] || {}} />
-                            ) : (
-                                <ParticipantRegistrationAttendanceModule events={events} participants={participants} role={role} />
-                            )
-                        )}
-
-                        {sectionAttr === 'my_attendance' && role === 'PARTICIPANT' && (
-                            <ParticipantMyAttendance participant={currentParticipant || participants?.[0] || {}} />
+                            <ParticipantRegistrationAttendanceModule events={events} participants={participants} role={role} />
                         )}
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
                             <ParticipantDetail participant={currentParticipant} />
+                        )}
+
+                        {sectionAttr === 'resources' && (
+                            <ResourceInventory />
                         )}
 
                         {sectionAttr === 'event_registrations' && currentEvent && registrations && (
@@ -516,40 +752,60 @@ function DashboardOverview({ modules, events, participants, role }) {
     );
 }
 
-function TrainingModulesTable({ modules }) {
+function TrainingModulesTable({ modules = [] }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('all');
-    const [difficultyFilter, setDifficultyFilter] = React.useState('all');
+    const [showFilters, setShowFilters] = React.useState(false);
+    const [filterStatus, setFilterStatus] = React.useState('');
+    const [filterDifficulty, setFilterDifficulty] = React.useState('');
+    const [filterDisasterType, setFilterDisasterType] = React.useState('');
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 10; // Fixed to 10 items per page
+    const filterRef = React.useRef(null);
 
-    // Normalize and filter modules
-    const normalizedModules = modules.map((module) => ({
-        ...module,
-        _title: (module.title || '').toLowerCase(),
-        _category: (module.category || '').toLowerCase(),
-    }));
+    // Get unique disaster types for filter
+    const disasterTypes = [...new Set((modules || []).map(m => m.category).filter(Boolean))];
 
-    const filteredModules = normalizedModules.filter((module) => {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-            query === '' ||
-            module._title.includes(query) ||
-            module._category.includes(query);
-        const matchesStatus = statusFilter === 'all' || module.status === statusFilter;
-        const matchesDifficulty = difficultyFilter === 'all' || module.difficulty === difficultyFilter;
+    // Close filter dropdown when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (filterRef.current && !filterRef.current.contains(event.target)) {
+                setShowFilters(false);
+            }
+        };
 
-        return matchesSearch && matchesStatus && matchesDifficulty;
+        if (showFilters) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFilters]);
+
+    // Filter modules
+    const filteredModules = (modules || []).filter((module) => {
+        const matchesSearch = !searchQuery || 
+            module.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (module.description && module.description.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesStatus = !filterStatus || module.status === filterStatus;
+        const matchesDifficulty = !filterDifficulty || module.difficulty === filterDifficulty;
+        const matchesDisasterType = !filterDisasterType || module.category === filterDisasterType;
+        
+        return matchesSearch && matchesStatus && matchesDifficulty && matchesDisasterType;
     });
 
-    const searchSuggestions = searchQuery
-        ? normalizedModules
-              .filter((module) =>
-                  module._title.startsWith(searchQuery.toLowerCase()) ||
-                  module._category.startsWith(searchQuery.toLowerCase())
-              )
-              .slice(0, 6)
-        : [];
+    // Pagination
+    const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedModules = filteredModules.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
 
     return (
         <div>
@@ -562,65 +818,99 @@ function TrainingModulesTable({ modules }) {
                     + Create Training Module
                 </a>
             </div>
-
-            {/* Search & Filters */}
-            <div className="mb-4 space-y-4 bg-white p-4 rounded-lg border border-slate-200">
-                <div className="flex gap-3">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search by module title or disaster type..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        {searchSuggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
-                                {searchSuggestions.map((mod) => (
-                                    <button
-                                        key={mod.id}
-                                        type="button"
-                                        onClick={() => setSearchQuery(mod.title)}
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50"
-                                    >
-                                        <div className="font-medium text-slate-900">{mod.title}</div>
-                                        <div className="text-xs text-slate-500">{mod.category || 'No category'} • {mod.difficulty}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+            
+            {/* Search and Filter Bar */}
+            <div className="mb-4 flex items-center gap-3">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search modules..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                <div className="relative">
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                     >
-                        <option value="all">All Status</option>
-                        <option value="draft">Draft</option>
-                        <option value="published">Published</option>
-                        <option value="archived">Archived</option>
-                    </select>
-
-                    <select
-                        value={difficultyFilter}
-                        onChange={(e) => setDifficultyFilter(e.target.value)}
-                        className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                        <option value="all">All Difficulty Levels</option>
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                    </select>
+                        <Filter className="w-4 h-4" />
+                        Filters
+                    </button>
+                    {showFilters && (
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Status
+                                    </label>
+                                    <select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">All Status</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="published">Published</option>
+                                        <option value="unpublished">Unpublished</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Difficulty
+                                    </label>
+                                    <select
+                                        value={filterDifficulty}
+                                        onChange={(e) => setFilterDifficulty(e.target.value)}
+                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">All Difficulties</option>
+                                        <option value="Beginner">Beginner</option>
+                                        <option value="Intermediate">Intermediate</option>
+                                        <option value="Advanced">Advanced</option>
+                                    </select>
+                                </div>
+                                {disasterTypes.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                            Disaster Type
+                                        </label>
+                                        <select
+                                            value={filterDisasterType}
+                                            onChange={(e) => setFilterDisasterType(e.target.value)}
+                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            <option value="">All Types</option>
+                                            {disasterTypes.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        setFilterStatus('');
+                                        setFilterDifficulty('');
+                                        setFilterDisasterType('');
+                                    }}
+                                    className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
+                                >
+                                    Clear filters
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
                         <tr>
                             <th className="px-4 py-2 text-left">Title</th>
                             <th className="px-4 py-2 text-left">Disaster type</th>
@@ -635,14 +925,16 @@ function TrainingModulesTable({ modules }) {
                         {filteredModules.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={6}
+                                    colSpan={7}
                                     className="px-4 py-6 text-center text-slate-500 text-sm"
                                 >
-                                    No training modules found matching your filters.
+                                    {(modules || []).length === 0 
+                                        ? 'No training modules yet. Click "Create Training Module" to add one.'
+                                        : 'No modules match your search or filter criteria.'}
                                 </td>
                             </tr>
                         ) : (
-                            filteredModules.map((module) => (
+                            paginatedModules.map((module) => (
                                 <tr
                                     key={module.id}
                                     className="border-t border-slate-100 hover:bg-slate-50"
@@ -688,9 +980,10 @@ function TrainingModulesTable({ modules }) {
                                         <div className="flex gap-2 justify-start">
                                             <a
                                                 href={`/training-modules/${module.id}/edit`}
-                                                className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                title="Edit"
                                             >
-                                                Edit
+                                                <Pencil className="w-3.5 h-3.5" />
                                             </a>
                                             <form
                                                 method="POST"
@@ -715,9 +1008,10 @@ function TrainingModulesTable({ modules }) {
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <button
                                                     type="submit"
-                                                    className="inline-flex items-center rounded-full border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                                                    className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
+                                                    title="Archive"
                                                 >
-                                                    Archive
+                                                    <Archive className="w-3.5 h-3.5" />
                                                 </button>
                                             </form>
                                             <form
@@ -744,9 +1038,10 @@ function TrainingModulesTable({ modules }) {
                                                 <input type="hidden" name="_method" value="DELETE" />
                                                 <button
                                                     type="submit"
-                                                    className="inline-flex items-center rounded-full border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
+                                                    className="inline-flex items-center justify-center rounded-md border border-rose-500/60 bg-rose-50 p-2 text-rose-800 hover:bg-rose-100 transition-colors"
+                                                    title="Delete"
                                                 >
-                                                    Delete
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             </form>
                                         </div>
@@ -756,6 +1051,15 @@ function TrainingModulesTable({ modules }) {
                         )}
                     </tbody>
                 </table>
+                {filteredModules.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={filteredModules.length}
+                    />
+                )}
             </div>
         </div>
     );
@@ -763,35 +1067,6 @@ function TrainingModulesTable({ modules }) {
 
 function ParticipantTrainingModulesList({ modules }) {
     const publishedModules = modules || [];
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [difficultyFilter, setDifficultyFilter] = React.useState('all');
-
-    // Normalize and filter modules
-    const normalizedModules = publishedModules.map((module) => ({
-        ...module,
-        _title: (module.title || '').toLowerCase(),
-        _category: (module.category || '').toLowerCase(),
-    }));
-
-    const filteredModules = normalizedModules.filter((module) => {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-            query === '' ||
-            module._title.includes(query) ||
-            module._category.includes(query);
-        const matchesDifficulty = difficultyFilter === 'all' || module.difficulty === difficultyFilter;
-
-        return matchesSearch && matchesDifficulty;
-    });
-
-    const searchSuggestions = searchQuery
-        ? normalizedModules
-              .filter((module) =>
-                  module._title.startsWith(searchQuery.toLowerCase()) ||
-                  module._category.startsWith(searchQuery.toLowerCase())
-              )
-              .slice(0, 6)
-        : [];
 
     return (
         <div className="space-y-4">
@@ -799,79 +1074,27 @@ function ParticipantTrainingModulesList({ modules }) {
             <p className="text-sm text-slate-600 mb-2">
                 Browse available training modules. Click a module to start the first lesson.
             </p>
-
-            {/* Search and Filter */}
-            <div className="bg-white rounded-lg border border-slate-200 p-4">
-                <div className="space-y-3">
-                    {/* Search Bar with Dropdown */}
-                    <div className="relative">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search modules by title or category..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                            />
-                        </div>
-                        {/* Search Suggestions Dropdown */}
-                        {searchSuggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                                {searchSuggestions.map((module) => (
-                                    <button
-                                        key={module.id}
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 border-b border-slate-100 last:border-0"
-                                        onClick={() => setSearchQuery(module.title)}
-                                    >
-                                        <div className="font-medium text-slate-900">{module.title}</div>
-                                        <div className="text-xs text-slate-500">
-                                            {module.category} • {module.difficulty}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Difficulty Filter */}
-                    <select
-                        value={difficultyFilter}
-                        onChange={(e) => setDifficultyFilter(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                    >
-                        <option value="all">All Difficulty Levels</option>
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                    </select>
-                </div>
-            </div>
-
-            {filteredModules.length === 0 ? (
+            {publishedModules.length === 0 ? (
                 <div className="rounded-xl bg-white border border-slate-200 px-4 py-6 text-sm text-slate-500 text-center shadow-sm">
-                    {publishedModules.length === 0
-                        ? 'No training modules are available yet. Please check back later.'
-                        : 'No modules match your search criteria.'}
+                    No training modules are available yet. Please check back later.
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredModules.map((module) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {publishedModules.map((module) => (
                         <a
                             key={module.id}
                             href={`/training-modules/${module.id}`}
-                            className="group rounded-lg bg-slate-700 shadow-md p-5 flex flex-col gap-4 text-white h-[320px] overflow-hidden hover:bg-slate-600 transition-colors"
+                            className="group rounded-xl bg-white border border-slate-200 shadow-sm p-4 flex flex-col gap-2 hover:border-emerald-400 hover:shadow-md transition-all"
                         >
-                            <h3 className="text-base font-semibold mb-2 line-clamp-2">
+                            <h3 className="text-sm font-semibold text-slate-800 group-hover:text-emerald-700">
                                 {module.title}
                             </h3>
                             {module.description && (
-                                <p className="text-sm text-slate-300 leading-relaxed line-clamp-5 whitespace-pre-line">
+                                <p className="text-xs text-slate-600 line-clamp-3 whitespace-pre-line">
                                     {module.description}
                                 </p>
                             )}
-                            <div className="mt-auto flex items-center justify-between text-[0.75rem] text-slate-300 pt-1">
+                            <div className="mt-auto flex items-center justify-between text-[0.7rem] text-slate-500 pt-1">
                                 <span>
                                     Difficulty: {module.difficulty || '—'}
                                 </span>
@@ -1287,76 +1510,9 @@ function StatusToast({ message }) {
 function TrainingModuleCreateForm() {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [isDirty, setIsDirty] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const formRef = React.useRef(null);
-    const skipPromptRef = React.useRef(false);
-
-    React.useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            if (skipPromptRef.current) return;
-            if (isDirty && !isSubmitting) {
-                event.preventDefault();
-                event.returnValue = '';
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [isDirty, isSubmitting]);
-
-    React.useEffect(() => {
-        const handleNavigation = (event) => {
-            if (!isDirty || isSubmitting || skipPromptRef.current) return;
-
-            const anchor = event.target.closest('a');
-            if (!anchor) return;
-
-            const href = anchor.getAttribute('href');
-            if (!href || href.startsWith('#') || anchor.target === '_blank') return;
-
-            const isSameOrigin = anchor.origin === window.location.origin;
-            if (!isSameOrigin) return;
-
-            event.preventDefault();
-
-            Swal.fire({
-                title: 'You have unsaved changes',
-                text: 'Do you want to save before leaving?',
-                icon: 'warning',
-                showDenyButton: true,
-                showCancelButton: true,
-                confirmButtonText: 'Save',
-                denyButtonText: 'Discard',
-                cancelButtonText: 'Continue editing',
-                confirmButtonColor: '#059669',
-                denyButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    setIsSubmitting(true);
-                    setIsDirty(false);
-                    formRef.current?.submit?.();
-                } else if (result.isDenied) {
-                    skipPromptRef.current = true;
-                    window.location.href = href;
-                }
-            });
-        };
-
-        document.addEventListener('click', handleNavigation);
-        return () => document.removeEventListener('click', handleNavigation);
-    }, [isDirty, isSubmitting]);
-
-    const handleFormChange = () => setIsDirty(true);
-    const handleFormSubmit = () => {
-        setIsSubmitting(true);
-        setIsDirty(false);
-        skipPromptRef.current = true;
-    };
 
     return (
-        <div className="max-w-xl py-2">
+        <div className="max-w-5xl py-2">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">
                 Create Training Module
             </h2>
@@ -1364,9 +1520,6 @@ function TrainingModuleCreateForm() {
                 method="POST"
                 action="/training-modules"
                 className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-                ref={formRef}
-                onChange={handleFormChange}
-                onSubmit={handleFormSubmit}
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <div>
@@ -1374,7 +1527,7 @@ function TrainingModuleCreateForm() {
                         className="block text-xs font-semibold text-slate-600 mb-1"
                         htmlFor="title"
                     >
-                        Title
+                        Title <span className="text-red-500">*</span>
                     </label>
                     <input
                         id="title"
@@ -1490,76 +1643,9 @@ function TrainingModuleCreateForm() {
 function TrainingModuleEditForm({ module }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [isDirty, setIsDirty] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const formRef = React.useRef(null);
-    const skipPromptRef = React.useRef(false);
-
-    React.useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            if (skipPromptRef.current) return;
-            if (isDirty && !isSubmitting) {
-                event.preventDefault();
-                event.returnValue = '';
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [isDirty, isSubmitting]);
-
-    React.useEffect(() => {
-        const handleNavigation = (event) => {
-            if (!isDirty || isSubmitting || skipPromptRef.current) return;
-
-            const anchor = event.target.closest('a');
-            if (!anchor) return;
-
-            const href = anchor.getAttribute('href');
-            if (!href || href.startsWith('#') || anchor.target === '_blank') return;
-
-            const isSameOrigin = anchor.origin === window.location.origin;
-            if (!isSameOrigin) return;
-
-            event.preventDefault();
-
-            Swal.fire({
-                title: 'You have unsaved changes',
-                text: 'Do you want to save before leaving?',
-                icon: 'warning',
-                showDenyButton: true,
-                showCancelButton: true,
-                confirmButtonText: 'Save',
-                denyButtonText: 'Discard',
-                cancelButtonText: 'Continue editing',
-                confirmButtonColor: '#059669',
-                denyButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    setIsSubmitting(true);
-                    setIsDirty(false);
-                    formRef.current?.submit?.();
-                } else if (result.isDenied) {
-                    skipPromptRef.current = true;
-                    window.location.href = href;
-                }
-            });
-        };
-
-        document.addEventListener('click', handleNavigation);
-        return () => document.removeEventListener('click', handleNavigation);
-    }, [isDirty, isSubmitting]);
-
-    const handleFormChange = () => setIsDirty(true);
-    const handleFormSubmit = () => {
-        setIsSubmitting(true);
-        setIsDirty(false);
-        skipPromptRef.current = true;
-    };
 
     return (
-        <div className="max-w-4xl py-2">
+        <div className="max-w-5xl py-2">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">
                 Edit Training Module
             </h2>
@@ -1567,9 +1653,6 @@ function TrainingModuleEditForm({ module }) {
                 method="POST"
                 action={`/training-modules/${module.id}`}
                 className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-                ref={formRef}
-                onChange={handleFormChange}
-                onSubmit={handleFormSubmit}
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="_method" value="PUT" />
@@ -1782,9 +1865,10 @@ function TrainingModuleDetail({ module }) {
                     </div>
                     <a
                         href={`/training-modules/${module.id}/edit`}
-                        className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                        title="Edit module settings"
                     >
-                        Edit
+                        <Pencil className="w-4 h-4" />
                     </a>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-600">
@@ -2007,7 +2091,7 @@ function TrainingModuleDetail({ module }) {
                                 htmlFor="lesson_title"
                                 className="block text-[0.7rem] font-semibold text-slate-600 mb-1"
                             >
-                                Lesson title
+                                Lesson title <span className="text-red-500">*</span>
                             </label>
                             <input
                                 id="lesson_title"
@@ -2076,9 +2160,10 @@ function TrainingModuleDetail({ module }) {
                                         {!isEditMode && (
                                             <button
                                                 onClick={handleEditClick}
-                                                className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                title="Edit"
                                             >
-                                                Edit
+                                                <Pencil className="w-4 h-4" />
                                             </button>
                                         )}
                                         <Dialog.Close asChild>
@@ -2233,41 +2318,61 @@ function TrainingModuleDetail({ module }) {
     );
 }
 
-function ScenariosTable({ scenarios, role }) {
+function ScenariosTable({ scenarios = [], role }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const canDelete = role === 'LGU_ADMIN';
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('all');
-    const [difficultyFilter, setDifficultyFilter] = React.useState('all');
+    const [showFilters, setShowFilters] = React.useState(false);
+    const [filterStatus, setFilterStatus] = React.useState('');
+    const [filterDifficulty, setFilterDifficulty] = React.useState('');
+    const [filterDisasterType, setFilterDisasterType] = React.useState('');
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 10; // Fixed to 10 items per page
+    const filterRef = React.useRef(null);
 
-    // Normalize and filter scenarios
-    const normalizedScenarios = scenarios.map((scenario) => ({
-        ...scenario,
-        _title: (scenario.title || '').toLowerCase(),
-        _disaster: (scenario.disaster_type || '').toLowerCase(),
-    }));
+    // Get unique values for filters
+    const disasterTypes = [...new Set((scenarios || []).map(s => s.disaster_type).filter(Boolean))];
 
-    const filteredScenarios = normalizedScenarios.filter((scenario) => {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-            query === '' ||
-            scenario._title.includes(query) ||
-            scenario._disaster.includes(query);
-        const matchesStatus = statusFilter === 'all' || scenario.status === statusFilter;
-        const matchesDifficulty = difficultyFilter === 'all' || scenario.difficulty === difficultyFilter;
+    // Close filter dropdown when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (filterRef.current && !filterRef.current.contains(event.target)) {
+                setShowFilters(false);
+            }
+        };
 
-        return matchesSearch && matchesStatus && matchesDifficulty;
+        if (showFilters) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFilters]);
+
+    // Filter scenarios
+    const filteredScenarios = (scenarios || []).filter((scenario) => {
+        const matchesSearch = !searchQuery || 
+            scenario.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (scenario.short_description && scenario.short_description.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesStatus = !filterStatus || scenario.status === filterStatus;
+        const matchesDifficulty = !filterDifficulty || scenario.difficulty === filterDifficulty;
+        const matchesDisasterType = !filterDisasterType || scenario.disaster_type === filterDisasterType;
+        
+        return matchesSearch && matchesStatus && matchesDifficulty && matchesDisasterType;
     });
 
-    const searchSuggestions = searchQuery
-        ? normalizedScenarios
-              .filter((scenario) =>
-                  scenario._title.startsWith(searchQuery.toLowerCase()) ||
-                  scenario._disaster.startsWith(searchQuery.toLowerCase())
-              )
-              .slice(0, 6)
-        : [];
+    // Pagination
+    const totalPages = Math.ceil(filteredScenarios.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedScenarios = filteredScenarios.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
 
     return (
         <div>
@@ -2280,65 +2385,98 @@ function ScenariosTable({ scenarios, role }) {
                     + Create Scenario
                 </a>
             </div>
-
-            {/* Search & Filters */}
-            <div className="mb-4 space-y-4 bg-white p-4 rounded-lg border border-slate-200">
-                <div className="flex gap-3">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search by scenario title or disaster type..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        {searchSuggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
-                                {searchSuggestions.map((scn) => (
-                                    <button
-                                        key={scn.id}
-                                        type="button"
-                                        onClick={() => setSearchQuery(scn.title)}
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50"
-                                    >
-                                        <div className="font-medium text-slate-900">{scn.title}</div>
-                                        <div className="text-xs text-slate-500">{scn.disaster_type} • {scn.difficulty}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+            
+            {/* Search and Filter Bar */}
+            <div className="mb-4 flex items-center gap-3">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search scenarios..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                <div className="relative" ref={filterRef}>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                     >
-                        <option value="all">All Status</option>
-                        <option value="draft">Draft</option>
-                        <option value="published">Published</option>
-                        <option value="archived">Archived</option>
-                    </select>
-
-                    <select
-                        value={difficultyFilter}
-                        onChange={(e) => setDifficultyFilter(e.target.value)}
-                        className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                        <option value="all">All Difficulty Levels</option>
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                    </select>
+                        <Filter className="w-4 h-4" />
+                        Filters
+                    </button>
+                    {showFilters && (
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Status
+                                    </label>
+                                    <select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">All Status</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="published">Published</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Difficulty
+                                    </label>
+                                    <select
+                                        value={filterDifficulty}
+                                        onChange={(e) => setFilterDifficulty(e.target.value)}
+                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">All Difficulties</option>
+                                        <option value="Basic">Basic</option>
+                                        <option value="Intermediate">Intermediate</option>
+                                        <option value="Advanced">Advanced</option>
+                                    </select>
+                                </div>
+                                {disasterTypes.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                            Disaster Type
+                                        </label>
+                                        <select
+                                            value={filterDisasterType}
+                                            onChange={(e) => setFilterDisasterType(e.target.value)}
+                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            <option value="">All Types</option>
+                                            {disasterTypes.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        setFilterStatus('');
+                                        setFilterDifficulty('');
+                                        setFilterDisasterType('');
+                                    }}
+                                    className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
+                                >
+                                    Clear filters
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
                         <tr>
                             <th className="px-4 py-2 text-left">Title</th>
                             <th className="px-4 py-2 text-left">Training Module</th>
@@ -2356,11 +2494,13 @@ function ScenariosTable({ scenarios, role }) {
                                     colSpan={7}
                                     className="px-4 py-6 text-center text-slate-500 text-sm"
                                 >
-                                    No scenarios found matching your filters.
+                                    {(scenarios || []).length === 0 
+                                        ? 'No scenarios yet. Click "Create Scenario" to add one.'
+                                        : 'No scenarios match your search or filter criteria.'}
                                 </td>
                             </tr>
                         ) : (
-                            filteredScenarios.map((s) => (
+                            paginatedScenarios.map((s) => (
                                 <tr
                                     key={s.id}
                                     className="border-t border-slate-100 hover:bg-slate-50"
@@ -2403,9 +2543,10 @@ function ScenariosTable({ scenarios, role }) {
                                         <div className="flex gap-2 items-center">
                                             <a
                                                 href={`/scenarios/${s.id}/edit`}
-                                                className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                title="Edit"
                                             >
-                                                Edit
+                                                <Pencil className="w-3.5 h-3.5" />
                                             </a>
 
                                             <form
@@ -2431,13 +2572,14 @@ function ScenariosTable({ scenarios, role }) {
                                                     type="submit"
                                                     disabled={s.status === 'published'}
                                                     className={[
-                                                        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold transition-colors',
+                                                        'inline-flex items-center justify-center rounded-md border p-2 transition-colors',
                                                         s.status === 'published'
                                                             ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
                                                             : 'border-sky-500/60 bg-sky-50 text-sky-800 hover:bg-sky-100',
                                                     ].join(' ')}
+                                                    title="Publish"
                                                 >
-                                                    Publish
+                                                    <Send className="w-3.5 h-3.5" />
                                                 </button>
                                             </form>
 
@@ -2462,9 +2604,10 @@ function ScenariosTable({ scenarios, role }) {
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <button
                                                     type="submit"
-                                                    className="inline-flex items-center rounded-full border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                                                    className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
+                                                    title="Archive"
                                                 >
-                                                    Archive
+                                                    <Archive className="w-3.5 h-3.5" />
                                                 </button>
                                             </form>
 
@@ -2491,9 +2634,10 @@ function ScenariosTable({ scenarios, role }) {
                                                     <input type="hidden" name="_method" value="DELETE" />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
+                                                        className="inline-flex items-center justify-center rounded-md border border-rose-500/60 bg-rose-50 p-2 text-rose-800 hover:bg-rose-100 transition-colors"
+                                                        title="Delete"
                                                     >
-                                                        Delete
+                                                        <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
                                                 </form>
                                             )}
@@ -2504,6 +2648,15 @@ function ScenariosTable({ scenarios, role }) {
                         )}
                     </tbody>
                 </table>
+                {filteredScenarios.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={filteredScenarios.length}
+                    />
+                )}
             </div>
         </div>
     );
@@ -2513,156 +2666,13 @@ function ScenarioCreateForm({ modules }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [selectedModuleId, setSelectedModuleId] = React.useState('');
-    const [isDirty, setIsDirty] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [isGenerating, setIsGenerating] = React.useState(false);
-    const formRef = React.useRef(null);
-    const skipPromptRef = React.useRef(false);
     const publishedModules = (modules || []).filter((m) => m.status === 'published');
     const selectedModule =
         publishedModules.find((m) => String(m.id) === String(selectedModuleId)) || null;
     const derivedDisasterType = selectedModule?.disaster_type || '';
 
-    React.useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            if (skipPromptRef.current) return;
-            if (isDirty && !isSubmitting) {
-                event.preventDefault();
-                event.returnValue = '';
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [isDirty, isSubmitting]);
-
-    React.useEffect(() => {
-        const handleNavigation = (event) => {
-            if (!isDirty || isSubmitting || skipPromptRef.current) return;
-
-            const anchor = event.target.closest('a');
-            if (!anchor) return;
-
-            const href = anchor.getAttribute('href');
-            if (!href || href.startsWith('#') || anchor.target === '_blank') return;
-
-            const isSameOrigin = anchor.origin === window.location.origin;
-            if (!isSameOrigin) return;
-
-            event.preventDefault();
-
-            Swal.fire({
-                title: 'You have unsaved changes',
-                text: 'Do you want to save before leaving?',
-                icon: 'warning',
-                showDenyButton: true,
-                showCancelButton: true,
-                confirmButtonText: 'Save',
-                denyButtonText: 'Discard',
-                cancelButtonText: 'Continue editing',
-                confirmButtonColor: '#059669',
-                denyButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    setIsSubmitting(true);
-                    setIsDirty(false);
-                    formRef.current?.submit?.();
-                } else if (result.isDenied) {
-                    skipPromptRef.current = true;
-                    window.location.href = href;
-                }
-            });
-        };
-
-        document.addEventListener('click', handleNavigation);
-        return () => document.removeEventListener('click', handleNavigation);
-    }, [isDirty, isSubmitting]);
-
-    const handleFormChange = () => setIsDirty(true);
-    const handleFormSubmit = () => {
-        setIsSubmitting(true);
-        setIsDirty(false);
-        skipPromptRef.current = true;
-    };
-
-    const handleGenerateWithAi = async () => {
-        if (!selectedModuleId) {
-            Swal.fire({
-                title: 'Select a Module',
-                text: 'Please select a training module first.',
-                icon: 'warning',
-                confirmButtonText: 'OK',
-            });
-            return;
-        }
-
-        setIsGenerating(true);
-        try {
-            const difficultySelect = document.getElementById('scenario_difficulty');
-            const difficulty = difficultySelect?.value || 'Medium';
-
-            const response = await fetch('/scenarios/generate-with-ai', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
-                body: JSON.stringify({
-                    disaster_type: derivedDisasterType,
-                    difficulty: difficulty === 'Basic' ? 'Easy' : difficulty === 'Intermediate' ? 'Medium' : 'Hard',
-                }),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.message || 'Failed to generate scenario');
-            }
-
-            const data = result.data;
-
-            // Fill form fields with generated data
-            document.getElementById('scenario_title').value = data.title;
-            document.getElementById('scenario_short_description').value = data.short_description;
-            document.getElementById('affected_area').value = data.affected_area;
-            document.getElementById('incident_time_text').value = data.incident_time_text;
-            document.getElementById('general_situation').value = data.general_situation;
-            document.getElementById('severity_level').value = data.severity_level;
-            document.getElementById('intended_participants').value = data.intended_participants;
-            
-            const injuredInput = document.querySelector('input[name="injured_victims_count"]');
-            if (injuredInput) injuredInput.value = data.injured_victims_count;
-            
-            const trappedInput = document.querySelector('input[name="trapped_persons_count"]');
-            if (trappedInput) trappedInput.value = data.trapped_persons_count;
-            
-            document.getElementById('infrastructure_damage').value = data.infrastructure_damage;
-            document.getElementById('communication_status').value = data.communication_status;
-
-            setIsDirty(true);
-
-            Swal.fire({
-                title: 'Scenario Generated!',
-                text: 'Your scenario has been generated with AI. Review and customize as needed before saving.',
-                icon: 'success',
-                confirmButtonText: 'Got it',
-            });
-        } catch (error) {
-            console.error('Generation error:', error);
-            Swal.fire({
-                title: 'Generation Failed',
-                text: error.message || 'Unable to generate scenario. Please make sure you have a valid Gemini API key configured.',
-                icon: 'error',
-                confirmButtonText: 'OK',
-            });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
     return (
-        <div className="max-w-xl py-2">
+        <div className="py-2">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">
                 Create Scenario
             </h2>
@@ -2670,9 +2680,6 @@ function ScenarioCreateForm({ modules }) {
                 method="POST"
                 action="/scenarios"
                 className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-                ref={formRef}
-                onChange={handleFormChange}
-                onSubmit={handleFormSubmit}
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="disaster_type" value={derivedDisasterType} />
@@ -2681,7 +2688,7 @@ function ScenarioCreateForm({ modules }) {
                         className="block text-xs font-semibold text-slate-600 mb-1"
                         htmlFor="scenario_title"
                     >
-                        Title
+                        Title <span className="text-red-500">*</span>
                     </label>
                     <input
                         id="scenario_title"
@@ -2855,7 +2862,7 @@ function ScenarioCreateForm({ modules }) {
                             className="block text-xs font-semibold text-slate-600 mb-1"
                             htmlFor="training_module_id"
                         >
-                            Training Module (required)
+                            Training Module <span className="text-red-500">*</span>
                         </label>
                         <select
                             id="training_module_id"
@@ -2881,11 +2888,12 @@ function ScenarioCreateForm({ modules }) {
                             className="block text-xs font-semibold text-slate-600 mb-1"
                             htmlFor="scenario_difficulty"
                         >
-                            Difficulty
+                            Difficulty <span className="text-red-500">*</span>
                         </label>
                         <select
                             id="scenario_difficulty"
                             name="difficulty"
+                            required
                             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                             <option value="Basic">Basic</option>
@@ -2930,24 +2938,6 @@ function ScenarioCreateForm({ modules }) {
                         Cancel
                     </a>
                     <button
-                        type="button"
-                        onClick={handleGenerateWithAi}
-                        disabled={!selectedModuleId || isGenerating}
-                        className="inline-flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 hover:bg-blue-100 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 text-blue-700 text-sm font-medium px-4 py-1.5 transition-colors"
-                    >
-                        {isGenerating ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                                <span>Generating...</span>
-                            </>
-                        ) : (
-                            <>
-                                <span>✨</span>
-                                <span>AI Generate</span>
-                            </>
-                        )}
-                    </button>
-                    <button
                         type="submit"
                         className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
                     >
@@ -2965,79 +2955,12 @@ function ScenarioEditForm({ scenario, modules }) {
     const [selectedModuleId, setSelectedModuleId] = React.useState(
         String(scenario.training_module_id || '')
     );
-    const [isDirty, setIsDirty] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const formRef = React.useRef(null);
-    const skipPromptRef = React.useRef(false);
     const selectedModule =
         (modules || []).find((m) => String(m.id) === String(selectedModuleId)) || null;
     const derivedDisasterType = selectedModule?.disaster_type || scenario.disaster_type || '';
 
-    React.useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            if (skipPromptRef.current) return;
-            if (isDirty && !isSubmitting) {
-                event.preventDefault();
-                event.returnValue = '';
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [isDirty, isSubmitting]);
-
-    React.useEffect(() => {
-        const handleNavigation = (event) => {
-            if (!isDirty || isSubmitting || skipPromptRef.current) return;
-
-            const anchor = event.target.closest('a');
-            if (!anchor) return;
-
-            const href = anchor.getAttribute('href');
-            if (!href || href.startsWith('#') || anchor.target === '_blank') return;
-
-            const isSameOrigin = anchor.origin === window.location.origin;
-            if (!isSameOrigin) return;
-
-            event.preventDefault();
-
-            Swal.fire({
-                title: 'You have unsaved changes',
-                text: 'Do you want to save before leaving?',
-                icon: 'warning',
-                showDenyButton: true,
-                showCancelButton: true,
-                confirmButtonText: 'Save',
-                denyButtonText: 'Discard',
-                cancelButtonText: 'Continue editing',
-                confirmButtonColor: '#059669',
-                denyButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    setIsSubmitting(true);
-                    setIsDirty(false);
-                    formRef.current?.submit?.();
-                } else if (result.isDenied) {
-                    skipPromptRef.current = true;
-                    window.location.href = href;
-                }
-            });
-        };
-
-        document.addEventListener('click', handleNavigation);
-        return () => document.removeEventListener('click', handleNavigation);
-    }, [isDirty, isSubmitting]);
-
-    const handleFormChange = () => setIsDirty(true);
-    const handleFormSubmit = () => {
-        setIsSubmitting(true);
-        setIsDirty(false);
-        skipPromptRef.current = true;
-    };
-
     return (
-        <div className="max-w-xl py-2">
+        <div className="py-2">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">
                 Edit Scenario
             </h2>
@@ -3045,9 +2968,6 @@ function ScenarioEditForm({ scenario, modules }) {
                 method="POST"
                 action={`/scenarios/${scenario.id}`}
                 className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-                ref={formRef}
-                onChange={handleFormChange}
-                onSubmit={handleFormSubmit}
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="_method" value="PUT" />
@@ -3393,9 +3313,10 @@ function ScenarioDetail({ scenario }) {
                     </div>
                     <a
                         href={`/scenarios/${scenario.id}/edit`}
-                        className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                        title="Edit scenario"
                     >
-                        Edit scenario
+                        <Pencil className="w-4 h-4" />
                     </a>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-600">
@@ -3766,14 +3687,62 @@ function ScenarioDetail({ scenario }) {
 
 // Simulation Events Components
 function SimulationEventsTable({ events, role }) {
-    console.log('SimulationEventsTable rendered', { events, role });
-    
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [autoApprovalEnabled, setAutoApprovalEnabled] = React.useState(false);
     const [isLoadingToggle, setIsLoadingToggle] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('all');
-    const [categoryFilter, setCategoryFilter] = React.useState('all');
+    const [showFilters, setShowFilters] = React.useState(false);
+    const [filterStatus, setFilterStatus] = React.useState('');
+    const [filterDisasterType, setFilterDisasterType] = React.useState('');
+    const [filterCategory, setFilterCategory] = React.useState('');
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 10; // Fixed to 10 items per page
+    const filterRef = React.useRef(null);
+
+    // Get unique values for filters
+    const disasterTypes = [...new Set(events.map(e => e.disaster_type).filter(Boolean))];
+    const categories = [...new Set(events.map(e => e.event_category).filter(Boolean))];
+
+    // Close filter dropdown when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (filterRef.current && !filterRef.current.contains(event.target)) {
+                setShowFilters(false);
+            }
+        };
+
+        if (showFilters) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFilters]);
+
+    // Filter events
+    const filteredEvents = events.filter((event) => {
+        const matchesSearch = !searchQuery || 
+            event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (event.location && event.location.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesStatus = !filterStatus || event.status === filterStatus;
+        const matchesDisasterType = !filterDisasterType || event.disaster_type === filterDisasterType;
+        const matchesCategory = !filterCategory || event.event_category === filterCategory;
+        
+        return matchesSearch && matchesStatus && matchesDisasterType && matchesCategory;
+    });
+
+    // Pagination
+    const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterStatus, filterDisasterType, filterCategory]);
 
     // Load initial auto-approval setting
     React.useEffect(() => {
@@ -3819,76 +3788,6 @@ function SimulationEventsTable({ events, role }) {
         }
     };
 
-    // Helper functions (defined before usage)
-    const todayIso = new Date();
-    todayIso.setHours(0, 0, 0, 0);
-
-    const hasEventEnded = (event) => {
-        if (!event.event_date || !event.end_time) return false;
-        
-        const [h, m] = (event.end_time || '23:59').split(':').map((v) => Number(v) || 0);
-        const eventEnd = new Date(event.event_date);
-        eventEnd.setHours(h, m, 0, 0);
-        
-        // Event is ended if current time >= end_time
-        return new Date() >= eventEnd;
-    };
-
-    const canStartEvent = (event) => {
-        if (event.status !== 'published') return false;
-        if (!event.event_date || !event.start_time || !event.end_time) return false;
-
-        const eventDate = new Date(event.event_date);
-        eventDate.setHours(0, 0, 0, 0);
-        if (eventDate.getTime() !== todayIso.getTime()) return false;
-
-        // Parse start and end times
-        const [startH, startM] = (event.start_time || '00:00').split(':').map((v) => Number(v) || 0);
-        const eventStart = new Date(event.event_date);
-        eventStart.setHours(startH, startM, 0, 0);
-
-        const [endH, endM] = (event.end_time || '23:59').split(':').map((v) => Number(v) || 0);
-        const eventEnd = new Date(event.event_date);
-        eventEnd.setHours(endH, endM, 0, 0);
-
-        const now = new Date();
-        // Can start only if current time is >= start_time AND < end_time
-        return now >= eventStart && now < eventEnd;
-    };
-
-    // Normalize and filter events
-    const normalizedEvents = (events || []).map((event) => ({
-        ...event,
-        _title: (event.title || '').toLowerCase(),
-        _disaster: (event.disaster_type || '').toLowerCase(),
-    }));
-
-    const filteredEvents = normalizedEvents.filter((event) => {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-            query === '' ||
-            event._title.includes(query) ||
-            event._disaster.includes(query);
-        
-        // Check if event has ended (for virtual "ended" status)
-        const hasEnded = hasEventEnded(event);
-        
-        const effectiveStatus = (hasEnded && (event.status === 'published' || event.status === 'ongoing')) ? 'ended' : event.status;
-        const matchesStatus = statusFilter === 'all' || effectiveStatus === statusFilter;
-        const matchesCategory = categoryFilter === 'all' || event.event_category === categoryFilter;
-
-        return matchesSearch && matchesStatus && matchesCategory;
-    });
-
-    const searchSuggestions = searchQuery
-        ? normalizedEvents
-              .filter((event) =>
-                  event._title.startsWith(searchQuery.toLowerCase()) ||
-                  event._disaster.startsWith(searchQuery.toLowerCase())
-              )
-              .slice(0, 6)
-        : [];
-
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
@@ -3926,75 +3825,106 @@ function SimulationEventsTable({ events, role }) {
                     </a>
                 </div>
             </div>
-
-            {/* Search and Filters */}
-            <div className="bg-white rounded-lg border border-slate-200 p-4 mb-4">
-                <div className="space-y-3">
-                    {/* Search Bar with Dropdown */}
-                    <div className="relative">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search events by title or disaster type..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                            />
-                        </div>
-                        {/* Search Suggestions Dropdown */}
-                        {searchSuggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                                {searchSuggestions.map((event) => (
-                                    <button
-                                        key={event.id}
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 border-b border-slate-100 last:border-0"
-                                        onClick={() => setSearchQuery(event.title)}
+            
+            {/* Search and Filter Bar */}
+            <div className="mb-4 flex items-center gap-3">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search events..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                </div>
+                <div className="relative" ref={filterRef}>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                        <Filter className="w-4 h-4" />
+                        Filters
+                    </button>
+                    {showFilters && (
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Status
+                                    </label>
+                                    <select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                     >
-                                        <div className="font-medium text-slate-900">{event.title}</div>
-                                        <div className="text-xs text-slate-500">
-                                            {event.disaster_type} • {event.event_category || 'N/A'}
-                                        </div>
-                                    </button>
-                                ))}
+                                        <option value="">All Status</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="published">Published</option>
+                                        <option value="ongoing">Ongoing</option>
+                                        <option value="ended">Ended</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
+                                {disasterTypes.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                            Disaster Type
+                                        </label>
+                                        <select
+                                            value={filterDisasterType}
+                                            onChange={(e) => setFilterDisasterType(e.target.value)}
+                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            <option value="">All Types</option>
+                                            {disasterTypes.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                {categories.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                            Category
+                                        </label>
+                                        <select
+                                            value={filterCategory}
+                                            onChange={(e) => setFilterCategory(e.target.value)}
+                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            <option value="">All Categories</option>
+                                            {categories.map((cat) => (
+                                                <option key={cat} value={cat}>
+                                                    {cat}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        setFilterStatus('');
+                                        setFilterDisasterType('');
+                                        setFilterCategory('');
+                                    }}
+                                    className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
+                                >
+                                    Clear filters
+                                </button>
                             </div>
-                        )}
-                    </div>
-
-                    {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                            <option value="ongoing">Ongoing</option>
-                            <option value="ended">Ended</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="archived">Archived</option>
-                        </select>
-                        <select
-                            value={categoryFilter}
-                            onChange={(e) => setCategoryFilter(e.target.value)}
-                            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                        >
-                            <option value="all">All Categories</option>
-                            <option value="Training">Training</option>
-                            <option value="Real-Time Drill">Real-Time Drill</option>
-                            <option value="Simulation">Simulation</option>
-                        </select>
-                    </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
                 <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
                         <tr>
                             <th className="px-4 py-2 text-left">Title</th>
                             <th className="px-4 py-2 text-left">Disaster Type</th>
@@ -4009,31 +3939,17 @@ function SimulationEventsTable({ events, role }) {
                         {filteredEvents.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {events.length === 0 ? 
-                                        'No simulation events yet. Click "Create Event" to add one.' :
-                                        'No events match your search criteria.'}
+                                    {events.length === 0 
+                                        ? 'No simulation events yet. Click "Create Event" to add one.'
+                                        : 'No events match your search or filter criteria.'}
                                 </td>
                             </tr>
                         ) : (
-                            filteredEvents.map((event) => {
-                                const isOngoing = event.status === 'ongoing';
-                                const canStart = canStartEvent(event);
-                                const hasEnded = hasEventEnded(event) && (event.status === 'published' || event.status === 'ongoing');
-                                const rowBgClass = hasEnded
-                                    ? 'border-slate-100 hover:bg-slate-50'
-                                    : isOngoing 
-                                    ? 'bg-blue-50 border-blue-200' 
-                                    : canStart 
-                                    ? 'bg-emerald-50 border-emerald-200' 
-                                    : 'border-slate-100 hover:bg-slate-50';
-                                
-                                return (
-                                <tr key={event.id} className={`border-t ${rowBgClass}`}>
+                            paginatedEvents.map((event) => (
+                                <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-2 font-medium text-slate-800">
                                         <a
-                                            href={event.status === 'published' || event.status === 'archived' || event.status === 'cancelled' || event.status === 'ended' || event.status === 'ongoing'
-                                                ? `/simulation-events/${event.id}` 
-                                                : `/simulation-events/${event.id}/edit`}
+                                            href={`/simulation-events/${event.id}/edit`}
                                             className="text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
                                         >
                                             {event.title}
@@ -4050,12 +3966,8 @@ function SimulationEventsTable({ events, role }) {
                                         <span
                                             className={
                                                 'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ' +
-                                                (hasEnded
-                                                    ? 'bg-slate-100 text-slate-700'
-                                                    : event.status === 'published'
+                                                (event.status === 'published'
                                                     ? 'bg-emerald-50 text-emerald-700'
-                                                    : event.status === 'ongoing'
-                                                    ? 'bg-blue-50 text-blue-700'
                                                     : event.status === 'draft'
                                                     ? 'bg-slate-100 text-slate-600'
                                                     : event.status === 'archived'
@@ -4065,37 +3977,19 @@ function SimulationEventsTable({ events, role }) {
                                                     : 'bg-slate-100 text-slate-600')
                                             }
                                         >
-                                            {hasEnded ? 'ended' : event.status}
+                                            {event.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2">
                                         <div className="flex gap-2 items-center">
-                                            {/* Ended events: Only View button */}
-                                            {hasEnded ? (
-                                                <a
-                                                    href={`/simulation-events/${event.id}`}
-                                                    className="inline-flex items-center rounded-full border border-blue-500/60 bg-blue-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
-                                                >
-                                                    View
-                                                </a>
-                                            ) : (
-                                            <>
-                                            {/* View - For published/archived/cancelled/ongoing/completed events */}
-                                            {(event.status === 'published' || event.status === 'archived' || event.status === 'cancelled' || event.status === 'ongoing' || event.status === 'completed') && (
-                                                <a
-                                                    href={`/simulation-events/${event.id}`}
-                                                    className="inline-flex items-center rounded-full border border-blue-500/60 bg-blue-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
-                                                >
-                                                    View
-                                                </a>
-                                            )}
                                             {/* Edit - Only for draft events */}
                                             {event.status === 'draft' && (
                                                 <a
                                                     href={`/simulation-events/${event.id}/edit`}
-                                                    className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                    className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                    title="Edit"
                                                 >
-                                                    Edit
+                                                    <Pencil className="w-3.5 h-3.5" />
                                                 </a>
                                             )}
                                             {/* Publish - Only for draft events */}
@@ -4121,27 +4015,28 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-sky-500/60 bg-sky-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-sky-800 hover:bg-sky-100 transition-colors"
+                                                        className="inline-flex items-center justify-center rounded-md border border-sky-500/60 bg-sky-50 p-2 text-sky-800 hover:bg-sky-100 transition-colors"
+                                                        title="Publish"
                                                     >
-                                                        Publish
+                                                        <Send className="w-3.5 h-3.5" />
                                                     </button>
                                                 </form>
                                             )}
-                                            {/* Start Event - Admin/Trainer, same day, start time reached, not ended */}
-                                            {canStartEvent(event) && !hasEnded && (
+                                            {/* Unpublish - Only for published events */}
+                                            {event.status === 'published' && (
                                                 <form
                                                     method="POST"
-                                                    action={`/simulation-events/${event.id}/start`}
+                                                    action={`/simulation-events/${event.id}/unpublish`}
                                                     onSubmit={async (e) => {
                                                         e.preventDefault();
                                                         const result = await Swal.fire({
-                                                            title: 'Start',
-                                                            text: 'Start this simulation event now? Status will change to Ongoing.',
-                                                            icon: 'question',
+                                                            title: 'Warning!',
+                                                            text: 'Unpublish this event? It will be hidden from participants and changed to draft. You can edit and republish later.',
+                                                            icon: 'warning',
                                                             showCancelButton: true,
-                                                            confirmButtonText: 'Yes, start',
+                                                            confirmButtonText: 'Yes, unpublish',
                                                             cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#16a34a',
+                                                            confirmButtonColor: '#f97316',
                                                             cancelButtonColor: '#64748b',
                                                         });
                                                         if (result.isConfirmed) e.target.submit();
@@ -4150,14 +4045,15 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                        className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
+                                                        title="Unpublish"
                                                     >
-                                                        Start
+                                                        <Undo2 className="w-3.5 h-3.5" />
                                                     </button>
                                                 </form>
                                             )}
-                                            {/* Cancel - Only for published (Upcoming) events */}
-                                            {event.status === 'published' && (
+                                            {/* Cancel - For published and draft events (not archived/cancelled) */}
+                                            {(event.status === 'published' || event.status === 'draft') && (
                                                 <form
                                                     method="POST"
                                                     action={`/simulation-events/${event.id}/cancel`}
@@ -4179,14 +4075,15 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
+                                                        className="inline-flex items-center justify-center rounded-md border border-rose-500/60 bg-rose-50 p-2 text-rose-800 hover:bg-rose-100 transition-colors"
+                                                        title="Cancel"
                                                     >
-                                                        Cancel
+                                                        <XCircle className="w-3.5 h-3.5" />
                                                     </button>
                                                 </form>
                                             )}
-                                            {/* Archive - For draft, completed, and cancelled events */}
-                                            {(event.status === 'draft' || event.status === 'completed' || event.status === 'cancelled') && (
+                                            {/* Archive - For published, draft, and cancelled events (not already archived) */}
+                                            {event.status !== 'archived' && event.status !== 'cancelled' && (
                                                 <form
                                                     method="POST"
                                                     action={`/simulation-events/${event.id}/archive`}
@@ -4208,158 +4105,377 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                                                        className="inline-flex items-center justify-center rounded-md border border-amber-500/60 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100 transition-colors"
+                                                        title="Archive"
                                                     >
-                                                        Archive
+                                                        <Archive className="w-3.5 h-3.5" />
                                                     </button>
                                                 </form>
-                                            )}
-                                            </>
                                             )}
                                         </div>
                                     </td>
                                 </tr>
-                                );
-                            })
+                            ))
                         )}
                     </tbody>
                 </table>
+                {filteredEvents.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={filteredEvents.length}
+                    />
+                )}
             </div>
         </div>
     );
 }
 
-function ResourceSelectionSection() {
-    const [availableResources, setAvailableResources] = React.useState([]);
-    const [selectedResources, setSelectedResources] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-
-    React.useEffect(() => {
-        fetch('/api/resources/available')
-            .then(res => res.json())
-            .then(data => {
-                setAvailableResources(data.resources || []);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error('Failed to load resources:', err);
-                setLoading(false);
+// Resource Selection Component
+function ResourceSelectionSection({ eventResources = [] }) {
+    const [selectedResources, setSelectedResources] = React.useState(() => {
+        // Initialize with existing event resources if editing
+        if (eventResources && eventResources.length > 0) {
+            return eventResources.map(r => {
+                // Handle both direct resource objects and pivot relationships
+                const resource = r.resource || r;
+                return {
+                    id: resource.id || r.resource_id || r.id,
+                    name: resource.name || r.name,
+                    category: resource.category || r.category,
+                    quantity: r.pivot?.quantity_needed || resource.pivot?.quantity_needed || 1,
+                    available: resource.available || r.available || 1,
+                };
             });
-    }, []);
+        }
+        return [];
+    });
+    const [showModal, setShowModal] = React.useState(false);
+    const [resources, setResources] = React.useState([]);
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [categoryFilter, setCategoryFilter] = React.useState('all');
+    const [loading, setLoading] = React.useState(false);
+    const [tempSelections, setTempSelections] = React.useState({});
 
-    const addResource = (resource) => {
-        if (!selectedResources.find(r => r.id === resource.id)) {
-            setSelectedResources([...selectedResources, { ...resource, quantity: 1 }]);
+    // Fetch available resources
+    React.useEffect(() => {
+        if (showModal) {
+            fetchAvailableResources();
+        }
+    }, [showModal]);
+
+    const fetchAvailableResources = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/resources?status=Available');
+            const data = await response.json();
+            // Only show resources with available quantity > 0
+            const available = (data.resources || data).filter(r => 
+                (r.status === 'Available' || r.status === 'Partially Assigned') && 
+                (r.available || r.quantity) > 0
+            );
+            setResources(available);
+        } catch (error) {
+            console.error('Error fetching resources:', error);
+            Swal.fire('Error', 'Failed to load resources', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const removeResource = (resourceId) => {
+    const filteredResources = resources.filter(r => {
+        const matchesSearch = !searchQuery || 
+            r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (r.serial_number && r.serial_number.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesCategory = categoryFilter === 'all' || r.category === categoryFilter;
+        return matchesSearch && matchesCategory;
+    });
+
+    const categories = [...new Set(resources.map(r => r.category))];
+
+    const handleAddResources = () => {
+        setShowModal(true);
+        // Initialize temp selections with current selections
+        const temp = {};
+        selectedResources.forEach(r => {
+            temp[r.id] = r.quantity;
+        });
+        setTempSelections(temp);
+    };
+
+    const handleToggleResource = (resource) => {
+        const availableQty = resource.available || resource.quantity;
+        
+        if (tempSelections[resource.id]) {
+            // Remove from selection
+            const newTemp = { ...tempSelections };
+            delete newTemp[resource.id];
+            setTempSelections(newTemp);
+        } else {
+            // Add to selection
+            if (availableQty === 0) {
+                Swal.fire({
+                    title: 'Resource Unavailable',
+                    html: `
+                        <p class="text-left mb-3">This resource currently has 0 available units.</p>
+                        <p class="text-left text-sm text-slate-600">Do you want to add it anyway? You can specify the quantity needed.</p>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, add it',
+                    cancelButtonText: 'Cancel',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        setTempSelections({ ...tempSelections, [resource.id]: 1 });
+                    }
+                });
+            } else {
+                setTempSelections({ ...tempSelections, [resource.id]: 1 });
+            }
+        }
+    };
+
+    const handleQuantityChange = (resourceId, quantity) => {
+        const resource = resources.find(r => r.id === resourceId);
+        const availableQty = resource?.available || resource?.quantity || 0;
+        const numQuantity = parseInt(quantity) || 0;
+
+        if (numQuantity > availableQty) {
+            Swal.fire({
+                title: 'Quantity Exceeds Available',
+                html: `
+                    <p class="text-left mb-2">Available quantity: <strong>${availableQty}</strong></p>
+                    <p class="text-left text-sm text-slate-600">You cannot request more than what's available.</p>
+                `,
+                icon: 'warning',
+                confirmButtonText: 'OK',
+            });
+            return;
+        }
+
+        if (numQuantity < 1) {
+            setTempSelections({ ...tempSelections, [resourceId]: 1 });
+        } else {
+            setTempSelections({ ...tempSelections, [resourceId]: numQuantity });
+        }
+    };
+
+    const handleSaveResources = () => {
+        const newResources = Object.keys(tempSelections).map(id => {
+            const resource = resources.find(r => r.id === parseInt(id));
+            return {
+                id: parseInt(id),
+                name: resource.name,
+                category: resource.category,
+                quantity: tempSelections[id],
+                available: resource.available || resource.quantity,
+            };
+        });
+
+        setSelectedResources(newResources);
+        setShowModal(false);
+        setTempSelections({});
+    };
+
+    const handleRemoveResource = (resourceId) => {
         setSelectedResources(selectedResources.filter(r => r.id !== resourceId));
     };
 
-    const updateQuantity = (resourceId, quantity) => {
-        setSelectedResources(selectedResources.map(r => 
-            r.id === resourceId ? { ...r, quantity: Math.max(1, Math.min(quantity, r.available)) } : r
-        ));
-    };
+    // Store selected resources in hidden input for form submission
+    React.useEffect(() => {
+        const updateHiddenInput = () => {
+            let hiddenInput = document.getElementById('selected_resources_input');
+            if (!hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'resources';
+                hiddenInput.id = 'selected_resources_input';
+                const form = document.querySelector('form[method="POST"]');
+                if (form) {
+                    form.appendChild(hiddenInput);
+                }
+            }
+            if (hiddenInput) {
+                hiddenInput.value = JSON.stringify(selectedResources.map(r => ({
+                    id: r.id,
+                    quantity: r.quantity,
+                })));
+            }
+        };
+        
+        // Try immediately and also after a short delay to ensure form exists
+        updateHiddenInput();
+        const timeout = setTimeout(updateHiddenInput, 100);
+        return () => clearTimeout(timeout);
+    }, [selectedResources]);
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">7. Resources & Equipment Needed</h3>
-            
-            {/* Hidden input to store resources as JSON */}
-            <input 
-                type="hidden" 
-                name="resources" 
-                value={JSON.stringify(selectedResources.map(r => ({ id: r.id, quantity: r.quantity })))}
-            />
-
+            <h3 className="text-sm font-semibold text-slate-800 mb-4">10. Resources</h3>
             <div className="space-y-4">
-                {/* Resource Selection Dropdown */}
-                <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-2">
-                        Select Resources
-                    </label>
-                    {loading ? (
-                        <p className="text-sm text-slate-500">Loading resources...</p>
-                    ) : (
-                        <select 
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            onChange={(e) => {
-                                const resource = availableResources.find(r => r.id === parseInt(e.target.value));
-                                if (resource) {
-                                    addResource(resource);
-                                    e.target.value = '';
-                                }
-                            }}
-                            value=""
-                        >
-                            <option value="">+ Add resource to event...</option>
-                            {availableResources
-                                .filter(r => !selectedResources.find(sr => sr.id === r.id))
-                                .map(resource => (
-                                    <option key={resource.id} value={resource.id}>
-                                        {resource.name} ({resource.available} available) - {resource.category}
-                                    </option>
-                                ))}
-                        </select>
-                    )}
-                </div>
+                <button
+                    type="button"
+                    onClick={handleAddResources}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-md transition-colors"
+                >
+                    <Plus className="w-4 h-4" />
+                    +Resources
+                </button>
 
-                {/* Selected Resources List */}
                 {selectedResources.length > 0 && (
-                    <div className="border border-slate-200 rounded-md overflow-hidden">
-                        <table className="w-full text-sm">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Resource</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Category</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Available</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity Needed</th>
-                                    <th className="px-4 py-2 text-center text-xs font-semibold text-slate-700">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200">
-                                {selectedResources.map(resource => (
-                                    <tr key={resource.id} className="hover:bg-slate-50">
-                                        <td className="px-4 py-3 text-slate-900">{resource.name}</td>
-                                        <td className="px-4 py-3 text-slate-600">{resource.category}</td>
-                                        <td className="px-4 py-3 text-slate-600">{resource.available}</td>
-                                        <td className="px-4 py-3">
-                                            <input 
-                                                type="number"
-                                                min="1"
-                                                max={resource.available}
-                                                value={resource.quantity}
-                                                onChange={(e) => updateQuantity(resource.id, parseInt(e.target.value) || 1)}
-                                                className="w-20 px-2 py-1 border border-slate-300 rounded text-sm"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <button
-                                                type="button"
-                                                onClick={() => removeResource(resource.id)}
-                                                className="text-red-600 hover:text-red-800 text-xs"
-                                            >
-                                                Remove
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="space-y-2">
+                        <p className="text-xs font-semibold text-slate-600">Selected Resources:</p>
+                        {selectedResources.map((resource) => (
+                            <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-md border border-slate-200">
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-slate-900">{resource.name}</p>
+                                    <p className="text-xs text-slate-600">{resource.category} • Quantity: {resource.quantity}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveResource(resource.id)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="Remove"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 )}
 
-                {selectedResources.length === 0 && (
-                    <p className="text-sm text-slate-500 italic">No resources selected. Add resources from the dropdown above.</p>
-                )}
+                {/* Resource Selection Modal */}
+                {showModal && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+                            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                                <h3 className="text-lg font-semibold text-slate-900">Select Resources</h3>
+                                <button
+                                    onClick={() => {
+                                        setShowModal(false);
+                                        setTempSelections({});
+                                    }}
+                                    className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            
+                            <div className="p-6 flex-1 overflow-y-auto">
+                                {/* Search and Filter */}
+                                <div className="mb-4 space-y-3">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search resources..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <select
+                                            value={categoryFilter}
+                                            onChange={(e) => setCategoryFilter(e.target.value)}
+                                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            <option value="all">All Categories</option>
+                                            {categories.map(cat => (
+                                                <option key={cat} value={cat}>{cat}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                    <p className="text-xs text-blue-800">
-                        💡 <strong>Note:</strong> When you publish this event, the selected resources will be automatically assigned and their availability will be updated.
-                    </p>
-                </div>
+                                {/* Resources List */}
+                                {loading ? (
+                                    <div className="text-center py-8 text-slate-500">Loading resources...</div>
+                                ) : filteredResources.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-500">No available resources found</div>
+                                ) : (
+                                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                                        {filteredResources.map((resource) => {
+                                            const availableQty = resource.available || resource.quantity || 0;
+                                            const isSelected = !!tempSelections[resource.id];
+                                            const selectedQty = tempSelections[resource.id] || 0;
+
+                                            return (
+                                                <div
+                                                    key={resource.id}
+                                                    className={`p-4 rounded-md border-2 transition-colors ${
+                                                        isSelected
+                                                            ? 'border-emerald-500 bg-emerald-50'
+                                                            : 'border-slate-200 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => handleToggleResource(resource)}
+                                                            className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                                        />
+                                                        <div className="flex-1">
+                                                            <div className="flex items-start justify-between">
+                                                                <div>
+                                                                    <p className="text-sm font-medium text-slate-900">{resource.name}</p>
+                                                                    <p className="text-xs text-slate-600">{resource.category}</p>
+                                                                    <p className="text-xs text-slate-500 mt-1">
+                                                                        Available: <span className="font-medium">{availableQty}</span> units
+                                                                        {resource.quantity && resource.quantity !== availableQty && (
+                                                                            <span className="ml-2">(Total: {resource.quantity})</span>
+                                                                        )}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            {isSelected && (
+                                                                <div className="mt-3">
+                                                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                                                        Quantity Needed
+                                                                    </label>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        max={availableQty}
+                                                                        value={selectedQty}
+                                                                        onChange={(e) => handleQuantityChange(resource.id, e.target.value)}
+                                                                        className="w-32 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                    />
+                                                                    <p className="text-xs text-slate-500 mt-1">Max: {availableQty}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
+                                <button
+                                    onClick={() => {
+                                        setShowModal(false);
+                                        setTempSelections({});
+                                    }}
+                                    className="px-4 py-2 rounded-md border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveResources}
+                                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
+                                >
+                                    Add Selected Resources
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -4369,73 +4485,6 @@ function SimulationEventCreateForm({ scenarios }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [selectedScenarioId, setSelectedScenarioId] = React.useState('');
     const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
-    const [isDirty, setIsDirty] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const formRef = React.useRef(null);
-    const skipPromptRef = React.useRef(false);
-
-    React.useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            if (skipPromptRef.current) return;
-            if (isDirty && !isSubmitting) {
-                event.preventDefault();
-                event.returnValue = '';
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [isDirty, isSubmitting]);
-
-    React.useEffect(() => {
-        const handleNavigation = (event) => {
-            if (!isDirty || isSubmitting || skipPromptRef.current) return;
-
-            const anchor = event.target.closest('a');
-            if (!anchor) return;
-
-            const href = anchor.getAttribute('href');
-            if (!href || href.startsWith('#') || anchor.target === '_blank') return;
-
-            const isSameOrigin = anchor.origin === window.location.origin;
-            if (!isSameOrigin) return;
-
-            event.preventDefault();
-
-            Swal.fire({
-                title: 'You have unsaved changes',
-                text: 'Do you want to save before leaving?',
-                icon: 'warning',
-                showDenyButton: true,
-                showCancelButton: true,
-                confirmButtonText: 'Save',
-                denyButtonText: 'Discard',
-                cancelButtonText: 'Continue editing',
-                confirmButtonColor: '#059669',
-                denyButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    setIsSubmitting(true);
-                    setIsDirty(false);
-                    formRef.current?.submit?.();
-                } else if (result.isDenied) {
-                        skipPromptRef.current = true;
-                    window.location.href = href;
-                }
-            });
-        };
-
-        document.addEventListener('click', handleNavigation);
-        return () => document.removeEventListener('click', handleNavigation);
-    }, [isDirty, isSubmitting]);
-
-    const handleFormChange = () => setIsDirty(true);
-    const handleFormSubmit = () => {
-        setIsSubmitting(true);
-        setIsDirty(false);
-        skipPromptRef.current = true;
-    };
 
     return (
         <div className="py-2">
@@ -4443,13 +4492,9 @@ function SimulationEventCreateForm({ scenarios }) {
                 method="POST"
                 action="/simulation-events"
                 className="space-y-6"
-                ref={formRef}
-                onChange={handleFormChange}
-                onSubmit={handleFormSubmit}
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="status" value="draft" />
-                <input type="hidden" name="return_to" value="/simulation-events" />
 
                 {/* Section 1: Basic Event Information */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -4457,7 +4502,7 @@ function SimulationEventCreateForm({ scenarios }) {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_title">
-                                Event Title *
+                                Event Title <span className="text-red-500">*</span>
                             </label>
                             <input
                                 id="event_title"
@@ -4471,7 +4516,7 @@ function SimulationEventCreateForm({ scenarios }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="disaster_type">
-                                    Disaster Type *
+                                    Disaster Type <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     id="disaster_type"
@@ -4491,7 +4536,7 @@ function SimulationEventCreateForm({ scenarios }) {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_category">
-                                    Event Category *
+                                    Event Category <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     id="event_category"
@@ -4528,7 +4573,7 @@ function SimulationEventCreateForm({ scenarios }) {
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_date">
-                                Event Date *
+                                Event Date <span className="text-red-500">*</span>
                             </label>
                             <input
                                 id="event_date"
@@ -4540,7 +4585,7 @@ function SimulationEventCreateForm({ scenarios }) {
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="start_time">
-                                Start Time *
+                                Start Time <span className="text-red-500">*</span>
                             </label>
                             <input
                                 id="start_time"
@@ -4552,7 +4597,7 @@ function SimulationEventCreateForm({ scenarios }) {
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="end_time">
-                                End Time *
+                                End Time <span className="text-red-500">*</span>
                             </label>
                             <input
                                 id="end_time"
@@ -4744,9 +4789,6 @@ function SimulationEventCreateForm({ scenarios }) {
                     </div>
                 </div>
 
-                {/* Section 7: Resources & Equipment */}
-                <ResourceSelectionSection />
-
                 {/* Section 8: Safety & Compliance */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h3 className="text-sm font-semibold text-slate-800 mb-4">8. Safety & Compliance</h3>
@@ -4775,46 +4817,11 @@ function SimulationEventCreateForm({ scenarios }) {
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="required_ppe">
-                                Required PPE
-                            </label>
-                            <input
-                                id="required_ppe"
-                                name="required_ppe"
-                                type="text"
-                                placeholder="e.g. Hard hat, Safety vest, Gloves"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
                     </div>
                 </div>
 
-                {/* Section 10: Notifications */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">10. Notifications</h3>
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                name="email_notifications_enabled"
-                                value="1"
-                                defaultChecked
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="text-sm text-slate-700">Enable email alerts</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                name="sms_notifications_enabled"
-                                value="1"
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="text-sm text-slate-700">Enable SMS reminders</span>
-                        </label>
-                    </div>
-                </div>
+                {/* Section 10: Resources */}
+                <ResourceSelectionSection />
 
                 {/* Section 12: Publishing Controls */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -4827,25 +4834,7 @@ function SimulationEventCreateForm({ scenarios }) {
                             Cancel
                         </a>
                         <button
-                            type="button"
-                            onClick={async () => {
-                                const result = await Swal.fire({
-                                    title: 'Save Event?',
-                                    text: 'This event will be saved as a draft and you can publish it later.',
-                                    icon: 'question',
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Yes, save',
-                                    cancelButtonText: 'Cancel',
-                                    confirmButtonColor: '#059669',
-                                    cancelButtonColor: '#64748b',
-                                });
-                                if (result.isConfirmed) {
-                                    setIsSubmitting(true);
-                                    setIsDirty(false);
-                                    skipPromptRef.current = true;
-                                    formRef.current?.submit?.();
-                                }
-                            }}
+                            type="submit"
                             className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
                         >
                             Save as Draft
@@ -4861,10 +4850,6 @@ function SimulationEventEditForm({ event, scenarios }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [selectedScenarioId, setSelectedScenarioId] = React.useState(String(event.scenario_id || ''));
     const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
-    const [isDirty, setIsDirty] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const formRef = React.useRef(null);
-    const skipPromptRef = React.useRef(false);
 
     // Format date for date input (YYYY-MM-DD)
     const formatDateForInput = (dateString) => {
@@ -4883,82 +4868,15 @@ function SimulationEventEditForm({ event, scenarios }) {
     // Get allowed participant types as array
     const allowedTypes = event.allowed_participant_types || [];
 
-    React.useEffect(() => {
-        const handleBeforeUnload = (evt) => {
-            if (skipPromptRef.current) return;
-            if (isDirty && !isSubmitting) {
-                evt.preventDefault();
-                evt.returnValue = '';
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [isDirty, isSubmitting]);
-
-    React.useEffect(() => {
-        const handleNavigation = (event) => {
-            if (!isDirty || isSubmitting || skipPromptRef.current) return;
-
-            const anchor = event.target.closest('a');
-            if (!anchor) return;
-
-            const href = anchor.getAttribute('href');
-            if (!href || href.startsWith('#') || anchor.target === '_blank') return;
-
-            const isSameOrigin = anchor.origin === window.location.origin;
-            if (!isSameOrigin) return;
-
-            event.preventDefault();
-
-            Swal.fire({
-                title: 'You have unsaved changes',
-                text: 'Do you want to save before leaving?',
-                icon: 'warning',
-                showDenyButton: true,
-                showCancelButton: true,
-                confirmButtonText: 'Save',
-                denyButtonText: 'Discard',
-                cancelButtonText: 'Continue editing',
-                confirmButtonColor: '#059669',
-                denyButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    setIsSubmitting(true);
-                    setIsDirty(false);
-                    formRef.current?.submit?.();
-                } else if (result.isDenied) {
-                        skipPromptRef.current = true;
-                    window.location.href = href;
-                }
-            });
-        };
-
-        document.addEventListener('click', handleNavigation);
-        return () => document.removeEventListener('click', handleNavigation);
-    }, [isDirty, isSubmitting]);
-
-    const handleFormChange = () => setIsDirty(true);
-    const handleFormSubmit = () => {
-        setIsSubmitting(true);
-        setIsDirty(false);
-        skipPromptRef.current = true;
-    };
-
     return (
         <div className="py-2">
             <form
                 method="POST"
                 action={`/simulation-events/${event.id}`}
                 className="space-y-6"
-                ref={formRef}
-                onChange={handleFormChange}
-                onSubmit={handleFormSubmit}
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="_method" value="PUT" />
-                <input type="hidden" name="return_to" value="/simulation-events" />
 
                 {/* Section 1: Basic Event Information */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -5304,48 +5222,11 @@ function SimulationEventEditForm({ event, scenarios }) {
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="required_ppe_edit">
-                                Required PPE
-                            </label>
-                            <input
-                                id="required_ppe_edit"
-                                name="required_ppe"
-                                type="text"
-                                defaultValue={event.required_ppe || ''}
-                                placeholder="e.g. Hard hat, Safety vest, Gloves"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
                     </div>
                 </div>
 
-                {/* Section 10: Notifications */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">10. Notifications</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                name="email_notifications_enabled"
-                                value="1"
-                                defaultChecked={event.email_notifications_enabled}
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="text-sm text-slate-700">Enable email alerts</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                name="sms_notifications_enabled"
-                                value="1"
-                                defaultChecked={event.sms_notifications_enabled}
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="text-sm text-slate-700">Enable SMS reminders</span>
-                        </label>
-                    </div>
-                </div>
+                {/* Section 10: Resources */}
+                <ResourceSelectionSection eventResources={(event.resources && Array.isArray(event.resources)) ? event.resources : []} />
 
                 {/* Section 12: Publishing Controls */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -5358,25 +5239,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                             Cancel
                         </a>
                         <button
-                            type="button"
-                            onClick={async () => {
-                                const result = await Swal.fire({
-                                    title: 'Save Changes?',
-                                    text: 'Your changes will be saved to this event.',
-                                    icon: 'question',
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Yes, save',
-                                    cancelButtonText: 'Cancel',
-                                    confirmButtonColor: '#059669',
-                                    cancelButtonColor: '#64748b',
-                                });
-                                if (result.isConfirmed) {
-                                    setIsSubmitting(true);
-                                    setIsDirty(false);
-                                    skipPromptRef.current = true;
-                                    formRef.current?.submit?.();
-                                }
-                            }}
+                            type="submit"
                             className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
                         >
                             Save Changes
@@ -5389,123 +5252,6 @@ function SimulationEventEditForm({ event, scenarios }) {
 }
 
 // Participant Components
-function ParticipantMyAttendance({ participant = {} }) {
-    const name = participant.name || 'Participant';
-    const participantId = participant.participant_id || participant.id || 'N/A';
-    const attendanceHistory = participant.attendances || [];
-
-    const qrPayload = JSON.stringify({ participant_id: participantId, user_id: participant.id });
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?format=jpg&size=220x220&data=${encodeURIComponent(qrPayload)}`;
-
-    const formatShortDate = (dateString) => {
-        if (!dateString) return '—';
-        return new Date(dateString).toLocaleDateString('en-US', {
-            month: 'short',
-            day: '2-digit',
-            year: 'numeric',
-        });
-    };
-
-    const formatShortTime = (dateString) => {
-        if (!dateString) return '—';
-        return new Date(dateString).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-        });
-    };
-
-    const statusColor = (status) => (
-        status === 'present' ? 'bg-emerald-50 text-emerald-700' :
-        status === 'late' ? 'bg-amber-50 text-amber-700' :
-        status === 'absent' ? 'bg-rose-50 text-rose-700' :
-        status === 'excused' ? 'bg-sky-50 text-sky-700' :
-        'bg-slate-100 text-slate-600'
-    );
-
-    const certificateLabel = (status) => (
-        status === 'present' ? 'Issued' :
-        status === 'late' ? 'Pending' :
-        'Not Eligible'
-    );
-
-    return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">My Attendance QR Code</h2>
-                <div className="flex flex-col items-center gap-3">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 w-[260px] h-[260px] flex items-center justify-center">
-                        <img src={qrUrl} alt="Attendance QR" className="w-52 h-52" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <div className="text-sm text-slate-700 font-semibold">{name}</div>
-                        <div className="text-xs text-slate-500">Participant ID: {participantId}</div>
-                    </div>
-                    <p className="text-xs text-slate-500">Show this QR code to the admin/trainer for attendance check-in.</p>
-                    <div className="mt-2">
-                        <a
-                            href={qrUrl}
-                            download={`attendance-qr-${participantId}.jpg`}
-                            className="inline-flex items-center gap-2 rounded-md bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 transition-colors"
-                        >
-                            Download QR (JPG)
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-200">
-                    <h3 className="text-sm font-semibold text-slate-800">Attendance History</h3>
-                </div>
-                <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Event Name</th>
-                            <th className="px-4 py-2 text-left">Date</th>
-                            <th className="px-4 py-2 text-left">Role</th>
-                            <th className="px-4 py-2 text-left">Attendance Status</th>
-                            <th className="px-4 py-2 text-left">Time In</th>
-                            <th className="px-4 py-2 text-left">Certificate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {attendanceHistory.length === 0 ? (
-                            <tr>
-                                <td colSpan={6} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    No attendance records yet.
-                                </td>
-                            </tr>
-                        ) : (
-                            attendanceHistory.map((attendance) => (
-                                <tr key={attendance.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-medium text-slate-800">
-                                        {attendance.simulation_event?.title || 'N/A'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600 text-xs">
-                                        {formatShortDate(attendance.simulation_event?.event_date)}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600 text-xs">Participant</td>
-                                    <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${statusColor(attendance.status)}`}>
-                                            {attendance.status || '—'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600 text-xs">
-                                        {formatShortTime(attendance.checked_in_at)}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600 text-xs">
-                                        {certificateLabel(attendance.status)}
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-}
-
 // Participant Registration & Attendance Module
 function ParticipantRegistrationAttendanceModule({ events = [], participants = [], role }) {
     const [activeTab, setActiveTab] = React.useState('participants');
@@ -5670,7 +5416,7 @@ function ParticipantsListTab({ participants = [] }) {
                                         <div className="flex gap-2 items-center">
                                             <a
                                                 href={`/participants/${participant.id}`}
-                                                className="inline-flex items-center rounded-full border border-blue-500/60 bg-blue-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
+                                                className="inline-flex items-center rounded-md border border-blue-500/60 bg-blue-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
                                             >
                                                 View Profile
                                             </a>
@@ -5696,7 +5442,7 @@ function ParticipantsListTab({ participants = [] }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                                                        className="inline-flex items-center rounded-md border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
                                                     >
                                                         Deactivate
                                                     </button>
@@ -5723,7 +5469,7 @@ function ParticipantsListTab({ participants = [] }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                        className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
                                                     >
                                                         Reactivate
                                                     </button>
@@ -5744,31 +5490,9 @@ function ParticipantsListTab({ participants = [] }) {
 // Registrations Tab - Shows events with registration management
 function RegistrationEventsTable({ events = [] }) {
     const publishedEvents = events.filter(e => e.status === 'published' || e.status === 'archived');
-    const [searchQuery, setSearchQuery] = React.useState('');
-
-    const filteredEvents = publishedEvents.filter((event) => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
-        const title = (event.title || '').toLowerCase();
-        const location = (event.location || '').toLowerCase();
-        return title.includes(q) || location.includes(q);
-    });
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            {/* Search Bar */}
-            <div className="p-4 border-b border-slate-200">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search events by title or location..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                    />
-                </div>
-            </div>
             <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
                     <tr>
@@ -5780,14 +5504,14 @@ function RegistrationEventsTable({ events = [] }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredEvents.length === 0 ? (
+                    {publishedEvents.length === 0 ? (
                         <tr>
                             <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                {publishedEvents.length === 0 ? 'No published events yet.' : 'No events match your search.'}
+                                No published events yet.
                             </td>
                         </tr>
                     ) : (
-                        filteredEvents.map((event) => (
+                        publishedEvents.map((event) => (
                             <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
                                 <td className="px-4 py-2 text-slate-600">
@@ -5803,7 +5527,7 @@ function RegistrationEventsTable({ events = [] }) {
                                 <td className="px-4 py-2">
                                     <a
                                         href={`/simulation-events/${event.id}/registrations`}
-                                        className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                        className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
                                     >
                                         Manage Registrations
                                     </a>
@@ -5820,31 +5544,9 @@ function RegistrationEventsTable({ events = [] }) {
 // Attendance Tab - Shows events with attendance tracking
 function AttendanceEventsTable({ events = [] }) {
     const publishedEvents = events.filter(e => e.status === 'published' || e.status === 'archived');
-    const [searchQuery, setSearchQuery] = React.useState('');
-
-    const filteredEvents = publishedEvents.filter((event) => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
-        const title = (event.title || '').toLowerCase();
-        const location = (event.location || '').toLowerCase();
-        return title.includes(q) || location.includes(q);
-    });
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            {/* Search Bar */}
-            <div className="p-4 border-b border-slate-200">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search events by title or location..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                    />
-                </div>
-            </div>
             <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
                     <tr>
@@ -5856,14 +5558,14 @@ function AttendanceEventsTable({ events = [] }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredEvents.length === 0 ? (
+                    {publishedEvents.length === 0 ? (
                         <tr>
                             <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                {publishedEvents.length === 0 ? 'No published events yet.' : 'No events match your search.'}
+                                No published events yet.
                             </td>
                         </tr>
                     ) : (
-                        filteredEvents.map((event) => (
+                        publishedEvents.map((event) => (
                             <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
                                 <td className="px-4 py-2 text-slate-600">
@@ -5879,7 +5581,7 @@ function AttendanceEventsTable({ events = [] }) {
                                 <td className="px-4 py-2">
                                     <a
                                         href={`/simulation-events/${event.id}/attendance`}
-                                        className="inline-flex items-center rounded-full border border-purple-500/60 bg-purple-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-purple-800 hover:bg-purple-100 transition-colors"
+                                        className="inline-flex items-center rounded-md border border-purple-500/60 bg-purple-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-purple-800 hover:bg-purple-100 transition-colors"
                                     >
                                         Track Attendance
                                     </a>
@@ -6030,7 +5732,7 @@ function ParticipantsTable({ participants = [], role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                                                        className="inline-flex items-center rounded-md border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
                                                     >
                                                         Deactivate
                                                     </button>
@@ -6057,7 +5759,7 @@ function ParticipantsTable({ participants = [], role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                        className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
                                                     >
                                                         Reactivate
                                                     </button>
@@ -6264,7 +5966,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     if (result.isConfirmed) e.target.submit();
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100">Approve</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100">Approve</button>
                                                 </form>
                                                 <form method="POST" action={`/event-registrations/${reg.id}/reject`} onSubmit={async (e) => {
                                                     e.preventDefault();
@@ -6286,7 +5988,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     }
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-full border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100">Reject</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-md border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100">Reject</button>
                                                 </form>
                                             </div>
                                         )}
@@ -6301,210 +6003,11 @@ function EventRegistrationsTable({ event, registrations = [] }) {
     );
 }
 
-// QR Code Scanner Component
-function QRScanner({ eventId, csrf, onClose, onSuccess }) {
-    const scannerRef = React.useRef(null);
-    const html5QrCodeRef = React.useRef(null);
-    const [isScanning, setIsScanning] = React.useState(false);
-    const [error, setError] = React.useState(null);
-
-    React.useEffect(() => {
-        startScanner();
-        return () => {
-            stopScanner();
-        };
-    }, []);
-
-    const startScanner = async () => {
-        try {
-            setIsScanning(true);
-            setError(null);
-            
-            const html5QrCode = new Html5Qrcode("qr-reader");
-            html5QrCodeRef.current = html5QrCode;
-
-            await html5QrCode.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 }
-                },
-                async (decodedText, decodedResult) => {
-                    // Stop scanning immediately after successful scan
-                    await stopScanner();
-                    
-                    // Process the scanned QR code
-                    await handleScan(decodedText);
-                },
-                (errorMessage) => {
-                    // Ignore scan errors (happens continuously while scanning)
-                }
-            );
-        } catch (err) {
-            console.error("Error starting scanner:", err);
-            setError("Failed to access camera. Please ensure camera permissions are granted.");
-            setIsScanning(false);
-        }
-    };
-
-    const stopScanner = async () => {
-        if (html5QrCodeRef.current) {
-            try {
-                await html5QrCodeRef.current.stop();
-                html5QrCodeRef.current = null;
-            } catch (err) {
-                console.error("Error stopping scanner:", err);
-            }
-        }
-        setIsScanning(false);
-    };
-
-    const handleScan = async (qrData) => {
-        try {
-            // QR code format: participant_id or user_id
-            // Expected formats:
-            //  - PARTICIPANT-{id}
-            //  - user id number
-            //  - participant_id value (string)
-            //  - QR that contains full URL with ?code=... or similar
-            let payload = {
-                user_id: null,
-                participant_id: null,
-                check_in_method: 'qr_code',
-            };
-
-            const raw = (qrData || '').trim();
-
-            // 1) Try JSON payload with participant_id / user_id
-            try {
-                const parsed = JSON.parse(raw);
-                if (parsed && (parsed.participant_id || parsed.user_id)) {
-                    if (parsed.user_id) payload.user_id = parsed.user_id;
-                    if (parsed.participant_id) payload.participant_id = parsed.participant_id;
-                }
-            } catch (e) {
-                // not JSON; ignore
-            }
-
-            // 2) If not set, handle URL with ?code= / ?id=
-            if (!payload.participant_id && !payload.user_id) {
-                try {
-                    const maybeUrl = new URL(raw);
-                    const codeParam = maybeUrl.searchParams.get('code') || maybeUrl.searchParams.get('id');
-                    if (codeParam) {
-                        payload.participant_id = codeParam;
-                    }
-                } catch (e) {
-                    // not a URL; ignore
-                }
-            }
-
-            // 3) If still not set, handle PARTICIPANT- prefix
-            if (!payload.participant_id && raw.startsWith('PARTICIPANT-')) {
-                payload.participant_id = raw.replace('PARTICIPANT-', '');
-            }
-
-            // 4) If still not set, apply numeric/user or fallback to participant_id
-            if (!payload.participant_id && !payload.user_id) {
-                if (/^\d+$/.test(raw)) {
-                    payload.user_id = Number(raw);
-                } else {
-                    payload.participant_id = raw;
-                }
-            }
-
-            // Send request to mark attendance
-            const response = await fetch(`/simulation-events/${eventId}/attendance/mark-present`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                onSuccess();
-                onClose();
-            } else {
-                await Swal.fire({
-                    title: 'Error',
-                    text: data.message || 'Failed to mark attendance',
-                    icon: 'error'
-                });
-                // Restart scanner after error
-                startScanner();
-            }
-        } catch (err) {
-            console.error("Error processing scan:", err);
-            await Swal.fire({
-                title: 'Error',
-                text: 'Failed to process QR code',
-                icon: 'error'
-            });
-            // Restart scanner after error
-            startScanner();
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4">
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-800">Scan Participant QR Code</h3>
-                    <button
-                        onClick={() => {
-                            stopScanner();
-                            onClose();
-                        }}
-                        className="text-slate-400 hover:text-slate-600"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-                
-                <div className="p-6">
-                    {error ? (
-                        <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 text-rose-800 text-sm">
-                            {error}
-                        </div>
-                    ) : (
-                        <div>
-                            <div id="qr-reader" className="rounded-lg overflow-hidden"></div>
-                            <p className="text-sm text-slate-600 mt-4 text-center">
-                                Position the QR code within the frame to scan
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 function EventAttendanceTable({ event, registrations = [] }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [scannerActive, setScannerActive] = React.useState(false);
-    const [scanning, setScanning] = React.useState(false);
-    const scannerRef = React.useRef(null);
-    const html5QrCodeRef = React.useRef(null);
     
     // Calculate attendance statistics
     const approvedRegistrations = registrations.filter(reg => reg.status === 'approved');
-    
-    // Filter by search
-    const filteredRegistrations = approvedRegistrations.filter(reg => {
-        if (!searchQuery) return true;
-        const query = searchQuery.toLowerCase();
-        const name = (reg.user?.name || '').toLowerCase();
-        const email = (reg.user?.email || '').toLowerCase();
-        const participantId = (reg.user?.participant_id || '').toLowerCase();
-        return name.includes(query) || email.includes(query) || participantId.includes(query);
-    });
-    
     const totalRegistered = approvedRegistrations.length;
     const presentCount = approvedRegistrations.filter(reg => reg.attendance?.status === 'present').length;
     const lateCount = approvedRegistrations.filter(reg => reg.attendance?.status === 'late').length;
@@ -6518,12 +6021,6 @@ function EventAttendanceTable({ event, registrations = [] }) {
             <div className="mb-4 flex items-center justify-between">
                 <a href="/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">← Back to Participants</a>
                 <div className="flex gap-2">
-                    <button
-                        onClick={() => setScannerActive(!scannerActive)}
-                        className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-sm font-medium px-3 py-1.5"
-                    >
-                        📷 {scannerActive ? 'Close Scanner' : 'Scan QR Code'}
-                    </button>
                     <a href={`/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">📥 Export CSV</a>
                     <form method="POST" action={`/simulation-events/${event.id}/attendance/lock`} onSubmit={async (e) => {
                         e.preventDefault();
@@ -6540,26 +6037,6 @@ function EventAttendanceTable({ event, registrations = [] }) {
                 </div>
             </div>
             
-            {/* QR Scanner */}
-            {scannerActive && (
-                <QRScanner
-                    eventId={event.id}
-                    csrf={csrf}
-                    onClose={() => setScannerActive(false)}
-                    onSuccess={() => {
-                        Swal.fire({
-                            title: 'Success!',
-                            text: 'Attendance marked as present',
-                            icon: 'success',
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    }}
-                />
-            )}
-
             {/* Event Info */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">Event: {event.title}</h3>
@@ -6607,20 +6084,6 @@ function EventAttendanceTable({ event, registrations = [] }) {
             
             {/* Attendance Table */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                {/* Search Bar */}
-                <div className="p-4 border-b border-slate-200">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search by participant name, email, or ID..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                        />
-                    </div>
-                </div>
-                
                 <table className="min-w-full text-sm">
                     <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
                         <tr>
@@ -6632,12 +6095,10 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredRegistrations.length === 0 ? (
-                            <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                {approvedRegistrations.length === 0 ? 'No approved registrations for this event.' : 'No participants match your search.'}
-                            </td></tr>
+                        {registrations.filter(reg => reg.status === 'approved').length === 0 ? (
+                            <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">No approved registrations for this event.</td></tr>
                         ) : (
-                            filteredRegistrations.map((reg) => {
+                            registrations.filter(reg => reg.status === 'approved').map((reg) => {
                                 const attendance = reg.attendance;
                                 const isMarked = attendance && attendance.status;
                                 return (
@@ -6660,45 +6121,31 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.check_in_method || 'Manual'}</td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.checked_in_at ? formatDateTime(attendance.checked_in_at) : '—'}</td>
                                         <td className="px-4 py-2">
-                                            {!isMarked && !attendance?.is_locked ? (
+                                            {!attendance?.is_locked ? (
                                                 <div className="flex gap-2">
-                                                    <form method="POST" action={`/attendances/${attendance?.id || 'new'}`} onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Mark as Present?',
-                                                            text: 'This action cannot be undone.',
-                                                            icon: 'question',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, mark present',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#16a34a',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) {
-                                                            if (!attendance?.id) {
-                                                                const form = document.createElement('form');
-                                                                form.method = 'POST';
-                                                                form.action = `/event-registrations/${reg.id}/attendance`;
-                                                                const csrfInput = document.createElement('input');
-                                                                csrfInput.type = 'hidden';
-                                                                csrfInput.name = '_token';
-                                                                csrfInput.value = csrf;
-                                                                const statusInput = document.createElement('input');
-                                                                statusInput.type = 'hidden';
-                                                                statusInput.name = 'status';
-                                                                statusInput.value = 'present';
-                                                                const methodInput = document.createElement('input');
-                                                                methodInput.type = 'hidden';
-                                                                methodInput.name = 'check_in_method';
-                                                                methodInput.value = 'manual';
-                                                                form.appendChild(csrfInput);
-                                                                form.appendChild(statusInput);
-                                                                form.appendChild(methodInput);
-                                                                document.body.appendChild(form);
-                                                                form.submit();
-                                                            } else {
-                                                                e.target.submit();
-                                                            }
+                                                    <form method="POST" action={`/attendances/${attendance?.id || 'new'}`} onSubmit={(e) => {
+                                                        if (!attendance?.id) {
+                                                            e.preventDefault();
+                                                            const form = document.createElement('form');
+                                                            form.method = 'POST';
+                                                            form.action = `/event-registrations/${reg.id}/attendance`;
+                                                            const csrfInput = document.createElement('input');
+                                                            csrfInput.type = 'hidden';
+                                                            csrfInput.name = '_token';
+                                                            csrfInput.value = csrf;
+                                                            const statusInput = document.createElement('input');
+                                                            statusInput.type = 'hidden';
+                                                            statusInput.name = 'status';
+                                                            statusInput.value = 'present';
+                                                            const methodInput = document.createElement('input');
+                                                            methodInput.type = 'hidden';
+                                                            methodInput.name = 'check_in_method';
+                                                            methodInput.value = 'manual';
+                                                            form.appendChild(csrfInput);
+                                                            form.appendChild(statusInput);
+                                                            form.appendChild(methodInput);
+                                                            document.body.appendChild(form);
+                                                            form.submit();
                                                         }
                                                     }}>
                                                         <input type="hidden" name="_token" value={csrf} />
@@ -6707,48 +6154,34 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                         <input type="hidden" name="check_in_method" value="manual" />
                                                         <button
                                                             type="submit"
-                                                            className="inline-flex items-center rounded-full border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                            className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
                                                         >
                                                             Present
                                                         </button>
                                                     </form>
-                                                    <form method="POST" action={`/attendances/${attendance?.id || 'new'}`} onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Mark as Absent?',
-                                                            text: 'This action cannot be undone.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, mark absent',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#dc2626',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) {
-                                                            if (!attendance?.id) {
-                                                                const form = document.createElement('form');
-                                                                form.method = 'POST';
-                                                                form.action = `/event-registrations/${reg.id}/attendance`;
-                                                                const csrfInput = document.createElement('input');
-                                                                csrfInput.type = 'hidden';
-                                                                csrfInput.name = '_token';
-                                                                csrfInput.value = csrf;
-                                                                const statusInput = document.createElement('input');
-                                                                statusInput.type = 'hidden';
-                                                                statusInput.name = 'status';
-                                                                statusInput.value = 'absent';
-                                                                const methodInput = document.createElement('input');
-                                                                methodInput.type = 'hidden';
-                                                                methodInput.name = 'check_in_method';
-                                                                methodInput.value = 'manual';
-                                                                form.appendChild(csrfInput);
-                                                                form.appendChild(statusInput);
-                                                                form.appendChild(methodInput);
-                                                                document.body.appendChild(form);
-                                                                form.submit();
-                                                            } else {
-                                                                e.target.submit();
-                                                            }
+                                                    <form method="POST" action={`/attendances/${attendance?.id || 'new'}`} onSubmit={(e) => {
+                                                        if (!attendance?.id) {
+                                                            e.preventDefault();
+                                                            const form = document.createElement('form');
+                                                            form.method = 'POST';
+                                                            form.action = `/event-registrations/${reg.id}/attendance`;
+                                                            const csrfInput = document.createElement('input');
+                                                            csrfInput.type = 'hidden';
+                                                            csrfInput.name = '_token';
+                                                            csrfInput.value = csrf;
+                                                            const statusInput = document.createElement('input');
+                                                            statusInput.type = 'hidden';
+                                                            statusInput.name = 'status';
+                                                            statusInput.value = 'absent';
+                                                            const methodInput = document.createElement('input');
+                                                            methodInput.type = 'hidden';
+                                                            methodInput.name = 'check_in_method';
+                                                            methodInput.value = 'manual';
+                                                            form.appendChild(csrfInput);
+                                                            form.appendChild(statusInput);
+                                                            form.appendChild(methodInput);
+                                                            document.body.appendChild(form);
+                                                            form.submit();
                                                         }
                                                     }}>
                                                         <input type="hidden" name="_token" value={csrf} />
@@ -6757,14 +6190,12 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                         <input type="hidden" name="check_in_method" value="manual" />
                                                         <button
                                                             type="submit"
-                                                            className="inline-flex items-center rounded-full border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
+                                                            className="inline-flex items-center rounded-md border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
                                                         >
                                                             Absent
                                                         </button>
                                                     </form>
                                                 </div>
-                                            ) : isMarked ? (
-                                                <span className="text-xs text-slate-500">Marked</span>
                                             ) : (
                                                 <span className="text-xs text-slate-500">Locked</span>
                                             )}

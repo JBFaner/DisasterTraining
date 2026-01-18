@@ -17,10 +17,14 @@ class ResourceEventAssignment extends Model
         'assigned_by',
         'returned_by',
         'returned_at',
+        'assigned_at',
+        'expected_return_date',
     ];
 
     protected $dates = [
         'returned_at',
+        'assigned_at',
+        'expected_return_date',
         'created_at',
         'updated_at',
     ];

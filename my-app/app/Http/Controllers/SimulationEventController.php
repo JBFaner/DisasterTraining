@@ -156,7 +156,7 @@ class SimulationEventController extends Controller
 
         return view('app', [
             'section' => 'simulation_edit',
-            'event' => $simulationEvent->load('scenario'),
+            'event' => $simulationEvent->load(['scenario', 'resources']),
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
         ]);
     }
@@ -532,13 +532,17 @@ class SimulationEventController extends Controller
         
         foreach ($event->resources as $resource) {
             $quantityNeeded = $resource->pivot->quantity_needed;
+            $availableQty = $resource->getAvailableQuantity();
             
             // Check if resource has enough available quantity
-            if ($resource->available >= $quantityNeeded) {
+            if ($availableQty >= $quantityNeeded) {
                 // Assign the resource
                 $success = $resource->assignToEvent($event, $quantityNeeded);
                 
                 if ($success) {
+                    // Update resource status to "In Use"
+                    $resource->update(['status' => 'In Use']);
+                    
                     // Update pivot table
                     $event->resources()->updateExistingPivot($resource->id, [
                         'quantity_assigned' => $quantityNeeded,
@@ -550,7 +554,7 @@ class SimulationEventController extends Controller
                 $event->resources()->updateExistingPivot($resource->id, [
                     'quantity_assigned' => 0,
                     'status' => 'Insufficient',
-                    'notes' => "Not enough available. Needed: {$quantityNeeded}, Available: {$resource->available}",
+                    'notes' => "Not enough available. Needed: {$quantityNeeded}, Available: {$availableQty}",
                 ]);
             }
         }

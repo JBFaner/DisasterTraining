@@ -6,7 +6,6 @@ use App\Models\Scenario;
 use App\Models\ScenarioInject;
 use App\Models\ScenarioExpectedAction;
 use App\Models\TrainingModule;
-use App\Services\GeminiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -239,37 +238,5 @@ class ScenarioController extends Controller
         $user = Auth::user();
         if (! $user) abort(403);
         if ($user->role !== 'LGU_ADMIN') abort(403);
-    }
-
-    /**
-     * Generate a scenario using Gemini AI
-     */
-    public function generateWithAi(Request $request)
-    {
-        // Authorization check - comment out for testing if needed
-        // $this->authorizeScenarioWrite();
-
-        $validated = $request->validate([
-            'disaster_type' => ['required', 'string', 'max:100'],
-            'difficulty' => ['required', 'string', 'in:Easy,Medium,Hard'],
-        ]);
-
-        try {
-            $gemini = new GeminiService();
-            $scenarioData = $gemini->generateScenario(
-                $validated['disaster_type'],
-                $validated['difficulty']
-            );
-
-            return response()->json([
-                'success' => true,
-                'data' => $scenarioData,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to generate scenario: ' . $e->getMessage(),
-            ], 400);
-        }
     }
 }
