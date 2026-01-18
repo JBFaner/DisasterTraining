@@ -103,22 +103,22 @@
         <div class="content">
             <p>Hello {{ $name }},</p>
             
-            <p>Thank you for registering as a participant! To complete your registration, please verify your email address by clicking the button below:</p>
+            <p>Thank you for registering as a participant! To complete your registration, please verify your email address using the verification code below:</p>
 
-            <div style="text-align: center;">
-                <a href="{{ $verificationUrl }}" class="button">Verify Email Address</a>
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="display: inline-block; background-color: #f1f5f9; border: 2px solid #3b82f6; border-radius: 8px; padding: 20px 40px;">
+                    <p style="margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Verification Code</p>
+                    <p style="margin: 0; font-size: 32px; font-weight: bold; color: #3b82f6; font-family: monospace; letter-spacing: 4px;">{{ $verificationCode }}</p>
+                </div>
             </div>
 
-            <p>Or copy and paste this link into your browser:</p>
-            <div class="link-box">
-                {{ $verificationUrl }}
-            </div>
+            <p>Enter this 6-digit code on the verification page to complete your registration.</p>
 
             <div class="warning">
-                <strong>⚠️ Important:</strong> This verification link will expire in 15 minutes. If you didn't create an account, please ignore this email.
+                <strong>⚠️ Important:</strong> This verification code will expire in 15 minutes. If you didn't create an account, please ignore this email.
             </div>
 
-            <p>If the button doesn't work, you can also verify by visiting the verification page and entering the token manually.</p>
+            <p>If you need to access the verification page again, you can return to the registration page and continue from there.</p>
         </div>
 
         <div class="footer">
