@@ -45,6 +45,8 @@ class TrainingModuleController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'learning_objectives' => ['nullable', 'array'],
+            'learning_objectives.*' => ['nullable', 'string', 'max:500'],
             'difficulty' => ['required', 'string'],
             'category' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string'],
@@ -52,6 +54,14 @@ class TrainingModuleController extends Controller
         ]);
 
         $data['owner_id'] = Auth::id();
+
+        // Filter out empty objectives and convert to JSON
+        if (isset($data['learning_objectives'])) {
+            $data['learning_objectives'] = array_values(array_filter($data['learning_objectives']));
+            if (empty($data['learning_objectives'])) {
+                $data['learning_objectives'] = null;
+            }
+        }
 
         TrainingModule::create($data);
 
@@ -118,11 +128,21 @@ class TrainingModuleController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'learning_objectives' => ['nullable', 'array'],
+            'learning_objectives.*' => ['nullable', 'string', 'max:500'],
             'difficulty' => ['required', 'string'],
             'category' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string'],
             'visibility' => ['required', 'string'],
         ]);
+
+        // Filter out empty objectives and convert to JSON
+        if (isset($data['learning_objectives'])) {
+            $data['learning_objectives'] = array_values(array_filter($data['learning_objectives']));
+            if (empty($data['learning_objectives'])) {
+                $data['learning_objectives'] = null;
+            }
+        }
 
         $trainingModule->update($data);
 

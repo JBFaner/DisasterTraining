@@ -12,11 +12,16 @@ class TrainingModule extends Model
     protected $fillable = [
         'title',
         'description',
+        'learning_objectives',
         'difficulty',
         'category',
         'status',
         'visibility',
         'owner_id',
+    ];
+
+    protected $casts = [
+        'learning_objectives' => 'array',
     ];
 
     public function lessons()
