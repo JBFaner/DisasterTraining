@@ -20,8 +20,9 @@ import {
     X,
     Settings,
 } from 'lucide-react';
+import { TopBar } from './TopBar';
 
-export function SidebarLayout({ role, currentSection = 'dashboard', children }) {
+export function SidebarLayout({ role, currentSection = 'dashboard', children, moduleName, breadcrumbs, user }) {
     // Load collapsed state from localStorage, default to false
     const [isCollapsed, setIsCollapsed] = React.useState(() => {
         if (typeof window !== 'undefined') {
@@ -30,7 +31,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
         }
         return false;
     });
-    
+
     // Save collapsed state to localStorage whenever it changes
     React.useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -42,11 +43,11 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
     const [isRightDrawerOpen, setIsRightDrawerOpen] = React.useState(false);
     const leftDrawerRef = React.useRef(null);
     const rightDrawerRef = React.useRef(null);
-    
+
     const isAdmin = role === 'LGU_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
     const isParticipant = role === 'PARTICIPANT';
-    
+
     // Close drawer when clicking outside or on overlay
     React.useEffect(() => {
         const handleClickOutside = (event) => {
@@ -59,7 +60,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                 setIsRightDrawerOpen(false);
             }
         };
-        
+
         if (isLeftDrawerOpen || isRightDrawerOpen) {
             // Use setTimeout to avoid immediate closing when opening
             const timeoutId = setTimeout(() => {
@@ -67,7 +68,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
             }, 100);
             // Prevent body scroll when drawer is open
             document.body.style.overflow = 'hidden';
-            
+
             return () => {
                 clearTimeout(timeoutId);
                 document.removeEventListener('mousedown', handleClickOutside);
@@ -77,13 +78,13 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
             document.body.style.overflow = '';
         }
     }, [isLeftDrawerOpen, isRightDrawerOpen]);
-    
+
     // Close one drawer when opening the other
     const openLeftDrawer = () => {
         setIsRightDrawerOpen(false);
         setIsLeftDrawerOpen(true);
     };
-    
+
     const openRightDrawer = () => {
         setIsLeftDrawerOpen(false);
         setIsRightDrawerOpen(true);
@@ -130,7 +131,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                 >
                     <ChevronRight className="w-5 h-5" />
                 </button>
-                
+
                 {/* Center Branding */}
                 <div className="flex items-center gap-2">
                     <img src="/logo.svg" alt="LGU Logo" className="h-8 w-auto" />
@@ -143,7 +144,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                         </div>
                     </div>
                 </div>
-                
+
                 {/* Right Overflow Menu */}
                 <button
                     data-right-drawer-toggle
@@ -154,10 +155,10 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                     <MoreVertical className="w-5 h-5" />
                 </button>
             </header>
-            
+
             {/* Mobile Overlay Backdrop */}
             {(isLeftDrawerOpen || isRightDrawerOpen) && (
-                <div 
+                <div
                     className="md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity"
                     onClick={() => {
                         setIsLeftDrawerOpen(false);
@@ -165,13 +166,12 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                     }}
                 />
             )}
-            
+
             {/* Mobile Left Navigation Drawer */}
             <aside
                 ref={leftDrawerRef}
-                className={`md:hidden fixed top-0 left-0 h-full w-80 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${
-                    isLeftDrawerOpen ? 'translate-x-0' : '-translate-x-full'
-                }`}
+                className={`md:hidden fixed top-0 left-0 h-full w-80 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${isLeftDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+                    }`}
             >
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
@@ -194,7 +194,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-                
+
                 {/* Drawer Navigation */}
                 <ScrollArea.Root className="flex-1 overflow-hidden min-h-0">
                     <ScrollArea.Viewport className="h-full px-3 py-4">
@@ -210,13 +210,12 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                     </ScrollArea.Scrollbar>
                 </ScrollArea.Root>
             </aside>
-            
+
             {/* Mobile Right Action Drawer */}
             <aside
                 ref={rightDrawerRef}
-                className={`md:hidden fixed top-0 right-0 h-full w-72 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${
-                    isRightDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-                }`}
+                className={`md:hidden fixed top-0 right-0 h-full w-72 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${isRightDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+                    }`}
             >
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
@@ -243,7 +242,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-                
+
                 {/* Drawer Actions */}
                 <div className="flex-1 px-4 py-4 space-y-2">
                     <a
@@ -279,7 +278,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                     </form>
                 </div>
             </aside>
-            
+
             {/* Sidebar - desktop-only */}
             <aside className={`hidden md:flex md:h-screen md:fixed md:left-0 md:top-0 bg-slate-900 text-slate-50 flex-col z-10 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-80'}`}>
                 {/* Brand */}
@@ -300,8 +299,8 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                     {isCollapsed && (
                         <img src="/logo.svg" alt="LGU Logo" className="h-10 w-auto mx-auto" />
                     )}
-                    {/* Toggle Button */}
-                    <button
+                    {/* Toggle Button - Hidden since it's now in TopBar */}
+                    {/* <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         className="absolute -right-3 top-1/2 -translate-y-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 rounded-full p-1.5 border border-slate-700 transition-colors z-20"
                         title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -311,7 +310,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
                         ) : (
                             <ChevronLeft className="w-4 h-4" />
                         )}
-                    </button>
+                    </button> */}
                 </div>
 
                 {/* Nav */}
@@ -362,8 +361,43 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children }) 
             </aside>
 
             {/* Main content */}
-            <main className={`flex-1 p-6 transition-all duration-300 pt-14 md:pt-6 ${isCollapsed ? 'md:ml-20' : 'md:ml-80'}`}>
-                {children}
+            <main className={`flex-1 transition-all duration-300 pt-14 md:pt-0 ${isCollapsed ? 'md:ml-20' : 'md:ml-80'}`}>
+                <TopBar
+                    moduleName={moduleName}
+                    breadcrumbs={breadcrumbs}
+                    user={user}
+                    onSidebarToggle={() => setIsCollapsed(!isCollapsed)}
+                    isSidebarCollapsed={isCollapsed}
+                />
+                {/* Breadcrumbs - Below TopBar */}
+                {breadcrumbs && breadcrumbs.length > 0 && (
+                    <div className="bg-white border-b border-slate-200 px-6 py-2">
+                        <nav className="flex items-center gap-1.5 text-xs text-slate-600">
+                            {breadcrumbs.map((crumb, index) => (
+                                <React.Fragment key={index}>
+                                    {index > 0 && (
+                                        <span className="text-slate-400">/</span>
+                                    )}
+                                    {crumb.href ? (
+                                        <a
+                                            href={crumb.href}
+                                            className="hover:text-slate-900 hover:underline underline-offset-2 transition-colors"
+                                        >
+                                            {crumb.label}
+                                        </a>
+                                    ) : (
+                                        <span className="text-slate-900 font-medium">
+                                            {crumb.label}
+                                        </span>
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </nav>
+                    </div>
+                )}
+                <div className="p-6">
+                    {children}
+                </div>
             </main>
         </div>
     );
@@ -374,7 +408,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
     const isAdmin = role === 'LGU_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
     const isParticipant = role === 'PARTICIPANT';
-    
+
     if (isParticipant) {
         return (
             <>
@@ -447,7 +481,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
             </>
         );
     }
-    
+
     return (
         <>
             <div className={isCollapsed ? 'w-full' : ''}>
@@ -525,6 +559,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                 <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Administration</NavSectionTitle>}
                     <NavItem
+                        icon={Settings}
+                        label="Barangay Profile"
+                        href="/barangay-profile"
+                        active={currentSection === 'barangay_profile'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
                         icon={ShieldCheck}
                         label="Users & Roles"
                         href="#"
@@ -552,7 +594,7 @@ function NavItem({ icon: Icon, label, href, active, isCollapsed, onNavigate }) {
             onNavigate();
         }
     };
-    
+
     return (
         <a
             href={href}

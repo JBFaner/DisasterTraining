@@ -26,6 +26,7 @@ class User extends Authenticatable
         'participant_id',
         'status',
         'registered_at',
+        'profile_picture',
     ];
 
     /**

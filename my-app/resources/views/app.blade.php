@@ -60,35 +60,40 @@
             @isset($attendances)
                 data-attendances='@json($attendances)'
             @endisset
-            @isset($participantEvaluations)
-                data-participant-evaluations='@json($participantEvaluations)'
+            @isset($participant_evaluations)
+                data-participant-evaluations='@json($participant_evaluations)'
             @endisset
-            @isset($user)
+            @if(auth()->check())
+                data-user='@json(auth()->user())'
+            @elseif(isset($user))
                 data-user='@json($user)'
             @endisset
             @isset($attendance)
                 data-attendance='@json($attendance)'
             @endisset
-            @isset($participantEvaluation)
-                data-participant-evaluation='@json($participantEvaluation)'
+            @isset($participant_evaluation)
+                data-participant-evaluation='@json($participant_evaluation)'
+            @endisset
+            @isset($barangay_profile)
+                data-barangay-profile='@json($barangay_profile)'
             @endisset
             @isset($scores)
                 data-scores='@json($scores)'
             @endisset
-            @isset($criterionAverages)
-                data-criterion-averages='@json($criterionAverages)'
+            @isset($criterion_averages)
+                data-criterion-averages='@json($criterion_averages)'
             @endisset
-            @isset($totalParticipants)
-                data-total-participants="{{ $totalParticipants }}"
+            @isset($total_participants)
+                data-total-participants="{{ $total_participants }}"
             @endisset
-            @isset($passedCount)
-                data-passed-count="{{ $passedCount }}"
+            @isset($passed_count)
+                data-passed-count="{{ $passed_count }}"
             @endisset
-            @isset($failedCount)
-                data-failed-count="{{ $failedCount }}"
+            @isset($failed_count)
+                data-failed-count="{{ $failed_count }}"
             @endisset
-            @isset($overallAverage)
-                data-overall-average="{{ $overallAverage }}"
+            @isset($overall_average)
+                data-overall-average="{{ $overall_average }}"
             @endisset
             @if (session('status'))
                 data-status="{{ session('status') }}"
@@ -96,5 +101,3 @@
         ></div>
     </body>
 </html>
-
-

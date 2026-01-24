@@ -35,8 +35,11 @@ class TrainingModuleController extends Controller
 
     public function create()
     {
+        $barangayProfile = \App\Models\BarangayProfile::first();
+        
         return view('app', [
             'section' => 'training_create',
+            'barangay_profile' => $barangayProfile,
         ]);
     }
 
@@ -45,21 +48,24 @@ class TrainingModuleController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'learning_objectives' => ['nullable', 'array'],
-            'learning_objectives.*' => ['nullable', 'string', 'max:500'],
+            'learning_objectives' => ['required', 'array', 'min:1'],
+            'learning_objectives.*' => ['required', 'string', 'max:500'],
             'difficulty' => ['required', 'string'],
             'category' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'string'],
             'visibility' => ['required', 'string'],
         ]);
 
         $data['owner_id'] = Auth::id();
+        // Automatically set status to draft
+        $data['status'] = 'draft';
 
         // Filter out empty objectives and convert to JSON
         if (isset($data['learning_objectives'])) {
             $data['learning_objectives'] = array_values(array_filter($data['learning_objectives']));
             if (empty($data['learning_objectives'])) {
-                $data['learning_objectives'] = null;
+                return redirect()->back()
+                    ->withErrors(['learning_objectives' => 'At least one learning objective is required.'])
+                    ->withInput();
             }
         }
 
@@ -67,6 +73,35 @@ class TrainingModuleController extends Controller
 
         return redirect()->route('training.modules')
             ->with('status', 'Training module created successfully.');
+    }
+
+    public function publish(TrainingModule $trainingModule)
+    {
+        $this->authorizeOwner($trainingModule);
+
+        // Validation: Check if module has required fields
+        $errors = [];
+        if (empty($trainingModule->title)) {
+            $errors[] = 'Title is required';
+        }
+        if (empty($trainingModule->difficulty)) {
+            $errors[] = 'Difficulty is required';
+        }
+        if ($trainingModule->lessons()->count() === 0) {
+            $errors[] = 'At least one lesson is required';
+        }
+
+        if (!empty($errors)) {
+            return redirect()->route('training.modules.show', $trainingModule)
+                ->with('error', 'Cannot publish module: ' . implode(', ', $errors));
+        }
+
+        $trainingModule->update([
+            'status' => 'published',
+        ]);
+
+        return redirect()->route('training.modules')
+            ->with('status', 'Training module published successfully.');
     }
 
     public function edit(TrainingModule $trainingModule)
@@ -128,8 +163,8 @@ class TrainingModuleController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'learning_objectives' => ['nullable', 'array'],
-            'learning_objectives.*' => ['nullable', 'string', 'max:500'],
+            'learning_objectives' => ['required', 'array', 'min:1'],
+            'learning_objectives.*' => ['required', 'string', 'max:500'],
             'difficulty' => ['required', 'string'],
             'category' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string'],
@@ -140,7 +175,9 @@ class TrainingModuleController extends Controller
         if (isset($data['learning_objectives'])) {
             $data['learning_objectives'] = array_values(array_filter($data['learning_objectives']));
             if (empty($data['learning_objectives'])) {
-                $data['learning_objectives'] = null;
+                return redirect()->back()
+                    ->withErrors(['learning_objectives' => 'At least one learning objective is required.'])
+                    ->withInput();
             }
         }
 

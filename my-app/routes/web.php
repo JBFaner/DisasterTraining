@@ -82,7 +82,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/training-modules/{trainingModule}/archive', [TrainingModuleController::class, 'archive'])
         ->name('training.modules.archive');
-
+    Route::post('/training-modules/{trainingModule}/publish', [TrainingModuleController::class, 'publish'])
+        ->name('training.modules.publish');
     Route::delete('/training-modules/{trainingModule}', [TrainingModuleController::class, 'destroy'])
         ->name('training.modules.destroy');
 
@@ -181,6 +182,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/evaluations/{evaluation}/lock', [EvaluationController::class, 'lock'])->name('evaluations.lock');
     Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [EvaluationController::class, 'summary'])->name('evaluations.summary');
     Route::get('/simulation-events/{simulationEvent}/evaluation/export/{format?}', [EvaluationController::class, 'export'])->name('evaluations.export');
+
+    // Barangay Profile (Admin only)
+    Route::get('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'index'])
+        ->name('barangay.profile');
+    Route::post('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'store'])
+        ->name('barangay.profile.store');
+    Route::put('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'update'])
+        ->name('barangay.profile.update');
 
     Route::get('/certification', function () {
         return view('app', ['section' => 'certification']);

@@ -254,6 +254,7 @@ if (rootElement) {
     const userJson = rootElement.getAttribute('data-user');
     const attendanceJson = rootElement.getAttribute('data-attendance');
     const participantEvaluationJson = rootElement.getAttribute('data-participant-evaluation');
+    const barangayProfileJson = rootElement.getAttribute('data-barangay-profile');
     const scoresJson = rootElement.getAttribute('data-scores');
     const criterionAveragesJson = rootElement.getAttribute('data-criterion-averages');
 
@@ -325,6 +326,15 @@ if (rootElement) {
     currentPassedCount = rootElement.getAttribute('data-passed-count');
     currentFailedCount = rootElement.getAttribute('data-failed-count');
     currentOverallAverage = rootElement.getAttribute('data-overall-average');
+
+    let barangayProfile = null;
+    if (barangayProfileJson) {
+        try {
+            barangayProfile = JSON.parse(barangayProfileJson);
+        } catch (e) {
+            console.error('Failed to parse barangay profile JSON', e);
+        }
+    }
 
     const role =
         roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
@@ -533,35 +543,14 @@ if (rootElement) {
     ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
             <Toast.Provider swipeDirection="right">
-                <SidebarLayout role={role} currentSection={navSection}>
+                <SidebarLayout
+                    role={role}
+                    currentSection={navSection}
+                    moduleName={pageTitle}
+                    breadcrumbs={breadcrumbs}
+                    user={currentUser}
+                >
                     <div className="max-w-6xl mx-auto">
-                        {/* Breadcrumb Navigation */}
-                        <nav className="flex items-center gap-2 text-sm text-slate-600 mb-4">
-                            {breadcrumbs.map((crumb, index) => (
-                                <React.Fragment key={index}>
-                                    {index > 0 && (
-                                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                                    )}
-                                    {crumb.href ? (
-                                        <a
-                                            href={crumb.href}
-                                            className="hover:text-slate-900 hover:underline underline-offset-2 transition-colors"
-                                        >
-                                            {crumb.label}
-                                        </a>
-                                    ) : (
-                                        <span className="text-slate-900 font-medium">
-                                            {crumb.label}
-                                        </span>
-                                    )}
-                                </React.Fragment>
-                            ))}
-                        </nav>
-
-                        {/* Page Title */}
-                        <h1 className="text-2xl font-semibold text-slate-800 mb-4">
-                            {pageTitle}
-                        </h1>
 
                         {sectionAttr === 'dashboard' && (
                             <DashboardOverview modules={modules} events={events} participants={participants} role={role} />
@@ -576,7 +565,7 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'training_create' && (
-                            <TrainingModuleCreateForm />
+                            <TrainingModuleCreateForm barangayProfile={barangayProfile} />
                         )}
 
                         {sectionAttr === 'training_edit' && currentModule && (
@@ -697,6 +686,10 @@ if (rootElement) {
                                 failedCount={currentFailedCount}
                                 overallAverage={currentOverallAverage}
                             />
+                        )}
+
+                        {sectionAttr === 'barangay_profile' && (
+                            <BarangayProfileForm profile={barangayProfile} />
                         )}
                     </div>
                 </SidebarLayout>
@@ -1141,7 +1134,56 @@ function TrainingModulesTable({ modules = [] }) {
                                             >
                                                 <Eye className="w-3.5 h-3.5" />
                                             </a>
-                                            {module.status !== 'published' && (
+                                            {module.status === 'draft' && (
+                                                <>
+                                                    <form
+                                                        method="POST"
+                                                        action={`/training-modules/${module.id}/publish`}
+                                                        onSubmit={async (e) => {
+                                                            e.preventDefault();
+                                                            const result = await Swal.fire({
+                                                                title: 'Publish Training Module',
+                                                                html: `
+                                                                    <p class="text-left mb-3">Are you sure you want to publish this training module?</p>
+                                                                    <p class="text-left text-sm text-slate-600 mb-2">Please ensure:</p>
+                                                                    <ul class="text-left text-sm text-slate-600 list-disc list-inside space-y-1">
+                                                                        <li>Title is filled</li>
+                                                                        <li>Difficulty is selected</li>
+                                                                        <li>At least one lesson is added</li>
+                                                                    </ul>
+                                                                `,
+                                                                icon: 'question',
+                                                                showCancelButton: true,
+                                                                confirmButtonText: 'Yes, publish',
+                                                                cancelButtonText: 'Cancel',
+                                                                confirmButtonColor: '#16a34a',
+                                                                cancelButtonColor: '#64748b',
+                                                            });
+                                                            if (result.isConfirmed) {
+                                                                e.target.submit();
+                                                            }
+                                                        }}
+                                                        className="inline-block"
+                                                    >
+                                                        <input type="hidden" name="_token" value={csrf} />
+                                                        <button
+                                                            type="submit"
+                                                            className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                            title="Publish"
+                                                        >
+                                                            <Send className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </form>
+                                                    <a
+                                                        href={`/training-modules/${module.id}/edit`}
+                                                        className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                        title="Edit"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </a>
+                                                </>
+                                            )}
+                                            {module.status !== 'published' && module.status !== 'draft' && (
                                                 <a
                                                     href={`/training-modules/${module.id}/edit`}
                                                     className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
@@ -1581,11 +1623,6 @@ function ParticipantTrainingLessonView({ module }) {
                                                     />
                                                     <span>Mark as completed</span>
                                                 </label>
-                                                {lesson.is_required && (
-                                                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-700">
-                                                        Required
-                                                    </span>
-                                                )}
                                             </div>
                                         </li>
                                     );
@@ -1671,11 +1708,11 @@ function StatusToast({ message }) {
     );
 }
 
-function TrainingModuleCreateForm() {
+function TrainingModuleCreateForm({ barangayProfile }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    const [showObjectives, setShowObjectives] = React.useState(false);
+    const [showObjectives, setShowObjectives] = React.useState(true); // Show by default
     const [objectives, setObjectives] = React.useState(['']);
 
     const addObjective = () => {
@@ -1805,51 +1842,49 @@ function TrainingModuleCreateForm() {
                         >
                             Disaster type
                         </label>
-                        <input
-                            id="category"
-                            name="category"
-                            type="text"
-                            placeholder="e.g. Earthquake, Fire"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
+                        {barangayProfile && barangayProfile.hazards && barangayProfile.hazards.length > 0 ? (
+                            <select
+                                id="category"
+                                name="category"
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="">Select disaster type</option>
+                                {barangayProfile.hazards.map((hazard, index) => (
+                                    <option key={index} value={hazard}>
+                                        {hazard}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                id="category"
+                                name="category"
+                                type="text"
+                                placeholder="e.g. Earthquake, Fire"
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                        )}
                     </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="status"
-                        >
-                            Status
-                        </label>
-                        <select
-                            id="status"
-                            name="status"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                            <option value="unpublished">Unpublished</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="visibility"
-                        >
-                            Visibility
-                        </label>
-                        <select
-                            id="visibility"
-                            name="visibility"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="all">All participants</option>
-                            <option value="group">Specific groups (later)</option>
-                            <option value="staff_only">Staff only</option>
-                        </select>
-                    </div>
+                <div>
+                    <label
+                        className="block text-xs font-semibold text-slate-600 mb-1"
+                        htmlFor="visibility"
+                    >
+                        Visibility
+                    </label>
+                    <select
+                        id="visibility"
+                        name="visibility"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                        <option value="all">All participants</option>
+                        <option value="group">Specific groups (later)</option>
+                        <option value="staff_only">Staff only</option>
+                    </select>
                 </div>
+                {/* Status is automatically set to draft when creating */}
+                <input type="hidden" name="status" value="draft" />
                 <div className="flex justify-end gap-2 pt-2">
                     <a
                         href="/training-modules"
@@ -2093,7 +2128,6 @@ function TrainingModuleDetail({ module }) {
     const [editFormData, setEditFormData] = React.useState({
         title: '',
         description: '',
-        is_required: false,
     });
 
     const handleLessonClick = (lesson) => {
@@ -2102,7 +2136,6 @@ function TrainingModuleDetail({ module }) {
         setEditFormData({
             title: lesson.title || '',
             description: lesson.description || '',
-            is_required: lesson.is_required || false,
         });
     };
 
@@ -2122,7 +2155,6 @@ function TrainingModuleDetail({ module }) {
         setEditFormData({
             title: '',
             description: '',
-            is_required: false,
         });
     };
 
@@ -2209,13 +2241,65 @@ function TrainingModuleDetail({ module }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div className="lg:col-span-2 space-y-3">
+                {/* Add Lesson Section - First on mobile, second on desktop */}
+                <div className="lg:order-2 space-y-3">
+                    <h3 className="text-sm font-semibold text-slate-800">
+                        Add Lesson
+                    </h3>
+                    <form
+                        method="POST"
+                        action={`/training-modules/${module.id}/lessons`}
+                        className="space-y-3 rounded-xl bg-white border border-slate-200 shadow-sm p-4"
+                    >
+                        <input type="hidden" name="_token" value={csrf} />
+                        <div>
+                            <label
+                                htmlFor="lesson_title"
+                                className="block text-[0.7rem] font-semibold text-slate-600 mb-1"
+                            >
+                                Lesson title <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="lesson_title"
+                                name="title"
+                                type="text"
+                                required
+                                className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                htmlFor="lesson_description"
+                                className="block text-[0.7rem] font-semibold text-slate-600 mb-1"
+                            >
+                                Description / key points
+                            </label>
+                            <textarea
+                                id="lesson_description"
+                                name="description"
+                                rows={3}
+                                className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                        </div>
+                        <div className="flex justify-end pt-1">
+                            <button
+                                type="submit"
+                                className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5"
+                            >
+                                Add lesson
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* Lessons Section - Second on mobile, first on desktop */}
+                <div className="lg:col-span-2 lg:order-1 space-y-3">
                     <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-slate-800">
                             Lessons
                         </h3>
                     </div>
-                    <div className="rounded-xl bg-white border border-slate-200 shadow-sm">
+                    <div className="rounded-xl bg-white border border-slate-200 shadow-sm max-h-[600px] overflow-y-auto">
                         {lessons.length === 0 ? (
                             <div className="px-4 py-6 text-sm text-slate-500 text-center">
                                 No lessons yet. Use the form on the right to add the
@@ -2239,11 +2323,6 @@ function TrainingModuleDetail({ module }) {
                                                 <span className="text-sm font-medium text-slate-800 hover:text-emerald-700 hover:underline">
                                                     {lesson.title}
                                                 </span>
-                                                {lesson.is_required && (
-                                                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-700">
-                                                        Required
-                                                    </span>
-                                                )}
                                             </div>
                                             {lesson.description && (
                                                 <p className="mt-1 text-xs text-slate-600 whitespace-pre-line line-clamp-4">
@@ -2397,65 +2476,6 @@ function TrainingModuleDetail({ module }) {
                         )}
                     </div>
                 </div>
-
-                <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-800">
-                        Add Lesson
-                    </h3>
-                    <form
-                        method="POST"
-                        action={`/training-modules/${module.id}/lessons`}
-                        className="space-y-3 rounded-xl bg-white border border-slate-200 shadow-sm p-4"
-                    >
-                        <input type="hidden" name="_token" value={csrf} />
-                        <div>
-                            <label
-                                htmlFor="lesson_title"
-                                className="block text-[0.7rem] font-semibold text-slate-600 mb-1"
-                            >
-                                Lesson title <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="lesson_title"
-                                name="title"
-                                type="text"
-                                required
-                                className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                htmlFor="lesson_description"
-                                className="block text-[0.7rem] font-semibold text-slate-600 mb-1"
-                            >
-                                Description / key points
-                            </label>
-                            <textarea
-                                id="lesson_description"
-                                name="description"
-                                rows={3}
-                                className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <label className="inline-flex items-center gap-2 text-xs text-slate-600">
-                            <input
-                                type="checkbox"
-                                name="is_required"
-                                defaultChecked
-                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span>Required lesson for module completion</span>
-                        </label>
-                        <div className="flex justify-end pt-1">
-                            <button
-                                type="submit"
-                                className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5"
-                            >
-                                Add lesson
-                            </button>
-                        </div>
-                    </form>
-                </div>
             </div>
 
             {/* Lesson View/Edit Modal */}
@@ -2534,19 +2554,6 @@ function TrainingModuleDetail({ module }) {
                                                     className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                                 />
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    id="edit_lesson_required"
-                                                    name="is_required"
-                                                    type="checkbox"
-                                                    checked={editFormData.is_required}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, is_required: e.target.checked })}
-                                                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                                />
-                                                <label htmlFor="edit_lesson_required" className="text-sm text-slate-700">
-                                                    Required lesson for module completion
-                                                </label>
-                                            </div>
                                             <div className="flex justify-end gap-2 pt-2">
                                                 <button
                                                     type="button"
@@ -2581,20 +2588,6 @@ function TrainingModuleDetail({ module }) {
                                                             <p className="text-sm text-slate-800 mt-1 whitespace-pre-line">{selectedLesson.description}</p>
                                                         </div>
                                                     )}
-                                                    <div>
-                                                        <span className="text-xs font-semibold text-slate-600">Status:</span>
-                                                        <div className="mt-1">
-                                                            {selectedLesson.is_required ? (
-                                                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                                                                    Required
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                                                                    Optional
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             </div>
 
@@ -5306,21 +5299,17 @@ function SimulationEventCreateForm({ scenarios }) {
                                 <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="disaster_type">
                                     Disaster Type <span className="text-red-500">*</span>
                                 </label>
-                                <select
+                                <input
                                     id="disaster_type"
                                     name="disaster_type"
+                                    type="text"
+                                    value={selectedScenario ? selectedScenario.disaster_type : ''}
+                                    readOnly
+                                    disabled
                                     required
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                >
-                                    <option value="">Select disaster type…</option>
-                                    <option value="Earthquake">Earthquake</option>
-                                    <option value="Fire">Fire</option>
-                                    <option value="Flood">Flood</option>
-                                    <option value="Typhoon">Typhoon</option>
-                                    <option value="Landslide">Landslide</option>
-                                    <option value="Chemical Spill">Chemical Spill</option>
-                                    <option value="Multi-hazard">Multi-hazard</option>
-                                </select>
+                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-slate-100 text-slate-500 cursor-not-allowed"
+                                    placeholder="Select a scenario first"
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_category">
@@ -5351,6 +5340,43 @@ function SimulationEventCreateForm({ scenarios }) {
                                 placeholder="What the drill is about & learning objective"
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Scenario Assignment */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Scenario Assignment</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="scenario_id">
+                                Select Scenario <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="scenario_id"
+                                name="scenario_id"
+                                value={selectedScenarioId}
+                                onChange={(e) => setSelectedScenarioId(e.target.value)}
+                                required
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="">Select a scenario…</option>
+                                {(scenarios || []).map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.title} ({s.disaster_type} - {s.difficulty})
+                                    </option>
+                                ))}
+                            </select>
+                            {selectedScenario && (
+                                <div className="mt-2 p-3 bg-slate-50 rounded-md text-xs text-slate-600">
+                                    <div className="font-semibold mb-1">Scenario Preview:</div>
+                                    <div>Hazard: {selectedScenario.disaster_type}</div>
+                                    <div>Difficulty: {selectedScenario.difficulty}</div>
+                                    {selectedScenario.short_description && (
+                                        <div className="mt-1">{selectedScenario.short_description}</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -5449,159 +5475,6 @@ function SimulationEventCreateForm({ scenarios }) {
                                 name="location_notes"
                                 rows={3}
                                 placeholder="Accessibility notes, exits, hazard zones, assembly points"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input
-                                id="is_high_risk_location"
-                                name="is_high_risk_location"
-                                type="checkbox"
-                                value="1"
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <label htmlFor="is_high_risk_location" className="text-sm text-slate-700">
-                                Mark location as &quot;high risk&quot;
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Section 4: Scenario Assignment */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">4. Scenario Assignment</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="scenario_id">
-                                Select Scenario
-                            </label>
-                            <select
-                                id="scenario_id"
-                                name="scenario_id"
-                                value={selectedScenarioId}
-                                onChange={(e) => setSelectedScenarioId(e.target.value)}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Select a scenario…</option>
-                                {(scenarios || []).map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.title} ({s.disaster_type} - {s.difficulty})
-                                    </option>
-                                ))}
-                            </select>
-                            {selectedScenario && (
-                                <div className="mt-2 p-3 bg-slate-50 rounded-md text-xs text-slate-600">
-                                    <div className="font-semibold mb-1">Scenario Preview:</div>
-                                    <div>Hazard: {selectedScenario.disaster_type}</div>
-                                    <div>Difficulty: {selectedScenario.difficulty}</div>
-                                    {selectedScenario.short_description && (
-                                        <div className="mt-1">{selectedScenario.short_description}</div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input
-                                id="scenario_is_required"
-                                name="scenario_is_required"
-                                type="checkbox"
-                                value="1"
-                                defaultChecked
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <label htmlFor="scenario_is_required" className="text-sm text-slate-700">
-                                Required scenario
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Section 6: Participant Settings */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">6. Participant Settings</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-2">
-                                Who can join (select all that apply)
-                            </label>
-                            <div className="space-y-2">
-                                {['Staff', 'Volunteers', 'Students', 'Responders'].map((type) => (
-                                    <label key={type} className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            name="allowed_participant_types[]"
-                                            value={type.toLowerCase()}
-                                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                        />
-                                        <span className="text-sm text-slate-700">{type}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="max_participants">
-                                    Max Participant Limit
-                                </label>
-                                <input
-                                    id="max_participants"
-                                    name="max_participants"
-                                    type="number"
-                                    min="1"
-                                    placeholder="No limit if empty"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    name="self_registration_enabled"
-                                    value="1"
-                                    defaultChecked
-                                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                />
-                                <span className="text-sm text-slate-700">Enable self-registration</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    name="qr_code_enabled"
-                                    value="1"
-                                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                />
-                                <span className="text-sm text-slate-700">Enable QR code or attendance code</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Section 8: Safety & Compliance */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">8. Safety & Compliance</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="safety_guidelines">
-                                Safety Guidelines
-                            </label>
-                            <textarea
-                                id="safety_guidelines"
-                                name="safety_guidelines"
-                                rows={3}
-                                placeholder="Safety rules and guidelines"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="hazard_warnings">
-                                Hazard Warnings
-                            </label>
-                            <textarea
-                                id="hazard_warnings"
-                                name="hazard_warnings"
-                                rows={2}
-                                placeholder="Known hazards and warnings"
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             />
                         </div>
@@ -7738,6 +7611,371 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// Barangay Profile Form Component
+function BarangayProfileForm({ profile }) {
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const isEditing = !!profile;
+
+    const [formData, setFormData] = React.useState({
+        barangay_name: profile?.barangay_name || '',
+        municipality_city: profile?.municipality_city || '',
+        province: profile?.province || '',
+        barangay_address: profile?.barangay_address || '',
+        contact_number: profile?.contact_number || '',
+        email_address: profile?.email_address || '',
+        estimated_population: profile?.estimated_population || '',
+        area_classification: profile?.area_classification || '',
+        hazards: profile?.hazards || [],
+        hazard_other: '',
+        hazard_notes: profile?.hazard_notes || '',
+    });
+
+    const [errors, setErrors] = React.useState({});
+
+    const hazardOptions = [
+        'Earthquake',
+        'Fire',
+        'Flood',
+        'Typhoon',
+        'Landslide',
+        'Storm Surge',
+    ];
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        // Clear error for this field
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: null }));
+        }
+    };
+
+    const handleHazardToggle = (hazard) => {
+        setFormData(prev => {
+            const hazards = prev.hazards.includes(hazard)
+                ? prev.hazards.filter(h => h !== hazard)
+                : [...prev.hazards, hazard];
+            return { ...prev, hazards };
+        });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        // Client-side validation
+        const newErrors = {};
+        if (!formData.barangay_name.trim()) {
+            newErrors.barangay_name = 'Barangay name is required';
+        }
+        if (!formData.municipality_city.trim()) {
+            newErrors.municipality_city = 'Municipality/City is required';
+        }
+        if (!formData.province.trim()) {
+            newErrors.province = 'Province is required';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        // Prepare hazards array
+        const hazards = [...formData.hazards];
+        if (formData.hazard_other.trim()) {
+            hazards.push(formData.hazard_other.trim());
+        }
+
+        // Submit form
+        const form = e.target;
+        const formDataToSubmit = new FormData(form);
+
+        // Add hazards as array
+        formDataToSubmit.delete('hazards[]');
+        hazards.forEach(hazard => {
+            formDataToSubmit.append('hazards[]', hazard);
+        });
+
+        try {
+            const result = await Swal.fire({
+                title: isEditing ? 'Update Profile' : 'Create Profile',
+                text: isEditing
+                    ? 'Are you sure you want to update the barangay profile?'
+                    : 'Are you sure you want to create the barangay profile?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: isEditing ? 'Yes, update' : 'Yes, create',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#64748b',
+            });
+
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        } catch (error) {
+            console.error('Error submitting form:', error);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900">
+                        {isEditing ? 'Edit Barangay Profile' : 'Create Barangay Profile'}
+                    </h2>
+                    <p className="text-sm text-slate-600 mt-1">
+                        Manage your barangay's information and disaster preparedness context
+                    </p>
+                </div>
+            </div>
+
+            {/* Form */}
+            <form
+                method="POST"
+                action={isEditing ? `/barangay-profile/${profile.id}` : '/barangay-profile'}
+                onSubmit={handleSubmit}
+                className="space-y-6"
+            >
+                <input type="hidden" name="_token" value={csrf} />
+                {isEditing && <input type="hidden" name="_method" value="PUT" />}
+
+                {/* Barangay Information Section */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Barangay Information</h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Barangay Name */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Barangay Name <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="barangay_name"
+                                value={formData.barangay_name}
+                                onChange={handleInputChange}
+                                className={`w-full px-3 py-2 border rounded-md text-sm ${errors.barangay_name ? 'border-rose-500' : 'border-slate-300'
+                                    } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                placeholder="e.g., Barangay San Jose"
+                            />
+                            {errors.barangay_name && (
+                                <p className="text-xs text-rose-600 mt-1">{errors.barangay_name}</p>
+                            )}
+                        </div>
+
+                        {/* Municipality/City */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Municipality / City <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="municipality_city"
+                                value={formData.municipality_city}
+                                onChange={handleInputChange}
+                                className={`w-full px-3 py-2 border rounded-md text-sm ${errors.municipality_city ? 'border-rose-500' : 'border-slate-300'
+                                    } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                placeholder="e.g., Quezon City"
+                            />
+                            {errors.municipality_city && (
+                                <p className="text-xs text-rose-600 mt-1">{errors.municipality_city}</p>
+                            )}
+                        </div>
+
+                        {/* Province */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Province <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="province"
+                                value={formData.province}
+                                onChange={handleInputChange}
+                                className={`w-full px-3 py-2 border rounded-md text-sm ${errors.province ? 'border-rose-500' : 'border-slate-300'
+                                    } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                placeholder="e.g., Metro Manila"
+                            />
+                            {errors.province && (
+                                <p className="text-xs text-rose-600 mt-1">{errors.province}</p>
+                            )}
+                        </div>
+
+                        {/* Contact Number */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Contact Number
+                            </label>
+                            <input
+                                type="text"
+                                name="contact_number"
+                                value={formData.contact_number}
+                                onChange={handleInputChange}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                placeholder="e.g., (02) 1234-5678"
+                            />
+                        </div>
+
+                        {/* Email Address */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Email Address
+                            </label>
+                            <input
+                                type="email"
+                                name="email_address"
+                                value={formData.email_address}
+                                onChange={handleInputChange}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                placeholder="e.g., barangay@example.com"
+                            />
+                        </div>
+
+                        {/* Barangay Address */}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Barangay Address
+                            </label>
+                            <textarea
+                                name="barangay_address"
+                                value={formData.barangay_address}
+                                onChange={handleInputChange}
+                                rows="2"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                placeholder="Complete barangay address"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Demographics Section */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Demographics</h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Estimated Population */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Estimated Population
+                            </label>
+                            <input
+                                type="number"
+                                name="estimated_population"
+                                value={formData.estimated_population}
+                                onChange={handleInputChange}
+                                min="0"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                placeholder="e.g., 15000"
+                            />
+                        </div>
+
+                        {/* Area Classification */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Area Classification
+                            </label>
+                            <select
+                                name="area_classification"
+                                value={formData.area_classification}
+                                onChange={handleInputChange}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                                <option value="">Select classification</option>
+                                <option value="Urban">Urban</option>
+                                <option value="Rural">Rural</option>
+                                <option value="Coastal">Coastal</option>
+                                <option value="Mountainous">Mountainous</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Hazard Context Section */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Hazard Context</h3>
+
+                    {/* Hidden inputs for selected hazards */}
+                    {formData.hazards.map((hazard, index) => (
+                        <input
+                            key={index}
+                            type="hidden"
+                            name="hazards[]"
+                            value={hazard}
+                        />
+                    ))}
+
+                    {/* Hazard Checkboxes */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Common Disaster Hazards
+                        </label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {hazardOptions.map(hazard => (
+                                <label key={hazard} className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.hazards.includes(hazard)}
+                                        onChange={() => handleHazardToggle(hazard)}
+                                        className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                                    />
+                                    <span className="text-sm text-slate-700">{hazard}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Other Hazards */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Other Hazards
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.hazard_other}
+                            onChange={(e) => setFormData(prev => ({ ...prev, hazard_other: e.target.value }))}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            placeholder="Specify other hazards (comma-separated)"
+                        />
+                    </div>
+
+                    {/* Hazard Notes */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Additional Risk Notes
+                        </label>
+                        <textarea
+                            name="hazard_notes"
+                            value={formData.hazard_notes}
+                            onChange={handleInputChange}
+                            rows="3"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            placeholder="Additional notes about disaster risks in your barangay..."
+                        />
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3">
+                    <a
+                        href="/dashboard"
+                        className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors"
+                    >
+                        Cancel
+                    </a>
+                    <button
+                        type="submit"
+                        className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors"
+                    >
+                        {isEditing ? 'Update Profile' : 'Create Profile'}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }
