@@ -70,17 +70,14 @@ return new class extends Migration
             DB::statement('UPDATE participant_evaluations SET result = CASE WHEN passed = 1 THEN "passed" WHEN passed = 0 THEN "failed" ELSE NULL END WHERE result IS NULL AND passed IS NOT NULL');
         }
         
-        // Add unique constraint if it doesn't exist
+        // Add unique constraint if it doesn't exist (database-agnostic: try/catch)
         if (Schema::hasColumn('participant_evaluations', 'evaluation_id') && Schema::hasColumn('participant_evaluations', 'user_id')) {
-            $indexes = DB::select("SHOW INDEXES FROM participant_evaluations WHERE Key_name = 'participant_evaluations_evaluation_id_user_id_unique'");
-            if (empty($indexes)) {
+            try {
                 Schema::table('participant_evaluations', function (Blueprint $table) {
-                    try {
-                        $table->unique(['evaluation_id', 'user_id']);
-                    } catch (\Exception $e) {
-                        // Unique constraint might already exist, ignore
-                    }
+                    $table->unique(['evaluation_id', 'user_id']);
                 });
+            } catch (\Exception $e) {
+                // Unique constraint already exists or other DB error, ignore
             }
         }
     }
@@ -91,9 +88,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('participant_evaluations', function (Blueprint $table) {
-            // Drop unique constraint if it exists
+            // Drop unique constraint if it exists (use column names for portability)
             try {
-                $table->dropUnique(['participant_evaluations_evaluation_id_user_id_unique']);
+                $table->dropUnique(['evaluation_id', 'user_id']);
             } catch (\Exception $e) {
                 // Constraint might not exist or have different name
             }
