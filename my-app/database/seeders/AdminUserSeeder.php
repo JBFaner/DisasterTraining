@@ -12,17 +12,17 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create or update a default LGU admin account for testing.
-        // You can change the email/password later as needed.
+        // Create or update a default LGU admin account for JB.
         User::updateOrCreate(
-            ['email' => 'remosyne12@gmail.com'],
+            ['email' => 'jbcursor@gmail.com'],
             [
-                'name' => 'System Administrator',
+                'name' => 'JB',
                 // Password is hashed automatically by the User model's casts.
-                'password' => 'Admin12345!',
+                'password' => 'admin123',
                 'role' => 'LGU_ADMIN',
                 'status' => 'active',
                 'registered_at' => now(),
+                'email_verified_at' => now(), // mark as verified so admin login works
             ]
         );
     }
