@@ -8,6 +8,7 @@ use App\Http\Controllers\SimulationEventController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\EventRegistrationController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\LessonCompletionController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
@@ -21,12 +22,13 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
+// Public LGU admin registration is disabled; registration will be handled inside the admin dashboard.
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthController::class, 'register'])->name('register.post');
 
 // Participant auth routes
 Route::get('/participant/login', [AuthController::class, 'showParticipantLogin'])->name('participant.login');
-Route::post('/participant/login', [AuthController::class, 'participantLogin'])->name('participant.login.post');
+Route::post('/participant/login', [AuthController::class, 'login'])->name('participant.login.post');
 
 Route::get('/participant/register', [AuthController::class, 'showParticipantRegister'])->name('participant.register');
 Route::post('/participant/register/start', [AuthController::class, 'participantRegisterStart'])->name('participant.register.start');
@@ -34,6 +36,15 @@ Route::post('/participant/register/start', [AuthController::class, 'participantR
 Route::get('/participant/register/verify', [AuthController::class, 'showParticipantRegisterVerify'])->name('participant.register.verify');
 Route::post('/participant/register/verify', [AuthController::class, 'participantRegisterVerify'])->name('participant.register.verify.post');
 Route::get('/participant/register/verify-email/{token}', [AuthController::class, 'participantRegisterVerifyEmail'])->name('participant.register.verify.email');
+
+// Admin login OTP verification routes
+Route::get('/admin/login/verify', [AuthController::class, 'showAdminLoginVerify'])->name('admin.login.verify');
+Route::post('/admin/login/verify', [AuthController::class, 'verifyAdminLoginOtp'])->name('admin.login.verify.post');
+
+// Admin email verification (for newly registered LGU admins)
+Route::get('/admin/verify-email/{user}', [AdminUserController::class, 'verifyEmail'])
+    ->name('admin.verify-email')
+    ->middleware('signed');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -194,6 +205,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/certification', function () {
         return view('app', ['section' => 'certification']);
     })->name('certification');
+
+    // LGU Admin user management
+    Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
+    Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
 }
 );
 

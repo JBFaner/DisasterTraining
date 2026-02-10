@@ -4,16 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Mail\ParticipantVerificationEmail;
+use App\Mail\AdminLoginOtpEmail;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
     public function showLogin()
     {
-        return view('auth.login');
+        // Legacy admin login route now reuses the unified participant login screen
+        return redirect()->route('participant.login');
     }
 
     public function login(Request $request)
@@ -23,41 +26,84 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        $remember = $request->boolean('remember');
+
+        /** @var \App\Models\User|null $user */
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            return back()
+                ->withErrors(['email' => 'The provided credentials do not match our records.'])
+                ->onlyInput('email');
+        }
+
+        // Participant login flow (no extra OTP for now)
+        if ($user->role === 'PARTICIPANT') {
+            if ($user->status === 'inactive') {
+                return back()
+                    ->withErrors(['email' => 'Your account has been deactivated. Please contact an administrator.'])
+                    ->onlyInput('email');
+            }
+
+            Auth::login($user, $remember);
             $request->session()->regenerate();
 
             return redirect()->intended('/dashboard');
         }
 
-        return back()
-            ->withErrors(['email' => 'The provided credentials do not match our records.'])
-            ->onlyInput('email');
+        // Admin / Trainer login flow with OTP verification
+        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+            // For admins and trainers, enforce that the account is active and the email has been verified.
+            if ($user->status !== 'active' || ! $user->email_verified_at) {
+                return back()
+                    ->withErrors([
+                        'email' => 'Your admin account is not fully verified yet. Please complete email verification or contact an existing administrator.',
+                    ])
+                    ->onlyInput('email');
+            }
+
+            // Generate OTP
+            $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $expiresAt = now()->addMinutes(10)->getTimestamp();
+
+            // Store OTP session data for admin login verification
+            $request->session()->put('admin_login_otp', [
+                'user_id' => $user->id,
+                'otp' => $otp,
+                'expires_at' => $expiresAt,
+                'remember' => $remember,
+            ]);
+
+            try {
+                Mail::to($user->email)->send(new AdminLoginOtpEmail($otp, $user->name));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send admin login OTP: ' . $e->getMessage());
+
+                return back()
+                    ->withErrors(['email' => 'Unable to send verification code. Please try again later or contact support.'])
+                    ->onlyInput('email');
+            }
+
+            return redirect()
+                ->route('admin.login.verify')
+                ->with('status', 'We have sent a verification code to your email. Please enter it to continue.');
+        }
+
+        // Fallback for any other roles
+        Auth::login($user, $remember);
+        $request->session()->regenerate();
+
+        return redirect()->intended('/dashboard');
     }
 
     public function showRegister()
     {
-        return view('auth.register');
+        abort(404);
     }
 
     public function register(Request $request)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
-        ]);
-
-        // For now, registration creates an LGU-admin account.
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'], // cast() in User model hashes this
-            'role' => 'LGU_ADMIN',
-        ]);
-
-        Auth::login($user);
-
-        return redirect('/dashboard');
+        abort(404);
     }
 
     public function showParticipantLogin()
@@ -67,38 +113,9 @@ class AuthController extends Controller
 
     public function participantLogin(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
-
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $user = Auth::user();
-
-            // Check if user is a participant
-            if ($user->role !== 'PARTICIPANT') {
-                Auth::logout();
-                return back()
-                    ->withErrors(['email' => 'This login is for participants only. Please use the admin/trainer login.'])
-                    ->onlyInput('email');
-            }
-
-            // Check if participant is active
-            if ($user->status === 'inactive') {
-                Auth::logout();
-                return back()
-                    ->withErrors(['email' => 'Your account has been deactivated. Please contact an administrator.'])
-                    ->onlyInput('email');
-            }
-
-            $request->session()->regenerate();
-
-            return redirect()->intended('/dashboard');
-        }
-
-        return back()
-            ->withErrors(['email' => 'The provided credentials do not match our records.'])
-            ->onlyInput('email');
+        // Reuse unified login flow so that both participants and admins
+        // can log in through the same UI and credentials.
+        return $this->login($request);
     }
 
     public function showParticipantRegister()
@@ -361,6 +378,72 @@ class AuthController extends Controller
 
         // Default: admin / trainer login
         return redirect()->route('login');
+    }
+
+    /**
+     * Show the admin login OTP verification form.
+     */
+    public function showAdminLoginVerify(Request $request)
+    {
+        $otpData = $request->session()->get('admin_login_otp');
+
+        if (! $otpData || empty($otpData['user_id'])) {
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        }
+
+        return view('auth.admin-login-verify');
+    }
+
+    /**
+     * Verify the admin login OTP and complete authentication.
+     */
+    public function verifyAdminLoginOtp(Request $request)
+    {
+        $otpData = $request->session()->get('admin_login_otp');
+
+        if (! $otpData || empty($otpData['user_id'])) {
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        }
+
+        $request->validate([
+            'otp' => ['required', 'string', 'size:6'],
+        ], [
+            'otp.required' => 'Please enter the verification code.',
+            'otp.size' => 'Verification code must be 6 digits.',
+        ]);
+
+        $now = now()->getTimestamp();
+
+        if ($now > ($otpData['expires_at'] ?? 0)) {
+            $request->session()->forget('admin_login_otp');
+
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Verification code expired. Please log in again.']);
+        }
+
+        if ($request->otp !== ($otpData['otp'] ?? null)) {
+            return back()
+                ->withErrors(['otp' => 'Invalid verification code. Please try again.']);
+        }
+
+        $user = User::find($otpData['user_id']);
+
+        if (! $user) {
+            $request->session()->forget('admin_login_otp');
+
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Unable to complete login. Please try again.']);
+        }
+
+        // Clear OTP data and complete login
+        $request->session()->forget('admin_login_otp');
+
+        Auth::login($user, (bool) ($otpData['remember'] ?? false));
+        $request->session()->regenerate();
+
+        return redirect()->intended('/dashboard');
     }
 }
 
