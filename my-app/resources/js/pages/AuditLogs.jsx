@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Filter, Download, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Shield, User as UserIcon, Clock } from 'lucide-react';
 
 const statusConfig = {
+    // System-level results
     success: {
         label: 'Success',
         color: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -14,11 +15,36 @@ const statusConfig = {
         dot: 'bg-rose-500',
         icon: XCircle,
     },
-    warning: {
-        label: 'Warning',
-        color: 'bg-amber-50 text-amber-700 border-amber-100',
-        dot: 'bg-amber-500',
-        icon: AlertTriangle,
+    // Record / operation states
+    draft: {
+        label: 'Draft',
+        color: 'bg-slate-100 text-slate-700 border-slate-200',
+        dot: 'bg-slate-400',
+        icon: CheckCircle2,
+    },
+    published: {
+        label: 'Published',
+        color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        dot: 'bg-emerald-500',
+        icon: CheckCircle2,
+    },
+    updated: {
+        label: 'Updated',
+        color: 'bg-blue-50 text-blue-700 border-blue-200',
+        dot: 'bg-blue-500',
+        icon: CheckCircle2,
+    },
+    deleted: {
+        label: 'Deleted',
+        color: 'bg-rose-50 text-rose-700 border-rose-200',
+        dot: 'bg-rose-500',
+        icon: XCircle,
+    },
+    archived: {
+        label: 'Archived',
+        color: 'bg-slate-800 text-slate-50 border-slate-700',
+        dot: 'bg-slate-900',
+        icon: CheckCircle2,
     },
 };
 
@@ -105,8 +131,46 @@ export function AuditLogs() {
         window.location.href = `/api/audit-logs/export?${params.toString()}`;
     };
 
-    const renderStatusBadge = (status) => {
-        const cfg = statusConfig[status] || statusConfig.success;
+    const getDisplayStatus = (log) => {
+        const action = (log.action || '').toLowerCase();
+        const recordStatus = (log.new_values?.status || log.old_values?.status || '').toLowerCase();
+
+        // 1) Hard failure always shows as Failed
+        if (log.status === 'failed') {
+            return 'failed';
+        }
+
+        // 2) Deletion operations
+        if (action.includes('delete')) {
+            return 'deleted';
+        }
+
+        // 3) Archive operations
+        if (action.includes('archive')) {
+            return 'archived';
+        }
+
+        // 4) Publish operations
+        if (action.includes('publish')) {
+            return 'published';
+        }
+
+        // 5) Explicit record status field takes precedence for draft/published/archived
+        if (['draft', 'published', 'archived'].includes(recordStatus)) {
+            return recordStatus;
+        }
+
+        // 6) Generic update operations
+        if (action.includes('update') || action.includes('updated') || action.includes('edit')) {
+            return 'updated';
+        }
+
+        // 7) Default: generic success (e.g. login/logout/OTP verified)
+        return 'success';
+    };
+
+    const renderStatusBadge = (displayStatus) => {
+        const cfg = statusConfig[displayStatus] || statusConfig.success;
         const Icon = cfg.icon;
         return (
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.color}`}>
@@ -232,7 +296,7 @@ export function AuditLogs() {
 
             {/* Logs table / timeline hybrid */}
             <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-white">
-                <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr] gap-4 px-4 py-3 text-xs font-semibold text-slate-500 bg-slate-50 border-b border-slate-200">
+                    <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr] gap-4 px-4 py-3 text-xs font-semibold text-slate-500 bg-slate-50 border-b border-slate-200">
                     <button className="flex items-center gap-1 text-left" onClick={() => handleSort('performed_at')}>
                         <Clock className="w-3 h-3" />
                         <span>When</span>
@@ -266,7 +330,8 @@ export function AuditLogs() {
 
                 <ul className="divide-y divide-slate-100">
                     {logs.map((log) => {
-                        const cfg = statusConfig[log.status] || statusConfig.success;
+                        const displayStatus = getDisplayStatus(log);
+                        const cfg = statusConfig[displayStatus] || statusConfig.success;
                         const Icon = cfg.icon;
                         const isExpanded = expandedId === log.id;
                         return (
@@ -317,7 +382,7 @@ export function AuditLogs() {
                                         {log.module || '—'}
                                     </div>
                                     <div className="flex items-center justify-between md:justify-start md:gap-2">
-                                        {renderStatusBadge(log.status)}
+                                        {renderStatusBadge(displayStatus)}
                                         <span className="inline-flex items-center text-xs text-slate-400 md:hidden">
                                             {isExpanded ? 'Hide details' : 'View details'}
                                             {isExpanded ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
@@ -347,7 +412,32 @@ export function AuditLogs() {
                                             <div>
                                                 <div className="font-semibold text-slate-700 mb-1">Status</div>
                                                 <div className="space-y-0.5">
-                                                    <div><span className="font-medium">Result:</span> {statusConfig[log.status]?.label || log.status}</div>
+                                                    <div>
+                                                        <span className="font-medium">Result:</span>{' '}
+                                                        {statusConfig[displayStatus]?.label || displayStatus}
+                                                        {(() => {
+                                                            const oldStatus = log.old_values?.status;
+                                                            const newStatus = log.new_values?.status;
+                                                            if (!oldStatus && !newStatus) return null;
+                                                            // If we have a change, show it inline, e.g. "(draft → published)"
+                                                            if (oldStatus && newStatus && oldStatus !== newStatus) {
+                                                                return (
+                                                                    <span className="text-[0.7rem] text-slate-500 ml-1 capitalize">
+                                                                        ({oldStatus} → {newStatus})
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            // If only new status exists, show it once
+                                                            if (!oldStatus && newStatus) {
+                                                                return (
+                                                                    <span className="text-[0.7rem] text-slate-500 ml-1 capitalize">
+                                                                        ({newStatus})
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
+                                                    </div>
                                                     {log.failure_reason && (
                                                         <div><span className="font-medium">Reason:</span> {log.failure_reason}</div>
                                                     )}

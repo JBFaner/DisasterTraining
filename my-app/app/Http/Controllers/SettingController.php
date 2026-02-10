@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -24,6 +25,16 @@ class SettingController extends Controller
         $enabled = $request->boolean('enabled');
         
         Setting::set('event_auto_approval_enabled', $enabled ? '1' : '0', 'boolean');
+
+        AuditLogger::log([
+            'action' => 'Updated auto-approval setting',
+            'module' => 'Settings',
+            'status' => 'success',
+            'description' => $enabled
+                ? 'Enabled auto-approval for all events'
+                : 'Disabled auto-approval (manual approval required)',
+            'new_values' => ['event_auto_approval_enabled' => $enabled],
+        ]);
         
         return response()->json([
             'success' => true,

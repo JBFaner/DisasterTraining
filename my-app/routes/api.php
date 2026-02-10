@@ -25,6 +25,4 @@ Route::get('/resources/{resource}/history', function (Resource $resource) {
     ]);
 });
 
-// Audit logs API (protected at controller level)
-Route::get('/audit-logs', [AuditLogController::class, 'history']);
-Route::get('/audit-logs/export', [AuditLogController::class, 'export']);
+// Note: Audit log API routes are defined in web.php with auth middleware

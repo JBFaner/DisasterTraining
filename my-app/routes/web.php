@@ -211,8 +211,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
 
-    // Audit logs (Admin only)
+    // Audit logs (Admin only SPA entry)
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');
-}
-);
+
+    // Audit logs API (must use web auth so React can see the logged-in admin)
+    Route::get('/api/audit-logs', [AuditLogController::class, 'history'])->name('audit.logs.history');
+    Route::get('/api/audit-logs/export', [AuditLogController::class, 'export'])->name('audit.logs.export');
+});
 

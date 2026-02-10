@@ -6,6 +6,7 @@ use App\Models\Scenario;
 use App\Models\ScenarioInject;
 use App\Models\ScenarioExpectedAction;
 use App\Models\TrainingModule;
+use App\Services\AuditLogger;
 use App\Services\GeminiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -82,7 +83,15 @@ class ScenarioController extends Controller
         $data['status'] = 'draft';
         $data['created_by'] = Auth::id();
 
-        Scenario::create($data);
+        $scenario = Scenario::create($data);
+
+        AuditLogger::log([
+            'action' => 'Created scenario (draft)',
+            'module' => 'Scenarios',
+            'status' => 'success',
+            'description' => "Title: {$scenario->title}",
+            'new_values' => $scenario->toArray(),
+        ]);
 
         return redirect()->route('scenarios.index')
             ->with('status', 'Scenario created successfully.');
@@ -158,7 +167,17 @@ class ScenarioController extends Controller
 
         $data['updated_by'] = Auth::id();
 
+        $old = $scenario->getOriginal();
         $scenario->update($data);
+
+        AuditLogger::log([
+            'action' => 'Updated scenario',
+            'module' => 'Scenarios',
+            'status' => 'success',
+            'description' => "Title: {$scenario->title}",
+            'old_values' => $old,
+            'new_values' => $scenario->toArray(),
+        ]);
 
         return redirect()->route('scenarios.index')
             ->with('status', 'Scenario updated successfully.');
@@ -168,9 +187,20 @@ class ScenarioController extends Controller
     {
         $this->authorizeScenarioWrite();
 
+        $old = $scenario->getOriginal();
+
         $scenario->update([
             'status' => 'published',
             'updated_by' => Auth::id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Published scenario',
+            'module' => 'Scenarios',
+            'status' => 'success',
+            'description' => "Title: {$scenario->title}",
+            'old_values' => $old,
+            'new_values' => $scenario->toArray(),
         ]);
 
         return redirect()->route('scenarios.index')
@@ -181,9 +211,20 @@ class ScenarioController extends Controller
     {
         $this->authorizeScenarioWrite();
 
+        $old = $scenario->getOriginal();
+
         $scenario->update([
             'status' => 'archived',
             'updated_by' => Auth::id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Archived scenario',
+            'module' => 'Scenarios',
+            'status' => 'success',
+            'description' => "Title: {$scenario->title}",
+            'old_values' => $old,
+            'new_values' => $scenario->toArray(),
         ]);
 
         return redirect()->route('scenarios.index')
@@ -194,7 +235,16 @@ class ScenarioController extends Controller
     {
         $this->authorizeScenarioDelete();
 
+        $snapshot = $scenario->toArray();
         $scenario->delete();
+
+        AuditLogger::log([
+            'action' => 'Deleted scenario',
+            'module' => 'Scenarios',
+            'status' => 'warning',
+            'description' => "Title: {$snapshot['title']}",
+            'old_values' => $snapshot,
+        ]);
 
         return redirect()->route('scenarios.index')
             ->with('status', 'Scenario deleted permanently.');

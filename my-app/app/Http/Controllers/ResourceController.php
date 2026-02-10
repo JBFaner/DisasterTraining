@@ -6,6 +6,7 @@ use App\Models\Resource;
 use App\Models\ResourceMaintenanceLog;
 use App\Models\SimulationEvent;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class ResourceController extends Controller
@@ -125,6 +126,14 @@ class ResourceController extends Controller
 
         $resource = Resource::create($validated);
 
+        AuditLogger::log([
+            'action' => 'Created resource',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Name: {$resource->name}",
+            'new_values' => $resource->toArray(),
+        ]);
+
         if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
                 'success' => true,
@@ -176,7 +185,17 @@ class ResourceController extends Controller
 
         $validated['updated_by'] = auth()->id();
 
+        $old = $resource->getOriginal();
         $resource->update($validated);
+
+        AuditLogger::log([
+            'action' => 'Updated resource',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Name: {$resource->name}",
+            'old_values' => $old,
+            'new_values' => $resource->toArray(),
+        ]);
 
         // Return JSON for API requests
         if ($request->expectsJson() || $request->is('api/*')) {
@@ -252,6 +271,17 @@ class ResourceController extends Controller
         // Automatically change status to "In Use"
         $resource->update(['status' => 'In Use']);
 
+        AuditLogger::log([
+            'action' => 'Assigned resource to event',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Resource {$resource->name} assigned to event ID {$event->id}",
+            'metadata' => [
+                'event_id' => $event->id,
+                'quantity' => $validated['quantity'],
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Resource assigned to event successfully. Status changed to "In Use".',
@@ -302,6 +332,17 @@ class ResourceController extends Controller
             $validated['damage_report'] ?? null
         );
 
+        AuditLogger::log([
+            'action' => 'Returned resource from event',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Resource {$resource->name} returned from event",
+            'metadata' => [
+                'event_id' => $eventId,
+                'quantity' => $quantity,
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Resource returned successfully',
@@ -320,6 +361,14 @@ class ResourceController extends Controller
 
         $resource->scheduleMaintenance($validated['notes'], $validated['technician'] ?? null);
 
+        AuditLogger::log([
+            'action' => 'Scheduled resource maintenance',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Resource {$resource->name}",
+            'metadata' => $validated,
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Maintenance scheduled successfully',
@@ -336,7 +385,17 @@ class ResourceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $old = $resource->getOriginal();
         $resource->completeMaintenance($validated['condition'], $validated['notes'] ?? null);
+
+        AuditLogger::log([
+            'action' => 'Completed resource maintenance',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Resource {$resource->name}",
+            'old_values' => $old,
+            'new_values' => $resource->toArray(),
+        ]);
 
         return response()->json([
             'success' => true,
@@ -354,6 +413,7 @@ class ResourceController extends Controller
             'deployment_notes' => 'nullable|string',
         ]);
 
+        $old = $resource->getOriginal();
         $resource->update([
             'status' => 'In Use',
         ]);
@@ -363,6 +423,15 @@ class ResourceController extends Controller
             'action' => 'marked_in_use',
             'notes' => $validated['deployment_notes'] ?? 'Resource deployed during event',
             'recorded_by' => auth()->id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Marked resource in use',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Resource {$resource->name}",
+            'old_values' => $old,
+            'new_values' => $resource->toArray(),
         ]);
 
         return response()->json([
@@ -376,6 +445,7 @@ class ResourceController extends Controller
      */
     public function markUnused(Request $request, Resource $resource)
     {
+        $old = $resource->getOriginal();
         $resource->update([
             'status' => 'Available',
         ]);
@@ -385,6 +455,15 @@ class ResourceController extends Controller
             'action' => 'marked_unused',
             'notes' => $request->input('notes') ?? 'Resource not used during event',
             'recorded_by' => auth()->id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Marked resource unused',
+            'module' => 'Resources',
+            'status' => 'success',
+            'description' => "Resource {$resource->name}",
+            'old_values' => $old,
+            'new_values' => $resource->toArray(),
         ]);
 
         return response()->json([
@@ -404,6 +483,7 @@ class ResourceController extends Controller
             'severity' => 'required|in:minor,major,critical',
         ]);
 
+        $old = $resource->getOriginal();
         $resource->update([
             'condition' => 'Damaged',
             'status' => 'Under Maintenance',
@@ -414,6 +494,16 @@ class ResourceController extends Controller
             'action' => 'damage_reported',
             'notes' => "[{$validated['severity']}] {$validated['damage_type']}: {$validated['description']}",
             'recorded_by' => auth()->id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Reported resource damage',
+            'module' => 'Resources',
+            'status' => 'warning',
+            'description' => "Resource {$resource->name}",
+            'old_values' => $old,
+            'new_values' => $resource->toArray(),
+            'metadata' => $validated,
         ]);
 
         return response()->json([
@@ -427,7 +517,16 @@ class ResourceController extends Controller
      */
     public function destroy(Resource $resource)
     {
+        $snapshot = $resource->toArray();
         $resource->delete();
+
+        AuditLogger::log([
+            'action' => 'Deleted resource',
+            'module' => 'Resources',
+            'status' => 'warning',
+            'description' => "Name: {$snapshot['name']}",
+            'old_values' => $snapshot,
+        ]);
 
         return redirect()->route('resources.index')->with('success', 'Resource deleted successfully');
     }

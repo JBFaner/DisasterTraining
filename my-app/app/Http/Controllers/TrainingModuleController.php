@@ -6,6 +6,7 @@ use App\Models\TrainingModule;
 use App\Models\TrainingLesson;
 use App\Models\LessonMaterial;
 use App\Models\LessonCompletion;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -69,7 +70,15 @@ class TrainingModuleController extends Controller
             }
         }
 
-        TrainingModule::create($data);
+        $module = TrainingModule::create($data);
+
+        AuditLogger::log([
+            'action' => 'Created training module (draft)',
+            'module' => 'Training Modules',
+            'status' => 'success',
+            'description' => "Title: {$module->title}",
+            'new_values' => $module->toArray(),
+        ]);
 
         return redirect()->route('training.modules')
             ->with('status', 'Training module created successfully.');
@@ -96,8 +105,19 @@ class TrainingModuleController extends Controller
                 ->with('error', 'Cannot publish module: ' . implode(', ', $errors));
         }
 
+        $old = $trainingModule->getOriginal();
+
         $trainingModule->update([
             'status' => 'published',
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Published training module',
+            'module' => 'Training Modules',
+            'status' => 'success',
+            'description' => "Title: {$trainingModule->title}",
+            'old_values' => $old,
+            'new_values' => $trainingModule->toArray(),
         ]);
 
         return redirect()->route('training.modules')
@@ -181,7 +201,17 @@ class TrainingModuleController extends Controller
             }
         }
 
+        $old = $trainingModule->getOriginal();
         $trainingModule->update($data);
+
+        AuditLogger::log([
+            'action' => 'Updated training module',
+            'module' => 'Training Modules',
+            'status' => 'success',
+            'description' => "Title: {$trainingModule->title}",
+            'old_values' => $old,
+            'new_values' => $trainingModule->toArray(),
+        ]);
 
         return redirect()->route('training.modules')
             ->with('status', 'Training module updated successfully.');
@@ -191,8 +221,19 @@ class TrainingModuleController extends Controller
     {
         $this->authorizeOwner($trainingModule);
 
+        $old = $trainingModule->getOriginal();
+
         $trainingModule->update([
             'status' => 'archived',
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Archived training module',
+            'module' => 'Training Modules',
+            'status' => 'success',
+            'description' => "Title: {$trainingModule->title}",
+            'old_values' => $old,
+            'new_values' => $trainingModule->toArray(),
         ]);
 
         return redirect()->route('training.modules')
@@ -204,7 +245,16 @@ class TrainingModuleController extends Controller
         $this->authorizeOwner($trainingModule);
 
         // TODO: check if module is linked to active simulations before delete.
+        $snapshot = $trainingModule->toArray();
         $trainingModule->delete();
+
+        AuditLogger::log([
+            'action' => 'Deleted training module',
+            'module' => 'Training Modules',
+            'status' => 'warning',
+            'description' => "Title: {$snapshot['title']}",
+            'old_values' => $snapshot,
+        ]);
 
         return redirect()->route('training.modules')
             ->with('status', 'Training module deleted permanently.');

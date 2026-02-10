@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SimulationEvent;
 use App\Models\Scenario;
 use App\Models\Resource;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -123,6 +124,14 @@ class SimulationEventController extends Controller
         }
 
         $event = SimulationEvent::create($data);
+
+        AuditLogger::log([
+            'action' => 'Created simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$event->title}",
+            'new_values' => $event->toArray(),
+        ]);
 
         // Handle resource assignments if provided
         if ($request->has('resources') && $request->input('resources')) {
@@ -294,7 +303,17 @@ class SimulationEventController extends Controller
             }
         }
 
+        $old = $simulationEvent->getOriginal();
         $simulationEvent->update($data);
+
+        AuditLogger::log([
+            'action' => 'Updated simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$simulationEvent->title}",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->toArray(),
+        ]);
 
         // Handle resource assignments if provided
         if ($request->has('resources') && $request->input('resources')) {
@@ -354,7 +373,16 @@ class SimulationEventController extends Controller
     {
         $this->authorizeEventDelete();
 
+        $snapshot = $simulationEvent->toArray();
         $simulationEvent->delete();
+
+        AuditLogger::log([
+            'action' => 'Deleted simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'warning',
+            'description' => "Title: {$snapshot['title']}",
+            'old_values' => $snapshot,
+        ]);
 
         return redirect()->route('simulation.events.index')
             ->with('status', 'Simulation event deleted permanently.');
@@ -364,6 +392,8 @@ class SimulationEventController extends Controller
     {
         $this->authorizeEventAccess();
 
+        $old = $simulationEvent->getOriginal();
+
         $simulationEvent->update([
             'status' => 'published',
             'published_at' => now(),
@@ -372,6 +402,15 @@ class SimulationEventController extends Controller
 
         // Auto-assign resources when event is published
         $this->autoAssignResources($simulationEvent);
+
+        AuditLogger::log([
+            'action' => 'Published simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$simulationEvent->title}",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->toArray(),
+        ]);
 
         return redirect()->route('simulation.events.index')
             ->with('status', 'Simulation event published and resources assigned successfully.');
@@ -386,9 +425,20 @@ class SimulationEventController extends Controller
                 ->with('status', 'Only published events can be unpublished.');
         }
 
+        $old = $simulationEvent->getOriginal();
+
         $simulationEvent->update([
             'status' => 'draft',
             'updated_by' => Auth::id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Unpublished simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$simulationEvent->title}",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->toArray(),
         ]);
 
         return redirect()->route('simulation.events.index')
@@ -402,9 +452,20 @@ class SimulationEventController extends Controller
         // TODO: Send notifications to registered participants
         // $this->notifyParticipants($simulationEvent, 'cancelled');
 
+        $old = $simulationEvent->getOriginal();
+
         $simulationEvent->update([
             'status' => 'cancelled',
             'updated_by' => Auth::id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Cancelled simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'warning',
+            'description' => "Title: {$simulationEvent->title}",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->toArray(),
         ]);
 
         return redirect()->route('simulation.events.index')
@@ -415,9 +476,20 @@ class SimulationEventController extends Controller
     {
         $this->authorizeEventAccess();
 
+        $old = $simulationEvent->getOriginal();
+
         $simulationEvent->update([
             'status' => 'archived',
             'updated_by' => Auth::id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Archived simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$simulationEvent->title}",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->toArray(),
         ]);
 
         return redirect()->route('simulation.events.index')
@@ -464,11 +536,22 @@ class SimulationEventController extends Controller
         $simulationEvent->load('resources');
         
         // Update status to ongoing and log start details
+        $old = $simulationEvent->getOriginal();
+
         $simulationEvent->update([
             'status' => 'ongoing',
             'actual_start_time' => now(),
             'started_by' => Auth::id(),
             'updated_by' => Auth::id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Started simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$simulationEvent->title}",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->toArray(),
         ]);
 
         return redirect()->back()
@@ -486,10 +569,21 @@ class SimulationEventController extends Controller
         }
 
         // Update status to completed
+        $old = $simulationEvent->getOriginal();
+
         $simulationEvent->update([
             'status' => 'completed',
             'completed_at' => now(),
             'updated_by' => Auth::id(),
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Completed simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$simulationEvent->title}",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->toArray(),
         ]);
 
         return redirect()->back()
