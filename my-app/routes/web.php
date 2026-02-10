@@ -9,6 +9,7 @@ use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\EventRegistrationController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\LessonCompletionController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
@@ -209,6 +210,9 @@ Route::middleware('auth')->group(function () {
     // LGU Admin user management
     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
+
+    // Audit logs (Admin only)
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');
 }
 );
 

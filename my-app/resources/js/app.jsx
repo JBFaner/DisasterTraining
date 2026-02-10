@@ -5,6 +5,7 @@ import '../css/app.css';
 import { SidebarLayout } from './components/SidebarLayout';
 import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } from './components/ParticipantSimulationEvents';
 import { ResourceInventory } from './pages/ResourceInventory';
+import { AuditLogs } from './pages/AuditLogs';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users } from 'lucide-react';
@@ -374,6 +375,10 @@ if (rootElement) {
             title: 'Certification Issuance',
             description: 'Issue, manage, and verify certificates for participants who pass evaluations.',
         },
+        audit_logs: {
+            title: 'Audit Logs',
+            description: 'Review system activity, security events, and administrative actions across the platform.',
+        },
     };
 
     const navSection =
@@ -634,6 +639,151 @@ if (rootElement) {
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
                             <ParticipantDetail participant={currentParticipant} />
+                        )}
+
+                        {sectionAttr === 'admin_users_create' && (
+                            <div className="max-w-4xl mx-auto px-2 sm:px-0 py-4 sm:py-0">
+                                <div className="mb-4">
+                                    <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+                                        Register New LGU Admin / Trainer / Participant
+                                    </h1>
+                                    <p className="text-sm text-slate-600 mt-2">
+                                        Create a new staff or participant account for the LGU dashboard. Staff accounts require email verification and OTP.
+                                    </p>
+                                </div>
+
+                                {flashStatus && (
+                                    <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+                                        {flashStatus}
+                                    </div>
+                                )}
+
+                                <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8">
+                                    <form
+                                        id="admin-registration-form"
+                                        method="POST"
+                                        action="/admin/users"
+                                        className="space-y-8"
+                                    >
+                                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name=\"csrf-token\"]')?.content || ''} />
+
+                                        <div className="space-y-4">
+                                            <h2 className="text-sm font-semibold text-slate-700 tracking-wide uppercase">
+                                                Account Details
+                                            </h2>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="account_type">
+                                                    Account Type
+                                                </label>
+                                                <select
+                                                    id="account_type"
+                                                    name="account_type"
+                                                    className="block w-full max-w-xs rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
+                                                    defaultValue="LGU_ADMIN"
+                                                >
+                                                    <option value="LGU_ADMIN">LGU Admin</option>
+                                                    <option value="LGU_TRAINER">LGU Trainer</option>
+                                                    <option value="PARTICIPANT">Participant</option>
+                                                </select>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="last_name">
+                                                        Surname / Last Name
+                                                    </label>
+                                                    <input
+                                                        id="last_name"
+                                                        name="last_name"
+                                                        type="text"
+                                                        required
+                                                        className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="first_name">
+                                                        First Name
+                                                    </label>
+                                                    <input
+                                                        id="first_name"
+                                                        name="first_name"
+                                                        type="text"
+                                                        required
+                                                        className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="middle_name">
+                                                        Middle Name (optional)
+                                                    </label>
+                                                    <input
+                                                        id="middle_name"
+                                                        name="middle_name"
+                                                        type="text"
+                                                        className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="email">
+                                                    Official LGU Email
+                                                </label>
+                                                <input
+                                                    id="email"
+                                                    name="email"
+                                                    type="email"
+                                                    required
+                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password">
+                                                    Initial Password
+                                                </label>
+                                                <input
+                                                    id="password"
+                                                    name="password"
+                                                    type="password"
+                                                    required
+                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                />
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    Minimum 8 characters. The user can change this after first login.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password_confirmation">
+                                                    Confirm Password
+                                                </label>
+                                                <input
+                                                    id="password_confirmation"
+                                                    name="password_confirmation"
+                                                    type="password"
+                                                    required
+                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-end pt-4 border-t border-slate-200">
+                                            <button
+                                                type="submit"
+                                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 shadow-sm"
+                                            >
+                                                Register Account
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {sectionAttr === 'audit_logs' && (
+                            <AuditLogs />
                         )}
 
                         {sectionAttr === 'resources' && (
@@ -3040,6 +3190,26 @@ function ScenarioCreateForm({ modules }) {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
+
+            // Handle validation and server errors explicitly so the user sees the real reason
+            if (!response.ok) {
+                let message = 'Failed to generate scenario';
+                try {
+                    const data = await response.json();
+                    if (data.errors) {
+                        // Grab the first validation error message
+                        const allErrors = Object.values(data.errors).flat();
+                        if (allErrors.length > 0) {
+                            message = allErrors[0];
+                        }
+                    } else if (data.error) {
+                        message = data.error;
+                    }
+                } catch (_) {
+                    // ignore JSON parse errors and fall back to generic message
+                }
+                throw new Error(message);
+            }
 
             const result = await response.json();
 

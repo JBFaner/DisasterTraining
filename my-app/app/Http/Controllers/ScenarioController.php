@@ -281,9 +281,11 @@ class ScenarioController extends Controller
         $this->authorizeScenarioWrite();
 
         $data = $request->validate([
+            // Keep a minimum length so the AI has enough context, but avoid being too strict
             'prompt' => ['required', 'string', 'min:10', 'max:1000'],
             'disaster_type' => ['nullable', 'string', 'max:255'],
-            'difficulty' => ['nullable', 'string', 'in:Basic,Intermediate,Advanced'],
+            // Be permissive here – accept any label the UI might send (including empty string)
+            'difficulty' => ['nullable', 'string', 'max:50'],
         ]);
 
         try {

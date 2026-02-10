@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\SimulationEvent;
 use App\Models\EventRegistration;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -103,7 +104,18 @@ class ParticipantController extends Controller
             'phone' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $old = $user->only(['status', 'phone']);
         $user->update($data);
+
+        AuditLogger::log([
+            'user' => Auth::user(),
+            'action' => 'Updated participant',
+            'module' => 'Participants',
+            'status' => 'success',
+            'description' => 'Participant record updated.',
+            'old_values' => $old,
+            'new_values' => $user->only(['status', 'phone']),
+        ]);
 
         return redirect()->route('participants.show', $user)
             ->with('status', 'Participant updated successfully.');
@@ -120,7 +132,18 @@ class ParticipantController extends Controller
             abort(404);
         }
 
+        $oldStatus = $user->status;
         $user->update(['status' => 'inactive']);
+
+        AuditLogger::log([
+            'user' => Auth::user(),
+            'action' => 'Deactivated participant',
+            'module' => 'Participants',
+            'status' => 'warning',
+            'description' => 'Participant account deactivated.',
+            'old_values' => ['status' => $oldStatus],
+            'new_values' => ['status' => 'inactive'],
+        ]);
 
         return redirect()->route('participants.index')
             ->with('status', 'Participant deactivated.');
@@ -137,7 +160,18 @@ class ParticipantController extends Controller
             abort(404);
         }
 
+        $oldStatus = $user->status;
         $user->update(['status' => 'active']);
+
+        AuditLogger::log([
+            'user' => Auth::user(),
+            'action' => 'Reactivated participant',
+            'module' => 'Participants',
+            'status' => 'success',
+            'description' => 'Participant account reactivated.',
+            'old_values' => ['status' => $oldStatus],
+            'new_values' => ['status' => 'active'],
+        ]);
 
         return redirect()->route('participants.index')
             ->with('status', 'Participant reactivated.');

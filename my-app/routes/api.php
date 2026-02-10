@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceApiController;
+use App\Http\Controllers\AuditLogController;
 use App\Models\Resource;
 
 // Public API endpoints
@@ -23,3 +24,7 @@ Route::get('/resources/{resource}/history', function (Resource $resource) {
         'history' => $resource->maintenanceLogs()->orderBy('created_at', 'desc')->get(),
     ]);
 });
+
+// Audit logs API (protected at controller level)
+Route::get('/audit-logs', [AuditLogController::class, 'history']);
+Route::get('/audit-logs/export', [AuditLogController::class, 'export']);
