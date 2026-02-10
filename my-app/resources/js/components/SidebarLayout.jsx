@@ -19,6 +19,8 @@ import {
     MoreVertical,
     X,
     Settings,
+    FileText,
+    History,
 } from 'lucide-react';
 import { TopBar } from './TopBar';
 
@@ -550,6 +552,27 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         label="Certification Issuance"
                         href="/certification"
                         active={currentSection === 'certification'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                </div>
+            )}
+            {isAdmin && (
+                <div className={isCollapsed ? 'w-full' : ''}>
+                    {!isCollapsed && <NavSectionTitle>Review &amp; Reporting</NavSectionTitle>}
+                    <NavItem
+                        icon={FileText}
+                        label="After-Action Review"
+                        href="/after-action-review"
+                        active={currentSection === 'after_action_review'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={History}
+                        label="Drill History Reports"
+                        href="/drill-history-reports"
+                        active={currentSection === 'drill_history_reports'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />
