@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\AdminEmailVerificationMail;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\URL;
 class AdminUserController extends Controller
 {
     /**
-     * Show the form to register a new LGU Admin or Trainer.
+     * Show the form to register a new LGU Admin, Trainer, or Participant.
      */
     public function create(Request $request)
     {
@@ -22,7 +23,10 @@ class AdminUserController extends Controller
             abort(403);
         }
 
-        return view('admin.users.create');
+        // Render inside the SPA shell so sidebar/navigation stays visible.
+        return view('app', [
+            'section' => 'admin_users_create',
+        ]);
     }
 
     /**
@@ -55,7 +59,7 @@ class AdminUserController extends Controller
         if ($data['account_type'] === 'PARTICIPANT') {
             $participantId = $this->generateParticipantId();
 
-            User::create([
+            $participant = User::create([
                 'name' => $fullName,
                 'email' => $data['email'],
                 'password' => $data['password'],
@@ -63,6 +67,20 @@ class AdminUserController extends Controller
                 'participant_id' => $participantId,
                 'status' => 'active',
                 'registered_at' => now(),
+            ]);
+
+            AuditLogger::log([
+                'user' => $currentUser,
+                'action' => 'Created participant',
+                'module' => 'Users & Roles',
+                'status' => 'success',
+                'description' => 'New participant account created from admin panel.',
+                'new_values' => [
+                    'id' => $participant->id,
+                    'name' => $participant->name,
+                    'email' => $participant->email,
+                    'role' => $participant->role,
+                ],
             ]);
 
             return redirect()->back()
@@ -96,6 +114,20 @@ class AdminUserController extends Controller
                 ->withInput($request->except('password', 'password_confirmation', 'face_image'));
         }
 
+        AuditLogger::log([
+            'user' => $currentUser,
+            'action' => 'Created staff account',
+            'module' => 'Users & Roles',
+            'status' => 'success',
+            'description' => 'New ' . ($admin->role === 'LGU_TRAINER' ? 'trainer' : 'admin') . ' account created from admin panel.',
+            'new_values' => [
+                'id' => $admin->id,
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'role' => $admin->role,
+            ],
+        ]);
+
         return redirect()->back()
             ->with('status', 'New account registered. The user must verify their email before they can log in.');
     }
@@ -122,6 +154,14 @@ class AdminUserController extends Controller
 
             $user->save();
         }
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'Email verified',
+            'module' => 'Auth',
+            'status' => 'success',
+            'description' => 'Admin/trainer email verified via signed link.',
+        ]);
 
         return redirect()->route('participant.login')
             ->with('status', 'Your account email has been verified. You can now log in.');

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Mail\ParticipantVerificationEmail;
 use App\Mail\AdminLoginOtpEmail;
 use App\Services\SmsService;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -32,6 +33,16 @@ class AuthController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            if ($user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+                AuditLogger::log([
+                    'user' => $user,
+                    'action' => 'Failed login',
+                    'module' => 'Auth',
+                    'status' => 'failed',
+                    'description' => 'Invalid credentials for admin/trainer login.',
+                ]);
+            }
+
             return back()
                 ->withErrors(['email' => 'The provided credentials do not match our records.'])
                 ->onlyInput('email');
@@ -40,6 +51,14 @@ class AuthController extends Controller
         // Participant login flow (no extra OTP for now)
         if ($user->role === 'PARTICIPANT') {
             if ($user->status === 'inactive') {
+                AuditLogger::log([
+                    'user' => $user,
+                    'action' => 'Failed login',
+                    'module' => 'Auth',
+                    'status' => 'failed',
+                    'description' => 'Inactive participant attempted to log in.',
+                ]);
+
                 return back()
                     ->withErrors(['email' => 'Your account has been deactivated. Please contact an administrator.'])
                     ->onlyInput('email');
@@ -48,6 +67,14 @@ class AuthController extends Controller
             Auth::login($user, $remember);
             $request->session()->regenerate();
 
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'Logged in',
+                'module' => 'Auth',
+                'status' => 'success',
+                'description' => 'Participant logged in.',
+            ]);
+
             return redirect()->intended('/dashboard');
         }
 
@@ -55,6 +82,14 @@ class AuthController extends Controller
         if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             // For admins and trainers, enforce that the account is active and the email has been verified.
             if ($user->status !== 'active' || ! $user->email_verified_at) {
+                AuditLogger::log([
+                    'user' => $user,
+                    'action' => 'Failed login',
+                    'module' => 'Auth',
+                    'status' => 'failed',
+                    'description' => 'Admin/trainer attempted login without completed verification.',
+                ]);
+
                 return back()
                     ->withErrors([
                         'email' => 'Your admin account is not fully verified yet. Please complete email verification or contact an existing administrator.',
@@ -79,10 +114,27 @@ class AuthController extends Controller
             } catch (\Exception $e) {
                 \Log::error('Failed to send admin login OTP: ' . $e->getMessage());
 
+                AuditLogger::log([
+                    'user' => $user,
+                    'action' => 'OTP send failed',
+                    'module' => 'Auth',
+                    'status' => 'failed',
+                    'description' => 'Failed to send admin login OTP.',
+                    'failure_reason' => $e->getMessage(),
+                ]);
+
                 return back()
                     ->withErrors(['email' => 'Unable to send verification code. Please try again later or contact support.'])
                     ->onlyInput('email');
             }
+
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'OTP requested',
+                'module' => 'Auth',
+                'status' => 'success',
+                'description' => 'Admin/trainer requested login OTP.',
+            ]);
 
             return redirect()
                 ->route('admin.login.verify')
@@ -371,6 +423,16 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
+        if ($user) {
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'Logged out',
+                'module' => 'Auth',
+                'status' => 'success',
+                'description' => 'User logged out.',
+            ]);
+        }
+
         // Redirect based on last role
         if ($role === 'PARTICIPANT') {
             return redirect()->route('participant.login');
@@ -419,11 +481,27 @@ class AuthController extends Controller
         if ($now > ($otpData['expires_at'] ?? 0)) {
             $request->session()->forget('admin_login_otp');
 
+            AuditLogger::log([
+                'user' => User::find($otpData['user_id']),
+                'action' => 'OTP verification failed',
+                'module' => 'Auth',
+                'status' => 'failed',
+                'description' => 'Admin/trainer OTP expired.',
+            ]);
+
             return redirect()->route('login')
                 ->withErrors(['email' => 'Verification code expired. Please log in again.']);
         }
 
         if ($request->otp !== ($otpData['otp'] ?? null)) {
+            AuditLogger::log([
+                'user' => User::find($otpData['user_id']),
+                'action' => 'OTP verification failed',
+                'module' => 'Auth',
+                'status' => 'failed',
+                'description' => 'Admin/trainer entered invalid OTP.',
+            ]);
+
             return back()
                 ->withErrors(['otp' => 'Invalid verification code. Please try again.']);
         }
@@ -442,6 +520,14 @@ class AuthController extends Controller
 
         Auth::login($user, (bool) ($otpData['remember'] ?? false));
         $request->session()->regenerate();
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'OTP verified',
+            'module' => 'Auth',
+            'status' => 'success',
+            'description' => 'Admin/trainer OTP verified and login completed.',
+        ]);
 
         return redirect()->intended('/dashboard');
     }

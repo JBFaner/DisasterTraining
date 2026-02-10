@@ -570,15 +570,15 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         icon={ShieldCheck}
                         label="Users & Roles"
                         href="/admin/users/create"
-                        active={false}
+                        active={currentSection === 'admin_users_create'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />
                     <NavItem
                         icon={ClipboardCheck}
                         label="Audit Logs"
-                        href="#"
-                        active={false}
+                        href="/audit-logs"
+                        active={currentSection === 'audit_logs'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />
