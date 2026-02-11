@@ -42,6 +42,9 @@
             @isset($participant)
                 data-participant='@json($participant)'
             @endisset
+            @isset($users)
+                data-users='@json($users)'
+            @endisset
             @isset($registrations)
                 data-registrations='@json($registrations)'
             @endisset

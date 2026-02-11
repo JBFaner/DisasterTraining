@@ -6,6 +6,7 @@ import { SidebarLayout } from './components/SidebarLayout';
 import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } from './components/ParticipantSimulationEvents';
 import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
+import { AdminUsersPage } from './pages/AdminUsersPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users } from 'lucide-react';
@@ -154,6 +155,7 @@ if (rootElement) {
     const participantsJson = rootElement.getAttribute('data-participants');
     const participantJson = rootElement.getAttribute('data-participant');
     const registrationsJson = rootElement.getAttribute('data-registrations');
+    const usersJson = rootElement.getAttribute('data-users');
     const flashStatus = rootElement.getAttribute('data-status');
 
     let modules = [];
@@ -163,6 +165,7 @@ if (rootElement) {
     let events = [];
     let currentEvent = null;
     let participants = [];
+    let users = [];
     let currentParticipant = null;
     let registrations = [];
     if (modulesJson) {
@@ -230,6 +233,14 @@ if (rootElement) {
             registrations = JSON.parse(registrationsJson);
         } catch (e) {
             console.error('Failed to parse registrations JSON', e);
+        }
+    }
+
+    if (usersJson) {
+        try {
+            users = JSON.parse(usersJson);
+        } catch (e) {
+            console.error('Failed to parse users JSON', e);
         }
     }
 
@@ -521,6 +532,22 @@ if (rootElement) {
             return [{ label: 'Certification Issuance', href: '/certification' }];
         }
 
+        // Users administration (Users, Permissions, Roles)
+        if (sectionAttr === 'admin_users_index') {
+            return [{ label: 'Users', href: '/admin/users' }];
+        }
+
+        if (sectionAttr === 'admin_users_create') {
+            return [
+                { label: 'Users', href: '/admin/users' },
+                { label: 'Create', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'admin_permissions' || sectionAttr === 'admin_roles') {
+            return [{ label: 'Users', href: '/admin/users' }];
+        }
+
         return [{ label: 'Dashboard', href: '/dashboard' }];
     };
 
@@ -528,6 +555,16 @@ if (rootElement) {
 
     // Generate page title from breadcrumbs
     const getPageTitle = () => {
+        // Explicit title for Users & Roles admin module (Users, Permissions, Roles)
+        if (
+            sectionAttr === 'admin_users_index' ||
+            sectionAttr === 'admin_users_create' ||
+            sectionAttr === 'admin_permissions' ||
+            sectionAttr === 'admin_roles'
+        ) {
+            return 'Users & Roles';
+        }
+
         if (breadcrumbs.length === 1) {
             return breadcrumbs[0].label;
         }
@@ -639,6 +676,10 @@ if (rootElement) {
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
                             <ParticipantDetail participant={currentParticipant} />
+                        )}
+
+                        {sectionAttr === 'admin_users_index' && (
+                            <AdminUsersPage users={users} />
                         )}
 
                         {sectionAttr === 'admin_users_create' && (

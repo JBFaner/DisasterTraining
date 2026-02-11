@@ -208,8 +208,14 @@ Route::middleware('auth')->group(function () {
     })->name('certification');
 
     // LGU Admin user management
+    Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
+    Route::post('/admin/users/{user}/disable', [AdminUserController::class, 'disable'])->name('admin.users.disable');
+    Route::post('/admin/users/{user}/enable', [AdminUserController::class, 'enable'])->name('admin.users.enable');
+    Route::post('/admin/users/{user}/archive', [AdminUserController::class, 'archive'])->name('admin.users.archive');
+    Route::post('/admin/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('admin.users.reset-password');
+    Route::post('/admin/users/{user}/manual-verify', [AdminUserController::class, 'manualVerify'])->name('admin.users.manual-verify');
 
     // Audit logs (Admin only SPA entry)
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');

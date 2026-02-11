@@ -67,6 +67,9 @@ class AuthController extends Controller
             Auth::login($user, $remember);
             $request->session()->regenerate();
 
+            $user->last_login = now();
+            $user->save();
+
             AuditLogger::log([
                 'user' => $user,
                 'action' => 'Logged in',
@@ -144,6 +147,9 @@ class AuthController extends Controller
         // Fallback for any other roles
         Auth::login($user, $remember);
         $request->session()->regenerate();
+
+        $user->last_login = now();
+        $user->save();
 
         return redirect()->intended('/dashboard');
     }
@@ -528,6 +534,9 @@ class AuthController extends Controller
             'status' => 'success',
             'description' => 'Admin/trainer OTP verified and login completed.',
         ]);
+
+        $user->last_login = now();
+        $user->save();
 
         return redirect()->intended('/dashboard');
     }
