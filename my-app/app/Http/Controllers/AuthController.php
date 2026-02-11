@@ -7,6 +7,7 @@ use App\Mail\ParticipantVerificationEmail;
 use App\Mail\AdminLoginOtpEmail;
 use App\Services\SmsService;
 use App\Services\AuditLogger;
+use App\Services\LoginAttemptService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -20,17 +21,31 @@ class AuthController extends Controller
         return redirect()->route('participant.login');
     }
 
-    public function login(Request $request)
+    public function login(Request $request, LoginAttemptService $loginAttempts)
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
+        $email = $credentials['email'];
+        $ip = $request->ip() ?? '0.0.0.0';
+
+        $lockout = $loginAttempts->isLockedOut($email, $ip);
+        if ($lockout !== null) {
+            $seconds = $lockout['retry_after_seconds'];
+            return back()
+                ->withErrors([
+                    'email' => "Too many failed login attempts. Please wait {$seconds} seconds before trying again.",
+                ])
+                ->with('lockout_retry_after', $seconds)
+                ->onlyInput('email');
+        }
+
         $remember = $request->boolean('remember');
 
         /** @var \App\Models\User|null $user */
-        $user = User::where('email', $credentials['email'])->first();
+        $user = User::where('email', $email)->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             if ($user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
@@ -43,10 +58,24 @@ class AuthController extends Controller
                 ]);
             }
 
+            $result = $loginAttempts->recordFailedAttempt($email, $ip);
+            $retryAfter = $result['retry_after_seconds'];
+
+            if ($retryAfter > 0) {
+                return back()
+                    ->withErrors([
+                        'email' => "Too many failed login attempts. Please wait {$retryAfter} seconds before trying again.",
+                    ])
+                    ->with('lockout_retry_after', $retryAfter)
+                    ->onlyInput('email');
+            }
+
             return back()
                 ->withErrors(['email' => 'The provided credentials do not match our records.'])
                 ->onlyInput('email');
         }
+
+        $loginAttempts->clearAttempts($email, $ip);
 
         // Participant login flow (no extra OTP for now)
         if ($user->role === 'PARTICIPANT') {
@@ -66,6 +95,7 @@ class AuthController extends Controller
 
             Auth::login($user, $remember);
             $request->session()->regenerate();
+            $request->session()->put('last_activity', now()->timestamp);
 
             $user->last_login = now();
             $user->save();
@@ -350,6 +380,7 @@ class AuthController extends Controller
         $request->session()->forget('participant_registration');
 
         Auth::login($user);
+        $request->session()->put('last_activity', now()->timestamp);
 
         return redirect('/dashboard')
             ->with('status', 'Registration successful! Welcome to the training platform.');
@@ -404,6 +435,7 @@ class AuthController extends Controller
         $request->session()->forget('participant_registration');
 
         Auth::login($user);
+        $request->session()->put('last_activity', now()->timestamp);
 
         return redirect('/dashboard')
             ->with('status', 'Registration successful! Welcome to the training platform.');
@@ -439,13 +471,14 @@ class AuthController extends Controller
             ]);
         }
 
-        // Redirect based on last role
+        // Redirect based on last role; show message if session expired due to inactivity
+        $inactivity = $request->input('reason') === 'inactivity';
         if ($role === 'PARTICIPANT') {
-            return redirect()->route('participant.login');
+            $r = redirect()->route('participant.login');
+            return $inactivity ? $r->with('error', 'Session expired due to inactivity.') : $r;
         }
-
-        // Default: admin / trainer login
-        return redirect()->route('login');
+        $r = redirect()->route('login');
+        return $inactivity ? $r->with('error', 'Session expired due to inactivity.') : $r;
     }
 
     /**
@@ -461,6 +494,51 @@ class AuthController extends Controller
         }
 
         return view('auth.admin-login-verify');
+    }
+
+    /**
+     * Resend the admin login OTP to the user's email.
+     */
+    public function resendAdminLoginOtp(Request $request)
+    {
+        $otpData = $request->session()->get('admin_login_otp');
+
+        if (! $otpData || empty($otpData['user_id'])) {
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        }
+
+        $user = User::find($otpData['user_id']);
+        if (! $user) {
+            $request->session()->forget('admin_login_otp');
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Unable to resend code. Please log in again.']);
+        }
+
+        $lastResend = $request->session()->get('admin_otp_last_resend_at', 0);
+        if (now()->getTimestamp() - $lastResend < 60) {
+            return back()->withErrors(['otp' => 'Please wait at least 60 seconds before requesting a new code.']);
+        }
+
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(10)->getTimestamp();
+
+        $request->session()->put('admin_login_otp', [
+            'user_id' => $user->id,
+            'otp' => $otp,
+            'expires_at' => $expiresAt,
+            'remember' => $otpData['remember'] ?? false,
+        ]);
+        $request->session()->put('admin_otp_last_resend_at', now()->getTimestamp());
+
+        try {
+            Mail::to($user->email)->send(new AdminLoginOtpEmail($otp, $user->name));
+        } catch (\Exception $e) {
+            \Log::error('Failed to resend admin login OTP: ' . $e->getMessage());
+            return back()->withErrors(['otp' => 'Unable to send verification code. Please try again in a moment.']);
+        }
+
+        return back()->with('status', 'A new verification code has been sent to your email.');
     }
 
     /**
@@ -526,6 +604,7 @@ class AuthController extends Controller
 
         Auth::login($user, (bool) ($otpData['remember'] ?? false));
         $request->session()->regenerate();
+        $request->session()->put('last_activity', now()->timestamp);
 
         AuditLogger::log([
             'user' => $user,

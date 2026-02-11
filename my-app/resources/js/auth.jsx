@@ -8,16 +8,26 @@ import { ParticipantRegisterVerify } from './components/ParticipantRegisterVerif
 // Participant Login
 const participantLoginRoot = document.getElementById('participant-login-root');
 if (participantLoginRoot) {
-    const errorsJson = participantLoginRoot.getAttribute('data-errors') || '[]';
+    const errorsJson = participantLoginRoot.getAttribute('data-errors') || '{}';
     const oldEmail = participantLoginRoot.getAttribute('data-old-email') || '';
-    const errors = JSON.parse(errorsJson);
+    const lockoutRetryAfter = parseInt(participantLoginRoot.getAttribute('data-lockout-retry-after') || '0', 10);
+    const sessionError = participantLoginRoot.getAttribute('data-session-error') || '';
+    let errors = {};
+    try {
+        errors = JSON.parse(errorsJson);
+    } catch (_) {}
     const errorsObj = {};
-    if (errors.length > 0) {
+    if (Array.isArray(errors) && errors.length > 0) {
         errorsObj.email = errors[0];
+    } else if (errors && typeof errors === 'object') {
+        for (const k of Object.keys(errors)) {
+            const v = errors[k];
+            errorsObj[k] = Array.isArray(v) ? v[0] : v;
+        }
     }
-    
+    if (sessionError) errorsObj.email = sessionError;
     const root = ReactDOM.createRoot(participantLoginRoot);
-    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail }));
+    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter }));
 }
 
 // Participant Register

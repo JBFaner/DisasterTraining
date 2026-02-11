@@ -10,8 +10,10 @@
     <body>
         <div
             id="participant-login-root"
-            data-errors='@json($errors->all() ?: [])'
+            data-errors='@json($errors->getMessages() ?: [])'
             data-old-email="{{ old('email', '') }}"
+            data-lockout-retry-after="{{ session('lockout_retry_after', 0) }}"
+            data-session-error="{{ session('error', '') }}"
         ></div>
     </body>
 </html>

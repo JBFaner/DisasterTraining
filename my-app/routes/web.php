@@ -14,6 +14,8 @@ use App\Http\Controllers\LessonCompletionController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\EvaluationController;
+use App\Http\Controllers\SessionController;
+use App\Http\Middleware\CheckSessionInactivity;
 
 Route::get('/', function () {
     return view('welcome');
@@ -41,6 +43,7 @@ Route::get('/participant/register/verify-email/{token}', [AuthController::class,
 // Admin login OTP verification routes
 Route::get('/admin/login/verify', [AuthController::class, 'showAdminLoginVerify'])->name('admin.login.verify');
 Route::post('/admin/login/verify', [AuthController::class, 'verifyAdminLoginOtp'])->name('admin.login.verify.post');
+Route::post('/admin/login/resend-otp', [AuthController::class, 'resendAdminLoginOtp'])->name('admin.login.resend-otp');
 
 // Admin email verification (for newly registered LGU admins)
 Route::get('/admin/verify-email/{user}', [AdminUserController::class, 'verifyEmail'])
@@ -49,8 +52,11 @@ Route::get('/admin/verify-email/{user}', [AdminUserController::class, 'verifyEma
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Protected app routes
-Route::middleware('auth')->group(function () {
+// Protected app routes (session inactivity checked on every request)
+Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
+    Route::post('/session/activity', [SessionController::class, 'activity'])->name('session.activity');
+    Route::get('/session/config', [SessionController::class, 'config'])->name('session.config');
+
     Route::get('/dashboard', function () {
         return view('app', ['section' => 'dashboard']);
     })->name('dashboard');

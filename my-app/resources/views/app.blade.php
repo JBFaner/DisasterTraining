@@ -18,6 +18,8 @@
             id="app"
             data-role="{{ auth()->check() ? (auth()->user()->role ?? 'PARTICIPANT') : 'PARTICIPANT' }}"
             data-section="{{ $section ?? 'dashboard' }}"
+            data-session-timeout-minutes="{{ config('security.session_timeout_minutes', 10) }}"
+            data-warning-before-logout-seconds="{{ config('security.warning_before_logout_seconds', 60) }}"
             @isset($modules)
                 data-modules='@json($modules)'
             @endisset

@@ -1,19 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, AlertCircle, LogIn, Home } from 'lucide-react';
 
-export function ParticipantLogin({ errors = {}, oldEmail = '' }) {
+export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0 }) {
     const [email, setEmail] = useState(oldEmail);
     const [password, setPassword] = useState('');
     const [remember, setRemember] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState(lockoutRetryAfter > 0 ? lockoutRetryAfter : 0);
+
+    useEffect(() => {
+        if (lockoutSecondsLeft <= 0) return;
+        const t = setInterval(() => {
+            setLockoutSecondsLeft((s) => (s <= 1 ? 0 : s - 1));
+        }, 1000);
+        return () => clearInterval(t);
+    }, [lockoutSecondsLeft]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (isLockedOut) return;
         setIsSubmitting(true);
         e.target.submit();
     };
 
     const hasErrors = Object.keys(errors).length > 0;
+    const isLockedOut = lockoutSecondsLeft > 0;
+    const firstErrorMessage = hasErrors ? Object.values(errors)[0] : null;
+    const isLockoutError = typeof firstErrorMessage === 'string' && firstErrorMessage.includes('Too many failed login attempts');
+    const lockoutMessage = isLockedOut
+        ? `Too many failed login attempts. Please wait ${lockoutSecondsLeft} seconds before trying again.`
+        : firstErrorMessage;
+    const showErrorBanner = isLockedOut || (hasErrors && !isLockoutError);
 
     return (
         <div className="min-h-screen relative">
@@ -112,19 +129,20 @@ export function ParticipantLogin({ errors = {}, oldEmail = '' }) {
                                 </p>
                             </div>
 
-                            {hasErrors && (
+                            {showErrorBanner && lockoutMessage && (
                                 <div className="mb-6 rounded-lg bg-red-50 border-l-4 border-red-500 px-4 py-3 text-sm text-red-700 flex items-start gap-3">
                                     <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>{Object.values(errors)[0]}</span>
+                                    <span>{lockoutMessage}</span>
                                 </div>
                             )}
 
-                            <form
-                                method="POST"
-                                action="/participant/login"
-                                onSubmit={handleSubmit}
-                                className="space-y-5"
-                            >
+                                <form
+                                    method="POST"
+                                    action="/participant/login"
+                                    onSubmit={handleSubmit}
+                                    className="space-y-5"
+                                    noValidate
+                                >
                                 <input
                                     type="hidden"
                                     name="_token"
@@ -151,7 +169,8 @@ export function ParticipantLogin({ errors = {}, oldEmail = '' }) {
                                             required
                                             autoFocus
                                             placeholder="your.email@example.com"
-                                            className="w-full rounded-lg border border-slate-300 pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out"
+                                            disabled={isLockedOut}
+                                            className="w-full rounded-lg border border-slate-300 pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out disabled:opacity-60 disabled:cursor-not-allowed"
                                         />
                                     </div>
                                 </div>
@@ -173,7 +192,8 @@ export function ParticipantLogin({ errors = {}, oldEmail = '' }) {
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
                                             placeholder="Enter your password"
-                                            className="w-full rounded-lg border border-slate-300 pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out"
+                                            disabled={isLockedOut}
+                                            className="w-full rounded-lg border border-slate-300 pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out disabled:opacity-60 disabled:cursor-not-allowed"
                                         />
                                     </div>
                                 </div>
@@ -194,7 +214,8 @@ export function ParticipantLogin({ errors = {}, oldEmail = '' }) {
                                             name="remember"
                                             checked={remember}
                                             onChange={(e) => setRemember(e.target.checked)}
-                                            className="rounded border-slate-300 text-emerald-600 focus:ring-[#1FA463] focus:ring-offset-0 transition-all duration-200 ease-out"
+                                            disabled={isLockedOut}
+                                            className="rounded border-slate-300 text-emerald-600 focus:ring-[#1FA463] focus:ring-offset-0 transition-all duration-200 ease-out disabled:opacity-60 disabled:cursor-not-allowed"
                                         />
                                         <span>Remember me</span>
                                     </label>
@@ -202,7 +223,7 @@ export function ParticipantLogin({ errors = {}, oldEmail = '' }) {
 
                                 <button
                                     type="submit"
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || isLockedOut}
                                     className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-[#16A34A] hover:bg-[#1FA463] disabled:bg-[#16A34A]/60 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-all duration-200 ease-out transform-gpu hover:-translate-y-[1px] hover:shadow-[0_6px_14px_rgba(0,0,0,0.12)]"
                                 >
                                     {isSubmitting ? (
@@ -210,6 +231,8 @@ export function ParticipantLogin({ errors = {}, oldEmail = '' }) {
                                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                             <span>Logging in...</span>
                                         </>
+                                    ) : isLockedOut ? (
+                                        <span>Please wait {lockoutSecondsLeft}s</span>
                                     ) : (
                                         <>
                                             <LogIn className="w-4 h-4" />

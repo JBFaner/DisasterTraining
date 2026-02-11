@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './bootstrap';
 import '../css/app.css';
 import { SidebarLayout } from './components/SidebarLayout';
+import { SessionTimeout } from './components/SessionTimeout';
 import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } from './components/ParticipantSimulationEvents';
 import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
@@ -338,6 +339,8 @@ if (rootElement) {
     currentPassedCount = rootElement.getAttribute('data-passed-count');
     currentFailedCount = rootElement.getAttribute('data-failed-count');
     currentOverallAverage = rootElement.getAttribute('data-overall-average');
+    const sessionTimeoutMinutes = parseInt(rootElement.getAttribute('data-session-timeout-minutes') || '10', 10);
+    const warningBeforeLogoutSeconds = parseInt(rootElement.getAttribute('data-warning-before-logout-seconds') || '60', 10);
 
     let barangayProfile = null;
     if (barangayProfileJson) {
@@ -585,6 +588,7 @@ if (rootElement) {
     ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
             <Toast.Provider swipeDirection="right">
+                <SessionTimeout timeoutMinutes={sessionTimeoutMinutes} warningSeconds={warningBeforeLogoutSeconds} />
                 <SidebarLayout
                     role={role}
                     currentSection={navSection}

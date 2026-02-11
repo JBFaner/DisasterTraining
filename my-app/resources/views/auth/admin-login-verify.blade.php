@@ -100,10 +100,19 @@
                     </button>
                 </form>
 
-                <div class="mt-6 pt-4 border-t border-slate-200 text-center">
+                <div class="mt-6 pt-4 border-t border-slate-200 text-center space-y-3">
                     <p class="text-xs text-slate-500">
-                        If you didn’t receive the code, please check your spam folder or try logging in again.
+                        If you didn’t receive the code, check your spam folder or resend a new code.
                     </p>
+                    <form method="POST" action="{{ route('admin.login.resend-otp') }}" class="inline">
+                        @csrf
+                        <button
+                            type="submit"
+                            class="text-sm font-medium text-teal-600 hover:text-teal-700 hover:underline focus:outline-none focus:underline"
+                        >
+                            Resend code
+                        </button>
+                    </form>
                     <p class="text-xs text-slate-500 mt-3">
                         <a href="{{ route('login') }}" class="hover:text-slate-700">← Back to Login</a>
                     </p>
