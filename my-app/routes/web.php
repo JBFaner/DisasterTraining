@@ -15,6 +15,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Middleware\CheckSessionInactivity;
 
 Route::get('/', function () {
@@ -60,6 +61,16 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/dashboard', function () {
         return view('app', ['section' => 'dashboard']);
     })->name('dashboard');
+
+    // Admin USB security key settings and verification
+    Route::get('/admin/security/usb', [SecurityController::class, 'showUsbSettings'])
+        ->name('admin.usb.settings');
+    Route::post('/admin/security/usb/generate', [SecurityController::class, 'generateUsbKey'])
+        ->name('admin.usb.generate');
+    Route::get('/admin/usb-check', [SecurityController::class, 'showUsbCheck'])
+        ->name('admin.usb.check');
+    Route::post('/admin/usb-check', [SecurityController::class, 'verifyUsbKey'])
+        ->name('admin.usb.check.post');
 
     Route::get('/training-modules', [TrainingModuleController::class, 'index'])
         ->name('training.modules');

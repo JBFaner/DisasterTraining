@@ -12,7 +12,7 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create or update a default LGU admin account for JB.
+        // Default LGU admin account for JB.
         User::updateOrCreate(
             ['email' => 'jbcursor@gmail.com'],
             [
@@ -23,6 +23,20 @@ class AdminUserSeeder extends Seeder
                 'status' => 'active',
                 'registered_at' => now(),
                 'email_verified_at' => now(), // mark as verified so admin login works
+            ]
+        );
+
+        // Additional verified LGU admin account for Rey.
+        User::updateOrCreate(
+            ['email' => 'reyreyko2@gmail.com'],
+            [
+                'name' => 'Rey',
+                // Uses same default password for now; change after first login.
+                'password' => 'admin123',
+                'role' => 'LGU_ADMIN',
+                'status' => 'active',
+                'registered_at' => now(),
+                'email_verified_at' => now(),
             ]
         );
     }

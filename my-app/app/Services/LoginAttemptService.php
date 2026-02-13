@@ -37,7 +37,7 @@ class LoginAttemptService
         $maxAttempts = config('security.max_login_attempts', 3);
         $baseDuration = config('security.lockout_duration_seconds', 30);
         $progressive = config('security.enable_progressive_delay', true);
-        $durations = config('security.progressive_lockout_seconds', [30, 60, 300]);
+        $durations = config('security.progressive_lockout_seconds', [30, 60, 70]);
 
         $emailAttemptsKey = 'login_attempts:email:' . $email;
         $ipAttemptsKey = 'login_attempts:ip:' . $ip;

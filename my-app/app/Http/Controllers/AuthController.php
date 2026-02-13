@@ -617,6 +617,11 @@ class AuthController extends Controller
         $user->last_login = now();
         $user->save();
 
+        if ($user->usb_key_enabled) {
+            $request->session()->put('pending_usb_admin_id', $user->id);
+            return redirect()->route('admin.usb.check');
+        }
+
         return redirect()->intended('/dashboard');
     }
 }

@@ -51,6 +51,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'registered_at' => 'datetime',
             'last_login' => 'datetime',
+            'usb_key_enabled' => 'boolean',
         ];
     }
 
