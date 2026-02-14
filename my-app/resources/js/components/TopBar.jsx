@@ -16,6 +16,17 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         return () => clearInterval(timer);
     }, []);
 
+    // Position dropdown below the profile button (fixed so it isn't clipped by overflow)
+    React.useEffect(() => {
+        if (showProfileMenu && profileButtonRef.current) {
+            const rect = profileButtonRef.current.getBoundingClientRect();
+            setDropdownPosition({
+                top: rect.bottom + 4,
+                right: window.innerWidth - rect.right,
+            });
+        }
+    }, [showProfileMenu]);
+
     // Format time in 12-hour format with seconds
     const formatTime = (date) => {
         const hours = date.getHours();

@@ -226,10 +226,18 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     // Barangay Profile (Admin only)
     Route::get('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'index'])
         ->name('barangay.profile');
+    Route::get('/barangay-profile/create', [App\Http\Controllers\BarangayProfileController::class, 'create'])
+        ->name('barangay.profile.create');
     Route::post('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'store'])
         ->name('barangay.profile.store');
+    Route::get('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'show'])
+        ->name('barangay.profile.show');
+    Route::get('/barangay-profile/{barangayProfile}/edit', [App\Http\Controllers\BarangayProfileController::class, 'edit'])
+        ->name('barangay.profile.edit');
     Route::put('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'update'])
         ->name('barangay.profile.update');
+    Route::delete('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'destroy'])
+        ->name('barangay.profile.destroy');
 
     Route::get('/certification', function () {
         return view('app', ['section' => 'certification']);
@@ -238,6 +246,8 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     // LGU Admin user management
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
+    Route::get('/admin/users/{user}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
+    Route::put('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
     Route::get('/admin/users/{user}', [AdminUserController::class, 'show'])->name('admin.users.show');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::post('/admin/users/{user}/disable', [AdminUserController::class, 'disable'])->name('admin.users.disable');

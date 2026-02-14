@@ -605,7 +605,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                                 label: 'Users',
                                 href: '/admin/users',
                                 icon: UserCircle,
-                                active: currentSection === 'admin_users_index' || currentSection === 'admin_users_create',
+                                active: currentSection === 'admin_users_index' || currentSection === 'admin_users_create' || currentSection === 'admin_users_edit' || currentSection === 'admin_users_show',
                             },
                             {
                                 label: 'Permissions',

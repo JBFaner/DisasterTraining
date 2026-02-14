@@ -348,6 +348,7 @@ if (rootElement) {
     const attendanceJson = rootElement.getAttribute('data-attendance');
     const participantEvaluationJson = rootElement.getAttribute('data-participant-evaluation');
     const barangayProfileJson = rootElement.getAttribute('data-barangay-profile');
+    const barangayProfilesJson = rootElement.getAttribute('data-barangay-profiles');
     const scoresJson = rootElement.getAttribute('data-scores');
     const criterionAveragesJson = rootElement.getAttribute('data-criterion-averages');
 
@@ -423,11 +424,19 @@ if (rootElement) {
     const warningBeforeLogoutSeconds = parseInt(rootElement.getAttribute('data-warning-before-logout-seconds') || '60', 10);
 
     let barangayProfile = null;
+    let barangayProfiles = [];
     if (barangayProfileJson) {
         try {
             barangayProfile = JSON.parse(barangayProfileJson);
         } catch (e) {
             console.error('Failed to parse barangay profile JSON', e);
+        }
+    }
+    if (barangayProfilesJson) {
+        try {
+            barangayProfiles = JSON.parse(barangayProfilesJson);
+        } catch (e) {
+            console.error('Failed to parse barangay profiles JSON', e);
         }
     }
 
@@ -523,7 +532,8 @@ if (rootElement) {
                             sectionAttr.startsWith('event_attendance') ? 'participants' :
                                 sectionAttr.startsWith('resources') ? 'resources' :
                                     sectionAttr.startsWith('evaluation') ? 'evaluation' :
-                                        sectionAttr;
+                                        sectionAttr.startsWith('barangay_profile') ? 'barangay_profile' :
+                                            sectionAttr;
 
     // Breadcrumb configuration
     const getBreadcrumbs = () => {
@@ -654,6 +664,28 @@ if (rootElement) {
             return [{ label: 'Certification Issuance', href: '/certification' }];
         }
 
+        if (sectionAttr === 'barangay_profile') {
+            return [{ label: 'Barangay Profile', href: '/barangay-profile' }];
+        }
+        if (sectionAttr === 'barangay_profile_create') {
+            return [
+                { label: 'Barangay Profile', href: '/barangay-profile' },
+                { label: 'Create', href: null },
+            ];
+        }
+        if (sectionAttr === 'barangay_profile_show') {
+            return [
+                { label: 'Barangay Profile', href: '/barangay-profile' },
+                { label: barangayProfile?.barangay_name || 'View', href: null },
+            ];
+        }
+        if (sectionAttr === 'barangay_profile_edit') {
+            return [
+                { label: 'Barangay Profile', href: '/barangay-profile' },
+                { label: 'Edit', href: null },
+            ];
+        }
+
         // Users administration (Users, Permissions, Roles)
         if (sectionAttr === 'admin_users_index') {
             return [{ label: 'Users', href: '/admin/users' }];
@@ -714,6 +746,7 @@ if (rootElement) {
         if (
             sectionAttr === 'admin_users_index' ||
             sectionAttr === 'admin_users_create' ||
+            sectionAttr === 'admin_users_edit' ||
             sectionAttr === 'admin_users_show' ||
             sectionAttr === 'admin_permissions' ||
             sectionAttr === 'admin_permissions_edit' ||
@@ -721,6 +754,14 @@ if (rootElement) {
             sectionAttr === 'admin_roles_edit'
         ) {
             return 'Users & Roles';
+        }
+        if (
+            sectionAttr === 'barangay_profile' ||
+            sectionAttr === 'barangay_profile_create' ||
+            sectionAttr === 'barangay_profile_show' ||
+            sectionAttr === 'barangay_profile_edit'
+        ) {
+            return 'Barangay Profile';
         }
 
         if (breadcrumbs.length === 1) {
@@ -923,6 +964,24 @@ if (rootElement) {
                                                 </select>
                                             </div>
 
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="barangay_id">
+                                                    Barangay Assignment
+                                                </label>
+                                                <select
+                                                    id="barangay_id"
+                                                    name="barangay_id"
+                                                    className="block w-full max-w-md rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
+                                                >
+                                                    <option value="">— None —</option>
+                                                    {(barangayProfiles || []).map((bp) => (
+                                                        <option key={bp.id} value={bp.id}>
+                                                            {bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="last_name">
@@ -1017,6 +1076,153 @@ if (rootElement) {
                             </div>
                         )}
 
+                        {sectionAttr === 'admin_users_edit' && currentUserData && (
+                            <div className="max-w-4xl mx-auto px-2 sm:px-0 py-4 sm:py-0">
+                                <div className="mb-4">
+                                    <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+                                        Edit User
+                                    </h1>
+                                    <p className="text-sm text-slate-600 mt-2">
+                                        Update name, email, role, barangay assignment, or password for this account.
+                                    </p>
+                                </div>
+
+                                {flashStatus && (
+                                    <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+                                        {flashStatus}
+                                    </div>
+                                )}
+
+                                <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8">
+                                    <form
+                                        id="admin-edit-user-form"
+                                        method="POST"
+                                        action={`/admin/users/${currentUserData.id}`}
+                                        className="space-y-8"
+                                    >
+                                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                                        <input type="hidden" name="_method" value="PUT" />
+
+                                        <div className="space-y-4">
+                                            <h2 className="text-sm font-semibold text-slate-700 tracking-wide uppercase">
+                                                Account Details
+                                            </h2>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_account_type">
+                                                    Account Type
+                                                </label>
+                                                <select
+                                                    id="edit_account_type"
+                                                    name="account_type"
+                                                    defaultValue={currentUserData.role}
+                                                    className="block w-full max-w-xs rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
+                                                >
+                                                    {currentUser?.role === 'SUPER_ADMIN' && (
+                                                        <option value="SUPER_ADMIN">Super Admin</option>
+                                                    )}
+                                                    <option value="LGU_ADMIN">LGU Admin</option>
+                                                    <option value="LGU_TRAINER">LGU Trainer</option>
+                                                    <option value="STAFF">Staff</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_barangay_id">
+                                                    Barangay Assignment
+                                                </label>
+                                                <select
+                                                    id="edit_barangay_id"
+                                                    name="barangay_id"
+                                                    defaultValue={currentUserData.barangay_id ?? ''}
+                                                    className="block w-full max-w-md rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
+                                                >
+                                                    <option value="">— None —</option>
+                                                    {(barangayProfiles || []).map((bp) => (
+                                                        <option key={bp.id} value={bp.id}>
+                                                            {bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_name">
+                                                    Full Name
+                                                </label>
+                                                <input
+                                                    id="edit_name"
+                                                    name="name"
+                                                    type="text"
+                                                    required
+                                                    defaultValue={currentUserData.name ?? ''}
+                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_email">
+                                                    Email Address
+                                                </label>
+                                                <input
+                                                    id="edit_email"
+                                                    name="email"
+                                                    type="email"
+                                                    required
+                                                    defaultValue={currentUserData.email ?? ''}
+                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_password">
+                                                    New Password (leave blank to keep current)
+                                                </label>
+                                                <input
+                                                    id="edit_password"
+                                                    name="password"
+                                                    type="password"
+                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                    autoComplete="new-password"
+                                                />
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    Minimum 8 characters. Only fill if you want to change the password.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_password_confirmation">
+                                                    Confirm New Password
+                                                </label>
+                                                <input
+                                                    id="edit_password_confirmation"
+                                                    name="password_confirmation"
+                                                    type="password"
+                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
+                                                    autoComplete="new-password"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                                            <a
+                                                href="/admin/users"
+                                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50"
+                                            >
+                                                Cancel
+                                            </a>
+                                            <button
+                                                type="submit"
+                                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 shadow-sm"
+                                            >
+                                                Save Changes
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
                         {sectionAttr === 'audit_logs' && (
                             <AuditLogs />
                         )}
@@ -1074,6 +1280,15 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'barangay_profile' && (
+                            <BarangayProfileList profiles={barangayProfiles} />
+                        )}
+                        {sectionAttr === 'barangay_profile_create' && (
+                            <BarangayProfileForm profile={null} />
+                        )}
+                        {sectionAttr === 'barangay_profile_show' && barangayProfile && (
+                            <BarangayProfileDetail profile={barangayProfile} />
+                        )}
+                        {sectionAttr === 'barangay_profile_edit' && barangayProfile && (
                             <BarangayProfileForm profile={barangayProfile} />
                         )}
                     </div>
@@ -8020,6 +8235,180 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
     );
 }
 
+// Barangay Profile List (table with Create button and search)
+function BarangayProfileList({ profiles = [] }) {
+    const [search, setSearch] = React.useState('');
+    const filtered = React.useMemo(() => {
+        if (!search.trim()) return profiles;
+        const q = search.toLowerCase().trim();
+        return profiles.filter(
+            (p) =>
+                (p.barangay_name || '').toLowerCase().includes(q) ||
+                (p.municipality_city || '').toLowerCase().includes(q) ||
+                (p.province || '').toLowerCase().includes(q)
+        );
+    }, [profiles, search]);
+
+    const handleDelete = (p) => {
+        if (!window.confirm(`Delete "${p.barangay_name}"? This cannot be undone.`)) return;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/barangay-profile/${p.id}`;
+        const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content;
+        if (csrf) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = '_token';
+            input.value = csrf;
+            form.appendChild(input);
+        }
+        const method = document.createElement('input');
+        method.type = 'hidden';
+        method.name = '_method';
+        method.value = 'DELETE';
+        form.appendChild(method);
+        document.body.appendChild(form);
+        form.submit();
+    };
+
+    const hazardDisplay = (hazards) => {
+        if (!hazards || !Array.isArray(hazards) || hazards.length === 0) return '—';
+        return hazards.join(', ');
+    };
+
+    return (
+        <div className="space-y-6 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Barangay Profile</h2>
+                    <p className="text-sm text-slate-600 mt-1">Manage barangay information and disaster hazards.</p>
+                </div>
+                <a
+                    href="/barangay-profile/create"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                >
+                    <Plus className="w-4 h-4" />
+                    Create profile
+                </a>
+            </div>
+            <div className="relative max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                    type="text"
+                    placeholder="Search by name, municipality, or province..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-md border border-slate-300 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full divide-y divide-slate-200 text-sm">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Barangay Name</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Municipality</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Province</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Disaster Hazards</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                                        No barangay profiles yet. Click &quot;Create profile&quot; to add one.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filtered.map((p) => (
+                                    <tr key={p.id} className="hover:bg-slate-50/70">
+                                        <td className="px-4 py-3 font-medium text-slate-900">{p.barangay_name || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-700">{p.municipality_city || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-700">{p.province || '—'}</td>
+                                        <td className="px-4 py-3 text-slate-700">{hazardDisplay(p.hazards)}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <a
+                                                    href={`/barangay-profile/${p.id}`}
+                                                    className="inline-flex items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-700 hover:bg-slate-100"
+                                                    title="View"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                </a>
+                                                <a
+                                                    href={`/barangay-profile/${p.id}/edit`}
+                                                    className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100"
+                                                    title="Edit"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDelete(p)}
+                                                    className="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 p-1.5 text-red-700 hover:bg-red-100"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Barangay Profile View (all details including address)
+function BarangayProfileDetail({ profile }) {
+    const hazards = profile?.hazards || [];
+    return (
+        <div className="space-y-6 w-full">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Barangay Profile</h2>
+                    <p className="text-sm text-slate-600 mt-1">{profile?.barangay_name}</p>
+                </div>
+                <a
+                    href="/barangay-profile"
+                    className="text-sm text-slate-600 hover:text-slate-900"
+                >
+                    ← Back to list
+                </a>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Barangay Name</h3>
+                    <p className="text-slate-900">{profile?.barangay_name || '—'}</p>
+                </div>
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Municipality / City</h3>
+                    <p className="text-slate-900">{profile?.municipality_city || '—'}</p>
+                </div>
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Province</h3>
+                    <p className="text-slate-900">{profile?.province || '—'}</p>
+                </div>
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Barangay Address</h3>
+                    <p className="text-slate-900 whitespace-pre-wrap">{profile?.barangay_address || '—'}</p>
+                </div>
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Disaster Hazards</h3>
+                    <p className="text-slate-900">
+                        {hazards.length > 0 ? hazards.join(', ') : '—'}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Barangay Profile Form Component
 function BarangayProfileForm({ profile }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -8030,13 +8419,7 @@ function BarangayProfileForm({ profile }) {
         municipality_city: profile?.municipality_city || '',
         province: profile?.province || '',
         barangay_address: profile?.barangay_address || '',
-        contact_number: profile?.contact_number || '',
-        email_address: profile?.email_address || '',
-        estimated_population: profile?.estimated_population || '',
-        area_classification: profile?.area_classification || '',
         hazards: profile?.hazards || [],
-        hazard_other: '',
-        hazard_notes: profile?.hazard_notes || '',
     });
 
     const [errors, setErrors] = React.useState({});
@@ -8088,11 +8471,7 @@ function BarangayProfileForm({ profile }) {
             return;
         }
 
-        // Prepare hazards array
         const hazards = [...formData.hazards];
-        if (formData.hazard_other.trim()) {
-            hazards.push(formData.hazard_other.trim());
-        }
 
         // Submit form
         const form = e.target;
@@ -8212,36 +8591,6 @@ function BarangayProfileForm({ profile }) {
                             )}
                         </div>
 
-                        {/* Contact Number */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Contact Number
-                            </label>
-                            <input
-                                type="text"
-                                name="contact_number"
-                                value={formData.contact_number}
-                                onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                placeholder="e.g., (02) 1234-5678"
-                            />
-                        </div>
-
-                        {/* Email Address */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Email Address
-                            </label>
-                            <input
-                                type="email"
-                                name="email_address"
-                                value={formData.email_address}
-                                onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                placeholder="e.g., barangay@example.com"
-                            />
-                        </div>
-
                         {/* Barangay Address */}
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -8259,51 +8608,9 @@ function BarangayProfileForm({ profile }) {
                     </div>
                 </div>
 
-                {/* Demographics Section */}
+                {/* Disaster Hazards Section */}
                 <div className="bg-white rounded-xl border border-slate-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Demographics</h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Estimated Population */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Estimated Population
-                            </label>
-                            <input
-                                type="number"
-                                name="estimated_population"
-                                value={formData.estimated_population}
-                                onChange={handleInputChange}
-                                min="0"
-                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                placeholder="e.g., 15000"
-                            />
-                        </div>
-
-                        {/* Area Classification */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Area Classification
-                            </label>
-                            <select
-                                name="area_classification"
-                                value={formData.area_classification}
-                                onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            >
-                                <option value="">Select classification</option>
-                                <option value="Urban">Urban</option>
-                                <option value="Rural">Rural</option>
-                                <option value="Coastal">Coastal</option>
-                                <option value="Mountainous">Mountainous</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Hazard Context Section */}
-                <div className="bg-white rounded-xl border border-slate-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Hazard Context</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Disaster Hazards</h3>
 
                     {/* Hidden inputs for selected hazards */}
                     {formData.hazards.map((hazard, index) => (
@@ -8315,10 +8622,10 @@ function BarangayProfileForm({ profile }) {
                         />
                     ))}
 
-                    {/* Hazard Checkboxes */}
+                    {/* Disaster Hazards Checkboxes */}
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Common Disaster Hazards
+                            Disaster Hazards
                         </label>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {hazardOptions.map(hazard => (
@@ -8334,41 +8641,12 @@ function BarangayProfileForm({ profile }) {
                             ))}
                         </div>
                     </div>
-
-                    {/* Other Hazards */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Other Hazards
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.hazard_other}
-                            onChange={(e) => setFormData(prev => ({ ...prev, hazard_other: e.target.value }))}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="Specify other hazards (comma-separated)"
-                        />
-                    </div>
-
-                    {/* Hazard Notes */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Additional Risk Notes
-                        </label>
-                        <textarea
-                            name="hazard_notes"
-                            value={formData.hazard_notes}
-                            onChange={handleInputChange}
-                            rows="3"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="Additional notes about disaster risks in your barangay..."
-                        />
-                    </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end gap-3">
                     <a
-                        href="/dashboard"
+                        href="/barangay-profile"
                         className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors"
                     >
                         Cancel

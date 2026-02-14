@@ -9,50 +9,58 @@ use Illuminate\Support\Facades\Auth;
 class BarangayProfileController extends Controller
 {
     /**
-     * Display the barangay profile (or create form if none exists)
+     * Display list of barangay profiles (table with Create button and search).
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Only LGU Admin can access
         $this->authorizeAdmin();
 
-        $profile = BarangayProfile::first();
+        $query = BarangayProfile::query()->orderBy('barangay_name');
+
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('barangay_name', 'like', '%' . $search . '%')
+                    ->orWhere('municipality_city', 'like', '%' . $search . '%')
+                    ->orWhere('province', 'like', '%' . $search . '%');
+            });
+        }
+
+        $barangayProfiles = $query->get();
 
         return view('app', [
             'section' => 'barangay_profile',
-            'profile' => $profile,
+            'barangay_profiles' => $barangayProfiles,
         ]);
     }
 
     /**
-     * Store a newly created barangay profile
+     * Show the form for creating a new barangay profile.
+     */
+    public function create()
+    {
+        $this->authorizeAdmin();
+
+        return view('app', [
+            'section' => 'barangay_profile_create',
+        ]);
+    }
+
+    /**
+     * Store a newly created barangay profile.
      */
     public function store(Request $request)
     {
-        // Only LGU Admin can create
         $this->authorizeAdmin();
-
-        // Ensure only one profile exists
-        if (BarangayProfile::exists()) {
-            return redirect()->route('barangay.profile')
-                ->with('error', 'Barangay profile already exists. Please edit the existing profile.');
-        }
 
         $data = $request->validate([
             'barangay_name' => ['required', 'string', 'max:255'],
             'municipality_city' => ['required', 'string', 'max:255'],
             'province' => ['required', 'string', 'max:255'],
             'barangay_address' => ['nullable', 'string'],
-            'contact_number' => ['nullable', 'string', 'max:50'],
-            'email_address' => ['nullable', 'email', 'max:255'],
-            'estimated_population' => ['nullable', 'integer', 'min:0'],
-            'area_classification' => ['nullable', 'string', 'in:Urban,Rural,Coastal,Mountainous'],
             'hazards' => ['nullable', 'array'],
             'hazards.*' => ['string'],
-            'hazard_notes' => ['nullable', 'string'],
         ]);
 
-        // Filter out empty hazards
         if (isset($data['hazards'])) {
             $data['hazards'] = array_values(array_filter($data['hazards']));
             if (empty($data['hazards'])) {
@@ -67,11 +75,36 @@ class BarangayProfileController extends Controller
     }
 
     /**
-     * Update the barangay profile
+     * Display the specified barangay profile (view all details including address).
+     */
+    public function show(BarangayProfile $barangayProfile)
+    {
+        $this->authorizeAdmin();
+
+        return view('app', [
+            'section' => 'barangay_profile_show',
+            'barangay_profile' => $barangayProfile,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified barangay profile.
+     */
+    public function edit(BarangayProfile $barangayProfile)
+    {
+        $this->authorizeAdmin();
+
+        return view('app', [
+            'section' => 'barangay_profile_edit',
+            'barangay_profile' => $barangayProfile,
+        ]);
+    }
+
+    /**
+     * Update the specified barangay profile.
      */
     public function update(Request $request, BarangayProfile $barangayProfile)
     {
-        // Only LGU Admin can update
         $this->authorizeAdmin();
 
         $data = $request->validate([
@@ -79,16 +112,10 @@ class BarangayProfileController extends Controller
             'municipality_city' => ['required', 'string', 'max:255'],
             'province' => ['required', 'string', 'max:255'],
             'barangay_address' => ['nullable', 'string'],
-            'contact_number' => ['nullable', 'string', 'max:50'],
-            'email_address' => ['nullable', 'email', 'max:255'],
-            'estimated_population' => ['nullable', 'integer', 'min:0'],
-            'area_classification' => ['nullable', 'string', 'in:Urban,Rural,Coastal,Mountainous'],
             'hazards' => ['nullable', 'array'],
             'hazards.*' => ['string'],
-            'hazard_notes' => ['nullable', 'string'],
         ]);
 
-        // Filter out empty hazards
         if (isset($data['hazards'])) {
             $data['hazards'] = array_values(array_filter($data['hazards']));
             if (empty($data['hazards'])) {
@@ -103,8 +130,18 @@ class BarangayProfileController extends Controller
     }
 
     /**
-     * Ensure only LGU Admin can access
+     * Remove the specified barangay profile.
      */
+    public function destroy(BarangayProfile $barangayProfile)
+    {
+        $this->authorizeAdmin();
+
+        $barangayProfile->delete();
+
+        return redirect()->route('barangay.profile')
+            ->with('status', 'Barangay profile deleted.');
+    }
+
     protected function authorizeAdmin(): void
     {
         $user = Auth::user();

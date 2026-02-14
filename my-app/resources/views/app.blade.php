@@ -113,6 +113,9 @@
             @isset($participant_evaluation)
                 data-participant-evaluation='@json($participant_evaluation)'
             @endisset
+            @isset($barangay_profiles)
+                data-barangay-profiles='@json($barangay_profiles)'
+            @endisset
             @isset($barangay_profile)
                 data-barangay-profile='@json($barangay_profile)'
             @endisset

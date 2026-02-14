@@ -323,6 +323,9 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                     Role
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                                    Barangay
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                                     Status
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
@@ -343,7 +346,7 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                             {filteredUsers.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={9}
+                                        colSpan={10}
                                         className="px-6 py-8 text-center text-sm text-slate-500"
                                     >
                                         No users found for the current search and filters.
@@ -373,6 +376,9 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                             {user.role === 'STAFF' && 'Staff'}
                                             {!['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'].includes(user.role) && user.role}
                                         </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                        {user.barangay_profile?.barangay_name ?? '—'}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <span
