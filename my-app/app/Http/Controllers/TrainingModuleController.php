@@ -36,8 +36,18 @@ class TrainingModuleController extends Controller
 
     public function create()
     {
-        $barangayProfile = \App\Models\BarangayProfile::first();
-        
+        $user = Auth::user();
+        $barangayProfile = null;
+
+        // If the user is assigned to a barangay, use that barangay's profile (with disaster hazards) for the disaster type dropdown
+        if ($user && $user->barangay_id) {
+            $barangayProfile = \App\Models\BarangayProfile::find($user->barangay_id);
+        }
+
+        if (! $barangayProfile) {
+            $barangayProfile = \App\Models\BarangayProfile::first();
+        }
+
         return view('app', [
             'section' => 'training_create',
             'barangay_profile' => $barangayProfile,

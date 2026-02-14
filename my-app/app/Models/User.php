@@ -27,6 +27,7 @@ class User extends Authenticatable
         'status',
         'registered_at',
         'profile_picture',
+        'barangay_id',
     ];
 
     /**
@@ -68,5 +69,10 @@ class User extends Authenticatable
     public function isParticipant()
     {
         return $this->role === 'PARTICIPANT';
+    }
+
+    public function barangayProfile()
+    {
+        return $this->belongsTo(BarangayProfile::class, 'barangay_id');
     }
 }

@@ -5,6 +5,8 @@ import { Bell, ChevronDown, User, Settings, LogOut, Clock, PanelLeft } from 'luc
 export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSidebarCollapsed }) {
     const [currentTime, setCurrentTime] = React.useState(new Date());
     const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+    const profileButtonRef = React.useRef(null);
+    const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, right: 0 });
 
     // Update time every second
     React.useEffect(() => {
@@ -13,6 +15,17 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         }, 1000);
         return () => clearInterval(timer);
     }, []);
+
+    // Position dropdown below the profile button (fixed so it isn't clipped by overflow)
+    React.useEffect(() => {
+        if (showProfileMenu && profileButtonRef.current) {
+            const rect = profileButtonRef.current.getBoundingClientRect();
+            setDropdownPosition({
+                top: rect.bottom + 4,
+                right: window.innerWidth - rect.right,
+            });
+        }
+    }, [showProfileMenu]);
 
     // Format time in 12-hour format with seconds
     const formatTime = (date) => {
@@ -172,6 +185,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                         {/* Profile Dropdown - Hidden on mobile */}
                         <div className="relative hidden md:block">
                             <button
+                                ref={profileButtonRef}
                                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                                 className="flex items-center gap-1.5 px-2 py-1 hover:bg-slate-100 rounded-md transition-colors"
                             >
@@ -204,7 +218,13 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                                         className="fixed inset-0 z-40"
                                         onClick={() => setShowProfileMenu(false)}
                                     />
-                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                                    <div
+                                        className="fixed w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50"
+                                        style={{
+                                            top: dropdownPosition.top,
+                                            right: dropdownPosition.right,
+                                        }}
+                                    >
                                         <a
                                             href="/profile"
                                             onClick={() => setShowProfileMenu(false)}

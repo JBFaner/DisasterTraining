@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\AdminEmailVerificationMail;
 use App\Models\AuditLog;
+use App\Models\BarangayProfile;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
@@ -60,6 +61,7 @@ class AdminUserController extends Controller
         }
 
         $query = User::query()
+            ->with('barangayProfile')
             // Fetch only staff-type users (Super Admin, LGU Admin, Trainer, Staff), never participants
             ->whereIn('role', ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'])
             ->orderByDesc('created_at');
@@ -102,9 +104,42 @@ class AdminUserController extends Controller
             abort(403);
         }
 
+        $barangayProfiles = BarangayProfile::orderBy('barangay_name')->get();
+
         // Render inside the SPA shell so sidebar/navigation stays visible.
         return view('app', [
             'section' => 'admin_users_create',
+            'barangay_profiles' => $barangayProfiles,
+        ]);
+    }
+
+    /**
+     * Show the form to edit an existing user.
+     */
+    public function edit(User $user)
+    {
+        $currentUser = Auth::user();
+
+        if (! $this->hasUserManagementAccess($currentUser)) {
+            abort(403);
+        }
+        if (! $this->canManageUser($currentUser, $user)) {
+            abort(403, 'You do not have permission to edit this user.');
+        }
+        if (in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
+            abort(404);
+        }
+
+        $user->load('barangayProfile');
+        $barangayProfiles = BarangayProfile::orderBy('barangay_name')->get();
+
+        return view('app', [
+            'section' => 'admin_users_edit',
+            'user' => $user,
+            'currentUser' => $currentUser,
+            'barangay_profiles' => $barangayProfiles,
+            'canViewSecurity' => false,
+            'maskedUsbKeyHash' => '',
         ]);
     }
 
@@ -412,6 +447,7 @@ class AdminUserController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
             'account_type' => ['required', 'in:' . implode(',', $allowedRoles)],
+            'barangay_id' => ['nullable', 'integer', 'exists:barangay_profiles,id'],
         ]);
 
         $fullName = trim(
@@ -432,6 +468,7 @@ class AdminUserController extends Controller
                 'participant_id' => $participantId,
                 'status' => 'active',
                 'registered_at' => now(),
+                'barangay_id' => $data['barangay_id'] ?? null,
             ]);
 
             AuditLogger::log([
@@ -460,6 +497,7 @@ class AdminUserController extends Controller
             'role' => $data['account_type'],
             'status' => 'pending_verification',
             'registered_at' => now(),
+            'barangay_id' => $data['barangay_id'] ?? null,
         ]);
 
         // Generate a signed email verification URL for this admin
@@ -495,6 +533,65 @@ class AdminUserController extends Controller
 
         return redirect()->back()
             ->with('status', 'New account registered. The user must verify their email before they can log in.');
+    }
+
+    /**
+     * Update an existing user (name, email, role, barangay, optional password).
+     */
+    public function update(Request $request, User $user)
+    {
+        $currentUser = Auth::user();
+
+        if (! $this->hasUserManagementAccess($currentUser)) {
+            abort(403);
+        }
+        if (! $this->canManageUser($currentUser, $user)) {
+            abort(403, 'You do not have permission to edit this user.');
+        }
+        if (in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
+            abort(404);
+        }
+
+        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'];
+        if ($currentUser->role === 'SUPER_ADMIN') {
+            $allowedRoles[] = 'SUPER_ADMIN';
+        }
+
+        $rules = [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'account_type' => ['required', 'in:' . implode(',', $allowedRoles)],
+            'barangay_id' => ['nullable', 'integer', 'exists:barangay_profiles,id'],
+        ];
+        if ($request->filled('password')) {
+            $rules['password'] = ['required', 'confirmed', 'min:8'];
+        }
+
+        $data = $request->validate($rules);
+
+        $old = $user->only(['name', 'email', 'role', 'barangay_id']);
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->role = $data['account_type'];
+        $user->barangay_id = $data['barangay_id'] ?? null;
+        if (! empty($data['password'])) {
+            $user->password = $data['password'];
+        }
+        $user->save();
+
+        AuditLogger::log([
+            'user' => $currentUser,
+            'action' => 'Updated user',
+            'module' => 'Users & Roles',
+            'status' => 'success',
+            'description' => 'User account updated from Users & Roles.',
+            'old_values' => $old,
+            'new_values' => $user->only(['name', 'email', 'role', 'barangay_id']),
+        ]);
+
+        return redirect()->route('admin.users.index')
+            ->with('status', 'User updated successfully.');
     }
 
     /**
