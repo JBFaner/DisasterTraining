@@ -470,7 +470,7 @@ class EvaluationController extends Controller
         if (!$user) {
             abort(403);
         }
-        if (!in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (!in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403);
         }
     }

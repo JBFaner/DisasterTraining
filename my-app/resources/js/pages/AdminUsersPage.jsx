@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, Plus, Eye, Pencil, Lock, Unlock, Archive, CheckCircle2, Key, KeyRound } from 'lucide-react';
+import { Search, Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, Key, KeyRound } from 'lucide-react';
 
 export function AdminUsersPage({ users = [], currentUser = null }) {
     const [search, setSearch] = React.useState('');
@@ -56,7 +56,6 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         switch (status) {
             case 'active':
                 return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-            case 'inactive':
             case 'disabled':
                 return 'bg-rose-50 text-rose-700 border-rose-200';
             case 'pending_verification':
@@ -84,43 +83,66 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         form.submit();
     };
 
-    const handleToggleStatus = (user) => {
+    const handleToggleStatus = async (user) => {
         const isCurrentlyActive = user.status === 'active';
         const action = isCurrentlyActive ? 'disable' : 'enable';
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/users/${user.id}/${action}`;
-
-        const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content;
-        if (csrf) {
-            const tokenInput = document.createElement('input');
-            tokenInput.type = 'hidden';
-            tokenInput.name = '_token';
-            tokenInput.value = csrf;
-            form.appendChild(tokenInput);
+        
+        if (isCurrentlyActive) {
+            // Disabling
+            if (!confirm(`Are you sure you want to disable ${user.name} (${user.email})?\n\nThis will:\n- Prevent the user from logging in\n- Automatically disable the USB key\n- Invalidate their current session if logged in\n\nThe account can be re-enabled later.`)) {
+                return;
+            }
+        } else {
+            // Enabling
+            if (!confirm(`Are you sure you want to enable ${user.name} (${user.email})?\n\nThis will:\n- Allow the user to log in\n- Automatically re-enable the USB key (if one exists)\n\nThe existing USB key file will remain valid.`)) {
+                return;
+            }
         }
 
-        document.body.appendChild(form);
-        form.submit();
-    };
-
-    const handleArchive = (user) => {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/users/${user.id}/archive`;
-
+        setLoadingUserId(user.id);
         const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content;
-        if (csrf) {
-            const tokenInput = document.createElement('input');
-            tokenInput.type = 'hidden';
-            tokenInput.name = '_token';
-            tokenInput.value = csrf;
-            form.appendChild(tokenInput);
-        }
 
-        document.body.appendChild(form);
-        form.submit();
+        try {
+            const formData = new FormData();
+            formData.append('_token', csrf);
+            formData.append('_method', 'POST');
+
+            const response = await fetch(`/admin/users/${user.id}/${action}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Update user state immediately
+                setUsersState(prevUsers => 
+                    prevUsers.map(u => {
+                        if (u.id === user.id) {
+                            return {
+                                ...u,
+                                status: action === 'disable' ? 'disabled' : 'active',
+                                usb_key_enabled: action === 'disable' ? false : (u.usb_key_hash ? true : u.usb_key_enabled),
+                            };
+                        }
+                        return u;
+                    })
+                );
+            } else {
+                alert(data.message || `Failed to ${action} user. Please try again.`);
+            }
+        } catch (error) {
+            console.error('Error toggling user status:', error);
+            alert(`An error occurred while ${action === 'disable' ? 'disabling' : 'enabling'} the user. Please try again.`);
+        } finally {
+            setLoadingUserId(null);
+        }
     };
+
 
     const handleGenerateUsbKey = async (user) => {
         if (!confirm(`Generate a new USB key for ${user.name}? This will revoke any existing USB key.`)) {
@@ -276,7 +298,7 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                     >
                         <option value="all">All Status</option>
                         <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="disabled">Disabled</option>
                         <option value="pending_verification">Pending Verification</option>
                     </select>
                 </div>
@@ -443,25 +465,17 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleToggleStatus(user)}
-                                                    className="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 p-1.5 text-amber-700 hover:bg-amber-100"
+                                                    disabled={loadingUserId === user.id}
+                                                    className="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 p-1.5 text-amber-700 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     title={user.status === 'active' ? 'Disable account' : 'Enable account'}
                                                 >
-                                                    {user.status === 'active' ? (
+                                                    {loadingUserId === user.id ? (
+                                                        <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : user.status === 'active' ? (
                                                         <Lock className="w-3.5 h-3.5" />
                                                     ) : (
                                                         <Unlock className="w-3.5 h-3.5" />
                                                     )}
-                                                </button>
-                                            )}
-                                            {/* Archive - only if can manage */}
-                                            {canManageUser(user) && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleArchive(user)}
-                                                    className="inline-flex items-center justify-center rounded-md border border-slate-300 p-1.5 text-slate-600 hover:bg-slate-100"
-                                                    title="Archive account"
-                                                >
-                                                    <Archive className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
                                             {/* USB Key management - only if can manage and user is admin/trainer/super admin */}

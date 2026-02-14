@@ -47,6 +47,27 @@
             @isset($users)
                 data-users='@json($users)'
             @endisset
+            @isset($roles)
+                data-roles='@json($roles)'
+            @endisset
+            @isset($permissions)
+                data-permissions='@json($permissions)'
+            @endisset
+            @isset($role)
+                data-editing-role='@json($role)'
+            @endisset
+            @isset($groupedPermissions)
+                data-grouped-permissions='@json($groupedPermissions)'
+            @endisset
+            @isset($assignedPermissionIds)
+                data-assigned-permission-ids='@json($assignedPermissionIds)'
+            @endisset
+            @isset($permission)
+                data-editing-permission='@json($permission)'
+            @endisset
+            @isset($assignedRoleIds)
+                data-assigned-role-ids='@json($assignedRoleIds)'
+            @endisset
             @isset($registrations)
                 data-registrations='@json($registrations)'
             @endisset

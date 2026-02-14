@@ -242,7 +242,6 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::post('/admin/users/{user}/disable', [AdminUserController::class, 'disable'])->name('admin.users.disable');
     Route::post('/admin/users/{user}/enable', [AdminUserController::class, 'enable'])->name('admin.users.enable');
-    Route::post('/admin/users/{user}/archive', [AdminUserController::class, 'archive'])->name('admin.users.archive');
     Route::post('/admin/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('admin.users.reset-password');
     Route::post('/admin/users/{user}/manual-verify', [AdminUserController::class, 'manualVerify'])->name('admin.users.manual-verify');
     Route::post('/admin/users/{user}/generate-usb-key', [AdminUserController::class, 'generateUsbKey'])->name('admin.users.generate-usb-key');
@@ -254,5 +253,15 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     // Audit logs API (must use web auth so React can see the logged-in admin)
     Route::get('/api/audit-logs', [AuditLogController::class, 'history'])->name('audit.logs.history');
     Route::get('/api/audit-logs/export', [AuditLogController::class, 'export'])->name('audit.logs.export');
+
+    // Roles & Permissions (Admin only)
+    Route::get('/admin/roles', [App\Http\Controllers\RoleController::class, 'index'])->name('admin.roles.index');
+    Route::post('/admin/roles', [App\Http\Controllers\RoleController::class, 'store'])->name('admin.roles.store');
+    Route::get('/admin/roles/{id}/edit', [App\Http\Controllers\RoleController::class, 'edit'])->name('admin.roles.edit');
+    Route::put('/admin/roles/{id}', [App\Http\Controllers\RoleController::class, 'update'])->name('admin.roles.update');
+    Route::get('/admin/permissions', [App\Http\Controllers\PermissionController::class, 'index'])->name('admin.permissions.index');
+    Route::post('/admin/permissions', [App\Http\Controllers\PermissionController::class, 'store'])->name('admin.permissions.store');
+    Route::get('/admin/permissions/{id}/edit', [App\Http\Controllers\PermissionController::class, 'edit'])->name('admin.permissions.edit');
+    Route::put('/admin/permissions/{id}', [App\Http\Controllers\PermissionController::class, 'update'])->name('admin.permissions.update');
 });
 

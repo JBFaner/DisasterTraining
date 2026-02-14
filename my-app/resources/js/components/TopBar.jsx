@@ -5,6 +5,8 @@ import { Bell, ChevronDown, User, Settings, LogOut, Clock, PanelLeft } from 'luc
 export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSidebarCollapsed }) {
     const [currentTime, setCurrentTime] = React.useState(new Date());
     const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+    const profileButtonRef = React.useRef(null);
+    const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, right: 0 });
 
     // Update time every second
     React.useEffect(() => {
@@ -172,7 +174,17 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                         {/* Profile Dropdown - Hidden on mobile */}
                         <div className="relative hidden md:block">
                             <button
-                                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                ref={profileButtonRef}
+                                onClick={() => {
+                                    if (profileButtonRef.current) {
+                                        const rect = profileButtonRef.current.getBoundingClientRect();
+                                        setDropdownPosition({
+                                            top: rect.bottom + 8,
+                                            right: window.innerWidth - rect.right,
+                                        });
+                                    }
+                                    setShowProfileMenu(!showProfileMenu);
+                                }}
                                 className="flex items-center gap-1.5 px-2 py-1 hover:bg-slate-100 rounded-md transition-colors"
                             >
                                 {getProfilePicture() ? (
@@ -204,31 +216,42 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                                         className="fixed inset-0 z-40"
                                         onClick={() => setShowProfileMenu(false)}
                                     />
-                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
-                                        <a
-                                            href="/profile"
-                                            onClick={() => setShowProfileMenu(false)}
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                                        >
-                                            <User className="w-4 h-4" />
-                                            Manage Profile
-                                        </a>
-                                        <a
-                                            href="/settings"
-                                            onClick={() => setShowProfileMenu(false)}
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                                        >
-                                            <Settings className="w-4 h-4" />
-                                            Settings
-                                        </a>
-                                        <div className="h-px bg-slate-200 my-1" />
-                                        <button
-                                            onClick={handleLogout}
-                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors text-left"
-                                        >
-                                            <LogOut className="w-4 h-4" />
-                                            Logout
-                                        </button>
+                                    <div 
+                                        className="fixed w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-50"
+                                        style={{
+                                            top: `${dropdownPosition.top}px`,
+                                            right: `${dropdownPosition.right}px`,
+                                            maxHeight: 'none',
+                                            overflow: 'visible',
+                                            height: 'auto',
+                                        }}
+                                    >
+                                        <div className="py-1">
+                                            <a
+                                                href="/profile"
+                                                onClick={() => setShowProfileMenu(false)}
+                                                className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors whitespace-nowrap"
+                                            >
+                                                <User className="w-4 h-4 flex-shrink-0" />
+                                                Manage Profile
+                                            </a>
+                                            <a
+                                                href="/settings"
+                                                onClick={() => setShowProfileMenu(false)}
+                                                className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors whitespace-nowrap"
+                                            >
+                                                <Settings className="w-4 h-4 flex-shrink-0" />
+                                                Settings
+                                            </a>
+                                            <div className="h-px bg-slate-200 my-1" />
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors text-left whitespace-nowrap"
+                                            >
+                                                <LogOut className="w-4 h-4 flex-shrink-0" />
+                                                Logout
+                                            </button>
+                                        </div>
                                     </div>
                                 </>
                             )}

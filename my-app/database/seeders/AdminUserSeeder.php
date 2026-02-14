@@ -36,7 +36,20 @@ class AdminUserSeeder extends Seeder
                 'role' => 'LGU_ADMIN',
                 'status' => 'active',
                 'registered_at' => now(),
-                'email_verified_at' => now(),
+                'email_verified_at' => now(), // Fully verified
+            ]
+        );
+
+        // Super Admin account for Reymon.
+        User::updateOrCreate(
+            ['email' => 'brogada.reymon09@gmail.com'],
+            [
+                'name' => 'Reymon',
+                'password' => 'admin123',
+                'role' => 'SUPER_ADMIN',
+                'status' => 'active',
+                'registered_at' => now(),
+                'email_verified_at' => now(), // Fully verified
             ]
         );
     }

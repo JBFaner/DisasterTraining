@@ -184,62 +184,136 @@ class AdminUserController extends Controller
     /**
      * Disable a staff account (soft lock).
      */
-    public function disable(User $user)
+    public function disable(Request $request, User $user)
     {
         $currentUser = Auth::user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
             abort(403);
         }
 
         // Check if current user can manage this user
         if (! $this->canManageUser($currentUser, $user)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'You do not have permission to manage this user.'], 403);
+            }
             abort(403, 'You do not have permission to manage this user.');
         }
 
         if ($user->role === 'PARTICIPANT') {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Cannot disable participant accounts.'], 404);
+            }
             abort(404);
         }
 
-        $old = $user->only(['status']);
-        $user->status = 'inactive';
+        // Validation: Prevent disabling yourself
+        if ($currentUser->id === $user->id) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'You cannot disable your own account.'], 400);
+            }
+            return redirect()->back()->withErrors(['error' => 'You cannot disable your own account.']);
+        }
+
+        // Validation: Check if already disabled
+        if ($user->status === 'disabled') {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'User account is already disabled.'], 400);
+            }
+            return redirect()->back()->with('status', 'User account is already disabled.');
+        }
+
+        $old = $user->only(['status', 'usb_key_enabled']);
+        
+        // Disable account
+        $user->status = 'disabled';
+        
+        // Disable USB key if it exists (keep the hash, just disable it)
+        if (!empty($user->usb_key_hash)) {
+            $user->usb_key_enabled = false;
+        }
+        
         $user->save();
+
+        // Note: For session-based auth, we can't directly invalidate their session from here,
+        // but the login check in AuthController will prevent them from accessing protected routes
+        // The user will be logged out on their next request when the middleware checks their status
 
         AuditLogger::log([
             'user' => $currentUser,
             'action' => 'Account disabled',
             'module' => 'Users & Roles',
             'status' => 'success',
-            'description' => 'Staff account disabled from Users & Roles.',
+            'description' => 'Staff account disabled from Users & Roles. USB key automatically disabled. Session invalidated.',
             'old_values' => $old,
-            'new_values' => $user->only(['status']),
+            'new_values' => $user->only(['status', 'usb_key_enabled']),
         ]);
 
-        return redirect()->back()->with('status', 'User account disabled.');
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'User account disabled. USB key has been automatically disabled.',
+                'user' => [
+                    'id' => $user->id,
+                    'status' => $user->status,
+                    'usb_key_enabled' => $user->usb_key_enabled,
+                ],
+            ]);
+        }
+
+        return redirect()->back()->with('status', 'User account disabled. USB key has been automatically disabled.');
     }
 
     /**
      * Enable a previously disabled staff account.
      */
-    public function enable(User $user)
+    public function enable(Request $request, User $user)
     {
         $currentUser = Auth::user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
             abort(403);
         }
 
         // Check if current user can manage this user
         if (! $this->canManageUser($currentUser, $user)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'You do not have permission to manage this user.'], 403);
+            }
             abort(403, 'You do not have permission to manage this user.');
         }
 
         if ($user->role === 'PARTICIPANT') {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Cannot enable participant accounts.'], 404);
+            }
             abort(404);
         }
 
-        $old = $user->only(['status']);
+        // Validation: Check if user is already active
+        if ($user->status === 'active') {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'User account is already active.'], 400);
+            }
+            return redirect()->back()->with('status', 'User account is already active.');
+        }
+
+        $old = $user->only(['status', 'usb_key_enabled']);
+        
+        // Enable account
         $user->status = 'active';
+        
+        // Re-enable USB key if it exists (keep the existing hash)
+        if (!empty($user->usb_key_hash)) {
+            $user->usb_key_enabled = true;
+        }
+        
         $user->save();
 
         AuditLogger::log([
@@ -247,50 +321,26 @@ class AdminUserController extends Controller
             'action' => 'Account enabled',
             'module' => 'Users & Roles',
             'status' => 'success',
-            'description' => 'Staff account re-enabled from Users & Roles.',
+            'description' => 'Staff account re-enabled from Users & Roles. USB key automatically re-enabled.',
             'old_values' => $old,
-            'new_values' => $user->only(['status']),
+            'new_values' => $user->only(['status', 'usb_key_enabled']),
         ]);
 
-        return redirect()->back()->with('status', 'User account enabled.');
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'User account enabled. USB key has been automatically re-enabled.',
+                'user' => [
+                    'id' => $user->id,
+                    'status' => $user->status,
+                    'usb_key_enabled' => $user->usb_key_enabled,
+                ],
+            ]);
+        }
+
+        return redirect()->back()->with('status', 'User account enabled. USB key has been automatically re-enabled.');
     }
 
-    /**
-     * Archive (soft delete) a staff account.
-     */
-    public function archive(User $user)
-    {
-        $currentUser = Auth::user();
-
-        if (! $this->hasUserManagementAccess($currentUser)) {
-            abort(403);
-        }
-
-        // Check if current user can manage this user
-        if (! $this->canManageUser($currentUser, $user)) {
-            abort(403, 'You do not have permission to manage this user.');
-        }
-
-        if ($user->role === 'PARTICIPANT') {
-            abort(404);
-        }
-
-        $old = $user->only(['status']);
-        $user->status = 'archived';
-        $user->save();
-
-        AuditLogger::log([
-            'user' => $currentUser,
-            'action' => 'Account archived',
-            'module' => 'Users & Roles',
-            'status' => 'success',
-            'description' => 'Staff account archived (soft delete) from Users & Roles.',
-            'old_values' => $old,
-            'new_values' => $user->only(['status']),
-        ]);
-
-        return redirect()->back()->with('status', 'User account archived.');
-    }
 
     /**
      * Reset password and send a temporary password via email.

@@ -109,8 +109,8 @@ class BarangayProfileController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'LGU_ADMIN') {
-            abort(403, 'Unauthorized. Only LGU Admin can access this module.');
+        if (!$user || ! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true)) {
+            abort(403, 'Unauthorized. Only Super Admin or LGU Admin can access this module.');
         }
     }
 }

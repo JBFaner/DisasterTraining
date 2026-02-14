@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
         // You can add additional seeders here as needed.
         $this->call([
             AdminUserSeeder::class,
+            RolesSeeder::class,
+            PermissionsSeeder::class,
         ]);
     }
 }

@@ -9,6 +9,10 @@ import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { UserDetailsPage } from './pages/UserDetailsPage';
+import { RolesPage } from './pages/RolesPage';
+import { PermissionsPage } from './pages/PermissionsPage';
+import { RoleEditPage } from './pages/RoleEditPage';
+import { PermissionEditPage } from './pages/PermissionEditPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users } from 'lucide-react';
@@ -158,6 +162,8 @@ if (rootElement) {
     const participantJson = rootElement.getAttribute('data-participant');
     const registrationsJson = rootElement.getAttribute('data-registrations');
     const usersJson = rootElement.getAttribute('data-users');
+    const rolesJson = rootElement.getAttribute('data-roles');
+    const permissionsJson = rootElement.getAttribute('data-permissions');
     const flashStatus = rootElement.getAttribute('data-status');
 
     let modules = [];
@@ -243,6 +249,74 @@ if (rootElement) {
             users = JSON.parse(usersJson);
         } catch (e) {
             console.error('Failed to parse users JSON', e);
+        }
+    }
+
+    let roles = [];
+    if (rolesJson) {
+        try {
+            roles = JSON.parse(rolesJson);
+        } catch (e) {
+            console.error('Failed to parse roles JSON', e);
+        }
+    }
+
+    let permissions = [];
+    if (permissionsJson) {
+        try {
+            permissions = JSON.parse(permissionsJson);
+        } catch (e) {
+            console.error('Failed to parse permissions JSON', e);
+        }
+    }
+
+    let editingRole = null;
+    const editingRoleJson = rootElement.getAttribute('data-editing-role');
+    if (editingRoleJson) {
+        try {
+            editingRole = JSON.parse(editingRoleJson);
+        } catch (e) {
+            console.error('Failed to parse editing role JSON', e);
+        }
+    }
+
+    let editingPermission = null;
+    const editingPermissionJson = rootElement.getAttribute('data-editing-permission');
+    if (editingPermissionJson) {
+        try {
+            editingPermission = JSON.parse(editingPermissionJson);
+        } catch (e) {
+            console.error('Failed to parse editing permission JSON', e);
+        }
+    }
+
+    let assignedRoleIds = [];
+    const assignedRoleIdsJson = rootElement.getAttribute('data-assigned-role-ids');
+    if (assignedRoleIdsJson) {
+        try {
+            assignedRoleIds = JSON.parse(assignedRoleIdsJson);
+        } catch (e) {
+            console.error('Failed to parse assigned role IDs JSON', e);
+        }
+    }
+
+    let groupedPermissions = [];
+    const groupedPermissionsJson = rootElement.getAttribute('data-grouped-permissions');
+    if (groupedPermissionsJson) {
+        try {
+            groupedPermissions = JSON.parse(groupedPermissionsJson);
+        } catch (e) {
+            console.error('Failed to parse grouped permissions JSON', e);
+        }
+    }
+
+    let assignedPermissionIds = [];
+    const assignedPermissionIdsJson = rootElement.getAttribute('data-assigned-permission-ids');
+    if (assignedPermissionIdsJson) {
+        try {
+            assignedPermissionIds = JSON.parse(assignedPermissionIdsJson);
+        } catch (e) {
+            console.error('Failed to parse assigned permission IDs JSON', e);
         }
     }
 
@@ -397,7 +471,7 @@ if (rootElement) {
     }
 
     const role =
-        roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
+        roleAttr === 'SUPER_ADMIN' || roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
             ? roleAttr
             : 'PARTICIPANT';
 
@@ -599,8 +673,34 @@ if (rootElement) {
             ];
         }
 
-        if (sectionAttr === 'admin_permissions' || sectionAttr === 'admin_roles') {
-            return [{ label: 'Users', href: '/admin/users' }];
+        if (sectionAttr === 'admin_permissions') {
+            return [
+                { label: 'Users', href: '/admin/users' },
+                { label: 'Permissions', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'admin_permissions_edit') {
+            return [
+                { label: 'Users', href: '/admin/users' },
+                { label: 'Permissions', href: '/admin/permissions' },
+                { label: 'Edit', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'admin_roles') {
+            return [
+                { label: 'Users', href: '/admin/users' },
+                { label: 'Roles', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'admin_roles_edit') {
+            return [
+                { label: 'Users', href: '/admin/users' },
+                { label: 'Roles', href: '/admin/roles' },
+                { label: 'Edit', href: null },
+            ];
         }
 
         return [{ label: 'Dashboard', href: '/dashboard' }];
@@ -616,7 +716,9 @@ if (rootElement) {
             sectionAttr === 'admin_users_create' ||
             sectionAttr === 'admin_users_show' ||
             sectionAttr === 'admin_permissions' ||
-            sectionAttr === 'admin_roles'
+            sectionAttr === 'admin_permissions_edit' ||
+            sectionAttr === 'admin_roles' ||
+            sectionAttr === 'admin_roles_edit'
         ) {
             return 'Users & Roles';
         }
@@ -747,6 +849,30 @@ if (rootElement) {
                                 recentLogins={recentLogins}
                                 recentActions={recentActions}
                                 maskedUsbKeyHash={maskedUsbKeyHash}
+                            />
+                        )}
+
+                        {sectionAttr === 'admin_roles' && (
+                            <RolesPage roles={roles || []} />
+                        )}
+
+                        {sectionAttr === 'admin_roles_edit' && (
+                            <RoleEditPage
+                                role={editingRole}
+                                groupedPermissions={groupedPermissions || []}
+                                assignedPermissionIds={assignedPermissionIds || []}
+                            />
+                        )}
+
+                        {sectionAttr === 'admin_permissions' && (
+                            <PermissionsPage permissions={permissions || []} />
+                        )}
+
+                        {sectionAttr === 'admin_permissions_edit' && (
+                            <PermissionEditPage
+                                permission={editingPermission}
+                                roles={roles || []}
+                                assignedRoleIds={assignedRoleIds || []}
                             />
                         )}
 
@@ -2895,7 +3021,7 @@ function TrainingModuleDetail({ module }) {
 function ScenariosTable({ scenarios = [], role }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const canDelete = role === 'LGU_ADMIN';
+    const canDelete = role === 'SUPER_ADMIN' || role === 'LGU_ADMIN';
     const [searchQuery, setSearchQuery] = React.useState('');
     const [showFilters, setShowFilters] = React.useState(false);
     const [filterStatus, setFilterStatus] = React.useState('');

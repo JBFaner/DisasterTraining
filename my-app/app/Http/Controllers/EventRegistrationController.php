@@ -104,7 +104,7 @@ class EventRegistrationController extends Controller
     private function authorizeRegistrationAccess()
     {
         $user = Auth::user();
-        if (!$user || !in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (!$user || !in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403, 'Unauthorized access.');
         }
     }

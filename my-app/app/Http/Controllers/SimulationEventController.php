@@ -628,14 +628,14 @@ class SimulationEventController extends Controller
     {
         $user = Auth::user();
         if (! $user) abort(403);
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) abort(403);
+        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) abort(403);
     }
 
     protected function authorizeEventDelete(): void
     {
         $user = Auth::user();
         if (! $user) abort(403);
-        if ($user->role !== 'LGU_ADMIN') abort(403);
+        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true)) abort(403);
     }
 
     /**

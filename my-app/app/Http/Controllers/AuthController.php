@@ -103,18 +103,26 @@ class AuthController extends Controller
 
         // Admin / Trainer / Super Admin login flow - redirect to method selection
         // For admins, trainers, and super admins, enforce that the account is active and the email has been verified.
+        // Check if user account is active (not disabled)
         if ($user->status !== 'active' || ! $user->email_verified_at) {
+            $statusMessage = match($user->status) {
+                'disabled' => 'Your account has been disabled. Please contact an administrator.',
+                default => ! $user->email_verified_at 
+                    ? 'Your admin account is not fully verified yet. Please complete email verification or contact an existing administrator.'
+                    : 'Your account is not active. Please contact an administrator.',
+            };
+            
             AuditLogger::log([
                 'user' => $user,
                 'action' => 'Failed login',
                 'module' => 'Auth',
                 'status' => 'failed',
-                'description' => 'Admin/trainer/super admin attempted login without completed verification.',
+                'description' => "Admin/trainer/super admin attempted login. Status: {$user->status}, Verified: " . ($user->email_verified_at ? 'Yes' : 'No'),
             ]);
 
             return back()
                 ->withErrors([
-                    'email' => 'Your admin account is not fully verified yet. Please complete email verification or contact an existing administrator.',
+                    'email' => $statusMessage,
                 ])
                 ->onlyInput('email');
         }

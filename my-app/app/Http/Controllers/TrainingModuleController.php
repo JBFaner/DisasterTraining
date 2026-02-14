@@ -369,7 +369,7 @@ class TrainingModuleController extends Controller
             abort(403);
         }
 
-        if ($user->role !== 'LGU_ADMIN' && $user->id !== $module->owner_id) {
+        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true) && $user->id !== $module->owner_id) {
             abort(403);
         }
     }
