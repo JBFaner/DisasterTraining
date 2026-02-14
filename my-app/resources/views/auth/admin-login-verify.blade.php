@@ -114,7 +114,7 @@
                         </button>
                     </form>
                     <p class="text-xs text-slate-500 mt-3">
-                        <a href="{{ route('login') }}" class="hover:text-slate-700">← Back to Login</a>
+                        <a href="{{ route('admin.login') }}" class="hover:text-slate-700">← Back to Login</a>
                     </p>
                 </div>
             </div>

@@ -70,8 +70,21 @@
             @endisset
             @if(auth()->check())
                 data-user='@json(auth()->user())'
-            @elseif(isset($user))
+            @elseif(isset($user) && !isset($currentUser))
                 data-user='@json($user)'
+            @endisset
+            @isset($user)
+                @if(isset($currentUser))
+                    data-viewing-user='@json($user)'
+                    data-can-view-security="{{ $canViewSecurity ? 'true' : 'false' }}"
+                    data-masked-usb-key-hash="{{ $maskedUsbKeyHash ?? '' }}"
+                @endif
+            @endisset
+            @isset($recent_logins)
+                data-recent-logins='@json($recent_logins)'
+            @endisset
+            @isset($recent_actions)
+                data-recent-actions='@json($recent_actions)'
             @endisset
             @isset($attendance)
                 data-attendance='@json($attendance)'

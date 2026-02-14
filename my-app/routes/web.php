@@ -22,7 +22,10 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Auth routes
+// Admin auth routes
+Route::get('/admin/login', [AuthController::class, 'showLogin'])->name('admin.login');
+Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.post');
+// Legacy route redirects to admin login
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
@@ -32,7 +35,7 @@ Route::post('/register', [AuthController::class, 'register'])->name('register.po
 
 // Participant auth routes
 Route::get('/participant/login', [AuthController::class, 'showParticipantLogin'])->name('participant.login');
-Route::post('/participant/login', [AuthController::class, 'login'])->name('participant.login.post');
+Route::post('/participant/login', [AuthController::class, 'participantLogin'])->name('participant.login.post');
 
 Route::get('/participant/register', [AuthController::class, 'showParticipantRegister'])->name('participant.register');
 Route::post('/participant/register/start', [AuthController::class, 'participantRegisterStart'])->name('participant.register.start');
@@ -41,10 +44,20 @@ Route::get('/participant/register/verify', [AuthController::class, 'showParticip
 Route::post('/participant/register/verify', [AuthController::class, 'participantRegisterVerify'])->name('participant.register.verify.post');
 Route::get('/participant/register/verify-email/{token}', [AuthController::class, 'participantRegisterVerifyEmail'])->name('participant.register.verify.email');
 
+// Admin login method selection route
+Route::get('/admin/login/method', [AuthController::class, 'showAdminLoginMethod'])->name('admin.login.method');
+Route::post('/admin/login/method', [AuthController::class, 'selectAdminLoginMethod'])->name('admin.login.method.post');
+
 // Admin login OTP verification routes
 Route::get('/admin/login/verify', [AuthController::class, 'showAdminLoginVerify'])->name('admin.login.verify');
 Route::post('/admin/login/verify', [AuthController::class, 'verifyAdminLoginOtp'])->name('admin.login.verify.post');
 Route::post('/admin/login/resend-otp', [AuthController::class, 'resendAdminLoginOtp'])->name('admin.login.resend-otp');
+
+// Admin USB key verification during login (must be outside auth middleware)
+Route::get('/admin/usb-check', [SecurityController::class, 'showUsbCheck'])
+    ->name('admin.usb.check');
+Route::post('/admin/usb-check', [SecurityController::class, 'verifyUsbKey'])
+    ->name('admin.usb.check.post');
 
 // Admin email verification (for newly registered LGU admins)
 Route::get('/admin/verify-email/{user}', [AdminUserController::class, 'verifyEmail'])
@@ -62,15 +75,13 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
         return view('app', ['section' => 'dashboard']);
     })->name('dashboard');
 
-    // Admin USB security key settings and verification
+    // Admin USB security key settings (for authenticated users managing their own keys)
     Route::get('/admin/security/usb', [SecurityController::class, 'showUsbSettings'])
         ->name('admin.usb.settings');
     Route::post('/admin/security/usb/generate', [SecurityController::class, 'generateUsbKey'])
         ->name('admin.usb.generate');
-    Route::get('/admin/usb-check', [SecurityController::class, 'showUsbCheck'])
-        ->name('admin.usb.check');
-    Route::post('/admin/usb-check', [SecurityController::class, 'verifyUsbKey'])
-        ->name('admin.usb.check.post');
+    Route::post('/admin/security/usb/revoke', [SecurityController::class, 'revokeUsbKey'])
+        ->name('admin.usb.revoke');
 
     Route::get('/training-modules', [TrainingModuleController::class, 'index'])
         ->name('training.modules');
@@ -227,12 +238,15 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     // LGU Admin user management
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
+    Route::get('/admin/users/{user}', [AdminUserController::class, 'show'])->name('admin.users.show');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::post('/admin/users/{user}/disable', [AdminUserController::class, 'disable'])->name('admin.users.disable');
     Route::post('/admin/users/{user}/enable', [AdminUserController::class, 'enable'])->name('admin.users.enable');
     Route::post('/admin/users/{user}/archive', [AdminUserController::class, 'archive'])->name('admin.users.archive');
     Route::post('/admin/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('admin.users.reset-password');
     Route::post('/admin/users/{user}/manual-verify', [AdminUserController::class, 'manualVerify'])->name('admin.users.manual-verify');
+    Route::post('/admin/users/{user}/generate-usb-key', [AdminUserController::class, 'generateUsbKey'])->name('admin.users.generate-usb-key');
+    Route::post('/admin/users/{user}/revoke-usb-key', [AdminUserController::class, 'revokeUsbKey'])->name('admin.users.revoke-usb-key');
 
     // Audit logs (Admin only SPA entry)
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');

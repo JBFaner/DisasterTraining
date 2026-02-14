@@ -48,7 +48,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     const leftDrawerRef = React.useRef(null);
     const rightDrawerRef = React.useRef(null);
 
-    const isAdmin = role === 'LGU_ADMIN';
+    const isAdmin = role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
     const isParticipant = role === 'PARTICIPANT';
 
@@ -123,7 +123,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 text-slate-900 flex">
+        <div className="min-h-screen bg-slate-100 text-slate-900 flex overflow-x-hidden">
             {/* Mobile Top App Bar */}
             <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-slate-900 text-slate-50 flex items-center justify-between px-4 z-50 shadow-lg">
                 {/* Left Navigation Toggle */}
@@ -229,6 +229,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         </div>
                         <div className="leading-tight">
                             <div className="text-sm font-semibold">
+                                {role === 'SUPER_ADMIN' && 'Super Admin'}
                                 {role === 'LGU_ADMIN' && 'LGU Admin'}
                                 {role === 'LGU_TRAINER' && 'Trainer'}
                                 {role === 'PARTICIPANT' && 'Participant'}
@@ -339,6 +340,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                             <img src="/logo.svg" alt="LGU Logo" className="h-5 w-auto opacity-80 shrink-0" />
                             <div className="truncate">
                                 <span className="text-slate-400">
+                                    {role === 'SUPER_ADMIN' && 'Super Admin'}
                                     {role === 'LGU_ADMIN' && 'LGU Admin'}
                                     {role === 'LGU_TRAINER' && 'Trainer'}
                                     {role === 'PARTICIPANT' && 'Participant'}
@@ -365,7 +367,9 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
             </aside>
 
             {/* Main content */}
-            <main className={`flex-1 transition-all duration-300 pt-14 md:pt-0 ${isCollapsed ? 'md:ml-20' : 'md:ml-80'}`}>
+            <main 
+                className={`flex-1 min-w-0 transition-all duration-300 pt-14 md:pt-0 ${isCollapsed ? 'md:ml-20' : 'md:ml-80'} w-full max-w-full overflow-x-hidden`}
+            >
                 <TopBar
                     moduleName={moduleName}
                     breadcrumbs={breadcrumbs}
@@ -375,7 +379,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                 />
                 {/* Breadcrumbs - Below TopBar */}
                 {breadcrumbs && breadcrumbs.length > 0 && (
-                    <div className="bg-white border-b border-slate-200 px-6 py-2">
+                    <div className="bg-white border-b border-slate-200 px-6 py-2 w-full max-w-full overflow-x-hidden">
                         <nav className="flex items-center gap-1.5 text-xs text-slate-600">
                             {breadcrumbs.map((crumb, index) => (
                                 <React.Fragment key={index}>
@@ -399,7 +403,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         </nav>
                     </div>
                 )}
-                <div className="p-6">
+                <div className="p-6 w-full max-w-full overflow-x-hidden box-border">
                     {children}
                 </div>
             </main>
@@ -409,7 +413,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
 
 // Reusable navigation items renderer
 function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
-    const isAdmin = role === 'LGU_ADMIN';
+    const isAdmin = role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
     const isParticipant = role === 'PARTICIPANT';
 

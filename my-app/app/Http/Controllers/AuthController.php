@@ -17,8 +17,7 @@ class AuthController extends Controller
 {
     public function showLogin()
     {
-        // Legacy admin login route now reuses the unified participant login screen
-        return redirect()->route('participant.login');
+        return view('auth.admin-login');
     }
 
     public function login(Request $request, LoginAttemptService $loginAttempts)
@@ -42,19 +41,18 @@ class AuthController extends Controller
                 ->onlyInput('email');
         }
 
-        $remember = $request->boolean('remember');
-
         /** @var \App\Models\User|null $user */
         $user = User::where('email', $email)->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            if ($user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        // Only allow admin/trainer/super admin roles through admin login
+        if (! $user || ! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+            if ($user) {
                 AuditLogger::log([
                     'user' => $user,
                     'action' => 'Failed login',
                     'module' => 'Auth',
                     'status' => 'failed',
-                    'description' => 'Invalid credentials for admin/trainer login.',
+                    'description' => 'Non-admin user attempted to log in through admin login.',
                 ]);
             }
 
@@ -75,113 +73,67 @@ class AuthController extends Controller
                 ->onlyInput('email');
         }
 
-        $loginAttempts->clearAttempts($email, $ip);
-
-        // Participant login flow (no extra OTP for now)
-        if ($user->role === 'PARTICIPANT') {
-            if ($user->status === 'inactive') {
-                AuditLogger::log([
-                    'user' => $user,
-                    'action' => 'Failed login',
-                    'module' => 'Auth',
-                    'status' => 'failed',
-                    'description' => 'Inactive participant attempted to log in.',
-                ]);
-
-                return back()
-                    ->withErrors(['email' => 'Your account has been deactivated. Please contact an administrator.'])
-                    ->onlyInput('email');
-            }
-
-            Auth::login($user, $remember);
-            $request->session()->regenerate();
-            $request->session()->put('last_activity', now()->timestamp);
-
-            $user->last_login = now();
-            $user->save();
-
+        if (! Hash::check($credentials['password'], $user->password)) {
             AuditLogger::log([
                 'user' => $user,
-                'action' => 'Logged in',
+                'action' => 'Failed login',
                 'module' => 'Auth',
-                'status' => 'success',
-                'description' => 'Participant logged in.',
+                'status' => 'failed',
+                'description' => 'Invalid credentials for admin/trainer login.',
             ]);
 
-            return redirect()->intended('/dashboard');
-        }
+            $result = $loginAttempts->recordFailedAttempt($email, $ip);
+            $retryAfter = $result['retry_after_seconds'];
 
-        // Admin / Trainer login flow with OTP verification
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
-            // For admins and trainers, enforce that the account is active and the email has been verified.
-            if ($user->status !== 'active' || ! $user->email_verified_at) {
-                AuditLogger::log([
-                    'user' => $user,
-                    'action' => 'Failed login',
-                    'module' => 'Auth',
-                    'status' => 'failed',
-                    'description' => 'Admin/trainer attempted login without completed verification.',
-                ]);
-
+            if ($retryAfter > 0) {
                 return back()
                     ->withErrors([
-                        'email' => 'Your admin account is not fully verified yet. Please complete email verification or contact an existing administrator.',
+                        'email' => "Too many failed login attempts. Please wait {$retryAfter} seconds before trying again.",
                     ])
+                    ->with('lockout_retry_after', $retryAfter)
                     ->onlyInput('email');
             }
 
-            // Generate OTP
-            $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $expiresAt = now()->addMinutes(10)->getTimestamp();
-
-            // Store OTP session data for admin login verification
-            $request->session()->put('admin_login_otp', [
-                'user_id' => $user->id,
-                'otp' => $otp,
-                'expires_at' => $expiresAt,
-                'remember' => $remember,
-            ]);
-
-            try {
-                Mail::to($user->email)->send(new AdminLoginOtpEmail($otp, $user->name));
-            } catch (\Exception $e) {
-                \Log::error('Failed to send admin login OTP: ' . $e->getMessage());
-
-                AuditLogger::log([
-                    'user' => $user,
-                    'action' => 'OTP send failed',
-                    'module' => 'Auth',
-                    'status' => 'failed',
-                    'description' => 'Failed to send admin login OTP.',
-                    'failure_reason' => $e->getMessage(),
-                ]);
-
-                return back()
-                    ->withErrors(['email' => 'Unable to send verification code. Please try again later or contact support.'])
-                    ->onlyInput('email');
-            }
-
-            AuditLogger::log([
-                'user' => $user,
-                'action' => 'OTP requested',
-                'module' => 'Auth',
-                'status' => 'success',
-                'description' => 'Admin/trainer requested login OTP.',
-            ]);
-
-            return redirect()
-                ->route('admin.login.verify')
-                ->with('status', 'We have sent a verification code to your email. Please enter it to continue.');
+            return back()
+                ->withErrors(['email' => 'The provided credentials do not match our records.'])
+                ->onlyInput('email');
         }
 
-        // Fallback for any other roles
-        Auth::login($user, $remember);
-        $request->session()->regenerate();
+        $loginAttempts->clearAttempts($email, $ip);
 
-        $user->last_login = now();
-        $user->save();
+        // Admin / Trainer / Super Admin login flow - redirect to method selection
+        // For admins, trainers, and super admins, enforce that the account is active and the email has been verified.
+        if ($user->status !== 'active' || ! $user->email_verified_at) {
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'Failed login',
+                'module' => 'Auth',
+                'status' => 'failed',
+                'description' => 'Admin/trainer/super admin attempted login without completed verification.',
+            ]);
 
-        return redirect()->intended('/dashboard');
+            return back()
+                ->withErrors([
+                    'email' => 'Your admin account is not fully verified yet. Please complete email verification or contact an existing administrator.',
+                ])
+                ->onlyInput('email');
+        }
+
+        // Store user ID in session for method selection
+        $request->session()->put('admin_login_pending', [
+            'user_id' => $user->id,
+            'expires_at' => now()->addMinutes(15)->getTimestamp(),
+        ]);
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'Password verified',
+            'module' => 'Auth',
+            'status' => 'success',
+            'description' => 'Admin/trainer password verified, awaiting verification method selection.',
+        ]);
+
+        return redirect()->route('admin.login.method');
     }
 
     public function showRegister()
@@ -199,11 +151,108 @@ class AuthController extends Controller
         return view('auth.participant-login');
     }
 
-    public function participantLogin(Request $request)
+    public function participantLogin(Request $request, LoginAttemptService $loginAttempts)
     {
-        // Reuse unified login flow so that both participants and admins
-        // can log in through the same UI and credentials.
-        return $this->login($request);
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
+
+        $email = $credentials['email'];
+        $ip = $request->ip() ?? '0.0.0.0';
+
+        $lockout = $loginAttempts->isLockedOut($email, $ip);
+        if ($lockout !== null) {
+            $seconds = $lockout['retry_after_seconds'];
+            return back()
+                ->withErrors([
+                    'email' => "Too many failed login attempts. Please wait {$seconds} seconds before trying again.",
+                ])
+                ->with('lockout_retry_after', $seconds)
+                ->onlyInput('email');
+        }
+
+        /** @var \App\Models\User|null $user */
+        $user = User::where('email', $email)->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            $result = $loginAttempts->recordFailedAttempt($email, $ip);
+            $retryAfter = $result['retry_after_seconds'];
+
+            if ($retryAfter > 0) {
+                return back()
+                    ->withErrors([
+                        'email' => "Too many failed login attempts. Please wait {$retryAfter} seconds before trying again.",
+                    ])
+                    ->with('lockout_retry_after', $retryAfter)
+                    ->onlyInput('email');
+            }
+
+            return back()
+                ->withErrors(['email' => 'The provided credentials do not match our records.'])
+                ->onlyInput('email');
+        }
+
+        // Only allow participants through participant login
+        if ($user->role !== 'PARTICIPANT') {
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'Failed login',
+                'module' => 'Auth',
+                'status' => 'failed',
+                'description' => 'Non-participant user attempted to log in through participant login.',
+            ]);
+
+            $result = $loginAttempts->recordFailedAttempt($email, $ip);
+            $retryAfter = $result['retry_after_seconds'];
+
+            if ($retryAfter > 0) {
+                return back()
+                    ->withErrors([
+                        'email' => "Too many failed login attempts. Please wait {$retryAfter} seconds before trying again.",
+                    ])
+                    ->with('lockout_retry_after', $retryAfter)
+                    ->onlyInput('email');
+            }
+
+            return back()
+                ->withErrors(['email' => 'The provided credentials do not match our records.'])
+                ->onlyInput('email');
+        }
+
+        $loginAttempts->clearAttempts($email, $ip);
+
+        // Participant login flow (no OTP, no remember token)
+        if ($user->status === 'inactive') {
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'Failed login',
+                'module' => 'Auth',
+                'status' => 'failed',
+                'description' => 'Inactive participant attempted to log in.',
+            ]);
+
+            return back()
+                ->withErrors(['email' => 'Your account has been deactivated. Please contact an administrator.'])
+                ->onlyInput('email');
+        }
+
+        Auth::login($user, false); // No remember token for participants
+        $request->session()->regenerate();
+        $request->session()->put('last_activity', now()->timestamp);
+
+        $user->last_login = now();
+        $user->save();
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'Logged in',
+            'module' => 'Auth',
+            'status' => 'success',
+            'description' => 'Participant logged in.',
+        ]);
+
+        return redirect()->intended('/dashboard');
     }
 
     public function showParticipantRegister()
@@ -477,8 +526,147 @@ class AuthController extends Controller
             $r = redirect()->route('participant.login');
             return $inactivity ? $r->with('error', 'Session expired due to inactivity.') : $r;
         }
-        $r = redirect()->route('login');
+        $r = redirect()->route('admin.login');
         return $inactivity ? $r->with('error', 'Session expired due to inactivity.') : $r;
+    }
+
+    /**
+     * Show the admin login method selection page.
+     */
+    public function showAdminLoginMethod(Request $request)
+    {
+        $pendingData = $request->session()->get('admin_login_pending');
+
+        if (! $pendingData || empty($pendingData['user_id'])) {
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        }
+
+        $user = User::find($pendingData['user_id']);
+        if (! $user) {
+            $request->session()->forget('admin_login_pending');
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Unable to verify session. Please log in again.']);
+        }
+
+        // Check if session expired
+        if (now()->getTimestamp() > ($pendingData['expires_at'] ?? 0)) {
+            $request->session()->forget('admin_login_pending');
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        }
+
+        return view('auth.admin-login-method', [
+            'user' => $user,
+            'hasUsbKey' => $user->usb_key_enabled && !empty($user->usb_key_hash),
+        ]);
+    }
+
+    /**
+     * Handle admin login method selection.
+     */
+    public function selectAdminLoginMethod(Request $request)
+    {
+        $pendingData = $request->session()->get('admin_login_pending');
+
+        if (! $pendingData || empty($pendingData['user_id'])) {
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        }
+
+        $user = User::find($pendingData['user_id']);
+        if (! $user) {
+            $request->session()->forget('admin_login_pending');
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Unable to verify session. Please log in again.']);
+        }
+
+        // Check if session expired
+        if (now()->getTimestamp() > ($pendingData['expires_at'] ?? 0)) {
+            $request->session()->forget('admin_login_pending');
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        }
+
+        $request->validate([
+            'verification_method' => ['required', 'in:otp,usb'],
+        ], [
+            'verification_method.required' => 'Please select a verification method.',
+            'verification_method.in' => 'Invalid verification method selected.',
+        ]);
+
+        $method = $request->input('verification_method');
+
+        if ($method === 'usb') {
+            // Check if USB key is enabled
+            if (! $user->usb_key_enabled || empty($user->usb_key_hash)) {
+                return back()
+                    ->withErrors(['verification_method' => 'USB key verification is not enabled for your account.']);
+            }
+
+            // Verify user role is allowed for USB key verification
+            if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+                return back()
+                    ->withErrors(['verification_method' => 'USB key verification is not available for your account type.']);
+            }
+
+            // Store user ID for USB verification
+            $request->session()->forget('admin_login_pending');
+            $request->session()->put('pending_usb_admin_id', $user->id);
+
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'USB verification selected',
+                'module' => 'Auth',
+                'status' => 'success',
+                'description' => 'Admin/trainer/super admin selected USB key verification method.',
+            ]);
+
+            return redirect()->route('admin.usb.check');
+        }
+
+        // OTP method selected - generate and send OTP
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(10)->getTimestamp();
+
+        // Store OTP session data
+        $request->session()->put('admin_login_otp', [
+            'user_id' => $user->id,
+            'otp' => $otp,
+            'expires_at' => $expiresAt,
+            'remember' => false,
+        ]);
+        $request->session()->forget('admin_login_pending');
+
+        try {
+            Mail::to($user->email)->send(new AdminLoginOtpEmail($otp, $user->name));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send admin login OTP: ' . $e->getMessage());
+
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'OTP send failed',
+                'module' => 'Auth',
+                'status' => 'failed',
+                'description' => 'Failed to send admin login OTP.',
+                'failure_reason' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Unable to send verification code. Please try again later or contact support.']);
+        }
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'OTP requested',
+            'module' => 'Auth',
+            'status' => 'success',
+            'description' => 'Admin/trainer selected OTP verification method.',
+        ]);
+
+        return redirect()
+            ->route('admin.login.verify')
+            ->with('status', 'We have sent a verification code to your email. Please enter it to continue.');
     }
 
     /**
@@ -489,7 +677,7 @@ class AuthController extends Controller
         $otpData = $request->session()->get('admin_login_otp');
 
         if (! $otpData || empty($otpData['user_id'])) {
-            return redirect()->route('login')
+            return redirect()->route('admin.login')
                 ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
         }
 
@@ -504,14 +692,14 @@ class AuthController extends Controller
         $otpData = $request->session()->get('admin_login_otp');
 
         if (! $otpData || empty($otpData['user_id'])) {
-            return redirect()->route('login')
+            return redirect()->route('admin.login')
                 ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
         }
 
         $user = User::find($otpData['user_id']);
         if (! $user) {
             $request->session()->forget('admin_login_otp');
-            return redirect()->route('login')
+            return redirect()->route('admin.login')
                 ->withErrors(['email' => 'Unable to resend code. Please log in again.']);
         }
 
@@ -549,7 +737,7 @@ class AuthController extends Controller
         $otpData = $request->session()->get('admin_login_otp');
 
         if (! $otpData || empty($otpData['user_id'])) {
-            return redirect()->route('login')
+            return redirect()->route('admin.login')
                 ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
         }
 
@@ -573,7 +761,7 @@ class AuthController extends Controller
                 'description' => 'Admin/trainer OTP expired.',
             ]);
 
-            return redirect()->route('login')
+            return redirect()->route('admin.login')
                 ->withErrors(['email' => 'Verification code expired. Please log in again.']);
         }
 
@@ -595,14 +783,14 @@ class AuthController extends Controller
         if (! $user) {
             $request->session()->forget('admin_login_otp');
 
-            return redirect()->route('login')
+            return redirect()->route('admin.login')
                 ->withErrors(['email' => 'Unable to complete login. Please try again.']);
         }
 
-        // Clear OTP data and complete login
+        // Clear OTP data and complete login (no remember token for admin)
         $request->session()->forget('admin_login_otp');
 
-        Auth::login($user, (bool) ($otpData['remember'] ?? false));
+        Auth::login($user, false);
         $request->session()->regenerate();
         $request->session()->put('last_activity', now()->timestamp);
 
@@ -617,11 +805,7 @@ class AuthController extends Controller
         $user->last_login = now();
         $user->save();
 
-        if ($user->usb_key_enabled) {
-            $request->session()->put('pending_usb_admin_id', $user->id);
-            return redirect()->route('admin.usb.check');
-        }
-
+        // OTP verified - redirect to dashboard (USB check is now handled in method selection)
         return redirect()->intended('/dashboard');
     }
 }

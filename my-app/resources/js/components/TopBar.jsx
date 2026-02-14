@@ -39,6 +39,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
     // Get role display name
     const getRoleName = (role) => {
         switch (role) {
+            case 'SUPER_ADMIN': return 'Super Admin';
             case 'LGU_ADMIN': return 'LGU Admin';
             case 'LGU_TRAINER': return 'Trainer';
             case 'PARTICIPANT': return 'Participant';
@@ -125,9 +126,9 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
     };
 
     return (
-        <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30">
-            <div className="px-6 py-2">
-                <div className="flex items-center justify-between min-h-[3rem]">
+        <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 w-full max-w-full overflow-x-hidden">
+            <div className="px-6 py-2 w-full max-w-full">
+                <div className="flex items-center justify-between min-h-[3rem] w-full max-w-full">
                     {/* Left Section: Sidebar Toggle, Module Name */}
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                         {/* Sidebar Toggle Button - Hidden on mobile */}

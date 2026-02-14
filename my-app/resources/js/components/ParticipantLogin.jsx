@@ -4,7 +4,6 @@ import { Mail, Lock, AlertCircle, LogIn, Home } from 'lucide-react';
 export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0 }) {
     const [email, setEmail] = useState(oldEmail);
     const [password, setPassword] = useState('');
-    const [remember, setRemember] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState(lockoutRetryAfter > 0 ? lockoutRetryAfter : 0);
 
@@ -205,20 +204,6 @@ export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter
                                     >
                                         Forgot Password?
                                     </a>
-                                </div>
-
-                                <div className="flex items-center justify-between text-xs text-slate-600">
-                                    <label className="inline-flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            name="remember"
-                                            checked={remember}
-                                            onChange={(e) => setRemember(e.target.checked)}
-                                            disabled={isLockedOut}
-                                            className="rounded border-slate-300 text-emerald-600 focus:ring-[#1FA463] focus:ring-offset-0 transition-all duration-200 ease-out disabled:opacity-60 disabled:cursor-not-allowed"
-                                        />
-                                        <span>Remember me</span>
-                                    </label>
                                 </div>
 
                                 <button

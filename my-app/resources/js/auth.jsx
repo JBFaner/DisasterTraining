@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '../css/app.css';
 import { ParticipantLogin } from './components/ParticipantLogin';
+import { AdminLogin } from './components/AdminLogin';
 import { ParticipantRegister } from './components/ParticipantRegister';
 import { ParticipantRegisterVerify } from './components/ParticipantRegisterVerify';
 
@@ -78,3 +79,27 @@ if (participantRegisterVerifyRoot) {
     }));
 }
 
+// Admin Login
+const adminLoginRoot = document.getElementById('admin-login-root');
+if (adminLoginRoot) {
+    const errorsJson = adminLoginRoot.getAttribute('data-errors') || '{}';
+    const oldEmail = adminLoginRoot.getAttribute('data-old-email') || '';
+    const lockoutRetryAfter = parseInt(adminLoginRoot.getAttribute('data-lockout-retry-after') || '0', 10);
+    const sessionError = adminLoginRoot.getAttribute('data-session-error') || '';
+    let errors = {};
+    try {
+        errors = JSON.parse(errorsJson);
+    } catch (_) {}
+    const errorsObj = {};
+    if (Array.isArray(errors) && errors.length > 0) {
+        errorsObj.email = errors[0];
+    } else if (errors && typeof errors === 'object') {
+        for (const k of Object.keys(errors)) {
+            const v = errors[k];
+            errorsObj[k] = Array.isArray(v) ? v[0] : v;
+        }
+    }
+    if (sessionError) errorsObj.email = sessionError;
+    const root = ReactDOM.createRoot(adminLoginRoot);
+    root.render(React.createElement(AdminLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter }));
+}

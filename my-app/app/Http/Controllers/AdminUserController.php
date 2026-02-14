@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\AdminEmailVerificationMail;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
@@ -14,19 +15,53 @@ use Illuminate\Support\Facades\URL;
 class AdminUserController extends Controller
 {
     /**
+     * Check if the current user can manage the target user.
+     * 
+     * @param User $currentUser The authenticated user
+     * @param User $targetUser The user being managed
+     * @return bool
+     */
+    protected function canManageUser(User $currentUser, User $targetUser): bool
+    {
+        // Super Admin can manage everyone
+        if ($currentUser->role === 'SUPER_ADMIN') {
+            return true;
+        }
+
+        // LGU Admin can only manage their own account
+        if ($currentUser->role === 'LGU_ADMIN') {
+            return $currentUser->id === $targetUser->id;
+        }
+
+        // Other roles cannot manage users
+        return false;
+    }
+
+    /**
+     * Check if the current user has access to user management.
+     * 
+     * @param User|null $user
+     * @return bool
+     */
+    protected function hasUserManagementAccess(?User $user): bool
+    {
+        return $user && in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true);
+    }
+
+    /**
      * List all admin/trainer/staff users (excluding participants).
      */
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        if (! $user || $user->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($user)) {
             abort(403);
         }
 
         $query = User::query()
-            // Fetch only staff-type users (LGU Admin, Trainer, Staff), never participants
-            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'])
+            // Fetch only staff-type users (Super Admin, LGU Admin, Trainer, Staff), never participants
+            ->whereIn('role', ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'])
             ->orderByDesc('created_at');
 
         // Search by name or email
@@ -52,6 +87,7 @@ class AdminUserController extends Controller
         return view('app', [
             'section' => 'admin_users_index',
             'users' => $users,
+            'currentUser' => $user, // Pass current user for frontend authorization
         ]);
     }
 
@@ -62,7 +98,7 @@ class AdminUserController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || $user->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($user)) {
             abort(403);
         }
 
@@ -73,14 +109,92 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Show user details (read-only view).
+     */
+    public function show(User $user)
+    {
+        $currentUser = Auth::user();
+
+        if (! $this->hasUserManagementAccess($currentUser)) {
+            abort(403);
+        }
+
+        // Check if current user can view this user
+        // Super Admin can view all, LGU Admin can only view themselves
+        $canView = false;
+        $canViewSecurity = false;
+
+        if ($currentUser->role === 'SUPER_ADMIN') {
+            $canView = true;
+            $canViewSecurity = true;
+        } elseif ($currentUser->role === 'LGU_ADMIN' && $currentUser->id === $user->id) {
+            $canView = true;
+            $canViewSecurity = true;
+        } elseif ($currentUser->role === 'LGU_ADMIN') {
+            // LGU Admin can view basic info of other users, but not security details
+            $canView = true;
+            $canViewSecurity = false;
+        }
+
+        if (! $canView) {
+            abort(403, 'You do not have permission to view this user.');
+        }
+
+        // Only show staff users (not participants)
+        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true)) {
+            abort(404);
+        }
+
+        // Get recent login history (last 5 successful logins)
+        $recentLogins = AuditLog::where('user_id', $user->id)
+            ->where('action', 'LIKE', '%login%')
+            ->where('status', 'success')
+            ->orderByDesc('performed_at')
+            ->limit(5)
+            ->get();
+
+        // Get recent system actions (last 10 actions)
+        $recentActions = AuditLog::where('user_id', $user->id)
+            ->orderByDesc('performed_at')
+            ->limit(10)
+            ->get();
+
+        // Mask USB key hash for display (show first 8 and last 4 characters)
+        $maskedUsbKeyHash = null;
+        if ($user->usb_key_hash && $canViewSecurity) {
+            $hash = $user->usb_key_hash;
+            if (strlen($hash) > 12) {
+                $maskedUsbKeyHash = substr($hash, 0, 8) . '...' . substr($hash, -4);
+            } else {
+                $maskedUsbKeyHash = str_repeat('*', strlen($hash));
+            }
+        }
+
+        return view('app', [
+            'section' => 'admin_users_show',
+            'user' => $user,
+            'currentUser' => $currentUser,
+            'canViewSecurity' => $canViewSecurity,
+            'recent_logins' => $recentLogins,
+            'recent_actions' => $recentActions,
+            'maskedUsbKeyHash' => $maskedUsbKeyHash,
+        ]);
+    }
+
+    /**
      * Disable a staff account (soft lock).
      */
     public function disable(User $user)
     {
         $currentUser = Auth::user();
 
-        if (! $currentUser || $currentUser->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
+        }
+
+        // Check if current user can manage this user
+        if (! $this->canManageUser($currentUser, $user)) {
+            abort(403, 'You do not have permission to manage this user.');
         }
 
         if ($user->role === 'PARTICIPANT') {
@@ -111,8 +225,13 @@ class AdminUserController extends Controller
     {
         $currentUser = Auth::user();
 
-        if (! $currentUser || $currentUser->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
+        }
+
+        // Check if current user can manage this user
+        if (! $this->canManageUser($currentUser, $user)) {
+            abort(403, 'You do not have permission to manage this user.');
         }
 
         if ($user->role === 'PARTICIPANT') {
@@ -143,8 +262,13 @@ class AdminUserController extends Controller
     {
         $currentUser = Auth::user();
 
-        if (! $currentUser || $currentUser->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
+        }
+
+        // Check if current user can manage this user
+        if (! $this->canManageUser($currentUser, $user)) {
+            abort(403, 'You do not have permission to manage this user.');
         }
 
         if ($user->role === 'PARTICIPANT') {
@@ -175,8 +299,13 @@ class AdminUserController extends Controller
     {
         $currentUser = Auth::user();
 
-        if (! $currentUser || $currentUser->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
+        }
+
+        // Check if current user can manage this user
+        if (! $this->canManageUser($currentUser, $user)) {
+            abort(403, 'You do not have permission to manage this user.');
         }
 
         if ($user->role === 'PARTICIPANT') {
@@ -220,8 +349,13 @@ class AdminUserController extends Controller
     {
         $currentUser = Auth::user();
 
-        if (! $currentUser || $currentUser->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
+        }
+
+        // Check if current user can manage this user
+        if (! $this->canManageUser($currentUser, $user)) {
+            abort(403, 'You do not have permission to manage this user.');
         }
 
         // Never allow verifying participants from this panel
@@ -261,8 +395,14 @@ class AdminUserController extends Controller
     {
         $currentUser = Auth::user();
 
-        if (! $currentUser || $currentUser->role !== 'LGU_ADMIN') {
+        if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
+        }
+
+        // Only Super Admin can create Super Admin accounts
+        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'PARTICIPANT'];
+        if ($currentUser->role === 'SUPER_ADMIN') {
+            $allowedRoles[] = 'SUPER_ADMIN';
         }
 
         $data = $request->validate([
@@ -271,7 +411,7 @@ class AdminUserController extends Controller
             'middle_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
-            'account_type' => ['required', 'in:LGU_ADMIN,LGU_TRAINER,PARTICIPANT'],
+            'account_type' => ['required', 'in:' . implode(',', $allowedRoles)],
         ]);
 
         $fullName = trim(
@@ -390,6 +530,128 @@ class AdminUserController extends Controller
 
         return redirect()->route('participant.login')
             ->with('status', 'Your account email has been verified. You can now log in.');
+    }
+
+    /**
+     * Generate USB key for a user (admin managing other users).
+     */
+    public function generateUsbKey(User $user, Request $request)
+    {
+        $currentUser = Auth::user();
+
+        if (! $this->hasUserManagementAccess($currentUser)) {
+            abort(403);
+        }
+
+        // Check if current user can manage this user
+        if (! $this->canManageUser($currentUser, $user)) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'You do not have permission to manage this user.'], 403);
+            }
+            abort(403, 'You do not have permission to manage this user.');
+        }
+
+        // Only allow for admin/trainer/super admin roles
+        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'USB key can only be generated for Admin or Trainer accounts.'], 400);
+            }
+            return redirect()->back()
+                ->withErrors(['error' => 'USB key can only be generated for Admin or Trainer accounts.']);
+        }
+
+        $old = $user->only(['usb_key_enabled', 'usb_key_hash']);
+
+        // Generate new key (this automatically revokes any existing key)
+        $rawSecret = bin2hex(random_bytes(32));
+        $user->usb_key_hash = hash('sha256', $rawSecret);
+        $user->usb_key_enabled = true;
+        $user->save();
+
+        $content = <<<TXT
+DISASTER-TRAINING-USB-KEY
+user: {$user->email}
+key: {$rawSecret}
+TXT;
+
+        AuditLogger::log([
+            'user' => $currentUser,
+            'action' => 'Generated USB key for user',
+            'module' => 'Users & Roles',
+            'status' => 'success',
+            'description' => "USB key generated for {$user->name} ({$user->email}).",
+            'old_values' => $old,
+            'new_values' => $user->only(['usb_key_enabled', 'usb_key_hash']),
+        ]);
+
+        $filename = 'disaster-training-usb-key-' . $user->id . '.txt';
+
+        // Return file download (works for both regular and AJAX requests)
+        return response($content)
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    /**
+     * Revoke USB key for a user (admin managing other users).
+     */
+    public function revokeUsbKey(User $user, Request $request)
+    {
+        $currentUser = Auth::user();
+
+        if (! $this->hasUserManagementAccess($currentUser)) {
+            abort(403);
+        }
+
+        // Check if current user can manage this user
+        if (! $this->canManageUser($currentUser, $user)) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'You do not have permission to manage this user.'], 403);
+            }
+            abort(403, 'You do not have permission to manage this user.');
+        }
+
+        // Only allow for admin/trainer/super admin roles
+        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'USB key can only be revoked for Admin or Trainer accounts.'], 400);
+            }
+            return redirect()->back()
+                ->withErrors(['error' => 'USB key can only be revoked for Admin or Trainer accounts.']);
+        }
+
+        if (! $user->usb_key_enabled || empty($user->usb_key_hash)) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'User does not have an active USB key.'], 400);
+            }
+            return redirect()->back()
+                ->with('status', 'User does not have an active USB key.');
+        }
+
+        $old = $user->only(['usb_key_enabled', 'usb_key_hash']);
+
+        $user->usb_key_enabled = false;
+        $user->usb_key_hash = null;
+        $user->save();
+
+        AuditLogger::log([
+            'user' => $currentUser,
+            'action' => 'Revoked USB key for user',
+            'module' => 'Users & Roles',
+            'status' => 'success',
+            'description' => "USB key revoked for {$user->name} ({$user->email}).",
+            'old_values' => $old,
+            'new_values' => $user->only(['usb_key_enabled', 'usb_key_hash']),
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'USB key has been revoked. The user will need to generate a new key to use USB authentication.',
+            ]);
+        }
+
+        return redirect()->back()->with('status', 'USB key has been revoked. The user will need to generate a new key to use USB authentication.');
     }
 
     /**

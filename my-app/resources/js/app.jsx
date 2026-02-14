@@ -8,6 +8,7 @@ import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } fro
 import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
 import { AdminUsersPage } from './pages/AdminUsersPage';
+import { UserDetailsPage } from './pages/UserDetailsPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users } from 'lucide-react';
@@ -251,6 +252,11 @@ if (rootElement) {
     let attendances = null;
     let participantEvaluations = null;
     let currentUser = null;
+    let currentUserData = null;
+    let canViewSecurity = false;
+    let recentLogins = [];
+    let recentActions = [];
+    let maskedUsbKeyHash = null;
     let currentAttendance = null;
     let currentParticipantEvaluation = null;
     let currentScores = null;
@@ -349,6 +355,45 @@ if (rootElement) {
         } catch (e) {
             console.error('Failed to parse barangay profile JSON', e);
         }
+    }
+
+    // Parse user details page data
+    const viewingUserJson = rootElement.getAttribute('data-viewing-user');
+    const canViewSecurityAttr = rootElement.getAttribute('data-can-view-security');
+    const recentLoginsJson = rootElement.getAttribute('data-recent-logins');
+    const recentActionsJson = rootElement.getAttribute('data-recent-actions');
+    const maskedUsbKeyHashAttr = rootElement.getAttribute('data-masked-usb-key-hash');
+
+    if (viewingUserJson) {
+        try {
+            currentUserData = JSON.parse(viewingUserJson);
+        } catch (e) {
+            console.error('Failed to parse viewing user JSON', e);
+        }
+    }
+
+    if (canViewSecurityAttr) {
+        canViewSecurity = canViewSecurityAttr === 'true';
+    }
+
+    if (recentLoginsJson) {
+        try {
+            recentLogins = JSON.parse(recentLoginsJson);
+        } catch (e) {
+            console.error('Failed to parse recent logins JSON', e);
+        }
+    }
+
+    if (recentActionsJson) {
+        try {
+            recentActions = JSON.parse(recentActionsJson);
+        } catch (e) {
+            console.error('Failed to parse recent actions JSON', e);
+        }
+    }
+
+    if (maskedUsbKeyHashAttr) {
+        maskedUsbKeyHash = maskedUsbKeyHashAttr;
     }
 
     const role =
@@ -547,6 +592,13 @@ if (rootElement) {
             ];
         }
 
+        if (sectionAttr === 'admin_users_show') {
+            return [
+                { label: 'Users', href: '/admin/users' },
+                { label: 'Details', href: null },
+            ];
+        }
+
         if (sectionAttr === 'admin_permissions' || sectionAttr === 'admin_roles') {
             return [{ label: 'Users', href: '/admin/users' }];
         }
@@ -562,6 +614,7 @@ if (rootElement) {
         if (
             sectionAttr === 'admin_users_index' ||
             sectionAttr === 'admin_users_create' ||
+            sectionAttr === 'admin_users_show' ||
             sectionAttr === 'admin_permissions' ||
             sectionAttr === 'admin_roles'
         ) {
@@ -596,7 +649,7 @@ if (rootElement) {
                     breadcrumbs={breadcrumbs}
                     user={currentUser}
                 >
-                    <div className="max-w-6xl mx-auto">
+                    <div className="w-full max-w-full mx-auto overflow-x-hidden">
 
                         {sectionAttr === 'dashboard' && (
                             <DashboardOverview modules={modules} events={events} participants={participants} role={role} />
@@ -683,7 +736,18 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'admin_users_index' && (
-                            <AdminUsersPage users={users} />
+                            <AdminUsersPage users={users} currentUser={currentUser} />
+                        )}
+
+                        {sectionAttr === 'admin_users_show' && (
+                            <UserDetailsPage
+                                user={currentUserData}
+                                currentUser={currentUser}
+                                canViewSecurity={canViewSecurity}
+                                recentLogins={recentLogins}
+                                recentActions={recentActions}
+                                maskedUsbKeyHash={maskedUsbKeyHash}
+                            />
                         )}
 
                         {sectionAttr === 'admin_users_create' && (
