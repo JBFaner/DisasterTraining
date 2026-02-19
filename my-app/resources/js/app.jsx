@@ -383,6 +383,12 @@ if (rootElement) {
     if (userJson) {
         try {
             currentUser = JSON.parse(userJson);
+            // Debug: Log currentUser role for troubleshooting
+            if (window.location.pathname.includes('/admin/users/create')) {
+                console.log('Current User:', currentUser);
+                console.log('Current User Role:', currentUser?.role);
+                console.log('Is SUPER_ADMIN?', currentUser?.role === 'SUPER_ADMIN');
+            }
         } catch (e) {
             console.error('Failed to parse user JSON', e);
         }
@@ -961,6 +967,9 @@ if (rootElement) {
                                                     <option value="LGU_ADMIN">LGU Admin</option>
                                                     <option value="LGU_TRAINER">LGU Trainer</option>
                                                     <option value="PARTICIPANT">Participant</option>
+                                                    {currentUser && (currentUser.role === 'SUPER_ADMIN' || currentUser.role?.toUpperCase() === 'SUPER_ADMIN') && (
+                                                        <option value="SUPER_ADMIN">Super Admin</option>
+                                                    )}
                                                 </select>
                                             </div>
 

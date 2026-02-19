@@ -107,6 +107,7 @@ class AdminUserController extends Controller
         $barangayProfiles = BarangayProfile::orderBy('barangay_name')->get();
 
         // Render inside the SPA shell so sidebar/navigation stays visible.
+        // Note: currentUser is automatically available via auth()->user() in the blade template
         return view('app', [
             'section' => 'admin_users_create',
             'barangay_profiles' => $barangayProfiles,
