@@ -17,7 +17,26 @@ class SessionController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $request->session()->put('last_activity', now()->timestamp);
+        $user = Auth::user();
+        $now = now();
+        
+        // Update session
+        $request->session()->put('last_activity', $now->timestamp);
+        
+        // Update database (only update if more than 30 seconds have passed to reduce DB writes)
+        // Check if last_activity column exists before trying to update
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'last_activity')) {
+            try {
+                $lastDbUpdate = $user->last_activity;
+                if (!$lastDbUpdate || $now->diffInSeconds($lastDbUpdate) >= 30) {
+                    $user->last_activity = $now;
+                    $user->saveQuietly(); // Use saveQuietly to avoid triggering events
+                }
+            } catch (\Exception $e) {
+                // Silently fail if column doesn't exist or update fails
+                // Session tracking will still work
+            }
+        }
 
         return response()->noContent();
     }

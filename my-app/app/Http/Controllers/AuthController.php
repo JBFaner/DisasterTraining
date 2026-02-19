@@ -15,9 +15,18 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(Request $request)
     {
-        return view('auth.admin-login');
+        $email = $request->old('email', '');
+        $failedAttempts = 0;
+        
+        if ($email) {
+            $failedAttempts = (int) \Illuminate\Support\Facades\Cache::get('login_attempts:email:' . $email, 0);
+        }
+        
+        return view('auth.admin-login', [
+            'failedAttempts' => $failedAttempts,
+        ]);
     }
 
     public function login(Request $request, LoginAttemptService $loginAttempts)
@@ -44,8 +53,8 @@ class AuthController extends Controller
         /** @var \App\Models\User|null $user */
         $user = User::where('email', $email)->first();
 
-        // Only allow admin/trainer/super admin roles through admin login
-        if (! $user || ! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        // Only allow admin/trainer roles through admin login
+        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             if ($user) {
                 AuditLogger::log([
                     'user' => $user,
@@ -101,8 +110,8 @@ class AuthController extends Controller
 
         $loginAttempts->clearAttempts($email, $ip);
 
-        // Admin / Trainer / Super Admin login flow - redirect to method selection
-        // For admins, trainers, and super admins, enforce that the account is active and the email has been verified.
+        // Admin / Trainer login flow - redirect to method selection
+        // For admins and trainers, enforce that the account is active and the email has been verified.
         // Check if user account is active (not disabled)
         if ($user->status !== 'active' || ! $user->email_verified_at) {
             $statusMessage = match($user->status) {
@@ -117,7 +126,7 @@ class AuthController extends Controller
                 'action' => 'Failed login',
                 'module' => 'Auth',
                 'status' => 'failed',
-                'description' => "Admin/trainer/super admin attempted login. Status: {$user->status}, Verified: " . ($user->email_verified_at ? 'Yes' : 'No'),
+                'description' => "Admin/trainer attempted login. Status: {$user->status}, Verified: " . ($user->email_verified_at ? 'Yes' : 'No'),
             ]);
 
             return back()
@@ -154,9 +163,18 @@ class AuthController extends Controller
         abort(404);
     }
 
-    public function showParticipantLogin()
+    public function showParticipantLogin(Request $request)
     {
-        return view('auth.participant-login');
+        $email = $request->old('email', '');
+        $failedAttempts = 0;
+        
+        if ($email) {
+            $failedAttempts = (int) \Illuminate\Support\Facades\Cache::get('login_attempts:email:' . $email, 0);
+        }
+        
+        return view('auth.participant-login', [
+            'failedAttempts' => $failedAttempts,
+        ]);
     }
 
     public function participantLogin(Request $request, LoginAttemptService $loginAttempts)
@@ -613,7 +631,7 @@ class AuthController extends Controller
             }
 
             // Verify user role is allowed for USB key verification
-            if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+            if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
                 return back()
                     ->withErrors(['verification_method' => 'USB key verification is not available for your account type.']);
             }
@@ -627,7 +645,7 @@ class AuthController extends Controller
                 'action' => 'USB verification selected',
                 'module' => 'Auth',
                 'status' => 'success',
-                'description' => 'Admin/trainer/super admin selected USB key verification method.',
+                'description' => 'Admin/trainer selected USB key verification method.',
             ]);
 
             return redirect()->route('admin.usb.check');
@@ -801,6 +819,13 @@ class AuthController extends Controller
         Auth::login($user, false);
         $request->session()->regenerate();
         $request->session()->put('last_activity', now()->timestamp);
+
+        \Log::info('Admin OTP login success', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'session_id' => $request->session()->getId(),
+            'ip' => $request->ip(),
+        ]);
 
         AuditLogger::log([
             'user' => $user,

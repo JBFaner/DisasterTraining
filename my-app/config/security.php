@@ -31,7 +31,7 @@ return [
     */
     'progressive_lockout_seconds' => [
         30,   // 1st lock → 30 sec
-        60,   // 2nd lock → 1 min
-        300,  // 3rd lock → 5 min
+        30,   // 2nd lock → 1 min
+        30,  // 3rd lock → 5 min
     ],
 ];

@@ -12,8 +12,8 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
     const canManageUser = (targetUser) => {
         if (!currentUser) return false;
         
-        // Super Admin can manage everyone
-        if (currentUser.role === 'SUPER_ADMIN') {
+        // Admin can manage everyone
+        if (currentUser.role === 'LGU_ADMIN') {
             return true;
         }
         
@@ -291,7 +291,6 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                         className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     >
                         <option value="all">All Roles</option>
-                        <option value="SUPER_ADMIN">Super Admin</option>
                         <option value="LGU_ADMIN">LGU Admin</option>
                         <option value="LGU_TRAINER">Trainer</option>
                         <option value="STAFF">Staff</option>
@@ -375,11 +374,10 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                                            {user.role === 'SUPER_ADMIN' && 'Super Admin'}
                                             {user.role === 'LGU_ADMIN' && 'LGU Admin'}
                                             {user.role === 'LGU_TRAINER' && 'Trainer'}
                                             {user.role === 'STAFF' && 'Staff'}
-                                            {!['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'].includes(user.role) && user.role}
+                                            {!['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'].includes(user.role) && user.role}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
@@ -418,7 +416,7 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                             : 'Never'}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
-                                        {['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'].includes(user.role) ? (
+                                        {['LGU_ADMIN', 'LGU_TRAINER'].includes(user.role) ? (
                                             <div className="flex items-center gap-2">
                                                 {user.usb_key_enabled ? (
                                                     <>
@@ -440,8 +438,8 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <div className="flex items-center justify-end gap-1.5 text-xs">
-                                            {/* View button - Super Admin can view all, LGU Admin can view all (but security hidden) */}
-                                            {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'LGU_ADMIN') && (
+                                            {/* View button - Admin can view all */}
+                                            {currentUser?.role === 'LGU_ADMIN' && (
                                                 <a
                                                     href={`/admin/users/${user.id}`}
                                                     className="inline-flex items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-700 hover:bg-slate-100"
@@ -489,8 +487,8 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                                     )}
                                                 </button>
                                             )}
-                                            {/* USB Key management - only if can manage and user is admin/trainer/super admin */}
-                                            {canManageUser(user) && ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'].includes(user.role) && (
+                                            {/* USB Key management - only if can manage and user is admin/trainer */}
+                                            {canManageUser(user) && ['LGU_ADMIN', 'LGU_TRAINER'].includes(user.role) && (
                                                 <>
                                                     {user.usb_key_enabled ? (
                                                         <button

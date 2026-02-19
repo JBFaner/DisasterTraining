@@ -14,6 +14,7 @@
             data-old-email="{{ old('email', '') }}"
             data-lockout-retry-after="{{ session('lockout_retry_after', 0) }}"
             data-session-error="{{ session('error', '') }}"
+            data-failed-attempts="{{ $failedAttempts ?? 0 }}"
         ></div>
     </body>
 </html>

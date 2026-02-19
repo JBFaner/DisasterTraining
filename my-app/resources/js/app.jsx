@@ -13,6 +13,7 @@ import { RolesPage } from './pages/RolesPage';
 import { PermissionsPage } from './pages/PermissionsPage';
 import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
+import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer } from 'lucide-react';
@@ -384,6 +385,11 @@ if (rootElement) {
     if (userJson) {
         try {
             currentUser = JSON.parse(userJson);
+            // Debug: Log currentUser role for troubleshooting
+            if (window.location.pathname.includes('/admin/users/create')) {
+                console.log('Current User:', currentUser);
+                console.log('Current User Role:', currentUser?.role);
+            }
         } catch (e) {
             console.error('Failed to parse user JSON', e);
         }
@@ -489,7 +495,7 @@ if (rootElement) {
     }
 
     const role =
-        roleAttr === 'SUPER_ADMIN' || roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
+        roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
             ? roleAttr
             : 'PARTICIPANT';
 
@@ -744,6 +750,10 @@ if (rootElement) {
             ];
         }
 
+        if (sectionAttr === 'user_monitoring') {
+            return [{ label: 'User Monitoring', href: '/admin/user-monitoring' }];
+        }
+
         return [{ label: 'Dashboard', href: '/dashboard' }];
     };
 
@@ -763,6 +773,9 @@ if (rootElement) {
             sectionAttr === 'admin_roles_edit'
         ) {
             return 'Users & Roles';
+        }
+        if (sectionAttr === 'user_monitoring') {
+            return 'User Monitoring';
         }
         if (
             sectionAttr === 'barangay_profile' ||
@@ -1127,9 +1140,6 @@ if (rootElement) {
                                                     defaultValue={currentUserData.role}
                                                     className="block w-full max-w-xs rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
                                                 >
-                                                    {currentUser?.role === 'SUPER_ADMIN' && (
-                                                        <option value="SUPER_ADMIN">Super Admin</option>
-                                                    )}
                                                     <option value="LGU_ADMIN">LGU Admin</option>
                                                     <option value="LGU_TRAINER">LGU Trainer</option>
                                                     <option value="STAFF">Staff</option>
@@ -1234,6 +1244,10 @@ if (rootElement) {
 
                         {sectionAttr === 'audit_logs' && (
                             <AuditLogs />
+                        )}
+
+                        {sectionAttr === 'user_monitoring' && (
+                            <UserMonitoringPage users={users || []} />
                         )}
 
                         {sectionAttr === 'resources' && (
@@ -3271,7 +3285,7 @@ function TrainingModuleDetail({ module }) {
 function ScenariosTable({ scenarios = [], role }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const canDelete = role === 'SUPER_ADMIN' || role === 'LGU_ADMIN';
+    const canDelete = role === 'LGU_ADMIN';
     const [searchQuery, setSearchQuery] = React.useState('');
     const [showFilters, setShowFilters] = React.useState(false);
     const [filterStatus, setFilterStatus] = React.useState('');

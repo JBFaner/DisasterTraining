@@ -40,13 +40,13 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
-        // Super Admin account for Reymon.
+        // Admin account for Reymon.
         User::updateOrCreate(
             ['email' => 'brogada.reymon09@gmail.com'],
             [
                 'name' => 'Reymon',
                 'password' => 'admin123',
-                'role' => 'SUPER_ADMIN',
+                'role' => 'LGU_ADMIN',
                 'status' => 'active',
                 'registered_at' => now(),
                 'email_verified_at' => now(), // Fully verified

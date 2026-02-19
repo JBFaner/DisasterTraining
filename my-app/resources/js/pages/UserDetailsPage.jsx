@@ -37,7 +37,6 @@ export function UserDetailsPage({ user, currentUser, canViewSecurity, recentLogi
 
     const getRoleDisplay = (role) => {
         switch (role) {
-            case 'SUPER_ADMIN': return 'Super Admin';
             case 'LGU_ADMIN': return 'LGU Admin';
             case 'LGU_TRAINER': return 'Trainer';
             case 'STAFF': return 'Staff';

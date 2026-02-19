@@ -48,7 +48,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     const leftDrawerRef = React.useRef(null);
     const rightDrawerRef = React.useRef(null);
 
-    const isAdmin = role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
+    const isAdmin = role === 'LGU_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
     const isParticipant = role === 'PARTICIPANT';
 
@@ -229,7 +229,6 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         </div>
                         <div className="leading-tight">
                             <div className="text-sm font-semibold">
-                                {role === 'SUPER_ADMIN' && 'Super Admin'}
                                 {role === 'LGU_ADMIN' && 'LGU Admin'}
                                 {role === 'LGU_TRAINER' && 'Trainer'}
                                 {role === 'PARTICIPANT' && 'Participant'}
@@ -340,7 +339,6 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                             <img src="/logo.svg" alt="LGU Logo" className="h-5 w-auto opacity-80 shrink-0" />
                             <div className="truncate">
                                 <span className="text-slate-400">
-                                    {role === 'SUPER_ADMIN' && 'Super Admin'}
                                     {role === 'LGU_ADMIN' && 'LGU Admin'}
                                     {role === 'LGU_TRAINER' && 'Trainer'}
                                     {role === 'PARTICIPANT' && 'Participant'}
@@ -413,7 +411,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
 
 // Reusable navigation items renderer
 function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
-    const isAdmin = role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
+    const isAdmin = role === 'LGU_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
     const isParticipant = role === 'PARTICIPANT';
 
@@ -620,6 +618,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                                 active: currentSection === 'admin_roles',
                             },
                         ]}
+                    />
+                    <NavItem
+                        icon={Activity}
+                        label="User Monitoring"
+                        href="/admin/user-monitoring"
+                        active={currentSection === 'user_monitoring'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
                     />
                     <NavItem
                         icon={ClipboardCheck}
