@@ -5,6 +5,8 @@ import { ParticipantLogin } from './components/ParticipantLogin';
 import { AdminLogin } from './components/AdminLogin';
 import { ParticipantRegister } from './components/ParticipantRegister';
 import { ParticipantRegisterVerify } from './components/ParticipantRegisterVerify';
+import { PasswordRequest } from './components/PasswordRequest';
+import { PasswordReset } from './components/PasswordReset';
 
 // Participant Login
 const participantLoginRoot = document.getElementById('participant-login-root');
@@ -27,8 +29,9 @@ if (participantLoginRoot) {
         }
     }
     if (sessionError) errorsObj.email = sessionError;
+    const failedAttempts = parseInt(participantLoginRoot.getAttribute('data-failed-attempts') || '0', 10);
     const root = ReactDOM.createRoot(participantLoginRoot);
-    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter }));
+    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts }));
 }
 
 // Participant Register
@@ -100,6 +103,49 @@ if (adminLoginRoot) {
         }
     }
     if (sessionError) errorsObj.email = sessionError;
+    const failedAttempts = parseInt(adminLoginRoot.getAttribute('data-failed-attempts') || '0', 10);
     const root = ReactDOM.createRoot(adminLoginRoot);
-    root.render(React.createElement(AdminLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter }));
+    root.render(React.createElement(AdminLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts }));
+}
+
+// Password Request
+const passwordRequestRoot = document.getElementById('password-request-root');
+if (passwordRequestRoot) {
+    const errorsJson = passwordRequestRoot.getAttribute('data-errors') || '{}';
+    const oldEmail = passwordRequestRoot.getAttribute('data-old-email') || '';
+    const status = passwordRequestRoot.getAttribute('data-status') || '';
+    let errors = {};
+    try {
+        errors = JSON.parse(errorsJson);
+    } catch (_) {}
+    const errorsObj = {};
+    if (errors && typeof errors === 'object') {
+        for (const k of Object.keys(errors)) {
+            const v = errors[k];
+            errorsObj[k] = Array.isArray(v) ? v[0] : v;
+        }
+    }
+    const root = ReactDOM.createRoot(passwordRequestRoot);
+    root.render(React.createElement(PasswordRequest, { errors: errorsObj, oldEmail, status }));
+}
+
+// Password Reset
+const passwordResetRoot = document.getElementById('password-reset-root');
+if (passwordResetRoot) {
+    const errorsJson = passwordResetRoot.getAttribute('data-errors') || '{}';
+    const token = passwordResetRoot.getAttribute('data-token') || '';
+    const email = passwordResetRoot.getAttribute('data-email') || '';
+    let errors = {};
+    try {
+        errors = JSON.parse(errorsJson);
+    } catch (_) {}
+    const errorsObj = {};
+    if (errors && typeof errors === 'object') {
+        for (const k of Object.keys(errors)) {
+            const v = errors[k];
+            errorsObj[k] = Array.isArray(v) ? v[0] : v;
+        }
+    }
+    const root = ReactDOM.createRoot(passwordResetRoot);
+    root.render(React.createElement(PasswordReset, { errors: errorsObj, token, email }));
 }

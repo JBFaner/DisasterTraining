@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, AlertCircle, LogIn, Home } from 'lucide-react';
 
-export function AdminLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0 }) {
+export function AdminLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, failedAttempts = 0 }) {
     const [email, setEmail] = useState(oldEmail);
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState(lockoutRetryAfter > 0 ? lockoutRetryAfter : 0);
+    const showResetPrompt = failedAttempts >= 3;
 
     useEffect(() => {
         if (lockoutSecondsLeft <= 0) return;
@@ -69,6 +70,22 @@ export function AdminLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0 }
                                 LGU Training Management Portal
                             </p>
                         </div>
+
+                        {showResetPrompt && (
+                            <div className="mb-6 rounded-lg bg-blue-50 border-l-4 border-blue-500 px-4 py-3 text-sm text-blue-700 flex items-start gap-3">
+                                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                    <p className="font-semibold mb-1">Having trouble logging in?</p>
+                                    <p className="mb-2">Why not try resetting your password?</p>
+                                    <a
+                                        href="/password/reset"
+                                        className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                    >
+                                        Reset Password →
+                                    </a>
+                                </div>
+                            </div>
+                        )}
 
                         {showErrorBanner && lockoutMessage && (
                             <div className="mb-6 rounded-lg bg-red-50 border-l-4 border-red-500 px-4 py-3 text-sm text-red-700 flex items-start gap-3">

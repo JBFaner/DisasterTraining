@@ -15,9 +15,18 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(Request $request)
     {
-        return view('auth.admin-login');
+        $email = $request->old('email', '');
+        $failedAttempts = 0;
+        
+        if ($email) {
+            $failedAttempts = (int) \Illuminate\Support\Facades\Cache::get('login_attempts:email:' . $email, 0);
+        }
+        
+        return view('auth.admin-login', [
+            'failedAttempts' => $failedAttempts,
+        ]);
     }
 
     public function login(Request $request, LoginAttemptService $loginAttempts)
@@ -154,9 +163,18 @@ class AuthController extends Controller
         abort(404);
     }
 
-    public function showParticipantLogin()
+    public function showParticipantLogin(Request $request)
     {
-        return view('auth.participant-login');
+        $email = $request->old('email', '');
+        $failedAttempts = 0;
+        
+        if ($email) {
+            $failedAttempts = (int) \Illuminate\Support\Facades\Cache::get('login_attempts:email:' . $email, 0);
+        }
+        
+        return view('auth.participant-login', [
+            'failedAttempts' => $failedAttempts,
+        ]);
     }
 
     public function participantLogin(Request $request, LoginAttemptService $loginAttempts)

@@ -76,6 +76,12 @@ Route::get('/admin/verify-email/{user}', [AdminUserController::class, 'verifyEma
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Password Reset Routes
+Route::get('/password/reset', [App\Http\Controllers\PasswordResetController::class, 'showRequestForm'])->name('password.request');
+Route::post('/password/email', [App\Http\Controllers\PasswordResetController::class, 'sendResetLink'])->name('password.email');
+Route::get('/password/reset/{token}', [App\Http\Controllers\PasswordResetController::class, 'showResetForm'])->name('password.reset');
+Route::post('/password/reset', [App\Http\Controllers\PasswordResetController::class, 'reset'])->name('password.update');
+
 // Centralized login logout (redirects to centralized login system)
 Route::get('/auth/centralized/logout', [CentralizedLoginController::class, 'logout'])
     ->name('centralized.login.logout');

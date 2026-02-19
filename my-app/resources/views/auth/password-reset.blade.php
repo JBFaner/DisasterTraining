@@ -4,17 +4,16 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>Login</title>
+        <title>Reset Password - LGU Disaster Preparedness Training</title>
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
         @vite(['resources/css/app.css', 'resources/js/auth.jsx'])
     </head>
     <body>
         <div
-            id="participant-login-root"
+            id="password-reset-root"
             data-errors='@json($errors->getMessages() ?: [])'
-            data-old-email="{{ old('email', '') }}"
-            data-lockout-retry-after="{{ session('lockout_retry_after', 0) }}"
-            data-session-error="{{ session('error', '') }}"
-            data-failed-attempts="{{ $failedAttempts ?? 0 }}"
+            data-token="{{ $token }}"
+            data-email="{{ $email }}"
         ></div>
     </body>
 </html>
