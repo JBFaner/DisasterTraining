@@ -139,7 +139,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
     };
 
     return (
-        <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 w-full max-w-full overflow-x-hidden">
+        <div className="no-print bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 w-full max-w-full overflow-x-hidden">
             <div className="px-6 py-2 w-full max-w-full">
                 <div className="flex items-center justify-between min-h-[3rem] w-full max-w-full">
                     {/* Left Section: Sidebar Toggle, Module Name */}

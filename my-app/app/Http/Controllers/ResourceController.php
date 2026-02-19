@@ -515,7 +515,7 @@ class ResourceController extends Controller
     /**
      * Delete the specified resource
      */
-    public function destroy(Resource $resource)
+    public function destroy(Request $request, Resource $resource)
     {
         $snapshot = $resource->toArray();
         $resource->delete();
@@ -527,6 +527,13 @@ class ResourceController extends Controller
             'description' => "Name: {$snapshot['name']}",
             'old_values' => $snapshot,
         ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Resource deleted successfully',
+            ]);
+        }
 
         return redirect()->route('resources.index')->with('success', 'Resource deleted successfully');
     }

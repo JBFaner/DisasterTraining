@@ -106,11 +106,44 @@ class Resource extends Model
     }
 
     /**
-     * Check if resource is available
+     * Check if resource is available (has remaining quantity)
      */
     public function isAvailable(): bool
     {
-        return $this->status === 'Available' && $this->available > 0;
+        return $this->getAvailableQuantity() > 0;
+    }
+
+    /**
+     * Derive status from assigned vs total quantity. Do not use for filtering selection.
+     * Available = nothing assigned; Partially Assigned = some assigned; Fully Assigned = all assigned.
+     */
+    public function getDerivedStatus(): string
+    {
+        $available = $this->getAvailableQuantity();
+        $total = (int) $this->quantity;
+        if ($available >= $total || $total <= 0) {
+            return 'Available';
+        }
+        if ($available <= 0) {
+            return 'Fully Assigned';
+        }
+        return 'Partially Assigned';
+    }
+
+    /**
+     * Refresh available count and status from current assignments (call after assignments change).
+     */
+    public function refreshAvailabilityFromAssignments(): void
+    {
+        $available = max(0, $this->getAvailableQuantity());
+        $status = $this->getDerivedStatus();
+        $active = $this->eventAssignments()->where('status', 'Active')->first();
+        $this->update([
+            'available' => $available,
+            'status' => $status,
+            'assigned_to_event_id' => $active ? $active->event_id : null,
+            'assigned_handler_id' => null,
+        ]);
     }
 
     /**
@@ -183,10 +216,13 @@ class Resource extends Model
             $newTotalAssigned = $this->getTotalAssignedQuantity();
             $newAvailable = max(0, $this->quantity - $newTotalAssigned);
 
-            // Update resource status and handler
+            // Status: Available (none assigned), Partially Assigned (some), Fully Assigned (all)
+            $status = $newAvailable >= $this->quantity ? 'Available'
+                : ($newAvailable <= 0 ? 'Fully Assigned' : 'Partially Assigned');
+
             $this->update([
                 'available' => $newAvailable,
-                'status' => $newAvailable > 0 ? 'Partially Assigned' : 'Fully Assigned',
+                'status' => $status,
                 'assigned_to_event_id' => $event->id,
                 'assigned_handler_id' => $handler ? $handler->id : auth()->id(),
             ]);
@@ -208,14 +244,12 @@ class Resource extends Model
      */
     public function returnFromEvent(?string $condition = null, ?string $damageReport = null): bool
     {
-        // Reset available quantity to full and mark as available
-        $this->update([
-            'available' => $this->quantity,
-            'status' => 'Available',
-            'assigned_to_event_id' => null,
-            'assigned_handler_id' => null,
-            'condition' => $condition ?? $this->condition,
-        ]);
+        $this->refreshAvailabilityFromAssignments();
+        if ($condition !== null || $damageReport !== null) {
+            $this->update([
+                'condition' => $condition ?? $this->condition,
+            ]);
+        }
 
         if ($damageReport) {
             ResourceMaintenanceLog::create([

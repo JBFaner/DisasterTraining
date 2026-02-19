@@ -86,14 +86,17 @@
             @isset($attendances)
                 data-attendances='@json($attendances)'
             @endisset
-            @isset($participant_evaluations)
-                data-participant-evaluations='@json($participant_evaluations)'
+            @isset($participantEvaluations)
+                data-participant-evaluations='@json($participantEvaluations)'
             @endisset
             @if(auth()->check())
                 data-user='@json(auth()->user())'
             @elseif(isset($user) && !isset($currentUser))
                 data-user='@json($user)'
-            @endisset
+            @endif
+            @if(isset($section) && $section === 'evaluation_form' && isset($user))
+                data-evaluatee-user='@json($user)'
+            @endif
             @isset($user)
                 @if(isset($currentUser))
                     data-viewing-user='@json($user)'

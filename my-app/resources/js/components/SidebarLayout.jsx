@@ -125,7 +125,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     return (
         <div className="min-h-screen bg-slate-100 text-slate-900 flex overflow-x-hidden">
             {/* Mobile Top App Bar */}
-            <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-slate-900 text-slate-50 flex items-center justify-between px-4 z-50 shadow-lg">
+            <header className="no-print md:hidden fixed top-0 left-0 right-0 h-14 bg-slate-900 text-slate-50 flex items-center justify-between px-4 z-50 shadow-lg">
                 {/* Left Navigation Toggle */}
                 <button
                     data-left-drawer-toggle
@@ -174,7 +174,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
             {/* Mobile Left Navigation Drawer */}
             <aside
                 ref={leftDrawerRef}
-                className={`md:hidden fixed top-0 left-0 h-full w-80 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${isLeftDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`no-print md:hidden fixed top-0 left-0 h-full w-80 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${isLeftDrawerOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
             >
                 {/* Drawer Header */}
@@ -218,7 +218,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
             {/* Mobile Right Action Drawer */}
             <aside
                 ref={rightDrawerRef}
-                className={`md:hidden fixed top-0 right-0 h-full w-72 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${isRightDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+                className={`no-print md:hidden fixed top-0 right-0 h-full w-72 bg-slate-900 text-slate-50 flex-col z-50 transform transition-transform duration-300 ease-in-out ${isRightDrawerOpen ? 'translate-x-0' : 'translate-x-full'
                     }`}
             >
                 {/* Drawer Header */}
@@ -285,7 +285,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
             </aside>
 
             {/* Sidebar - desktop-only */}
-            <aside className={`hidden md:flex md:h-screen md:fixed md:left-0 md:top-0 bg-slate-900 text-slate-50 flex-col z-10 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-80'}`}>
+            <aside className={`no-print hidden md:flex md:h-screen md:fixed md:left-0 md:top-0 bg-slate-900 text-slate-50 flex-col z-10 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-80'}`}>
                 {/* Brand */}
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 shrink-0 relative">
                     {!isCollapsed && (
@@ -379,7 +379,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                 />
                 {/* Breadcrumbs - Below TopBar */}
                 {breadcrumbs && breadcrumbs.length > 0 && (
-                    <div className="bg-white border-b border-slate-200 px-6 py-2 w-full max-w-full overflow-x-hidden">
+                    <div className="no-print bg-white border-b border-slate-200 px-6 py-2 w-full max-w-full overflow-x-hidden">
                         <nav className="flex items-center gap-1.5 text-xs text-slate-600">
                             {breadcrumbs.map((crumb, index) => (
                                 <React.Fragment key={index}>

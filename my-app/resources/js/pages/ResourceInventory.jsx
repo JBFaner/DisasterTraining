@@ -17,6 +17,7 @@ import {
     RotateCcw,
     ChevronLeft,
     ChevronRight,
+    Box,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -336,14 +337,21 @@ export function ResourceInventory() {
                 }
 
                 try {
+                    const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.content;
+                    if (!csrfToken) {
+                        Swal.showValidationMessage('Session expired or invalid. Please refresh the page and try again.');
+                        return false;
+                    }
                     const response = await fetch('/resources', {
                         method: 'POST',
+                        credentials: 'same-origin',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
+                            'X-CSRF-TOKEN': csrfToken,
                             'Accept': 'application/json',
                         },
                         body: JSON.stringify({
+                            _token: csrfToken,
                             name,
                             category,
                             quantity: parseInt(quantity),
@@ -355,9 +363,13 @@ export function ResourceInventory() {
                         }),
                     });
 
-                    const data = await response.json();
+                    const data = await response.json().catch(() => ({}));
                     
                     if (!response.ok) {
+                        if (response.status === 419) {
+                            Swal.showValidationMessage('Session expired or CSRF token invalid. Please refresh the page and try again.');
+                            return false;
+                        }
                         // Handle duplication error
                         if (data.message && (data.message.includes('already exists') || data.message.includes('duplicate'))) {
                             let errorMsg = data.message;
@@ -583,6 +595,7 @@ export function ResourceInventory() {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
+                            'Accept': 'application/json',
                         },
                     });
 
@@ -750,9 +763,14 @@ export function ResourceInventory() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Resource & Equipment Inventory</h1>
-                    <p className="text-slate-600 mt-1">Manage all materials, equipment, and tools for disaster training and simulation events</p>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <Box className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900">Resource & Equipment Inventory</h1>
+                        <p className="text-slate-600 mt-1">Manage all materials, equipment, and tools for disaster training and simulation events</p>
+                    </div>
                 </div>
                 <button
                     onClick={handleAddResource}

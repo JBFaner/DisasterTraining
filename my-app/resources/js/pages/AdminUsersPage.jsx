@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, Key, KeyRound } from 'lucide-react';
+import { Search, Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, Key, KeyRound, UserCircle } from 'lucide-react';
 
 export function AdminUsersPage({ users = [], currentUser = null }) {
     const [search, setSearch] = React.useState('');
@@ -244,13 +244,18 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         <div className="space-y-6 w-full overflow-x-hidden">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">
-                        User Management
-                    </h1>
-                    <p className="text-sm text-slate-600 mt-1">
-                        Manage LGU Admin, Trainer, and Staff accounts for the disaster preparedness system.
-                    </p>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <UserCircle className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-semibold text-slate-900">
+                            User Management
+                        </h1>
+                        <p className="text-sm text-slate-600 mt-1">
+                            Manage LGU Admin, Trainer, and Staff accounts for the disaster preparedness system.
+                        </p>
+                    </div>
                 </div>
                 <a
                     href="/admin/users/create"

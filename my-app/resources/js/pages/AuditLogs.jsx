@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, Download, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Shield, User as UserIcon, Clock } from 'lucide-react';
+import { Search, Filter, Download, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Shield, User as UserIcon, Clock, ClipboardCheck } from 'lucide-react';
 
 const statusConfig = {
     // System-level results
@@ -195,6 +195,13 @@ export function AuditLogs() {
 
     return (
         <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                    <ClipboardCheck className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h1 className="text-2xl font-semibold text-slate-900">Audit Logs</h1>
+            </div>
             {/* Sticky filters */}
             <div className="sticky top-0 z-10 bg-slate-50/80 backdrop-blur border-b border-slate-200 -mx-6 px-6 py-3">
                 <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">

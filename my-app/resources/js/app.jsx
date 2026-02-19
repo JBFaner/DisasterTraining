@@ -15,7 +15,7 @@ import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -345,6 +345,7 @@ if (rootElement) {
     const attendancesJson = rootElement.getAttribute('data-attendances');
     const participantEvaluationsJson = rootElement.getAttribute('data-participant-evaluations');
     const userJson = rootElement.getAttribute('data-user');
+    const evaluateeUserJson = rootElement.getAttribute('data-evaluatee-user');
     const attendanceJson = rootElement.getAttribute('data-attendance');
     const participantEvaluationJson = rootElement.getAttribute('data-participant-evaluation');
     const barangayProfileJson = rootElement.getAttribute('data-barangay-profile');
@@ -385,6 +386,14 @@ if (rootElement) {
             currentUser = JSON.parse(userJson);
         } catch (e) {
             console.error('Failed to parse user JSON', e);
+        }
+    }
+    let evaluateeUser = null;
+    if (evaluateeUserJson) {
+        try {
+            evaluateeUser = JSON.parse(evaluateeUserJson);
+        } catch (e) {
+            console.error('Failed to parse evaluatee user JSON', e);
         }
     }
     if (attendanceJson) {
@@ -1257,7 +1266,7 @@ if (rootElement) {
                             <EvaluationForm
                                 event={currentEvent}
                                 evaluation={evaluation}
-                                user={currentUser}
+                                user={evaluateeUser ?? currentUser}
                                 attendance={currentAttendance}
                                 participantEvaluation={currentParticipantEvaluation}
                                 criteria={criteria}
@@ -1269,7 +1278,7 @@ if (rootElement) {
                             <EvaluationSummary
                                 event={currentEvent}
                                 evaluation={evaluation}
-                                participantEvaluations={currentParticipantEvaluations}
+                                participantEvaluations={participantEvaluations}
                                 criteria={criteria}
                                 criterionAverages={currentCriterionAverages}
                                 totalParticipants={currentTotalParticipants}
@@ -1319,6 +1328,13 @@ function DashboardOverview({ modules, events, participants, role }) {
 
     return (
         <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                    <LayoutDashboard className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+            </div>
             {/* Key Statistics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Training Modules */}
@@ -1560,7 +1576,12 @@ function TrainingModulesTable({ modules = [] }) {
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-800">Training Modules</h2>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <BookOpen className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-slate-800">Training Modules</h2>
+                </div>
                 <a
                     href="/training-modules/create"
                     className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5"
@@ -1666,7 +1687,8 @@ function TrainingModulesTable({ modules = [] }) {
                             <th className="px-4 py-2 text-left">Disaster type</th>
                             <th className="px-4 py-2 text-left">Difficulty</th>
                             <th className="px-4 py-2 text-left">Status</th>
-                            <th className="px-4 py-2 text-left">Owner</th>
+                            <th className="px-4 py-2 text-left">Created By</th>
+                            <th className="px-4 py-2 text-left">Created Date</th>
                             <th className="px-4 py-2 text-left">Updated</th>
                             <th className="px-4 py-2 text-left">Actions</th>
                         </tr>
@@ -1675,7 +1697,7 @@ function TrainingModulesTable({ modules = [] }) {
                         {filteredModules.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={7}
+                                    colSpan={8}
                                     className="px-4 py-6 text-center text-slate-500 text-sm"
                                 >
                                     {(modules || []).length === 0
@@ -1721,6 +1743,9 @@ function TrainingModulesTable({ modules = [] }) {
                                     </td>
                                     <td className="px-4 py-2 text-slate-600">
                                         {module.owner?.name ?? '—'}
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-500">
+                                        {module.created_at ? formatDateTime(module.created_at) : '—'}
                                     </td>
                                     <td className="px-4 py-2 text-slate-500">
                                         {module.updated_at ? formatDateTime(module.updated_at) : '—'}
@@ -2838,6 +2863,16 @@ function TrainingModuleDetail({ module }) {
                         Status: {module.status}
                     </span>
                 </div>
+                <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500">
+                    <div className="flex flex-wrap gap-4">
+                        <div>
+                            <span className="font-semibold text-slate-600">Created By:</span> {module.owner?.name ?? '—'}
+                        </div>
+                        <div>
+                            <span className="font-semibold text-slate-600">Created Date:</span> {module.created_at ? formatDateTime(module.created_at) : '—'}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -3292,7 +3327,12 @@ function ScenariosTable({ scenarios = [], role }) {
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-800">Scenarios</h2>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <Activity className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-slate-800">Scenarios</h2>
+                </div>
                 <a
                     href="/scenarios/create"
                     className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5"
@@ -3398,6 +3438,8 @@ function ScenariosTable({ scenarios = [], role }) {
                             <th className="px-4 py-2 text-left">Disaster Type</th>
                             <th className="px-4 py-2 text-left">Difficulty</th>
                             <th className="px-4 py-2 text-left">Status</th>
+                            <th className="px-4 py-2 text-left">Created By</th>
+                            <th className="px-4 py-2 text-left">Created Date</th>
                             <th className="px-4 py-2 text-left">Updated</th>
                             <th className="px-4 py-2 text-left">Actions</th>
                         </tr>
@@ -3406,7 +3448,7 @@ function ScenariosTable({ scenarios = [], role }) {
                         {filteredScenarios.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={7}
+                                    colSpan={9}
                                     className="px-4 py-6 text-center text-slate-500 text-sm"
                                 >
                                     {(scenarios || []).length === 0
@@ -3452,6 +3494,12 @@ function ScenariosTable({ scenarios = [], role }) {
                                         >
                                             {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                                         </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-600">
+                                        {s.creator?.name ?? '—'}
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-500">
+                                        {s.created_at ? formatDateTime(s.created_at) : '—'}
                                     </td>
                                     <td className="px-4 py-2 text-slate-500">
                                         {s.updated_at ? formatDateTime(s.updated_at) : '—'}
@@ -4736,6 +4784,16 @@ function ScenarioDetail({ scenario }) {
                         </span>
                     )}
                 </div>
+                <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500">
+                    <div className="flex flex-wrap gap-4">
+                        <div>
+                            <span className="font-semibold text-slate-600">Created By:</span> {scenario.creator?.name ?? '—'}
+                        </div>
+                        <div>
+                            <span className="font-semibold text-slate-600">Created Date:</span> {scenario.created_at ? formatDateTime(scenario.created_at) : '—'}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Scenario Overview */}
@@ -4946,7 +5004,12 @@ function SimulationEventsTable({ events, role }) {
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-800">Simulation Events</h2>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <CalendarClock className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-slate-800">Simulation Events</h2>
+                </div>
                 <div className="flex items-center gap-3">
                     {/* Auto-Approval Toggle */}
                     <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm">
@@ -5085,13 +5148,15 @@ function SimulationEventsTable({ events, role }) {
                             <th className="px-4 py-2 text-left">Date & Time</th>
                             <th className="px-4 py-2 text-left">Location</th>
                             <th className="px-4 py-2 text-left">Status</th>
+                            <th className="px-4 py-2 text-left">Created By</th>
+                            <th className="px-4 py-2 text-left">Created Date</th>
                             <th className="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredEvents.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-4 py-6 text-center text-slate-500 text-sm">
+                                <td colSpan={9} className="px-4 py-6 text-center text-slate-500 text-sm">
                                     {events.length === 0
                                         ? 'No simulation events yet. Click "Create Event" to add one.'
                                         : 'No events match your search or filter criteria.'}
@@ -5131,11 +5196,19 @@ function SimulationEventsTable({ events, role }) {
                                                                     ? 'bg-amber-50 text-amber-700'
                                                                     : event.status === 'cancelled'
                                                                         ? 'bg-rose-50 text-rose-700'
-                                                                        : 'bg-slate-100 text-slate-600')
+                                                                        : event.status === 'ended'
+                                                                            ? 'bg-slate-50 text-slate-700'
+                                                                            : 'bg-slate-100 text-slate-600')
                                             }
                                         >
                                             {event.status}
                                         </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-600">
+                                        {event.creator?.name ?? '—'}
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-500">
+                                        {event.created_at ? formatDateTime(event.created_at) : '—'}
                                     </td>
                                     <td className="px-4 py-2">
                                         <div className="flex gap-2 items-center">
@@ -5444,12 +5517,11 @@ function ResourceSelectionSection({ eventResources = [] }) {
     const fetchAvailableResources = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/resources?status=Available');
+            const response = await fetch('/api/resources');
             const data = await response.json();
-            // Only show resources with available quantity > 0
+            // Show all resources that have remaining quantity > 0 (regardless of status)
             const available = (data.resources || data).filter(r =>
-                (r.status === 'Available' || r.status === 'Partially Assigned') &&
-                (r.available || r.quantity) > 0
+                (r.available ?? r.quantity ?? 0) > 0
             );
             setResources(available);
         } catch (error) {
@@ -5859,29 +5931,84 @@ function SimulationEventCreateForm({ scenarios }) {
     const [selectedScenarioId, setSelectedScenarioId] = React.useState('');
     const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
     const formRef = React.useRef(null);
+    const [startTimeValue, setStartTimeValue] = React.useState('');
+
+    const minDate = new Date().toISOString().split('T')[0];
+
+    const handleStartTimeChange = (e) => {
+        const start = e.target.value;
+        setStartTimeValue(start);
+        if (formRef.current && start) {
+            const endInput = formRef.current.querySelector('#end_time');
+            if (endInput && endInput.value && endInput.value < start) {
+                endInput.value = '';
+            }
+        }
+    };
 
     const handleFormSubmit = (e) => {
-        // Ensure resources hidden input is updated before submission
-        // Find the ResourceSelectionSection component's selected resources
-        // We'll trigger an update by dispatching a custom event or accessing the component's state
+        e.preventDefault();
+
+        const form = formRef.current;
+        if (!form) return;
+
+        const eventDateInput = form.querySelector('#event_date');
+        const startTimeInput = form.querySelector('#start_time');
+        const endTimeInput = form.querySelector('#end_time');
+
+        if (eventDateInput && eventDateInput.value && eventDateInput.value < minDate) {
+            Swal.fire({
+                title: 'Invalid date',
+                text: 'Event date cannot be in the past. Please select today or a future date.',
+                icon: 'warning',
+                confirmButtonColor: '#10b981',
+            });
+            return;
+        }
+
+        if (startTimeInput?.value && endTimeInput?.value && endTimeInput.value < startTimeInput.value) {
+            Swal.fire({
+                title: 'Invalid time',
+                text: 'End time must be the same as or later than start time.',
+                icon: 'warning',
+                confirmButtonColor: '#10b981',
+            });
+            return;
+        }
+
         const hiddenInput = document.getElementById('selected_resources_input');
         if (hiddenInput && formRef.current) {
             const resourcesData = hiddenInput.value ? JSON.parse(hiddenInput.value) : [];
             console.log('Form submitting with resources:', resourcesData);
-
-            if (resourcesData.length === 0) {
-                console.warn('No resources selected, but form will submit anyway');
-            }
         } else {
-            console.warn('Hidden input not found before form submission - resources may not be saved');
-            // Try to create it one more time
             setTimeout(() => {
                 const input = document.getElementById('selected_resources_input');
-                if (!input) {
-                    console.error('Failed to create resources input before submission');
+                if (!input && formRef.current) {
+                    const formEl = formRef.current;
+                    const resourcesInput = document.createElement('input');
+                    resourcesInput.type = 'hidden';
+                    resourcesInput.name = 'resources';
+                    resourcesInput.id = 'selected_resources_input';
+                    resourcesInput.value = '[]';
+                    formEl.appendChild(resourcesInput);
                 }
             }, 0);
         }
+
+        Swal.fire({
+            title: 'Save as draft?',
+            text: 'Are you sure you want to save this event as draft? You can edit and publish it later.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save as draft',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+        }).then((result) => {
+            if (result.isConfirmed && formRef.current) {
+                formRef.current.submit();
+            }
+        });
     };
 
     return (
@@ -5896,6 +6023,7 @@ function SimulationEventCreateForm({ scenarios }) {
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="status" value="draft" />
+                <input type="hidden" name="disaster_type" value={selectedScenario?.disaster_type || ''} />
 
                 {/* Section 1: Basic Event Information */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -5921,12 +6049,10 @@ function SimulationEventCreateForm({ scenarios }) {
                                 </label>
                                 <input
                                     id="disaster_type"
-                                    name="disaster_type"
                                     type="text"
                                     value={selectedScenario ? selectedScenario.disaster_type : ''}
                                     readOnly
                                     disabled
-                                    required
                                     className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-slate-100 text-slate-500 cursor-not-allowed"
                                     placeholder="Select a scenario first"
                                 />
@@ -6014,6 +6140,7 @@ function SimulationEventCreateForm({ scenarios }) {
                                 name="event_date"
                                 type="date"
                                 required
+                                min={minDate}
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             />
                         </div>
@@ -6026,6 +6153,8 @@ function SimulationEventCreateForm({ scenarios }) {
                                 name="start_time"
                                 type="time"
                                 required
+                                value={startTimeValue}
+                                onChange={handleStartTimeChange}
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             />
                         </div>
@@ -6038,21 +6167,10 @@ function SimulationEventCreateForm({ scenarios }) {
                                 name="end_time"
                                 type="time"
                                 required
+                                min={startTimeValue || undefined}
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             />
                         </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-2">
-                        <input
-                            id="is_recurring"
-                            name="is_recurring"
-                            type="checkbox"
-                            value="1"
-                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <label htmlFor="is_recurring" className="text-sm text-slate-700">
-                            Repeat event
-                        </label>
                     </div>
                 </div>
 
@@ -6542,7 +6660,12 @@ function ParticipantRegistrationAttendanceModule({ events = [], participants = [
 
     return (
         <div>
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">Participant Registration & Management</h2>
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Users className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-slate-800">Participant Registration & Management</h2>
+            </div>
 
             {/* Tabs */}
             <div className="mb-4 border-b border-slate-200">
@@ -6634,7 +6757,7 @@ function ParticipantsListTab({ participants = [] }) {
                     <div className="flex items-end">
                         <a
                             href="/participants/export/csv"
-                            className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2 w-full justify-center"
+                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
                         >
                             📥 Export CSV
                         </a>
@@ -6771,69 +6894,153 @@ function ParticipantsListTab({ participants = [] }) {
 function RegistrationEventsTable({ events = [] }) {
     const ITEMS_PER_PAGE = 10;
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [statusFilter, setStatusFilter] = React.useState('all');
     const visibleEvents = events.filter(e => ['published', 'ongoing', 'completed'].includes(e.status));
-    const totalItems = visibleEvents.length;
+
+    const filteredEvents = visibleEvents.filter((e) => {
+        const matchesSearch = !searchTerm ||
+            e.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.scenario?.title?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || e.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
+    const totalItems = filteredEvents.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const pageEvents = visibleEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const pageEvents = filteredEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    const handleExportCsv = () => {
+        const escapeCsv = (value) => {
+            const str = String(value ?? '');
+            return `"${str.replace(/"/g, '""')}"`;
+        };
+
+        const rows = [
+            ['Event Title', 'Scenario', 'Status', 'Date', 'Start Time', 'End Time', 'Location', 'Registrations'],
+            ...filteredEvents.map((event) => ([
+                event.title ?? '',
+                event.scenario?.title ?? '',
+                event.status ?? '',
+                formatDate(event.event_date),
+                formatTime(event.start_time),
+                formatTime(event.end_time),
+                event.location ?? '',
+                event.registrations_count ?? 0,
+            ])),
+        ];
+
+        const csv = rows.map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `event_registrations_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     React.useEffect(() => {
         if (currentPage > totalPages) setCurrentPage(1);
     }, [currentPage, totalPages]);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                    <tr>
-                        <th className="px-4 py-2 text-left">Event Title</th>
-                        <th className="px-4 py-2 text-left">Date & Time</th>
-                        <th className="px-4 py-2 text-left">Location</th>
-                        <th className="px-4 py-2 text-left">Registrations</th>
-                        <th className="px-4 py-2 text-left">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {pageEvents.length === 0 ? (
+        <div>
+            {/* Filters */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+                <div className="grid grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search by event title, scenario, or location..."
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status Filter</label>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="published">Published</option>
+                            <option value="ongoing">Ongoing</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div className="flex items-end">
+                        <button
+                            type="button"
+                            onClick={handleExportCsv}
+                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
+                        >
+                            📥 Export CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table className="min-w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
                         <tr>
-                            <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                No published/ongoing/completed events yet.
-                            </td>
+                            <th className="px-4 py-2 text-left">Event Title</th>
+                            <th className="px-4 py-2 text-left">Date & Time</th>
+                            <th className="px-4 py-2 text-left">Location</th>
+                            <th className="px-4 py-2 text-left">Registrations</th>
+                            <th className="px-4 py-2 text-left">Actions</th>
                         </tr>
-                    ) : (
-                        pageEvents.map((event) => (
-                            <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
-                                <td className="px-4 py-2 text-slate-600">
-                                    <div>{formatDate(event.event_date)}</div>
-                                    <div className="text-xs text-slate-500">{formatTime(event.start_time)} - {formatTime(event.end_time)}</div>
-                                </td>
-                                <td className="px-4 py-2 text-slate-600">{event.location || '—'}</td>
-                                <td className="px-4 py-2 text-slate-600 text-center">
-                                    <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-semibold">
-                                        {event.registrations_count || 0} registered
-                                    </span>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <a
-                                        href={`/simulation-events/${event.id}/registrations`}
-                                        className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
-                                    >
-                                        Manage Registrations
-                                    </a>
+                    </thead>
+                    <tbody>
+                        {pageEvents.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
+                                    {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
                                 </td>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-                itemsPerPage={ITEMS_PER_PAGE}
-                totalItems={totalItems}
-            />
+                        ) : (
+                            pageEvents.map((event) => (
+                                <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
+                                    <td className="px-4 py-2 text-slate-600">
+                                        <div>{formatDate(event.event_date)}</div>
+                                        <div className="text-xs text-slate-500">{formatTime(event.start_time)} - {formatTime(event.end_time)}</div>
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-600">{event.location || '—'}</td>
+                                    <td className="px-4 py-2 text-slate-600 text-center">
+                                        <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-semibold">
+                                            {event.registrations_count || 0} registered
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <a
+                                            href={`/simulation-events/${event.id}/registrations`}
+                                            className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                        >
+                                            Manage Registrations
+                                        </a>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    totalItems={totalItems}
+                />
+            </div>
         </div>
     );
 }
@@ -6842,69 +7049,153 @@ function RegistrationEventsTable({ events = [] }) {
 function AttendanceEventsTable({ events = [] }) {
     const ITEMS_PER_PAGE = 10;
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [statusFilter, setStatusFilter] = React.useState('all');
     const visibleEvents = events.filter(e => ['published', 'ongoing', 'completed'].includes(e.status));
-    const totalItems = visibleEvents.length;
+
+    const filteredEvents = visibleEvents.filter((e) => {
+        const matchesSearch = !searchTerm ||
+            e.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.scenario?.title?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || e.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
+    const totalItems = filteredEvents.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const pageEvents = visibleEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const pageEvents = filteredEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    const handleExportCsv = () => {
+        const escapeCsv = (value) => {
+            const str = String(value ?? '');
+            return `"${str.replace(/"/g, '""')}"`;
+        };
+
+        const rows = [
+            ['Event Title', 'Scenario', 'Status', 'Date', 'Start Time', 'End Time', 'Location', 'Approved Participants'],
+            ...filteredEvents.map((event) => ([
+                event.title ?? '',
+                event.scenario?.title ?? '',
+                event.status ?? '',
+                formatDate(event.event_date),
+                formatTime(event.start_time),
+                formatTime(event.end_time),
+                event.location ?? '',
+                event.approved_registrations_count ?? 0,
+            ])),
+        ];
+
+        const csv = rows.map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `event_attendance_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     React.useEffect(() => {
         if (currentPage > totalPages) setCurrentPage(1);
     }, [currentPage, totalPages]);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                    <tr>
-                        <th className="px-4 py-2 text-left">Event Title</th>
-                        <th className="px-4 py-2 text-left">Date & Time</th>
-                        <th className="px-4 py-2 text-left">Location</th>
-                        <th className="px-4 py-2 text-left">Approved Participants</th>
-                        <th className="px-4 py-2 text-left">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {pageEvents.length === 0 ? (
+        <div>
+            {/* Filters */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+                <div className="grid grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search by event title, scenario, or location..."
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status Filter</label>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="published">Published</option>
+                            <option value="ongoing">Ongoing</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div className="flex items-end">
+                        <button
+                            type="button"
+                            onClick={handleExportCsv}
+                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
+                        >
+                            📥 Export CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table className="min-w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
                         <tr>
-                            <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                No published/ongoing/completed events yet.
-                            </td>
+                            <th className="px-4 py-2 text-left">Event Title</th>
+                            <th className="px-4 py-2 text-left">Date & Time</th>
+                            <th className="px-4 py-2 text-left">Location</th>
+                            <th className="px-4 py-2 text-left">Approved Participants</th>
+                            <th className="px-4 py-2 text-left">Actions</th>
                         </tr>
-                    ) : (
-                        pageEvents.map((event) => (
-                            <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
-                                <td className="px-4 py-2 text-slate-600">
-                                    <div>{formatDate(event.event_date)}</div>
-                                    <div className="text-xs text-slate-500">{formatTime(event.start_time)} - {formatTime(event.end_time)}</div>
-                                </td>
-                                <td className="px-4 py-2 text-slate-600">{event.location || '—'}</td>
-                                <td className="px-4 py-2 text-slate-600 text-center">
-                                    <span className="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-xs font-semibold">
-                                        {event.approved_registrations_count || 0} approved
-                                    </span>
-                                </td>
-                                <td className="px-4 py-2">
-                                    <a
-                                        href={`/simulation-events/${event.id}/attendance`}
-                                        className="inline-flex items-center rounded-md border border-purple-500/60 bg-purple-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-purple-800 hover:bg-purple-100 transition-colors"
-                                    >
-                                        Track Attendance
-                                    </a>
+                    </thead>
+                    <tbody>
+                        {pageEvents.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
+                                    {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
                                 </td>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-                itemsPerPage={ITEMS_PER_PAGE}
-                totalItems={totalItems}
-            />
+                        ) : (
+                            pageEvents.map((event) => (
+                                <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
+                                    <td className="px-4 py-2 text-slate-600">
+                                        <div>{formatDate(event.event_date)}</div>
+                                        <div className="text-xs text-slate-500">{formatTime(event.start_time)} - {formatTime(event.end_time)}</div>
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-600">{event.location || '—'}</td>
+                                    <td className="px-4 py-2 text-slate-600 text-center">
+                                        <span className="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-xs font-semibold">
+                                            {event.approved_registrations_count || 0} approved
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <a
+                                            href={`/simulation-events/${event.id}/attendance`}
+                                            className="inline-flex items-center rounded-md border border-purple-500/60 bg-purple-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-purple-800 hover:bg-purple-100 transition-colors"
+                                        >
+                                            Track Attendance
+                                        </a>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    totalItems={totalItems}
+                />
+            </div>
         </div>
     );
 }
@@ -6934,11 +7225,16 @@ function ParticipantsTable({ participants = [], role }) {
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-800">Participants</h2>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <Users className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-slate-800">Participants</h2>
+                </div>
                 <div className="flex gap-2">
                     <a
                         href="/participants/export/csv"
-                        className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5"
+                        className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-1.5"
                     >
                         Export CSV
                     </a>
@@ -7598,6 +7894,12 @@ function EvaluationDashboard({ events }) {
 
     return (
         <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                    <ClipboardList className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h1 className="text-2xl font-semibold text-slate-900">Evaluation &amp; Scoring System</h1>
+            </div>
             <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-4">
                 <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
@@ -7696,15 +7998,13 @@ function EvaluationDashboard({ events }) {
                                                     >
                                                         <ClipboardCheck className="w-4 h-4" />
                                                     </a>
-                                                    {event.evaluation && (
-                                                        <a
-                                                            href={`/simulation-events/${event.id}/evaluation/summary`}
-                                                            className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all shadow-sm"
-                                                            title="View Summary"
-                                                        >
-                                                            <Eye className="w-4 h-4" />
-                                                        </a>
-                                                    )}
+                                                    <a
+                                                        href={`/simulation-events/${event.id}/evaluation/summary`}
+                                                        className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all shadow-sm"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -7736,16 +8036,51 @@ function EvaluationDashboard({ events }) {
 function EvaluationParticipantsList({ event, evaluation, criteria, attendances, participantEvaluations }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
+    // Debug: Log participantEvaluations to see the structure (remove in production)
+    React.useEffect(() => {
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Participant Evaluations:', participantEvaluations);
+            console.log('Is Array:', Array.isArray(participantEvaluations));
+            console.log('Type:', typeof participantEvaluations);
+        }
+    }, [participantEvaluations]);
+
     const getEvaluationStatus = (userId) => {
         // Handle both object and array formats
-        const pe = participantEvaluations?.find ?
-            participantEvaluations.find(p => String(p.user_id) === String(userId)) :
-            participantEvaluations?.[userId] || participantEvaluations?.[String(userId)];
-        if (!pe) return { label: 'Not Evaluated', color: 'text-slate-500' };
-        if (pe.status === 'draft') return { label: 'Draft', color: 'text-amber-600' };
-        if (pe.status === 'submitted') return { label: 'Submitted', color: 'text-emerald-600' };
-        return { label: 'Not Evaluated', color: 'text-slate-500' };
+        const pe = Array.isArray(participantEvaluations)
+            ? participantEvaluations.find(p => String(p.user_id) === String(userId))
+            : participantEvaluations?.[userId] || participantEvaluations?.[String(userId)];
+
+        // No record or anything other than "submitted" = Not Evaluated
+        if (!pe || pe.status !== 'submitted') {
+            return { label: 'Not Evaluated', color: 'text-slate-500' };
+        }
+
+        // Submitted = Evaluated
+        return { label: 'Evaluated', color: 'text-emerald-600' };
     };
+
+    const participants = React.useMemo(() => {
+        const rows = Array.isArray(attendances) ? attendances : [];
+        const seen = new Set();
+        const out = [];
+
+        for (const a of rows) {
+            const userId = a?.user_id ?? a?.user?.id;
+            if (!userId) continue;
+            const key = String(userId);
+            if (seen.has(key)) continue;
+            seen.add(key);
+
+            out.push({
+                user_id: userId,
+                user: a?.user || null,
+                attendance_status: a?.status || 'not_marked',
+            });
+        }
+
+        return out;
+    }, [attendances]);
 
     const handleLockEvaluation = async () => {
         if (!confirm('Are you sure you want to lock this evaluation? Once locked, scores cannot be modified.')) {
@@ -7770,9 +8105,296 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
         }
     };
 
+    // Open Evaluation page intentionally does not include
+    // "overall performance" and export actions (those live in Summary).
+
+    // Get current date for footer
+    const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
     return (
-        <div className="space-y-4">
-            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6">
+        <div className="space-y-4 print-container">
+            <style>{`
+                /* Print-only elements: hidden on screen */
+                .print-only {
+                    display: none !important;
+                }
+                @media print {
+                    @page {
+                        size: A4;
+                        margin: 2cm 1.5cm;
+                    }
+                    
+                    /* Hide all UI elements - sidebar, topbar, buttons, etc. */
+                    .no-print {
+                        display: none !important;
+                    }
+                    
+                    /* Reset layout for print - full width, no sidebar margin */
+                    html, body {
+                        background: #ffffff !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        overflow: visible !important;
+                    }
+                    
+                    #app,
+                    #app > div,
+                    main {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        max-width: none !important;
+                        background: #ffffff !important;
+                    }
+                    
+                    /* Show print container and make it full width */
+                    .print-container {
+                        display: block !important;
+                        max-width: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    
+                    /* Print-only: hidden on screen, visible when printing */
+                    .print-only {
+                        display: block !important;
+                    }
+                    
+                    .print-only.print-body table {
+                        display: table !important;
+                    }
+                    
+                    .print-container {
+                        max-width: 100% !important;
+                        margin: 0 auto !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                    }
+                    
+                    /* Remove all colors and styling */
+                    * {
+                        color: #000000 !important;
+                        background: #ffffff !important;
+                        border-color: #000000 !important;
+                    }
+                    
+                    .print-container [class*="bg-"],
+                    .print-container [class*="from-"],
+                    .print-container [class*="to-"] {
+                        background: #ffffff !important;
+                        background-color: #ffffff !important;
+                    }
+                    
+                    .print-container [class*="text-"] {
+                        color: #000000 !important;
+                    }
+                    
+                    .print-container [class*="border-"] {
+                        border-color: #000000 !important;
+                    }
+                    
+                    .print-container [class*="rounded"],
+                    .print-container [class*="shadow"] {
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                    }
+                    
+                    /* Header Section */
+                    .print-header {
+                        text-align: center;
+                        margin-bottom: 24px;
+                        padding-bottom: 16px;
+                        border-bottom: 2px solid #000000 !important;
+                        page-break-after: avoid;
+                    }
+                    
+                    .print-header .system-name {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        margin-bottom: 4px;
+                        color: #000000 !important;
+                    }
+                    
+                    .print-header .report-title {
+                        font-size: 16pt;
+                        font-weight: bold;
+                        margin: 8px 0;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        color: #000000 !important;
+                    }
+                    
+                    .print-header .report-info {
+                        font-size: 10pt;
+                        margin-top: 8px;
+                        line-height: 1.6;
+                        color: #000000 !important;
+                    }
+                    
+                    .print-header .report-info div {
+                        margin: 4px 0;
+                    }
+                    
+                    /* Body Section */
+                    .print-body {
+                        margin: 20px 0;
+                        page-break-inside: avoid;
+                    }
+                    
+                    .print-section-title {
+                        font-size: 12pt;
+                        font-weight: bold;
+                        margin: 20px 0 10px 0;
+                        text-transform: uppercase;
+                        border-bottom: 1px solid #000000 !important;
+                        padding-bottom: 4px;
+                        color: #000000 !important;
+                        page-break-after: avoid;
+                    }
+                    
+                    .print-criteria {
+                        margin: 12px 0 20px 0;
+                        font-size: 10pt;
+                        color: #000000 !important;
+                    }
+                    
+                    .print-criteria ul {
+                        list-style: none;
+                        padding-left: 0;
+                        margin: 8px 0;
+                    }
+                    
+                    .print-criteria li {
+                        margin: 6px 0;
+                        padding-left: 20px;
+                        position: relative;
+                        color: #000000 !important;
+                    }
+                    
+                    .print-criteria li:before {
+                        content: "•";
+                        position: absolute;
+                        left: 0;
+                        color: #000000 !important;
+                    }
+                    
+                    /* Table Styling */
+                    .print-container table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 16px 0;
+                        border: 2px solid #000000 !important;
+                    }
+                    
+                    .print-container table thead {
+                        background: #ffffff !important;
+                    }
+                    
+                    .print-container table th {
+                        border: 1px solid #000000 !important;
+                        padding: 10px 8px;
+                        text-align: left;
+                        font-weight: bold;
+                        font-size: 10pt;
+                        background: #ffffff !important;
+                        border-bottom: 2px solid #000000 !important;
+                    }
+                    
+                    .print-container table td {
+                        border: 1px solid #000000 !important;
+                        padding: 8px;
+                        font-size: 10pt;
+                        background: #ffffff !important;
+                    }
+                    
+                    .print-container table tbody tr {
+                        border-bottom: 1px solid #000000 !important;
+                    }
+                    
+                    .print-container table tbody tr:last-child {
+                        border-bottom: none !important;
+                    }
+                    
+                    .print-container table tbody td {
+                        vertical-align: top;
+                    }
+                    
+                    /* Summary Section */
+                    .print-summary {
+                        margin: 24px 0;
+                        padding: 12px;
+                        border: 2px solid #000000 !important;
+                        page-break-inside: avoid;
+                    }
+                    
+                    .print-summary-title {
+                        font-size: 12pt;
+                        font-weight: bold;
+                        margin-bottom: 12px;
+                        text-transform: uppercase;
+                        color: #000000 !important;
+                    }
+                    
+                    .print-summary-content {
+                        display: block !important;
+                        font-size: 11pt;
+                        color: #000000 !important;
+                    }
+                    
+                    .print-summary-content > div {
+                        margin: 8px 0;
+                    }
+                    
+                    /* Footer Section */
+                    .print-footer {
+                        margin-top: 40px;
+                        padding-top: 12px;
+                        border-top: 1px solid #000000 !important;
+                        font-size: 9pt;
+                        text-align: center;
+                        color: #000000 !important;
+                        page-break-inside: avoid;
+                    }
+                    
+                    .print-footer div {
+                        margin: 4px 0;
+                    }
+                    
+                    /* Hide all interactive elements */
+                    .print-container button,
+                    .print-container a[href]:not(.print-link),
+                    .print-container [class*="hover"],
+                    .print-container [onclick] {
+                        display: none !important;
+                    }
+                    
+                    /* Remove flex displays */
+                    .print-container .flex,
+                    .print-container .inline-flex {
+                        display: block !important;
+                    }
+                    
+                    .print-container .space-y-4 > * + * {
+                        margin-top: 20px !important;
+                    }
+                }
+            `}</style>
+            
+            {/* Print Header - Hidden on screen, shown when printing */}
+            <div className="print-only print-header">
+                <div className="system-name">Disaster Preparedness Training & Simulation</div>
+                <div className="report-title">Participants Evaluation Report</div>
+                <div className="report-info">
+                    <div><strong>Scenario:</strong> {event.scenario?.title || 'N/A'}</div>
+                    <div><strong>Location:</strong> {event.location || 'N/A'}</div>
+                    <div><strong>Date:</strong> {formatDate(event.event_date)}</div>
+                </div>
+            </div>
+            {/* Screen View - Buttons and Status */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6 no-print">
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="text-sm font-semibold text-slate-800">
@@ -7805,107 +8427,308 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                         )}
                     </div>
                 </div>
+            </div>
 
-                {!criteria || criteria.length === 0 ? (
-                    <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-sm text-rose-700">
-                            <strong>Warning:</strong> This scenario does not have evaluation criteria defined.
-                            Please add criteria to the scenario before evaluating participants.
-                        </p>
+            {/* Screen View Content */}
+            {!criteria || criteria.length === 0 ? (
+                <div className="rounded-md border border-rose-200 bg-rose-50 p-4 no-print">
+                    <p className="text-sm text-rose-700">
+                        <strong>Warning:</strong> This scenario does not have evaluation criteria defined.
+                        Please add criteria to the scenario before evaluating participants.
+                    </p>
+                </div>
+            ) : (
+                <>
+                    {/* Screen View - Evaluation Criteria */}
+                    <div className="mb-4 no-print">
+                        <p className="text-xs font-semibold text-slate-600 mb-2">Evaluation Criteria:</p>
+                        <ul className="space-y-1">
+                            {criteria.map((criterion, index) => (
+                                <li key={index} className="text-xs text-slate-600 flex items-start gap-2">
+                                    <span className="text-emerald-600 mt-0.5">•</span>
+                                    <span>{criterion}</span>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
-                ) : (
+
+                    {/* Participant Evaluated Section - Screen View */}
+                    {(() => {
+                            // Convert participantEvaluations to array if it's an object
+                            let evaluationsArray = [];
+                            if (Array.isArray(participantEvaluations)) {
+                                evaluationsArray = participantEvaluations;
+                            } else if (participantEvaluations && typeof participantEvaluations === 'object') {
+                                // Handle object keyed by user_id
+                                evaluationsArray = Object.values(participantEvaluations);
+                            }
+                            
+                            const submittedEvaluations = evaluationsArray.filter(pe => {
+                                const status = pe?.status || pe?.Status;
+                                return status === 'submitted';
+                            });
+                            
+                            // (dev logs removed)
+                            
+                            return (
+                                <>
+                                    {/* Screen View - Participant Evaluated */}
+                                    <div className="border-t border-slate-200 pt-4 mb-4 no-print">
+                                        <h4 className="text-xs font-semibold text-slate-800 mb-3">
+                                            Participant Evaluated ({submittedEvaluations.length})
+                                        </h4>
+                                        {submittedEvaluations.length > 0 ? (
+                                            <div className="rounded-md border border-slate-200 overflow-hidden">
+                                                <table className="min-w-full divide-y divide-slate-200">
+                                                    <thead className="bg-slate-50">
+                                                        <tr>
+                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Attendance</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Evaluated Status</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Score</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-slate-100">
+                                                        {submittedEvaluations.map((pe) => {
+                                                            const attendance = attendances?.find(a => String(a.user_id) === String(pe.user_id));
+                                                            const isPresent = attendance?.status === 'present' || attendance?.status === 'completed';
+                                                            const totalScore = parseFloat(pe.total_score) || 0;
+                                                            const maxScore = criteria ? criteria.length * 10 : 0;
+                                                            const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(2) : '0.00';
+                                                            
+                                                            return (
+                                                                <tr key={pe.id || `pe-${pe.user_id}`} className="hover:bg-slate-50 transition-colors">
+                                                                    <td className="px-4 py-3 text-sm text-slate-800">
+                                                                        {pe.user?.name || attendance?.user?.name || 'Unknown'}
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                                            isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                                                        }`}>
+                                                                            {isPresent ? 'Present' : 'Not Marked'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <span className="text-xs font-medium text-emerald-600">
+                                                                            Evaluated
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-sm text-slate-800">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-semibold">{totalScore.toFixed(2)} / {maxScore}</span>
+                                                                            <span className="text-xs text-slate-500">{percentage}%</span>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-center">
+                                                <p className="text-xs text-slate-500">No participants have been evaluated yet.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                </>
+                            );
+                    })()}
+
+                    {/* Participant Evaluation List (Open Evaluation page) */}
+                    {(() => {
+                        let evaluationsArray = [];
+                        if (Array.isArray(participantEvaluations)) {
+                            evaluationsArray = participantEvaluations;
+                        } else if (participantEvaluations && typeof participantEvaluations === 'object') {
+                            evaluationsArray = Object.values(participantEvaluations);
+                        }
+
+                        const submittedIds = new Set(
+                            evaluationsArray
+                                .filter((pe) => (pe?.status || pe?.Status) === 'submitted')
+                                .map((pe) => String(pe.user_id))
+                        );
+
+                        const pending = participants.filter((p) => !submittedIds.has(String(p.user_id)));
+                        const isLocked = evaluation?.status === 'locked' || Boolean(evaluation?.locked_at);
+
+                        return (
+                            <div className="border-t border-slate-200 pt-4 mb-4 no-print">
+                                <h4 className="text-xs font-semibold text-slate-800 mb-3">
+                                    Participant Evaluation List ({pending.length})
+                                </h4>
+
+                                {pending.length > 0 ? (
+                                    <div className="rounded-md border border-slate-200 overflow-hidden">
+                                        <table className="min-w-full divide-y divide-slate-200">
+                                            <thead className="bg-slate-50">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Attendance</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Evaluation Status</th>
+                                                    <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-slate-100">
+                                                {pending.map((p) => {
+                                                    const status = getEvaluationStatus(p.user_id);
+                                                    const isPresent = p.attendance_status === 'present' || p.attendance_status === 'completed';
+
+                                                    return (
+                                                        <tr key={`pending-${p.user_id}`} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-4 py-3 text-sm text-slate-800">
+                                                                {p.user?.name || 'Unknown'}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                    {isPresent ? 'Present' : 'Not Marked'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className={`text-xs font-medium ${status.color}`}>
+                                                                    {status.label}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                {isLocked ? (
+                                                                    <span className="text-xs text-slate-500">Locked</span>
+                                                                ) : (
+                                                                    <a
+                                                                        href={`/simulation-events/${event.id}/evaluation/${p.user_id}`}
+                                                                        className={`inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${isPresent ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed pointer-events-none'}`}
+                                                                        title={isPresent ? 'Evaluate participant' : 'Participant must be marked present first'}
+                                                                    >
+                                                                        Evaluate
+                                                                    </a>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-center">
+                                        <p className="text-xs text-slate-500">No participants pending evaluation.</p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+
+                    {/* Overall Performance Score Section - Screen View */}
+                    {/* Overall Performance Score removed from Open Evaluation (use Summary instead). */}
+                </>
+            )}
+
+            {/* Print Body Content - Hidden on screen, shown only when printing */}
+            <div className="print-only print-body">
+                {criteria && criteria.length > 0 && (
                     <>
-                        <div className="mb-4">
-                            <p className="text-xs font-semibold text-slate-600 mb-2">Evaluation Criteria:</p>
-                            <ul className="space-y-1">
+                        {/* Print: Evaluation Criteria Section */}
+                        <div className="print-section-title">
+                            Evaluation Criteria
+                        </div>
+                        <div className="print-criteria">
+                            <ul>
                                 {criteria.map((criterion, index) => (
-                                    <li key={index} className="text-xs text-slate-600 flex items-start gap-2">
-                                        <span className="text-emerald-600 mt-0.5">•</span>
-                                        <span>{criterion}</span>
-                                    </li>
+                                    <li key={index}>{criterion}</li>
                                 ))}
                             </ul>
                         </div>
 
-                        <div className="border-t border-slate-200 pt-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="text-xs font-semibold text-slate-800">
-                                    Participant Evaluation List ({attendances?.length || 0})
-                                </h4>
-                                <a
-                                    href={`/simulation-events/${event.id}/attendance`}
-                                    className="text-[10px] font-medium text-emerald-600 hover:text-emerald-700 hover:underline transition-all"
-                                >
-                                    Manage All Attendance
-                                </a>
-                            </div>
-                            {attendances && attendances.length > 0 ? (
-                                <div className="rounded-md border border-slate-200 overflow-hidden">
-                                    <table className="min-w-full divide-y divide-slate-200">
-                                        <thead className="bg-slate-50">
-                                            <tr>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Attendance</th>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Evaluation Status</th>
-                                                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-slate-100">
-                                            {attendances.map((attendance) => {
-                                                const evalStatus = getEvaluationStatus(attendance.user_id);
-                                                const isPresent = attendance.status === 'present' || attendance.status === 'completed';
+                        {/* Print: Participants Table */}
+                        {(() => {
+                            let evaluationsArray = [];
+                            if (Array.isArray(participantEvaluations)) {
+                                evaluationsArray = participantEvaluations;
+                            } else if (participantEvaluations && typeof participantEvaluations === 'object') {
+                                evaluationsArray = Object.values(participantEvaluations);
+                            }
+                            
+                            const submittedEvaluations = evaluationsArray.filter(pe => {
+                                const status = pe?.status || pe?.Status;
+                                return status === 'submitted';
+                            });
+                            
+                            return (
+                                <>
+                                    <div className="print-section-title">Participants Evaluation</div>
+                                    {submittedEvaluations.length > 0 && (
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Participant Name</th>
+                                                    <th>Attendance</th>
+                                                    <th>Evaluation Status</th>
+                                                    <th>Score</th>
+                                                    <th>Percentage</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {submittedEvaluations.map((pe) => {
+                                                    const attendance = attendances?.find(a => String(a.user_id) === String(pe.user_id));
+                                                    const isPresent = attendance?.status === 'present' || attendance?.status === 'completed';
+                                                    const totalScore = parseFloat(pe.total_score) || 0;
+                                                    const maxScore = criteria ? criteria.length * 10 : 0;
+                                                    const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(2) : '0.00';
+                                                    
+                                                    return (
+                                                        <tr key={pe.id || `pe-print-${pe.user_id}`}>
+                                                            <td>{pe.user?.name || attendance?.user?.name || 'Unknown'}</td>
+                                                            <td>{isPresent ? 'Present' : 'Not Marked'}</td>
+                                                            <td>Evaluated</td>
+                                                            <td>{totalScore.toFixed(2)} / {maxScore}</td>
+                                                            <td>{percentage}%</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                    
+                                    {/* Print: Summary */}
+                                    {submittedEvaluations.length > 0 && (
+                                        <div className="print-summary">
+                                            <div className="print-summary-title">Summary</div>
+                                            <div className="print-summary-content">
+                                                {(() => {
+                                                    const maxScore = criteria ? criteria.length * 10 : 0;
+                                                    const totalScoreSum = submittedEvaluations.reduce((sum, pe) => sum + (parseFloat(pe.total_score) || 0), 0);
+                                                    const averageScore = submittedEvaluations.length > 0 ? (totalScoreSum / submittedEvaluations.length) : 0;
+                                                    const averagePercentage = maxScore > 0 ? ((averageScore / maxScore) * 100) : 0;
 
-                                                return (
-                                                    <tr key={attendance.id || `user-${attendance.user_id}`} className="hover:bg-slate-50 transition-colors">
-                                                        <td className="px-4 py-3 text-sm text-slate-800">
-                                                            {attendance.user?.name || 'Unknown'}
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                                                }`}>
-                                                                {isPresent ? 'Present' : 'Not Marked'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <span className={`text-xs font-medium ${evalStatus.color}`}>
-                                                                {evalStatus.label}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
-                                                            {isPresent ? (
-                                                                <a
-                                                                    href={`/simulation-events/${event.id}/evaluation/${attendance.user_id}`}
-                                                                    className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100 transition-all shadow-sm"
-                                                                >
-                                                                    {(() => {
-                                                                        const pe = participantEvaluations?.find ?
-                                                                            participantEvaluations.find(p => String(p.user_id) === String(attendance.user_id)) :
-                                                                            participantEvaluations?.[attendance.user_id] || participantEvaluations?.[String(attendance.user_id)];
-                                                                        return pe ? 'Edit Score' : 'Evaluate';
-                                                                    })()}
-                                                                </a>
-                                                            ) : (
-                                                                <a
-                                                                    href={`/simulation-events/${event.id}/attendance`}
-                                                                    className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-all shadow-sm"
-                                                                >
-                                                                    <Play className="w-3 h-3 text-blue-500" />
-                                                                    Track Attendance
-                                                                </a>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <p className="text-sm text-slate-500">No approved participants found for this event.</p>
-                            )}
-                        </div>
+                                                    return (
+                                                        <>
+                                                            <div style={{ marginBottom: '8px' }}>
+                                                                <strong>Average Score:</strong> {averageScore.toFixed(2)} / {maxScore}
+                                                            </div>
+                                                            <div style={{ marginBottom: '8px' }}>
+                                                                <strong>Average Percentage:</strong> {averagePercentage.toFixed(2)}%
+                                                            </div>
+                                                            <div>
+                                                                <strong>Total Participants Evaluated:</strong> {submittedEvaluations.length}
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </>
                 )}
+            </div>
+            
+            {/* Print Footer - Hidden on screen, shown when printing */}
+            <div className="print-only print-footer">
+                <div>Generated by: Disaster Preparedness Training & Simulation</div>
+                <div>Date Generated: {currentDate}</div>
             </div>
         </div>
     );
@@ -7933,8 +8756,6 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
         return initial;
     });
     const [overallFeedback, setOverallFeedback] = React.useState(participantEvaluation?.overall_feedback || '');
-    const [status, setStatus] = React.useState(participantEvaluation?.status || 'draft');
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const handleScoreChange = (criterion, field, value) => {
         setFormScores(prev => ({
@@ -7946,40 +8767,60 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
         }));
     };
 
-    const handleSubmit = async (e, submitStatus) => {
+    // Calculate total score and percentage
+    const calculateTotalScore = () => {
+        const scores = Object.values(formScores).map(s => parseFloat(s.score) || 0);
+        const totalScore = scores.reduce((sum, score) => sum + score, 0);
+        const maxScore = criteria ? criteria.length * 10 : 0;
+        const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(2) : 0;
+        return { totalScore, maxScore, percentage };
+    };
+
+    const { totalScore, maxScore, percentage } = calculateTotalScore();
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsSubmitting(true);
+        
+        // Validation: Check if all criteria have scores
+        const missingScores = criteria?.filter(criterion => {
+            const scoreData = formScores[criterion] || {};
+            return !scoreData.score || scoreData.score === '';
+        });
 
-        try {
-            const formData = new FormData();
-            formData.append('_token', csrf);
-
-            Object.keys(formScores).forEach(criterion => {
-                formData.append(`scores[${criterion}][score]`, formScores[criterion].score || 0);
-                formData.append(`scores[${criterion}][comment]`, formScores[criterion].comment || '');
+        if (missingScores && missingScores.length > 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Incomplete Evaluation',
+                text: 'Please provide a score for all evaluation criteria before submitting.',
+                confirmButtonColor: '#16a34a',
             });
-
-            formData.append('overall_feedback', overallFeedback);
-            formData.append('status', submitStatus);
-
-            const response = await fetch(`/simulation-events/${event.id}/evaluation/${user.id}`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            if (response.ok) {
-                window.location.href = `/simulation-events/${event.id}/evaluation`;
-            } else {
-                alert('Failed to save evaluation');
-            }
-        } catch (error) {
-            alert('Error saving evaluation');
-        } finally {
-            setIsSubmitting(false);
+            return;
         }
+
+        // Confirmation dialog
+        const result = await Swal.fire({
+            title: 'Submit Final Score?',
+            html: `
+                <div class="text-left">
+                    <p class="mb-2">Are you sure you want to submit this evaluation?</p>
+                    <p class="text-sm text-slate-600 mb-2"><strong>Total Score:</strong> ${totalScore.toFixed(2)} / ${maxScore}</p>
+                    <p class="text-sm text-slate-600"><strong>Final Percentage:</strong> ${percentage}%</p>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Submit',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#64748b',
+        });
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        // After confirmation, submit the form normally so Laravel handles redirect & persistence
+        e.target.submit();
     };
 
     const isLocked = evaluation?.status === 'locked' || evaluation?.locked_at;
@@ -8006,7 +8847,14 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                     </div>
                 )}
 
-                <form onSubmit={(e) => handleSubmit(e, status)} className="space-y-6">
+                <form
+                    method="POST"
+                    action={`/simulation-events/${event.id}/evaluation/${user.id}`}
+                    onSubmit={handleSubmit}
+                    className="space-y-6"
+                >
+                    <input type="hidden" name="_token" value={csrf} />
+                    <input type="hidden" name="status" value="submitted" />
                     {criteria && criteria.length > 0 ? (
                         <div className="space-y-4">
                             <h4 className="text-xs font-semibold text-slate-800">Evaluation Criteria</h4>
@@ -8020,20 +8868,31 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                                 {criterionName} <span className="text-red-500">*</span>
                                             </label>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 mb-3">
-                                            <div>
-                                                <label className="block text-xs text-slate-600 mb-1">Score (0-10)</label>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max="10"
-                                                    step="0.1"
-                                                    value={scoreData.score}
-                                                    onChange={(e) => handleScoreChange(criterionName, 'score', e.target.value)}
-                                                    disabled={isLocked}
-                                                    required
-                                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100"
-                                                />
+                                        <div className="mb-3">
+                                            <label className="block text-xs text-slate-600 mb-2">Score (0-10) *</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                                                    <label
+                                                        key={score}
+                                                        className={`inline-flex items-center justify-center w-10 h-10 rounded border-2 cursor-pointer transition-all ${
+                                                            String(scoreData.score) === String(score)
+                                                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                                                : 'bg-white border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+                                                        } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name={`score-${criterionName}`}
+                                                            value={score}
+                                                            checked={String(scoreData.score) === String(score)}
+                                                            onChange={(e) => handleScoreChange(criterionName, 'score', e.target.value)}
+                                                            disabled={isLocked}
+                                                            required
+                                                            className="sr-only"
+                                                        />
+                                                        <span className="text-sm font-semibold">{score}</span>
+                                                    </label>
+                                                ))}
                                             </div>
                                         </div>
                                         <div>
@@ -8047,6 +8906,17 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                                 placeholder="Add comments about this criterion..."
                                             />
                                         </div>
+                                        {/* Hidden inputs so scores/comments are submitted via normal POST */}
+                                        <input
+                                            type="hidden"
+                                            name={`scores[${criterionName}][score]`}
+                                            value={scoreData.score ?? ''}
+                                        />
+                                        <input
+                                            type="hidden"
+                                            name={`scores[${criterionName}][comment]`}
+                                            value={scoreData.comment ?? ''}
+                                        />
                                     </div>
                                 );
                             })}
@@ -8064,6 +8934,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                             Overall Feedback
                         </label>
                         <textarea
+                            name="overall_feedback"
                             rows={4}
                             value={overallFeedback}
                             onChange={(e) => setOverallFeedback(e.target.value)}
@@ -8071,6 +8942,26 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100"
                             placeholder="Provide overall feedback for this participant..."
                         />
+                    </div>
+
+                    {/* Total Score Display */}
+                    <div className="border-t border-slate-200 pt-4">
+                        <div className="bg-slate-50 rounded-md p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-700 mb-1">Total Score</p>
+                                    <p className="text-lg font-bold text-emerald-700">
+                                        {totalScore.toFixed(2)} / {maxScore}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-semibold text-slate-700 mb-1">Final Percentage</p>
+                                    <p className="text-lg font-bold text-emerald-700">
+                                        {percentage}%
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {!isLocked && (
@@ -8082,20 +8973,10 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                 Cancel
                             </a>
                             <button
-                                type="button"
-                                onClick={(e) => handleSubmit(e, 'draft')}
-                                disabled={isSubmitting}
-                                className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                            >
-                                {isSubmitting ? 'Saving...' : 'Save Draft'}
-                            </button>
-                            <button
                                 type="submit"
-                                onClick={(e) => handleSubmit(e, 'submitted')}
-                                disabled={isSubmitting}
-                                className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+                                className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-medium"
                             >
-                                {isSubmitting ? 'Submitting...' : 'Submit Final Score'}
+                                Submit Final Score
                             </button>
                         </div>
                     )}
@@ -8111,9 +8992,105 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
         window.location.href = `/simulation-events/${event.id}/evaluation/export/${format}`;
     };
 
+    const handlePrint = () => window.print();
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const avgPct = (parseFloat(overallAverage ?? 0) || 0).toFixed(2);
+
     return (
-        <div className="space-y-4">
-            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6">
+        <div className="space-y-4 summary-print">
+            <style>{`
+                /* Print-only elements: hidden on screen */
+                .summary-print .print-only { display: none !important; }
+                @media print {
+                    @page { size: A4; margin: 2cm 1.5cm; }
+                    html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+                    .no-print { display: none !important; }
+                    .summary-print .print-only { display: block !important; }
+                    .summary-print .print-report { max-width: 100% !important; margin: 0 auto !important; color: #000 !important; }
+                    .summary-print * { color: #000 !important; background: #fff !important; box-shadow: none !important; }
+                    .summary-print table { width: 100% !important; border-collapse: collapse !important; }
+                    .summary-print th, .summary-print td { border: 1px solid #000 !important; padding: 6px 8px !important; font-size: 10pt !important; }
+                    .summary-print thead th { font-weight: 700 !important; border-bottom: 2px solid #000 !important; }
+                }
+            `}</style>
+
+            {/* Print-only professional report */}
+            <div className="print-only print-report">
+                <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 12, marginBottom: 16 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>Disaster Preparedness Training &amp; Simulation</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, marginTop: 6, letterSpacing: 1 }}>Participants Evaluation Report</div>
+                    <div style={{ fontSize: 10, marginTop: 10, lineHeight: 1.6 }}>
+                        <div><strong>Scenario:</strong> {event?.scenario?.title || 'N/A'}</div>
+                        <div><strong>Location:</strong> {event?.location || 'N/A'}</div>
+                        <div><strong>Date:</strong> {formatDate(event?.event_date)}</div>
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, borderBottom: '1px solid #000', paddingBottom: 4, marginBottom: 10, textTransform: 'uppercase' }}>
+                        Summary
+                    </div>
+                    <div style={{ fontSize: 11, lineHeight: 1.8 }}>
+                        <div><strong>Total Participants:</strong> {totalParticipants || 0}</div>
+                        <div><strong>Passed:</strong> {passedCount || 0}</div>
+                        <div><strong>Failed:</strong> {failedCount || 0}</div>
+                        <div style={{ marginTop: 10 }}><strong>Average Score:</strong> {avgPct}%</div>
+                    </div>
+                </div>
+
+                {criteria && criteria.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, borderBottom: '1px solid #000', paddingBottom: 4, marginBottom: 10, textTransform: 'uppercase' }}>
+                            Criterion
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 10, lineHeight: 1.6 }}>
+                            {criteria.map((c, idx) => (<li key={`crit-print-${idx}`}>{c}</li>))}
+                        </ul>
+                    </div>
+                )}
+
+                <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, borderBottom: '1px solid #000', paddingBottom: 4, marginBottom: 10, textTransform: 'uppercase' }}>
+                        Participants Table
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Participant Name</th>
+                                <th>Total Score</th>
+                                <th>Result</th>
+                                <th>Average Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {participantEvaluations && participantEvaluations.length > 0 ? (
+                                participantEvaluations.map((pe) => {
+                                    const totalScore = parseFloat(pe.total_score ?? 0) || 0;
+                                    const averageScore = parseFloat(pe.average_score ?? 0) || 0;
+                                    return (
+                                        <tr key={`pe-print-${pe.id}`}>
+                                            <td>{pe.user?.name || 'Unknown'}</td>
+                                            <td>{totalScore.toFixed(2)}</td>
+                                            <td>{pe.result === 'passed' ? 'Passed' : 'Failed'}</td>
+                                            <td>{averageScore.toFixed(2)}%</td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr><td colSpan={4}>No evaluations submitted yet.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style={{ marginTop: 24, borderTop: '1px solid #000', paddingTop: 10, textAlign: 'center', fontSize: 9 }}>
+                    <div>Generated by: Disaster Preparedness Training &amp; Simulation</div>
+                    <div>Date Generated: {currentDate}</div>
+                </div>
+            </div>
+
+            {/* Screen view */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6 no-print">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h3 className="text-sm font-semibold text-slate-800">
@@ -8126,8 +9103,14 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                     </div>
                     <div className="flex items-center gap-2">
                         <button
+                            onClick={handlePrint}
+                            className="inline-flex items-center rounded-md border border-sky-300 bg-sky-100 px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-200"
+                        >
+                            Print Summary
+                        </button>
+                        <button
                             onClick={() => handleExport('csv')}
-                            className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-200"
                         >
                             Export CSV
                         </button>
@@ -8150,22 +9133,22 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                     </div>
                     <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
                         <p className="text-xs text-blue-600 mb-1">Average Score</p>
-                        <p className="text-2xl font-bold text-blue-700">{overallAverage?.toFixed(2) || '0.00'}%</p>
+                        <p className="text-2xl font-bold text-blue-700">
+                            {(parseFloat(overallAverage ?? 0) || 0).toFixed(2)}%
+                        </p>
                     </div>
                 </div>
 
                 {/* Criterion Averages */}
                 {criteria && criteria.length > 0 && (
                     <div className="mb-6">
-                        <h4 className="text-xs font-semibold text-slate-800 mb-3">Average Scores by Criterion</h4>
+                        <h4 className="text-xs font-semibold text-slate-800 mb-3">Criterion</h4>
                         <div className="space-y-2">
                             {criteria.map((criterion, index) => {
                                 const criterionName = criterion;
-                                const avg = criterionAverages?.[criterionName] || 0;
                                 return (
                                     <div key={index} className="flex items-center justify-between p-3 border border-slate-200 rounded-md">
                                         <span className="text-sm text-slate-700">{criterionName}</span>
-                                        <span className="text-sm font-semibold text-slate-800">{avg.toFixed(2)}</span>
                                     </div>
                                 );
                             })}
@@ -8189,16 +9172,20 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-100">
                                 {participantEvaluations && participantEvaluations.length > 0 ? (
-                                    participantEvaluations.map((pe) => (
+                                    participantEvaluations.map((pe) => {
+                                        const totalScore = parseFloat(pe.total_score ?? 0) || 0;
+                                        const averageScore = parseFloat(pe.average_score ?? 0) || 0;
+
+                                        return (
                                         <tr key={pe.id} className="hover:bg-slate-50">
                                             <td className="px-4 py-3 text-sm text-slate-800">
                                                 {pe.user?.name || 'Unknown'}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-slate-600">
-                                                {pe.total_score?.toFixed(2) || '0.00'}
+                                                {totalScore.toFixed(2)}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-slate-600">
-                                                {pe.average_score?.toFixed(2) || '0.00'}%
+                                                {averageScore.toFixed(2)}%
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${pe.result === 'passed'
@@ -8218,7 +9205,8 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                 )}
                                             </td>
                                         </tr>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <tr>
                                         <td colSpan="5" className="px-4 py-8 text-center text-sm text-slate-500">
@@ -8279,9 +9267,14 @@ function BarangayProfileList({ profiles = [] }) {
     return (
         <div className="space-y-6 w-full">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Barangay Profile</h2>
-                    <p className="text-sm text-slate-600 mt-1">Manage barangay information and disaster hazards.</p>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <Settings className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-900">Barangay Profile</h2>
+                        <p className="text-sm text-slate-600 mt-1">Manage barangay information and disaster hazards.</p>
+                    </div>
                 </div>
                 <a
                     href="/barangay-profile/create"

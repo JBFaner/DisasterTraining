@@ -16,7 +16,7 @@ class ScenarioController extends Controller
 {
     public function index()
     {
-        $scenarios = Scenario::with('trainingModule')
+        $scenarios = Scenario::with(['trainingModule', 'creator'])
             ->orderByDesc('updated_at')
             ->get();
 
@@ -103,7 +103,7 @@ class ScenarioController extends Controller
 
         return view('app', [
             'section' => 'scenario_detail',
-            'scenario' => $scenario->load(['trainingModule', 'injects', 'expectedActions']),
+            'scenario' => $scenario->load(['trainingModule', 'injects', 'expectedActions', 'creator']),
         ]);
     }
 

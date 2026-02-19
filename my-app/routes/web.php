@@ -216,12 +216,12 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     // Evaluation & Scoring System
     Route::get('/evaluations', [EvaluationController::class, 'index'])->name('evaluations.index');
     Route::get('/simulation-events/{simulationEvent}/evaluation', [EvaluationController::class, 'show'])->name('evaluations.show');
+    Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [EvaluationController::class, 'summary'])->name('evaluations.summary');
+    Route::get('/simulation-events/{simulationEvent}/evaluation/export/{format?}', [EvaluationController::class, 'export'])->name('evaluations.export');
     Route::get('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'evaluate'])->name('evaluations.evaluate');
     Route::post('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'storeEvaluation'])->name('evaluations.store');
     Route::put('/evaluations/{evaluation}/status', [EvaluationController::class, 'updateStatus'])->name('evaluations.update.status');
     Route::post('/evaluations/{evaluation}/lock', [EvaluationController::class, 'lock'])->name('evaluations.lock');
-    Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [EvaluationController::class, 'summary'])->name('evaluations.summary');
-    Route::get('/simulation-events/{simulationEvent}/evaluation/export/{format?}', [EvaluationController::class, 'export'])->name('evaluations.export');
 
     // Barangay Profile (Admin only)
     Route::get('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'index'])

@@ -53,4 +53,9 @@ class Scenario extends Model
     {
         return $this->hasMany(ScenarioExpectedAction::class)->orderBy('order');
     }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

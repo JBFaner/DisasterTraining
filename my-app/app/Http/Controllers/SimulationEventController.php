@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Resource;
+use App\Models\ResourceEventAssignment;
 use App\Models\SimulationEvent;
 use App\Models\Scenario;
-use App\Models\Resource;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,10 @@ class SimulationEventController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        // Normalize event statuses before listing:
+        // - Mark published events in the past that never started as "ended"
+        SimulationEvent::autoEndPastUnstartedEvents($user?->id);
 
         // Participants see published, ongoing, ended, completed, and archived events (not draft or cancelled)
         if ($user && $user->role === 'PARTICIPANT') {
@@ -50,7 +55,6 @@ class SimulationEventController extends Controller
                     $query->where('status', 'approved');
                 }
             ])
-            ->orderByDesc('event_date')
             ->orderByDesc('created_at')
             ->get();
 
@@ -577,17 +581,45 @@ class SimulationEventController extends Controller
             'updated_by' => Auth::id(),
         ]);
 
+        // Auto-return all resources assigned to this event: mark assignments Returned and refresh resource available/status
+        $assignments = ResourceEventAssignment::where('event_id', $simulationEvent->id)
+            ->where('status', 'Active')
+            ->get();
+
+        $resourceIds = [];
+        foreach ($assignments as $assignment) {
+            $assignment->update([
+                'status' => 'Returned',
+                'returned_by' => Auth::id(),
+                'returned_at' => now(),
+            ]);
+            $resourceIds[$assignment->resource_id] = true;
+        }
+
+        foreach (array_keys($resourceIds) as $resourceId) {
+            $resource = Resource::find($resourceId);
+            if ($resource) {
+                $resource->refreshAvailabilityFromAssignments();
+            }
+        }
+
+        // Update event_resource pivot status to Returned for this event
+        $simulationEvent->load('resources');
+        foreach ($simulationEvent->resources as $resource) {
+            $simulationEvent->resources()->updateExistingPivot($resource->id, ['status' => 'Returned']);
+        }
+
         AuditLogger::log([
             'action' => 'Completed simulation event',
             'module' => 'Simulation Events',
             'status' => 'success',
-            'description' => "Title: {$simulationEvent->title}",
+            'description' => "Title: {$simulationEvent->title}. Resources auto-returned.",
             'old_values' => $old,
             'new_values' => $simulationEvent->toArray(),
         ]);
 
         return redirect()->back()
-            ->with('status', 'Event marked as completed. Evaluation can now be started.');
+            ->with('status', 'Event marked as completed. Resources have been returned to inventory. Evaluation can now be started.');
     }
 
     /**

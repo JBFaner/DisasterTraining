@@ -74,10 +74,12 @@ class ParticipantEvaluation extends Model
         $this->weighted_score = $averageScore; // Can be customized for weighted scoring
 
         // Determine pass/fail
-        $evaluation = $this->evaluation;
-        $threshold = $evaluation ? $evaluation->pass_threshold : 70.00;
+        // Business rule:
+        // - Passed if average score >= 75%
+        // - Certification eligible: Yes if Passed, else No
+        $threshold = 75.00;
         $this->result = $averageScore >= $threshold ? 'passed' : 'failed';
-        $this->is_eligible_for_certification = $this->result === 'passed' && $this->attendance && $this->attendance->status === 'completed';
+        $this->is_eligible_for_certification = $this->result === 'passed';
 
         $this->save();
     }

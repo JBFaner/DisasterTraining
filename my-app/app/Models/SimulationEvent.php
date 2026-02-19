@@ -133,4 +133,25 @@ class SimulationEvent extends Model
     {
         return $this->hasOne(Evaluation::class, 'simulation_event_id');
     }
+
+    /**
+     * Mark published events whose scheduled date has already passed and
+     * which never actually started as "ended".
+     *
+     * This is used so that long-forgotten published events don't remain
+     * in a published state forever and can be treated like completed
+     * events for resource return workflows.
+     */
+    public static function autoEndPastUnstartedEvents(?int $userId = null): void
+    {
+        $now = now();
+
+        static::where('status', 'published')
+            ->whereDate('event_date', '<', $now->toDateString())
+            ->whereNull('actual_start_time')
+            ->update([
+                'status' => 'ended',
+                'updated_by' => $userId,
+            ]);
+    }
 }

@@ -68,6 +68,9 @@ class ResourceApiController
     public function getEvents(): JsonResponse
     {
         try {
+            // Normalize statuses so stale published events are marked as ended
+            SimulationEvent::autoEndPastUnstartedEvents(auth()->id());
+
             $events = SimulationEvent::where('status', 'published')
                 ->orderBy('event_date', 'desc')
                 ->get(['id', 'title', 'event_date']);
@@ -95,8 +98,12 @@ class ResourceApiController
     public function getCompletedEventResources(): JsonResponse
     {
         try {
+            // Normalize statuses before querying so past, never-started events
+            // are treated as "ended" and included in post-event flows.
+            SimulationEvent::autoEndPastUnstartedEvents(auth()->id());
+
             // Get completed events with their resource assignments
-            $completedEvents = SimulationEvent::where('status', 'completed')
+            $completedEvents = SimulationEvent::whereIn('status', ['completed', 'ended'])
                 ->with(['resources' => function ($query) {
                     $query->wherePivot('quantity_assigned', '>', 0)
                           ->wherePivot('status', '!=', 'Returned');
