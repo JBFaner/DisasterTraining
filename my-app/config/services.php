@@ -53,4 +53,10 @@ return [
         'api_key' => env('GEMINI_API_KEY'),
     ],
 
+    'centralized_login' => [
+        'url' => env('CENTRALIZED_LOGIN_URL', 'https://login.alertaraqc.com'),
+        'api_endpoint' => env('AUTH_API_ENDPOINT', 'https://login.alertaraqc.com/api/auth/validate'),
+        'main_domain' => env('MAIN_DOMAIN', 'https://alertaraqc.com'),
+    ],
+
 ];

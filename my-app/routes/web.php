@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TrainingModuleController;
 use App\Http\Controllers\ScenarioController;
@@ -17,11 +19,18 @@ use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\UserMonitoringController;
+use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Middleware\CheckSessionInactivity;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Centralized Login Integration (AlerTara)
+// This route handles incoming requests from login.alertaraqc.com with JWT tokens
+// Entry point for centralized login - accepts token parameter
+Route::get('/auth/centralized', [CentralizedLoginController::class, 'handle'])
+    ->name('centralized.login.handle');
 
 // Admin auth routes
 Route::get('/admin/login', [AuthController::class, 'showLogin'])->name('admin.login');
@@ -67,14 +76,31 @@ Route::get('/admin/verify-email/{user}', [AdminUserController::class, 'verifyEma
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Centralized login logout (redirects to centralized login system)
+Route::get('/auth/centralized/logout', [CentralizedLoginController::class, 'logout'])
+    ->name('centralized.login.logout');
+
+// Dashboard route - handles both centralized login tokens and regular authenticated access
+// Must be outside auth middleware to allow token-based authentication
+Route::get('/dashboard', function (Request $request) {
+    // If token is present and user is not authenticated, handle centralized login
+    if ($request->has('token') && !Auth::check()) {
+        return app(CentralizedLoginController::class)->handle($request);
+    }
+    
+    // If not authenticated and no token, redirect to login
+    if (!Auth::check()) {
+        return redirect()->route('admin.login');
+    }
+    
+    // Regular authenticated dashboard access
+    return view('app', ['section' => 'dashboard']);
+})->name('dashboard');
+
 // Protected app routes (session inactivity checked on every request)
 Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::post('/session/activity', [SessionController::class, 'activity'])->name('session.activity');
     Route::get('/session/config', [SessionController::class, 'config'])->name('session.config');
-
-    Route::get('/dashboard', function () {
-        return view('app', ['section' => 'dashboard']);
-    })->name('dashboard');
 
     // Admin USB security key settings (for authenticated users managing their own keys)
     Route::get('/admin/security/usb', [SecurityController::class, 'showUsbSettings'])

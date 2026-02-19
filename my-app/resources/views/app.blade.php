@@ -141,5 +141,12 @@
                 data-status="{{ session('status') }}"
             @endif
         ></div>
+        
+        {{-- Hide token from URL after page load (for centralized login) --}}
+        <script>
+            if (window.location.search.includes('token=')) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        </script>
     </body>
 </html>
