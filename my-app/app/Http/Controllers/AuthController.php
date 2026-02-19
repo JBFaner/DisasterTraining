@@ -820,6 +820,13 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $request->session()->put('last_activity', now()->timestamp);
 
+        \Log::info('Admin OTP login success', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'session_id' => $request->session()->getId(),
+            'ip' => $request->ip(),
+        ]);
+
         AuditLogger::log([
             'user' => $user,
             'action' => 'OTP verified',

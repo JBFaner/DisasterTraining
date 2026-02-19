@@ -89,13 +89,30 @@ Route::get('/auth/centralized/logout', [CentralizedLoginController::class, 'logo
 // Dashboard route - handles both centralized login tokens and regular authenticated access
 // Must be outside auth middleware to allow token-based authentication
 Route::get('/dashboard', function (Request $request) {
+    \Log::info('Dashboard hit', [
+        'auth' => Auth::check(),
+        'user_id' => Auth::id(),
+        'session_id' => $request->session()->getId(),
+        'has_token' => $request->has('token'),
+        'token_len' => $request->has('token') ? strlen($request->query('token')) : 0,
+    ]);
+
     // If token is present and user is not authenticated, handle centralized login
     if ($request->has('token') && !Auth::check()) {
+        \Log::info('Dashboard handling centralized token', [
+            'session_id' => $request->session()->getId(),
+        ]);
+
         return app(CentralizedLoginController::class)->handle($request);
     }
     
     // If not authenticated and no token, redirect to login
     if (!Auth::check()) {
+        \Log::warning('Dashboard unauthenticated redirect to admin.login', [
+            'session_id' => $request->session()->getId(),
+            'has_token' => $request->has('token'),
+        ]);
+
         return redirect()->route('admin.login');
     }
     
