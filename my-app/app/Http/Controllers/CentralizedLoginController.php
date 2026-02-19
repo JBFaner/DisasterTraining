@@ -186,9 +186,9 @@ class CentralizedLoginController extends Controller
     private function mapRole(string $centralizedRole): string
     {
         return match (strtolower($centralizedRole)) {
-            'super_admin' => 'SUPER_ADMIN',
+            'super_admin' => 'LGU_ADMIN', // Map super_admin to LGU_ADMIN (Admin has full access)
             'admin' => 'LGU_ADMIN',
-            default => 'LGU_ADMIN', // Default to LGU_ADMIN for safety
+            default => 'LGU_ADMIN', // Default to LGU_ADMIN
         };
     }
 

@@ -12,7 +12,7 @@ class AuditLogController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || ! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true)) {
+        if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
         }
 
@@ -25,7 +25,7 @@ class AuditLogController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || ! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true)) {
+        if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
         }
 
@@ -104,7 +104,7 @@ class AuditLogController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || ! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true)) {
+        if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
         }
 

@@ -16,8 +16,8 @@ class UserMonitoringController extends Controller
     {
         $user = Auth::user();
 
-        // Only LGU Admin and Super Admin can access
-        if (!in_array($user->role, ['LGU_ADMIN', 'SUPER_ADMIN'], true)) {
+        // Only Admin can access
+        if ($user->role !== 'LGU_ADMIN') {
             abort(403, 'Unauthorized access to user monitoring.');
         }
 
@@ -76,8 +76,8 @@ class UserMonitoringController extends Controller
     {
         $user = Auth::user();
 
-        // Only LGU Admin and Super Admin can access
-        if (!in_array($user->role, ['LGU_ADMIN', 'SUPER_ADMIN'], true)) {
+        // Only Admin can access
+        if ($user->role !== 'LGU_ADMIN') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -149,7 +149,6 @@ class UserMonitoringController extends Controller
     private function getRoleDisplayName(string $role): string
     {
         return match ($role) {
-            'SUPER_ADMIN' => 'Super Admin',
             'LGU_ADMIN' => 'LGU Admin',
             'LGU_TRAINER' => 'LGU Trainer',
             'STAFF' => 'Staff',

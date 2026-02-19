@@ -24,14 +24,9 @@ class AdminUserController extends Controller
      */
     protected function canManageUser(User $currentUser, User $targetUser): bool
     {
-        // Super Admin can manage everyone
-        if ($currentUser->role === 'SUPER_ADMIN') {
-            return true;
-        }
-
-        // LGU Admin can only manage their own account
+        // Admin has full access - can manage everyone
         if ($currentUser->role === 'LGU_ADMIN') {
-            return $currentUser->id === $targetUser->id;
+            return true;
         }
 
         // Other roles cannot manage users
@@ -46,7 +41,7 @@ class AdminUserController extends Controller
      */
     protected function hasUserManagementAccess(?User $user): bool
     {
-        return $user && in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN'], true);
+        return $user && $user->role === 'LGU_ADMIN';
     }
 
     /**
@@ -63,7 +58,7 @@ class AdminUserController extends Controller
         $query = User::query()
             ->with('barangayProfile')
             // Fetch only staff-type users (Super Admin, LGU Admin, Trainer, Staff), never participants
-            ->whereIn('role', ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'])
+            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'])
             ->orderByDesc('created_at');
 
         // Search by name or email
@@ -127,7 +122,7 @@ class AdminUserController extends Controller
         if (! $this->canManageUser($currentUser, $user)) {
             abort(403, 'You do not have permission to edit this user.');
         }
-        if (in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
+        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
             abort(404);
         }
 
@@ -156,20 +151,13 @@ class AdminUserController extends Controller
         }
 
         // Check if current user can view this user
-        // Super Admin can view all, LGU Admin can only view themselves
+        // Admin has full access - can view all users with full security details
         $canView = false;
         $canViewSecurity = false;
 
-        if ($currentUser->role === 'SUPER_ADMIN') {
+        if ($currentUser->role === 'LGU_ADMIN') {
             $canView = true;
             $canViewSecurity = true;
-        } elseif ($currentUser->role === 'LGU_ADMIN' && $currentUser->id === $user->id) {
-            $canView = true;
-            $canViewSecurity = true;
-        } elseif ($currentUser->role === 'LGU_ADMIN') {
-            // LGU Admin can view basic info of other users, but not security details
-            $canView = true;
-            $canViewSecurity = false;
         }
 
         if (! $canView) {
@@ -177,7 +165,7 @@ class AdminUserController extends Controller
         }
 
         // Only show staff users (not participants)
-        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true)) {
+        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true)) {
             abort(404);
         }
 
@@ -485,11 +473,8 @@ class AdminUserController extends Controller
             abort(403);
         }
 
-        // Only Super Admin can create Super Admin accounts
+        // Admin can create all account types
         $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'PARTICIPANT'];
-        if ($currentUser->role === 'SUPER_ADMIN') {
-            $allowedRoles[] = 'SUPER_ADMIN';
-        }
 
         $data = $request->validate([
             'last_name' => ['required', 'string', 'max:255'],
@@ -599,14 +584,11 @@ class AdminUserController extends Controller
         if (! $this->canManageUser($currentUser, $user)) {
             abort(403, 'You do not have permission to edit this user.');
         }
-        if (in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
+        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
             abort(404);
         }
 
         $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'];
-        if ($currentUser->role === 'SUPER_ADMIN') {
-            $allowedRoles[] = 'SUPER_ADMIN';
-        }
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
@@ -699,8 +681,8 @@ class AdminUserController extends Controller
             abort(403, 'You do not have permission to manage this user.');
         }
 
-        // Only allow for admin/trainer/super admin roles
-        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        // Only allow for admin/trainer roles
+        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'USB key can only be generated for Admin or Trainer accounts.'], 400);
             }
@@ -759,8 +741,8 @@ TXT;
             abort(403, 'You do not have permission to manage this user.');
         }
 
-        // Only allow for admin/trainer/super admin roles
-        if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        // Only allow for admin/trainer roles
+        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'USB key can only be revoked for Admin or Trainer accounts.'], 400);
             }

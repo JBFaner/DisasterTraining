@@ -52,7 +52,6 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
     // Get role display name
     const getRoleName = (role) => {
         switch (role) {
-            case 'SUPER_ADMIN': return 'Super Admin';
             case 'LGU_ADMIN': return 'LGU Admin';
             case 'LGU_TRAINER': return 'Trainer';
             case 'PARTICIPANT': return 'Participant';

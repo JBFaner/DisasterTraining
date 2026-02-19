@@ -388,7 +388,6 @@ if (rootElement) {
             if (window.location.pathname.includes('/admin/users/create')) {
                 console.log('Current User:', currentUser);
                 console.log('Current User Role:', currentUser?.role);
-                console.log('Is SUPER_ADMIN?', currentUser?.role === 'SUPER_ADMIN');
             }
         } catch (e) {
             console.error('Failed to parse user JSON', e);
@@ -487,7 +486,7 @@ if (rootElement) {
     }
 
     const role =
-        roleAttr === 'SUPER_ADMIN' || roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
+        roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
             ? roleAttr
             : 'PARTICIPANT';
 
@@ -975,9 +974,6 @@ if (rootElement) {
                                                     <option value="LGU_ADMIN">LGU Admin</option>
                                                     <option value="LGU_TRAINER">LGU Trainer</option>
                                                     <option value="PARTICIPANT">Participant</option>
-                                                    {currentUser && (currentUser.role === 'SUPER_ADMIN' || currentUser.role?.toUpperCase() === 'SUPER_ADMIN') && (
-                                                        <option value="SUPER_ADMIN">Super Admin</option>
-                                                    )}
                                                 </select>
                                             </div>
 
@@ -1135,9 +1131,6 @@ if (rootElement) {
                                                     defaultValue={currentUserData.role}
                                                     className="block w-full max-w-xs rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
                                                 >
-                                                    {currentUser?.role === 'SUPER_ADMIN' && (
-                                                        <option value="SUPER_ADMIN">Super Admin</option>
-                                                    )}
                                                     <option value="LGU_ADMIN">LGU Admin</option>
                                                     <option value="LGU_TRAINER">LGU Trainer</option>
                                                     <option value="STAFF">Staff</option>
@@ -3257,7 +3250,7 @@ function TrainingModuleDetail({ module }) {
 function ScenariosTable({ scenarios = [], role }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const canDelete = role === 'SUPER_ADMIN' || role === 'LGU_ADMIN';
+    const canDelete = role === 'LGU_ADMIN';
     const [searchQuery, setSearchQuery] = React.useState('');
     const [showFilters, setShowFilters] = React.useState(false);
     const [filterStatus, setFilterStatus] = React.useState('');

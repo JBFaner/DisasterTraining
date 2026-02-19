@@ -117,8 +117,6 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
 
     const getRoleBadgeColor = (role) => {
         switch (role) {
-            case 'SUPER_ADMIN':
-                return 'bg-purple-100 text-purple-800 border-purple-200';
             case 'LGU_ADMIN':
                 return 'bg-blue-100 text-blue-800 border-blue-200';
             case 'LGU_TRAINER':

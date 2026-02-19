@@ -112,64 +112,42 @@ class PermissionsSeeder extends Seeder
     private function assignPermissionsToRoles(): void
     {
         // Get role IDs
-        $superAdmin = DB::table('roles')->where('name', 'SUPER_ADMIN')->first();
         $admin = DB::table('roles')->where('name', 'LGU_ADMIN')->first();
         $trainer = DB::table('roles')->where('name', 'LGU_TRAINER')->first();
         $staff = DB::table('roles')->where('name', 'STAFF')->first();
         $participant = DB::table('roles')->where('name', 'PARTICIPANT')->first();
 
-        if (!$superAdmin || !$admin || !$trainer || !$staff || !$participant) {
+        if (!$admin || !$trainer || !$staff || !$participant) {
             return; // Roles not found, skip assignment
         }
 
         // Get all permissions
         $allPermissions = DB::table('permissions')->get();
 
-        // Super Admin - All permissions
+        // Admin (LGU_ADMIN) - All permissions (full system access)
         foreach ($allPermissions as $permission) {
             DB::table('role_has_permissions')->updateOrInsert(
                 [
-                    'role_id' => $superAdmin->id,
+                    'role_id' => $admin->id,
                     'permission_id' => $permission->id,
                 ],
                 [
-                    'role_id' => $superAdmin->id,
+                    'role_id' => $admin->id,
                     'permission_id' => $permission->id,
                 ]
             );
         }
 
-        // Admin (LGU_ADMIN) - Most permissions except user/role management
-        $adminPermissions = [
+        // Trainer permissions
+        $trainerPermissions = [
             'dashboard.view',
-            'training-modules.view', 'training-modules.create', 'training-modules.edit', 'training-modules.delete', 'training-modules.publish',
-            'scenarios.view', 'scenarios.create', 'scenarios.edit', 'scenarios.delete',
-            'simulation-events.view', 'simulation-events.create', 'simulation-events.edit', 'simulation-events.delete', 'simulation-events.approve',
-            'participants.view', 'participants.create', 'participants.edit', 'participants.delete', 'participants.manage-attendance',
-            'resources.view', 'resources.create', 'resources.edit', 'resources.delete', 'resources.assign',
-            'evaluations.view', 'evaluations.create', 'evaluations.edit', 'evaluations.delete', 'evaluations.score', 'evaluations.lock',
-            'certifications.view', 'certifications.issue', 'certifications.revoke',
-            'barangay-profile.view', 'barangay-profile.edit',
-            'users.view', 'users.create', 'users.edit', // Limited user management
-            'audit-logs.view', 'audit-logs.export',
-            'reports.view', 'reports.export',
+            'training-modules.view', 'training-modules.create', 'training-modules.edit',
+            'scenarios.view', 'scenarios.create', 'scenarios.edit',
+            'simulation-events.view', 'simulation-events.create', 'simulation-events.edit',
+            'participants.view', 'participants.manage-attendance',
+            'evaluations.view', 'evaluations.create', 'evaluations.edit', 'evaluations.score',
+            'certifications.view', 'certifications.issue',
         ];
-
-        foreach ($adminPermissions as $permName) {
-            $permission = DB::table('permissions')->where('name', $permName)->first();
-            if ($permission) {
-                DB::table('role_has_permissions')->updateOrInsert(
-                    [
-                        'role_id' => $admin->id,
-                        'permission_id' => $permission->id,
-                    ],
-                    [
-                        'role_id' => $admin->id,
-                        'permission_id' => $permission->id,
-                    ]
-                );
-            }
-        }
 
         // Trainer (LGU_TRAINER) - Training and event management
         $trainerPermissions = [

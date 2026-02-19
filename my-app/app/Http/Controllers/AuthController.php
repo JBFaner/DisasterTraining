@@ -53,8 +53,8 @@ class AuthController extends Controller
         /** @var \App\Models\User|null $user */
         $user = User::where('email', $email)->first();
 
-        // Only allow admin/trainer/super admin roles through admin login
-        if (! $user || ! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        // Only allow admin/trainer roles through admin login
+        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             if ($user) {
                 AuditLogger::log([
                     'user' => $user,
@@ -110,8 +110,8 @@ class AuthController extends Controller
 
         $loginAttempts->clearAttempts($email, $ip);
 
-        // Admin / Trainer / Super Admin login flow - redirect to method selection
-        // For admins, trainers, and super admins, enforce that the account is active and the email has been verified.
+        // Admin / Trainer login flow - redirect to method selection
+        // For admins and trainers, enforce that the account is active and the email has been verified.
         // Check if user account is active (not disabled)
         if ($user->status !== 'active' || ! $user->email_verified_at) {
             $statusMessage = match($user->status) {
@@ -126,7 +126,7 @@ class AuthController extends Controller
                 'action' => 'Failed login',
                 'module' => 'Auth',
                 'status' => 'failed',
-                'description' => "Admin/trainer/super admin attempted login. Status: {$user->status}, Verified: " . ($user->email_verified_at ? 'Yes' : 'No'),
+                'description' => "Admin/trainer attempted login. Status: {$user->status}, Verified: " . ($user->email_verified_at ? 'Yes' : 'No'),
             ]);
 
             return back()
@@ -631,7 +631,7 @@ class AuthController extends Controller
             }
 
             // Verify user role is allowed for USB key verification
-            if (! in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
+            if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
                 return back()
                     ->withErrors(['verification_method' => 'USB key verification is not available for your account type.']);
             }
@@ -645,7 +645,7 @@ class AuthController extends Controller
                 'action' => 'USB verification selected',
                 'module' => 'Auth',
                 'status' => 'success',
-                'description' => 'Admin/trainer/super admin selected USB key verification method.',
+                'description' => 'Admin/trainer selected USB key verification method.',
             ]);
 
             return redirect()->route('admin.usb.check');

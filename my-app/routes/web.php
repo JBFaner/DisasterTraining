@@ -307,7 +307,7 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/admin/permissions/{id}/edit', [App\Http\Controllers\PermissionController::class, 'edit'])->name('admin.permissions.edit');
     Route::put('/admin/permissions/{id}', [App\Http\Controllers\PermissionController::class, 'update'])->name('admin.permissions.update');
 
-    // User Monitoring (LGU Admin and Super Admin only)
+    // User Monitoring (Admin only)
     Route::get('/admin/user-monitoring', [UserMonitoringController::class, 'index'])->name('admin.user-monitoring.index');
     Route::get('/api/user-monitoring/status', [UserMonitoringController::class, 'status'])->name('admin.user-monitoring.status');
 });

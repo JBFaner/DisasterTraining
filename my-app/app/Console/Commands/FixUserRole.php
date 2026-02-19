@@ -15,7 +15,7 @@ class FixUserRole extends Command
         $email = $this->argument('email');
         $role = strtoupper($this->argument('role'));
         
-        $validRoles = ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'PARTICIPANT'];
+        $validRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'PARTICIPANT'];
         
         if (!in_array($role, $validRoles)) {
             $this->error("Invalid role. Valid roles are: " . implode(', ', $validRoles));

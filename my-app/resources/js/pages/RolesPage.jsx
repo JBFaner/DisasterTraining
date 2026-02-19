@@ -14,7 +14,6 @@ export function RolesPage({ roles = [] }) {
     // Get display name for role
     const getRoleDisplayName = (roleName) => {
         const roleMap = {
-            'SUPER_ADMIN': 'Super Admin',
             'LGU_ADMIN': 'Admin',
             'LGU_TRAINER': 'Trainer',
             'STAFF': 'Staff',

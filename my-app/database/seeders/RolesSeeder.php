@@ -14,12 +14,6 @@ class RolesSeeder extends Seeder
     {
         $roles = [
             [
-                'name' => 'SUPER_ADMIN',
-                'guard_name' => 'web',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
                 'name' => 'LGU_ADMIN',
                 'guard_name' => 'web',
                 'created_at' => now(),
