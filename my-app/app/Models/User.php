@@ -28,6 +28,7 @@ class User extends Authenticatable
         'registered_at',
         'profile_picture',
         'barangay_id',
+        'last_activity',
     ];
 
     /**
@@ -52,6 +53,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'registered_at' => 'datetime',
             'last_login' => 'datetime',
+            'last_activity' => 'datetime',
             'usb_key_enabled' => 'boolean',
         ];
     }

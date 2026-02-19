@@ -622,6 +622,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         ]}
                     />
                     <NavItem
+                        icon={Activity}
+                        label="User Monitoring"
+                        href="/admin/user-monitoring"
+                        active={currentSection === 'user_monitoring'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
                         icon={ClipboardCheck}
                         label="Audit Logs"
                         href="/audit-logs"

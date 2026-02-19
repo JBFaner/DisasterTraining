@@ -13,6 +13,7 @@ import { RolesPage } from './pages/RolesPage';
 import { PermissionsPage } from './pages/PermissionsPage';
 import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
+import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users } from 'lucide-react';
@@ -741,6 +742,10 @@ if (rootElement) {
             ];
         }
 
+        if (sectionAttr === 'user_monitoring') {
+            return [{ label: 'User Monitoring', href: '/admin/user-monitoring' }];
+        }
+
         return [{ label: 'Dashboard', href: '/dashboard' }];
     };
 
@@ -760,6 +765,9 @@ if (rootElement) {
             sectionAttr === 'admin_roles_edit'
         ) {
             return 'Users & Roles';
+        }
+        if (sectionAttr === 'user_monitoring') {
+            return 'User Monitoring';
         }
         if (
             sectionAttr === 'barangay_profile' ||
@@ -1234,6 +1242,10 @@ if (rootElement) {
 
                         {sectionAttr === 'audit_logs' && (
                             <AuditLogs />
+                        )}
+
+                        {sectionAttr === 'user_monitoring' && (
+                            <UserMonitoringPage users={users || []} />
                         )}
 
                         {sectionAttr === 'resources' && (

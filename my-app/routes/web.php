@@ -16,6 +16,7 @@ use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SecurityController;
+use App\Http\Controllers\UserMonitoringController;
 use App\Http\Middleware\CheckSessionInactivity;
 
 Route::get('/', function () {
@@ -273,5 +274,9 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::post('/admin/permissions', [App\Http\Controllers\PermissionController::class, 'store'])->name('admin.permissions.store');
     Route::get('/admin/permissions/{id}/edit', [App\Http\Controllers\PermissionController::class, 'edit'])->name('admin.permissions.edit');
     Route::put('/admin/permissions/{id}', [App\Http\Controllers\PermissionController::class, 'update'])->name('admin.permissions.update');
+
+    // User Monitoring (LGU Admin and Super Admin only)
+    Route::get('/admin/user-monitoring', [UserMonitoringController::class, 'index'])->name('admin.user-monitoring.index');
+    Route::get('/api/user-monitoring/status', [UserMonitoringController::class, 'status'])->name('admin.user-monitoring.status');
 });
 
