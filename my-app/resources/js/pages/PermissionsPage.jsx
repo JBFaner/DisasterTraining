@@ -235,13 +235,13 @@ export function PermissionsPage({ permissions = [] }) {
                                             <div className="flex items-center gap-2">
                                                 <a
                                                     href={`/admin/permissions/${permission.id}/edit`}
-                                                    className="p-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
                                                     title="Edit"
                                                 >
                                                     <Pencil className="w-4 h-4" />
                                                 </a>
                                                 <button
-                                                    className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors shadow-sm"
                                                     title="Delete"
                                                 >
                                                     <Trash2 className="w-4 h-4" />

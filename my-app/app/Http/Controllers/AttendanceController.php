@@ -116,6 +116,41 @@ class AttendanceController extends Controller
     {
         $this->authorizeAttendanceAccess();
 
+        // First, automatically mark all unmarked approved participants as absent
+        $approvedRegistrations = $simulationEvent->registrations()
+            ->where('status', 'approved')
+            ->with('attendance')
+            ->get();
+
+        foreach ($approvedRegistrations as $registration) {
+            $attendance = $registration->attendance;
+
+            // If no attendance exists or status is empty, mark as absent automatically
+            if (! $attendance || ! $attendance->status) {
+                if ($attendance) {
+                    if (! $attendance->is_locked) {
+                        $attendance->update([
+                            'status' => 'absent',
+                            'check_in_method' => $attendance->check_in_method ?: 'auto',
+                            'checked_in_at' => $attendance->checked_in_at ?: now(),
+                            'marked_by' => Auth::id(),
+                        ]);
+                    }
+                } else {
+                    Attendance::create([
+                        'event_registration_id' => $registration->id,
+                        'user_id' => $registration->user_id,
+                        'simulation_event_id' => $registration->simulation_event_id,
+                        'status' => 'absent',
+                        'check_in_method' => 'auto',
+                        'checked_in_at' => now(),
+                        'marked_by' => Auth::id(),
+                    ]);
+                }
+            }
+        }
+
+        // Then lock all attendance records for this event
         $simulationEvent->attendances()->update(['is_locked' => true]);
 
         return back()->with('status', 'Attendance records locked.');

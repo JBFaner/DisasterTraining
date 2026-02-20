@@ -1000,7 +1000,7 @@ export function ResourceInventory() {
                                                         {(resource.status === 'Available' || resource.status === 'Partially Assigned') && resource.available > 0 && (
                                                             <button
                                                                 onClick={() => handleAssignToEvent(resource)}
-                                                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                                                                className="inline-flex items-center justify-center p-2 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
                                                                 title="Assign to Event"
                                                             >
                                                                 <Link2 className="w-4 h-4" />
@@ -1030,21 +1030,21 @@ export function ResourceInventory() {
                                                                     cancelButtonText: 'Close',
                                                                 });
                                                             }}
-                                                            className="p-2 text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+                                                            className="inline-flex items-center justify-center p-2 rounded-md border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors shadow-sm"
                                                             title="View History"
                                                         >
                                                             <Eye className="w-4 h-4" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleEditResource(resource)}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                            className="inline-flex items-center justify-center p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
                                                             title="Edit"
                                                         >
                                                             <Edit2 className="w-4 h-4" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteResource(resource)}
-                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                            className="inline-flex items-center justify-center p-2 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors shadow-sm"
                                                             title="Delete"
                                                         >
                                                             <Trash2 className="w-4 h-4" />

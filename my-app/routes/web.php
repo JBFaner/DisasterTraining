@@ -303,6 +303,7 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/certification/templates/{template}/preview', [App\Http\Controllers\CertificationController::class, 'previewTemplate'])->name('certification.templates.preview');
     Route::get('/certification/templates/{template}/background', [App\Http\Controllers\CertificationController::class, 'templateBackground'])->name('certification.templates.background');
     Route::get('/certificates/{certificate}/view', [App\Http\Controllers\CertificationController::class, 'viewCertificate'])->name('certificates.view');
+    Route::get('/certificates/{certificate}/background', [App\Http\Controllers\CertificationController::class, 'certificateBackground'])->name('certificates.background');
     Route::post('/certification/settings', [App\Http\Controllers\CertificationController::class, 'updateSettings'])->name('certification.settings');
     Route::get('/certification/export/{format?}', [App\Http\Controllers\CertificationController::class, 'export'])->name('certification.export');
 

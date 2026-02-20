@@ -295,7 +295,7 @@ export function UserDetailsPage({ user, currentUser, canViewSecurity, recentLogi
                                             <p className="text-xs font-medium text-slate-900">
                                                 {formatDateTime(action.performed_at)}
                                             </p>
-                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shadow-sm ${
                                                 action.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
                                                 action.status === 'failed' ? 'bg-rose-50 text-rose-700' :
                                                 'bg-amber-50 text-amber-700'

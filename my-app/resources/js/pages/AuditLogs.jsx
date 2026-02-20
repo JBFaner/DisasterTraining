@@ -173,7 +173,7 @@ export function AuditLogs() {
         const cfg = statusConfig[displayStatus] || statusConfig.success;
         const Icon = cfg.icon;
         return (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.color}`}>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shadow-sm ${cfg.color}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                 <Icon className="w-3 h-3" />
                 <span>{cfg.label}</span>

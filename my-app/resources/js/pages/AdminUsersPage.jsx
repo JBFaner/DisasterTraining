@@ -373,7 +373,7 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
-                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 shadow-sm">
                                             {user.role === 'LGU_ADMIN' && 'LGU Admin'}
                                             {user.role === 'LGU_TRAINER' && 'Trainer'}
                                             {user.role === 'STAFF' && 'Staff'}
@@ -385,7 +385,7 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <span
-                                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(
+                                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-sm ${getStatusBadge(
                                                 user.status,
                                             )}`}
                                         >
@@ -420,13 +420,13 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                             <div className="flex items-center gap-2">
                                                 {user.usb_key_enabled ? (
                                                     <>
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700 shadow-sm">
                                                             <KeyRound className="w-3 h-3" />
                                                             Enabled
                                                         </span>
                                                     </>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 shadow-sm">
                                                         <Key className="w-3 h-3" />
                                                         Disabled
                                                     </span>
@@ -442,20 +442,20 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                             {currentUser?.role === 'LGU_ADMIN' && (
                                                 <a
                                                     href={`/admin/users/${user.id}`}
-                                                    className="inline-flex items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-700 hover:bg-slate-100"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
                                                     title="View"
                                                 >
-                                                    <Eye className="w-3.5 h-3.5" />
+                                                    <Eye className="w-4 h-4" />
                                                 </a>
                                             )}
                                             {/* Edit button - only if can manage */}
                                             {canManageUser(user) && (
                                                 <a
                                                     href={`/admin/users/${user.id}/edit`}
-                                                    className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
                                                     title="Edit"
                                                 >
-                                                    <Pencil className="w-3.5 h-3.5" />
+                                                    <Pencil className="w-4 h-4" />
                                                 </a>
                                             )}
                                             {/* Manual verify - only if can manage and pending */}
@@ -463,10 +463,10 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleManualVerify(user)}
-                                                    className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 p-1.5 text-emerald-700 hover:bg-emerald-100"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
                                                     title="Verify account"
                                                 >
-                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    <CheckCircle2 className="w-4 h-4" />
                                                 </button>
                                             )}
                                             {/* Toggle status - only if can manage */}
@@ -475,15 +475,15 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                                     type="button"
                                                     onClick={() => handleToggleStatus(user)}
                                                     disabled={loadingUserId === user.id}
-                                                    className="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 p-1.5 text-amber-700 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                                     title={user.status === 'active' ? 'Disable account' : 'Enable account'}
                                                 >
                                                     {loadingUserId === user.id ? (
-                                                        <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+                                                        <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
                                                     ) : user.status === 'active' ? (
-                                                        <Lock className="w-3.5 h-3.5" />
+                                                        <Lock className="w-4 h-4" />
                                                     ) : (
-                                                        <Unlock className="w-3.5 h-3.5" />
+                                                        <Unlock className="w-4 h-4" />
                                                     )}
                                                 </button>
                                             )}
@@ -495,13 +495,13 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                                             type="button"
                                                             onClick={() => handleRevokeUsbKey(user)}
                                                             disabled={loadingUserId === user.id}
-                                                            className="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 p-1.5 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                                             title="Revoke USB key"
                                                         >
                                                             {loadingUserId === user.id ? (
-                                                                <div className="w-3.5 h-3.5 border-2 border-red-700 border-t-transparent rounded-full animate-spin" />
+                                                                <div className="w-4 h-4 border-2 border-red-700 border-t-transparent rounded-full animate-spin" />
                                                             ) : (
-                                                                <KeyRound className="w-3.5 h-3.5" />
+                                                                <KeyRound className="w-4 h-4" />
                                                             )}
                                                         </button>
                                                     ) : (
@@ -509,13 +509,13 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                                             type="button"
                                                             onClick={() => handleGenerateUsbKey(user)}
                                                             disabled={loadingUserId === user.id}
-                                                            className="inline-flex items-center justify-center rounded-md border border-teal-200 bg-teal-50 p-1.5 text-teal-700 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                                             title="Generate USB key"
                                                         >
                                                             {loadingUserId === user.id ? (
-                                                                <div className="w-3.5 h-3.5 border-2 border-teal-700 border-t-transparent rounded-full animate-spin" />
+                                                                <div className="w-4 h-4 border-2 border-teal-700 border-t-transparent rounded-full animate-spin" />
                                                             ) : (
-                                                                <Key className="w-3.5 h-3.5" />
+                                                                <Key className="w-4 h-4" />
                                                             )}
                                                         </button>
                                                     )}

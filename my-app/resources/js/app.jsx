@@ -16,7 +16,7 @@ import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -1466,7 +1466,7 @@ function DashboardOverview({ modules, events, participants, role }) {
                                                 <p className="text-sm font-medium text-slate-900">{module.title}</p>
                                                 <p className="text-xs text-slate-500 mt-1">{module.disaster_type} • {module.lessons?.length || 0} lessons</p>
                                             </div>
-                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${module.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${module.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
                                                 module.status === 'archived' ? 'bg-slate-100 text-slate-600' :
                                                     'bg-yellow-100 text-yellow-800'
                                                 }`}>
@@ -1790,7 +1790,7 @@ function TrainingModulesTable({ modules = [] }) {
                                     <td className="px-4 py-2">
                                         <span
                                             className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold border ' +
+                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm border ' +
                                                 (module.status === 'published'
                                                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                                                     : module.status === 'draft'
@@ -1817,10 +1817,10 @@ function TrainingModulesTable({ modules = [] }) {
                                         <div className="flex gap-2 justify-start">
                                             <a
                                                 href={`/training-modules/${module.id}`}
-                                                className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
                                                 title="View Lessons"
                                             >
-                                                <Eye className="w-3.5 h-3.5" />
+                                                <Eye className="w-4 h-4" />
                                             </a>
                                             {module.status === 'draft' && (
                                                 <>
@@ -1856,28 +1856,28 @@ function TrainingModulesTable({ modules = [] }) {
                                                         <input type="hidden" name="_token" value={csrf} />
                                                         <button
                                                             type="submit"
-                                                            className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
                                                             title="Publish"
                                                         >
-                                                            <Send className="w-3.5 h-3.5" />
+                                                            <Send className="w-4 h-4" />
                                                         </button>
                                                     </form>
                                                     <a
                                                         href={`/training-modules/${module.id}/edit`}
-                                                        className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
                                                         title="Edit"
                                                     >
-                                                        <Pencil className="w-3.5 h-3.5" />
+                                                        <Pencil className="w-4 h-4" />
                                                     </a>
                                                 </>
                                             )}
                                             {module.status !== 'published' && module.status !== 'draft' && (
                                                 <a
                                                     href={`/training-modules/${module.id}/edit`}
-                                                    className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
                                                     title="Edit"
                                                 >
-                                                    <Pencil className="w-3.5 h-3.5" />
+                                                    <Pencil className="w-4 h-4" />
                                                 </a>
                                             )}
                                             <form
@@ -1903,10 +1903,10 @@ function TrainingModulesTable({ modules = [] }) {
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <button
                                                     type="submit"
-                                                    className="p-1.5 rounded-md text-amber-600 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
                                                     title="Archive"
                                                 >
-                                                    <Archive className="w-3.5 h-3.5" />
+                                                    <Archive className="w-4 h-4" />
                                                 </button>
                                             </form>
                                             <form
@@ -1933,10 +1933,10 @@ function TrainingModulesTable({ modules = [] }) {
                                                 <input type="hidden" name="_method" value="DELETE" />
                                                 <button
                                                     type="submit"
-                                                    className="p-1.5 rounded-md text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
                                                     title="Delete"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </form>
                                         </div>
@@ -3547,7 +3547,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                     <td className="px-4 py-2 text-slate-600">
                                         <span
                                             className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold border ' +
+                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm border ' +
                                                 (s.status === 'published'
                                                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                                                     : s.status === 'draft'
@@ -3571,19 +3571,19 @@ function ScenariosTable({ scenarios = [], role }) {
                                         <div className="flex gap-2 items-center">
                                             <a
                                                 href={`/scenarios/${s.id}`}
-                                                className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
                                                 title="View Scenario"
                                             >
-                                                <Eye className="w-3.5 h-3.5" />
+                                                <Eye className="w-4 h-4" />
                                             </a>
                                             {s.status !== 'published' && (
                                                 <>
                                                     <a
                                                         href={`/scenarios/${s.id}/edit`}
-                                                        className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
                                                         title="Edit"
                                                     >
-                                                        <Pencil className="w-3.5 h-3.5" />
+                                                        <Pencil className="w-4 h-4" />
                                                     </a>
 
                                                     <form
@@ -3607,10 +3607,10 @@ function ScenariosTable({ scenarios = [], role }) {
                                                         <input type="hidden" name="_token" value={csrf} />
                                                         <button
                                                             type="submit"
-                                                            className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
                                                             title="Publish"
                                                         >
-                                                            <Send className="w-3.5 h-3.5" />
+                                                            <Send className="w-4 h-4" />
                                                         </button>
                                                     </form>
                                                 </>
@@ -3637,10 +3637,10 @@ function ScenariosTable({ scenarios = [], role }) {
                                                 <input type="hidden" name="_token" value={csrf} />
                                                 <button
                                                     type="submit"
-                                                    className="p-1.5 rounded-md text-amber-600 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
                                                     title="Archive"
                                                 >
-                                                    <Archive className="w-3.5 h-3.5" />
+                                                    <Archive className="w-4 h-4" />
                                                 </button>
                                             </form>
 
@@ -3667,10 +3667,10 @@ function ScenariosTable({ scenarios = [], role }) {
                                                     <input type="hidden" name="_method" value="DELETE" />
                                                     <button
                                                         type="submit"
-                                                        className="p-1.5 rounded-md text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
                                                         title="Delete"
                                                     >
-                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </form>
                                             )}
@@ -4889,7 +4889,7 @@ function ScenarioDetail({ scenario }) {
                                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
                                     Severity level
                                 </div>
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getSeverityColor(scenario.severity_level)}`}>
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${getSeverityColor(scenario.severity_level)}`}>
                                     {scenario.severity_level}
                                 </span>
                             </div>
@@ -4938,7 +4938,7 @@ function ScenarioDetail({ scenario }) {
                                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
                                     Communication status
                                 </div>
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${getCommunicationStatusColor(scenario.communication_status)}`}>
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm capitalize ${getCommunicationStatusColor(scenario.communication_status)}`}>
                                     {scenario.communication_status}
                                 </span>
                             </div>
@@ -5246,7 +5246,7 @@ function SimulationEventsTable({ events, role }) {
                                     <td className="px-4 py-2">
                                         <span
                                             className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ' +
+                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ' +
                                                 (event.status === 'published'
                                                     ? 'bg-emerald-50 text-emerald-700'
                                                     : event.status === 'ongoing'
@@ -5277,19 +5277,19 @@ function SimulationEventsTable({ events, role }) {
                                         <div className="flex gap-2 items-center">
                                             <a
                                                 href={`/simulation-events/${event.id}`}
-                                                className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+                                                className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
                                                 title="View Event"
                                             >
-                                                <Eye className="w-3.5 h-3.5" />
+                                                <Eye className="w-4 h-4" />
                                             </a>
                                             {/* Edit - Only for draft events */}
                                             {event.status === 'draft' && (
                                                 <a
                                                     href={`/simulation-events/${event.id}/edit`}
-                                                    className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
                                                     title="Edit"
                                                 >
-                                                    <Pencil className="w-3.5 h-3.5" />
+                                                    <Pencil className="w-4 h-4" />
                                                 </a>
                                             )}
                                             {/* Publish - Only for draft events */}
@@ -5335,10 +5335,10 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="p-1.5 rounded-md text-sky-600 bg-sky-50 border border-sky-200 hover:bg-sky-100 transition-all"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
                                                         title="Publish"
                                                     >
-                                                        <Send className="w-3.5 h-3.5" />
+                                                        <Send className="w-4 h-4" />
                                                     </button>
                                                 </form>
                                             )}
@@ -5393,10 +5393,10 @@ function SimulationEventsTable({ events, role }) {
                                                         <input type="hidden" name="_token" value={csrf} />
                                                         <button
                                                             type="submit"
-                                                            className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
                                                             title="Start Event"
                                                         >
-                                                            <Play className="w-3.5 h-3.5" />
+                                                            <Play className="w-4 h-4" />
                                                         </button>
                                                     </form>
                                                 );
@@ -5424,10 +5424,10 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="p-1.5 rounded-md text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
                                                         title="Cancel"
                                                     >
-                                                        <XCircle className="w-3.5 h-3.5" />
+                                                        <XCircle className="w-4 h-4" />
                                                     </button>
                                                 </form>
                                             )}
@@ -5454,10 +5454,10 @@ function SimulationEventsTable({ events, role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="p-1.5 rounded-md text-amber-600 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
                                                         title="Archive"
                                                     >
-                                                        <Archive className="w-3.5 h-3.5" />
+                                                        <Archive className="w-4 h-4" />
                                                     </button>
                                                 </form>
                                             )}
@@ -6741,9 +6741,26 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
             : isEdit ? `/certification/templates/${template.id}` : '/certification/templates';
 
         if (hasFile) {
+            // Ensure form has enctype for file uploads
             form.setAttribute('action', url);
             form.setAttribute('method', 'post');
             form.setAttribute('enctype', 'multipart/form-data');
+            // Add _method field if using PUT route (for consistency)
+            if (isEdit && url.includes('/update')) {
+                // POST route, no _method needed
+            } else if (isEdit) {
+                // Add _method=PUT for Laravel
+                let methodInput = form.querySelector('input[name="_method"]');
+                if (!methodInput) {
+                    methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    form.appendChild(methodInput);
+                }
+                methodInput.value = 'PUT';
+            }
+            // Close modal before submit to prevent stale data
+            onClose();
             form.submit();
             return;
         }
@@ -7173,12 +7190,30 @@ function CertificationModule({
                                         <td className="px-4 py-2 font-medium text-slate-800">{t.name}</td>
                                         <td className="px-4 py-2 text-slate-600">{t.type}</td>
                                         <td className="px-4 py-2 text-slate-600">{t.last_used_at ? formatDate(t.last_used_at) : '—'}</td>
-                                        <td className="px-4 py-2"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${t.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{t.status}</span></td>
+                                        <td className="px-4 py-2">
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold shadow-sm ${
+                                                    t.status === 'active'
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : 'bg-slate-100 text-slate-600'
+                                                }`}
+                                            >
+                                                {t.status}
+                                            </span>
+                                        </td>
                                         <td className="px-4 py-2 flex gap-2 flex-wrap">
-                                            <a href={`/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline text-xs">Preview</a>
-                                            <button type="button" onClick={() => { setEditingTemplate(t); setTemplateEditorOpen(true); }} className="text-emerald-600 hover:underline text-xs">Edit</button>
-                                            <button type="button" onClick={() => handleDuplicateTemplate(t)} className="text-sky-600 hover:underline text-xs">Duplicate</button>
-                                            <button type="button" onClick={() => handleDeleteTemplate(t)} className="text-rose-600 hover:underline text-xs">Delete</button>
+                                            <a href={`/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm" title="Preview">
+                                                <Eye className="w-4 h-4" />
+                                            </a>
+                                            <button type="button" onClick={() => { setEditingTemplate(t); setTemplateEditorOpen(true); }} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm" title="Edit">
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                            <button type="button" onClick={() => handleDuplicateTemplate(t)} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm" title="Duplicate">
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                            <button type="button" onClick={() => handleDeleteTemplate(t)} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm" title="Delete">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -7214,9 +7249,15 @@ function CertificationModule({
                                         <td className="px-4 py-2 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : '—'}</td>
                                         <td className="px-4 py-2 text-slate-600">{c.issuer?.name || '—'}</td>
                                         <td className="px-4 py-2 flex gap-2">
-                                            <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline text-xs">View / Print PDF</a>
-                                            <button type="button" onClick={() => handleRevoke(c.id)} className="text-rose-600 hover:underline text-xs">Revoke</button>
-                                            <a href="/certification" className="text-emerald-600 hover:underline text-xs">Reissue</a>
+                                            <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm" title="View / Print PDF">
+                                                <FileText className="w-4 h-4" />
+                                            </a>
+                                            <button type="button" onClick={() => handleRevoke(c.id)} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm" title="Revoke">
+                                                <XCircle className="w-4 h-4" />
+                                            </button>
+                                            <a href="/certification" className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm" title="Reissue">
+                                                <RotateCcw className="w-4 h-4" />
+                                            </a>
                                         </td>
                                     </tr>
                                 ))
@@ -7461,7 +7502,7 @@ function ParticipantsListTab({ participants = [] }) {
                                     <td className="px-4 py-2 text-slate-600 text-xs">{participant.email}</td>
                                     <td className="px-4 py-2 text-slate-600 text-xs">{participant.phone || '—'}</td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${participant.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${participant.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
                                             }`}>
                                             {participant.status || 'active'}
                                         </span>
@@ -7964,7 +8005,7 @@ function ParticipantsTable({ participants = [], role }) {
                                     <td className="px-4 py-2 text-slate-600">{participant.email}</td>
                                     <td className="px-4 py-2 text-slate-600">{participant.phone || '—'}</td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${getStatusColor(participant.status)}`}>
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${getStatusColor(participant.status)}`}>
                                             {participant.status || 'active'}
                                         </span>
                                     </td>
@@ -8145,7 +8186,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-lg font-semibold text-slate-800">{event.title}</h3>
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${event.status === 'published' ? 'bg-blue-50 text-blue-700' :
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${event.status === 'published' ? 'bg-blue-50 text-blue-700' :
                                 event.status === 'ongoing' ? 'bg-emerald-50 text-emerald-700' :
                                     event.status === 'completed' ? 'bg-indigo-50 text-indigo-700' :
                                         event.status === 'draft' ? 'bg-slate-50 text-slate-700' :
@@ -8220,7 +8261,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                     <td className="px-4 py-2 font-medium text-slate-800">{reg.user?.name || 'N/A'}</td>
                                     <td className="px-4 py-2 text-slate-600">{reg.user?.email || 'N/A'}</td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${reg.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${reg.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
                                             reg.status === 'pending' ? 'bg-amber-50 text-amber-700' :
                                                 reg.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
                                                     'bg-slate-100 text-slate-600'
@@ -8317,7 +8358,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
                 <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-sm font-semibold text-slate-800">Event: {event.title}</h3>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${event.status === 'published' ? 'bg-blue-50 text-blue-700' :
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${event.status === 'published' ? 'bg-blue-50 text-blue-700' :
                         event.status === 'ongoing' ? 'bg-emerald-50 text-emerald-700' :
                             event.status === 'completed' ? 'bg-indigo-50 text-indigo-700' :
                                 event.status === 'draft' ? 'bg-slate-50 text-slate-700' :
@@ -8393,7 +8434,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                         <td className="px-4 py-2 font-medium text-slate-800">{reg.user?.name || 'N/A'}</td>
                                         <td className="px-4 py-2">
                                             {isMarked ? (
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${attendance.status === 'present' ? 'bg-emerald-50 text-emerald-700' :
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${attendance.status === 'present' ? 'bg-emerald-50 text-emerald-700' :
                                                     attendance.status === 'late' ? 'bg-amber-50 text-amber-700' :
                                                         attendance.status === 'absent' ? 'bg-rose-50 text-rose-700' :
                                                             attendance.status === 'excused' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'
@@ -8401,39 +8442,58 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                     {attendance.status}
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold bg-slate-100 text-slate-600">Not marked</span>
+                                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm bg-slate-100 text-slate-600">Not marked</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.check_in_method || 'Manual'}</td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.checked_in_at ? formatDateTime(attendance.checked_in_at) : '—'}</td>
                                         <td className="px-4 py-2">
-                                            {!attendance?.is_locked ? (
+                                            {!attendance?.is_locked && !isMarked ? (
                                                 <div className="flex gap-2">
-                                                    <form method="POST" action={`/attendances/${attendance?.id || 'new'}`} onSubmit={(e) => {
-                                                        if (!attendance?.id) {
+                                                    <form
+                                                        method="POST"
+                                                        action={`/attendances/${attendance?.id || 'new'}`}
+                                                        onSubmit={async (e) => {
                                                             e.preventDefault();
-                                                            const form = document.createElement('form');
-                                                            form.method = 'POST';
-                                                            form.action = `/event-registrations/${reg.id}/attendance`;
-                                                            const csrfInput = document.createElement('input');
-                                                            csrfInput.type = 'hidden';
-                                                            csrfInput.name = '_token';
-                                                            csrfInput.value = csrf;
-                                                            const statusInput = document.createElement('input');
-                                                            statusInput.type = 'hidden';
-                                                            statusInput.name = 'status';
-                                                            statusInput.value = 'present';
-                                                            const methodInput = document.createElement('input');
-                                                            methodInput.type = 'hidden';
-                                                            methodInput.name = 'check_in_method';
-                                                            methodInput.value = 'manual';
-                                                            form.appendChild(csrfInput);
-                                                            form.appendChild(statusInput);
-                                                            form.appendChild(methodInput);
-                                                            document.body.appendChild(form);
-                                                            form.submit();
-                                                        }
-                                                    }}>
+                                                            const result = await Swal.fire({
+                                                                title: 'Mark as Present?',
+                                                                text: `Mark ${reg.user?.name || 'this participant'} as present for this event?`,
+                                                                icon: 'question',
+                                                                showCancelButton: true,
+                                                                confirmButtonText: 'Yes, mark present',
+                                                                cancelButtonText: 'Cancel',
+                                                                confirmButtonColor: '#16a34a',
+                                                                cancelButtonColor: '#64748b',
+                                                            });
+                                                            if (!result.isConfirmed) {
+                                                                return;
+                                                            }
+                                                            if (!attendance?.id) {
+                                                                const form = document.createElement('form');
+                                                                form.method = 'POST';
+                                                                form.action = `/event-registrations/${reg.id}/attendance`;
+                                                                const csrfInput = document.createElement('input');
+                                                                csrfInput.type = 'hidden';
+                                                                csrfInput.name = '_token';
+                                                                csrfInput.value = csrf;
+                                                                const statusInput = document.createElement('input');
+                                                                statusInput.type = 'hidden';
+                                                                statusInput.name = 'status';
+                                                                statusInput.value = 'present';
+                                                                const methodInput = document.createElement('input');
+                                                                methodInput.type = 'hidden';
+                                                                methodInput.name = 'check_in_method';
+                                                                methodInput.value = 'manual';
+                                                                form.appendChild(csrfInput);
+                                                                form.appendChild(statusInput);
+                                                                form.appendChild(methodInput);
+                                                                document.body.appendChild(form);
+                                                                form.submit();
+                                                            } else {
+                                                                e.target.submit();
+                                                            }
+                                                        }}
+                                                    >
                                                         <input type="hidden" name="_token" value={csrf} />
                                                         <input type="hidden" name="_method" value={attendance?.id ? 'PUT' : 'POST'} />
                                                         <input type="hidden" name="status" value="present" />
@@ -8445,31 +8505,50 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             Present
                                                         </button>
                                                     </form>
-                                                    <form method="POST" action={`/attendances/${attendance?.id || 'new'}`} onSubmit={(e) => {
-                                                        if (!attendance?.id) {
+                                                    <form
+                                                        method="POST"
+                                                        action={`/attendances/${attendance?.id || 'new'}`}
+                                                        onSubmit={async (e) => {
                                                             e.preventDefault();
-                                                            const form = document.createElement('form');
-                                                            form.method = 'POST';
-                                                            form.action = `/event-registrations/${reg.id}/attendance`;
-                                                            const csrfInput = document.createElement('input');
-                                                            csrfInput.type = 'hidden';
-                                                            csrfInput.name = '_token';
-                                                            csrfInput.value = csrf;
-                                                            const statusInput = document.createElement('input');
-                                                            statusInput.type = 'hidden';
-                                                            statusInput.name = 'status';
-                                                            statusInput.value = 'absent';
-                                                            const methodInput = document.createElement('input');
-                                                            methodInput.type = 'hidden';
-                                                            methodInput.name = 'check_in_method';
-                                                            methodInput.value = 'manual';
-                                                            form.appendChild(csrfInput);
-                                                            form.appendChild(statusInput);
-                                                            form.appendChild(methodInput);
-                                                            document.body.appendChild(form);
-                                                            form.submit();
-                                                        }
-                                                    }}>
+                                                            const result = await Swal.fire({
+                                                                title: 'Mark as Absent?',
+                                                                text: `Mark ${reg.user?.name || 'this participant'} as absent for this event?`,
+                                                                icon: 'warning',
+                                                                showCancelButton: true,
+                                                                confirmButtonText: 'Yes, mark absent',
+                                                                cancelButtonText: 'Cancel',
+                                                                confirmButtonColor: '#dc2626',
+                                                                cancelButtonColor: '#64748b',
+                                                            });
+                                                            if (!result.isConfirmed) {
+                                                                return;
+                                                            }
+                                                            if (!attendance?.id) {
+                                                                const form = document.createElement('form');
+                                                                form.method = 'POST';
+                                                                form.action = `/event-registrations/${reg.id}/attendance`;
+                                                                const csrfInput = document.createElement('input');
+                                                                csrfInput.type = 'hidden';
+                                                                csrfInput.name = '_token';
+                                                                csrfInput.value = csrf;
+                                                                const statusInput = document.createElement('input');
+                                                                statusInput.type = 'hidden';
+                                                                statusInput.name = 'status';
+                                                                statusInput.value = 'absent';
+                                                                const methodInput = document.createElement('input');
+                                                                methodInput.type = 'hidden';
+                                                                methodInput.name = 'check_in_method';
+                                                                methodInput.value = 'manual';
+                                                                form.appendChild(csrfInput);
+                                                                form.appendChild(statusInput);
+                                                                form.appendChild(methodInput);
+                                                                document.body.appendChild(form);
+                                                                form.submit();
+                                                            } else {
+                                                                e.target.submit();
+                                                            }
+                                                        }}
+                                                    >
                                                         <input type="hidden" name="_token" value={csrf} />
                                                         <input type="hidden" name="_method" value={attendance?.id ? 'PUT' : 'POST'} />
                                                         <input type="hidden" name="status" value="absent" />
@@ -8627,12 +8706,12 @@ function EvaluationDashboard({ events }) {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${getStatusColor(event.evaluation_status)}`}>
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shadow-sm ${getStatusColor(event.evaluation_status)}`}>
                                                     {getStatusLabel(event.evaluation_status)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${event.status === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shadow-sm border ${event.status === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
                                                     event.status === 'ongoing' ? 'border-blue-200 bg-blue-50 text-blue-700' :
                                                         'border-slate-200 bg-slate-50 text-slate-600'
                                                     }`}>
@@ -9062,7 +9141,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${evaluation.status === 'locked' ? 'bg-amber-100 text-amber-700' :
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${evaluation.status === 'locked' ? 'bg-amber-100 text-amber-700' :
                             evaluation.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
                                 evaluation.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
                                     'bg-slate-100 text-slate-700'
@@ -9158,7 +9237,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                                         {pe.user?.name || attendance?.user?.name || 'Unknown'}
                                                                     </td>
                                                                     <td className="px-4 py-3">
-                                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shadow-sm ${
                                                                             isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
                                                                         }`}>
                                                                             {isPresent ? 'Present' : 'Not Marked'}
@@ -9238,7 +9317,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                                 {p.user?.name || 'Unknown'}
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shadow-sm ${isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                                                                     {isPresent ? 'Present' : 'Not Marked'}
                                                                 </span>
                                                             </td>
@@ -9844,7 +9923,7 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                 {averageScore.toFixed(2)}%
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${pe.result === 'passed'
+                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shadow-sm ${pe.result === 'passed'
                                                     ? 'bg-emerald-50 text-emerald-700'
                                                     : 'bg-rose-50 text-rose-700'
                                                     }`}>
@@ -9980,25 +10059,25 @@ function BarangayProfileList({ profiles = [] }) {
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <a
                                                     href={`/barangay-profile/${p.id}`}
-                                                    className="inline-flex items-center justify-center rounded-md border border-slate-200 p-1.5 text-slate-700 hover:bg-slate-100"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
                                                     title="View"
                                                 >
-                                                    <Eye className="w-3.5 h-3.5" />
+                                                    <Eye className="w-4 h-4" />
                                                 </a>
                                                 <a
                                                     href={`/barangay-profile/${p.id}/edit`}
-                                                    className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
                                                     title="Edit"
                                                 >
-                                                    <Pencil className="w-3.5 h-3.5" />
+                                                    <Pencil className="w-4 h-4" />
                                                 </a>
                                                 <button
                                                     type="button"
                                                     onClick={() => handleDelete(p)}
-                                                    className="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 p-1.5 text-red-700 hover:bg-red-100"
+                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors shadow-sm"
                                                     title="Delete"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </td>

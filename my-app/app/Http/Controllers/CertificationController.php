@@ -210,11 +210,27 @@ class CertificationController extends Controller
         $completionDate = $data['completion_date'] ?? $event->event_date ?? now();
         $finalScore = $pe ? $pe->average_score : null;
 
+        // Snapshot template assets so certificate history never changes
+        $snapshotBackgroundPath = null;
+        if ($template?->background_path && Storage::disk('public')->exists($template->background_path)) {
+            $ext = pathinfo($template->background_path, PATHINFO_EXTENSION) ?: 'png';
+            $snapshotBackgroundPath = 'issued-certificates/backgrounds/' . $certNumber . '.' . $ext;
+            // Avoid collisions in case certificate numbers ever change format
+            if (Storage::disk('public')->exists($snapshotBackgroundPath)) {
+                $snapshotBackgroundPath = 'issued-certificates/backgrounds/' . $certNumber . '-' . uniqid() . '.' . $ext;
+            }
+            Storage::disk('public')->copy($template->background_path, $snapshotBackgroundPath);
+        }
+
         $cert = Certificate::create([
             'user_id' => $user->id,
             'simulation_event_id' => $event->id,
             'participant_evaluation_id' => $pe?->id,
             'certificate_template_id' => $template?->id,
+            'template_background_path' => $snapshotBackgroundPath ?? $template?->background_path,
+            'template_background_opacity' => $template?->background_opacity,
+            'template_paper_size' => $template?->paper_size,
+            'template_content' => $template ? ($template->template_content ?? $template->defaultTemplateContent()) : null,
             'certificate_number' => $certNumber,
             'type' => $data['type'],
             'training_type' => $data['training_type'] ?? $event->scenario?->title ?? 'Disaster Preparedness Training',
@@ -323,7 +339,11 @@ class CertificationController extends Controller
         unset($data['background']);
         if ($request->hasFile('background')) {
             if ($template->background_path) {
-                Storage::disk('public')->delete($template->background_path);
+                // Do NOT delete old background if any issued certificate references it (history must not change)
+                $isReferencedByIssuedCert = Certificate::where('template_background_path', $template->background_path)->exists();
+                if (! $isReferencedByIssuedCert) {
+                    Storage::disk('public')->delete($template->background_path);
+                }
             }
             $data['background_path'] = $request->file('background')->store('certificate-templates', 'public');
         }
@@ -336,6 +356,7 @@ class CertificationController extends Controller
 
     /**
      * Serve the template background image (works without storage:link).
+     * Includes cache headers to prevent stale images.
      */
     public function templateBackground(CertificateTemplate $template)
     {
@@ -343,8 +364,14 @@ class CertificationController extends Controller
             abort(404);
         }
         $path = Storage::disk('public')->path($template->background_path);
+        $lastModified = filemtime($path);
+        $etag = md5($path . $lastModified);
+        
         return response()->file($path, [
             'Content-Type' => \Illuminate\Support\Facades\File::mimeType($path),
+            'Cache-Control' => 'private, max-age=3600, must-revalidate',
+            'ETag' => $etag,
+            'Last-Modified' => gmdate('D, d M Y H:i:s', $lastModified) . ' GMT',
         ]);
     }
 
@@ -358,7 +385,9 @@ class CertificationController extends Controller
         }
         // Use app route so the image works even when public/storage symlink doesn't exist.
         // Use <img> instead of CSS background-image so the background prints / saves in PDF.
-        $url = route('certification.templates.background', ['template' => $template->id]);
+        // Add cache-busting query parameter based on updated_at timestamp to prevent stale images
+        $updatedAt = $template->updated_at ? $template->updated_at->timestamp : time();
+        $url = route('certification.templates.background', ['template' => $template->id]) . '?v=' . $updatedAt;
         $opacity = $template->background_opacity !== null
             ? (float) $template->background_opacity
             : 0.35;
@@ -369,6 +398,55 @@ class CertificationController extends Controller
             . '<img class="certificate-bg" src="' . $safeUrl . '" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; opacity:' . $opacity . '; z-index:0;" />'
             . '<div class="certificate-content" style="position:relative; z-index:1; background:transparent;">' . $html . '</div>'
             . '</div>';
+    }
+
+    /**
+     * Wrap certificate HTML with background from stored snapshot path.
+     */
+    private function wrapContentWithBackgroundFromPath(string $html, int $certificateId, string $backgroundPath, float $opacity): string
+    {
+        if (!$backgroundPath || !Storage::disk('public')->exists($backgroundPath)) {
+            return $html;
+        }
+        // Use certificate-specific route for snapshot background
+        // Add cache-busting based on file modification time
+        $filePath = Storage::disk('public')->path($backgroundPath);
+        $fileTime = file_exists($filePath) ? filemtime($filePath) : time();
+        $url = route('certificates.background', ['certificate' => $certificateId]) . '?v=' . $fileTime;
+        $opacity = max(0.1, min(0.8, $opacity)); // clamp between 0.1 and 0.8
+        $safeUrl = e($url);
+        return '<div class="certificate-outer" style="position:relative; max-width:800px; margin:0 auto; width:100%;">'
+            . '<img class="certificate-bg" src="' . $safeUrl . '" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; opacity:' . $opacity . '; z-index:0;" />'
+            . '<div class="certificate-content" style="position:relative; z-index:1; background:transparent;">' . $html . '</div>'
+            . '</div>';
+    }
+
+    /**
+     * Merge content from stored template snapshot with participant data.
+     */
+    private function mergeContentFromSnapshot(string $templateContent, array $data, ?string $backgroundPath): string
+    {
+        // Don't include background_image in data since we handle it separately via wrapContentWithBackgroundFromPath
+        foreach (CertificateTemplate::placeholders() as $key) {
+            if ($key !== 'background_image') {
+                $templateContent = str_replace('{' . $key . '}', (string) ($data[$key] ?? ''), $templateContent);
+            }
+        }
+        return $templateContent;
+    }
+
+    /**
+     * Serve the background image from a certificate's stored snapshot.
+     */
+    public function certificateBackground(Certificate $certificate)
+    {
+        if (!$certificate->template_background_path || !Storage::disk('public')->exists($certificate->template_background_path)) {
+            abort(404);
+        }
+        $path = Storage::disk('public')->path($certificate->template_background_path);
+        return response()->file($path, [
+            'Content-Type' => \Illuminate\Support\Facades\File::mimeType($path),
+        ]);
     }
 
     /**
@@ -429,11 +507,20 @@ class CertificationController extends Controller
 
     /**
      * View issued certificate (merged template with real participant data).
+     * Uses the stored template snapshot (background_path, opacity, paper_size) from when the certificate was issued.
      */
     public function viewCertificate(Certificate $certificate)
     {
         $certificate->load(['user', 'simulationEvent', 'certificateTemplate']);
         $template = $certificate->certificateTemplate ?? CertificateTemplate::where('status', 'active')->first();
+        
+        // Use stored snapshot if available, otherwise fall back to current template
+        $backgroundPath = $certificate->template_background_path ?? $template?->background_path;
+        $backgroundOpacity = $certificate->template_background_opacity !== null 
+            ? (float) $certificate->template_background_opacity 
+            : ($template?->background_opacity ?? 0.35);
+        $paperSize = $certificate->template_paper_size ?? ($template?->paper_size ?? 'a4');
+        
         $data = [
             'name' => $certificate->user->name ?? '',
             'date' => $certificate->completion_date ? $certificate->completion_date->format('F j, Y') : '',
@@ -442,9 +529,26 @@ class CertificationController extends Controller
             'score' => $certificate->final_score ? (string) round((float) $certificate->final_score, 1) : '',
             'training_type' => $certificate->training_type ?? '',
         ];
-        $html = $template ? $template->mergeContent($data) : $this->fallbackCertificateHtml($data);
-        $html = $this->wrapContentWithBackground($html, $template);
-        $paperSize = $template && in_array($template->paper_size ?? '', ['a4', 'letter'], true) ? $template->paper_size : 'a4';
+        
+        // Use stored template content snapshot if available, otherwise use current template
+        if ($certificate->template_content) {
+            // Use the stored template content from when certificate was issued
+            $html = $this->mergeContentFromSnapshot($certificate->template_content, $data, $certificate->template_background_path);
+        } else {
+            // Fall back to current template (for certificates issued before snapshot was added)
+            $html = $template ? $template->mergeContent($data) : $this->fallbackCertificateHtml($data);
+        }
+        
+        // Use stored snapshot background if available
+        if ($backgroundPath && $certificate->template_background_path) {
+            // Use certificate-specific background route
+            $html = $this->wrapContentWithBackgroundFromPath($html, $certificate->id, $backgroundPath, $backgroundOpacity);
+        } else {
+            // Fall back to template background (for certificates issued before snapshot was added)
+            $html = $this->wrapContentWithBackground($html, $template);
+        }
+        
+        $paperSize = in_array($paperSize, ['a4', 'letter'], true) ? $paperSize : 'a4';
         $orientation = request()->query('orientation', 'landscape');
         if (! in_array($orientation, ['portrait', 'landscape'], true)) {
             $orientation = 'landscape';
