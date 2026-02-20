@@ -289,9 +289,22 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::delete('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'destroy'])
         ->name('barangay.profile.destroy');
 
-    Route::get('/certification', function () {
-        return view('app', ['section' => 'certification']);
-    })->name('certification');
+    // Certification Issuance
+    Route::get('/certification', [App\Http\Controllers\CertificationController::class, 'index'])->name('certification');
+    Route::post('/certification/issue', [App\Http\Controllers\CertificationController::class, 'issue'])->name('certification.issue');
+    Route::post('/certificates/{certificate}/revoke', [App\Http\Controllers\CertificationController::class, 'revoke'])->name('certificates.revoke');
+    Route::post('/certification/reissue', [App\Http\Controllers\CertificationController::class, 'reissue'])->name('certification.reissue');
+    Route::post('/certification/templates', [App\Http\Controllers\CertificationController::class, 'storeTemplate'])->name('certification.templates.store');
+    Route::put('/certification/templates/{template}', [App\Http\Controllers\CertificationController::class, 'updateTemplate'])->name('certification.templates.update');
+    Route::post('/certification/templates/{template}/update', [App\Http\Controllers\CertificationController::class, 'updateTemplate'])->name('certification.templates.update.post');
+    Route::delete('/certification/templates/{template}', [App\Http\Controllers\CertificationController::class, 'destroyTemplate'])->name('certification.templates.destroy');
+    Route::post('/certification/templates/{template}/duplicate', [App\Http\Controllers\CertificationController::class, 'duplicateTemplate'])->name('certification.templates.duplicate');
+    Route::get('/certification/preview-participant', [App\Http\Controllers\CertificationController::class, 'previewParticipant'])->name('certification.preview.participant');
+    Route::get('/certification/templates/{template}/preview', [App\Http\Controllers\CertificationController::class, 'previewTemplate'])->name('certification.templates.preview');
+    Route::get('/certification/templates/{template}/background', [App\Http\Controllers\CertificationController::class, 'templateBackground'])->name('certification.templates.background');
+    Route::get('/certificates/{certificate}/view', [App\Http\Controllers\CertificationController::class, 'viewCertificate'])->name('certificates.view');
+    Route::post('/certification/settings', [App\Http\Controllers\CertificationController::class, 'updateSettings'])->name('certification.settings');
+    Route::get('/certification/export/{format?}', [App\Http\Controllers\CertificationController::class, 'export'])->name('certification.export');
 
     // LGU Admin user management
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');

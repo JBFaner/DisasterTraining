@@ -140,6 +140,27 @@
             @isset($overall_average)
                 data-overall-average="{{ $overall_average }}"
             @endisset
+            @isset($summaryStats)
+                data-summary-stats='@json($summaryStats)'
+            @endisset
+            @isset($eligibleParticipants)
+                data-eligible-participants='@json($eligibleParticipants)'
+            @endisset
+            @isset($templates)
+                data-templates='@json($templates)'
+            @endisset
+            @isset($issuedCertificates)
+                data-issued-certificates='@json($issuedCertificates)'
+            @endisset
+            @isset($eventsForFilter)
+                data-events-for-filter='@json($eventsForFilter)'
+            @endisset
+            @isset($filters)
+                data-filters='@json($filters)'
+            @endisset
+            @isset($automationSettings)
+                data-automation-settings='@json($automationSettings)'
+            @endisset
             @if (session('status'))
                 data-status="{{ session('status') }}"
             @endif

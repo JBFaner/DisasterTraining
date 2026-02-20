@@ -16,7 +16,7 @@ import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -435,6 +435,43 @@ if (rootElement) {
     currentPassedCount = rootElement.getAttribute('data-passed-count');
     currentFailedCount = rootElement.getAttribute('data-failed-count');
     currentOverallAverage = rootElement.getAttribute('data-overall-average');
+
+    let certificationSummaryStats = null;
+    let certificationEligibleParticipants = [];
+    let certificationTemplates = [];
+    let certificationIssuedCertificates = [];
+    let certificationEventsForFilter = [];
+    let certificationFilters = {};
+    let certificationAutomationSettings = {};
+    const summaryStatsJson = rootElement.getAttribute('data-summary-stats');
+    const eligibleParticipantsJson = rootElement.getAttribute('data-eligible-participants');
+    const templatesJson = rootElement.getAttribute('data-templates');
+    const issuedCertificatesJson = rootElement.getAttribute('data-issued-certificates');
+    const eventsForFilterJson = rootElement.getAttribute('data-events-for-filter');
+    const certificationFiltersJson = rootElement.getAttribute('data-filters');
+    const automationSettingsJson = rootElement.getAttribute('data-automation-settings');
+    if (summaryStatsJson) {
+        try { certificationSummaryStats = JSON.parse(summaryStatsJson); } catch (e) { console.error('Failed to parse summaryStats', e); }
+    }
+    if (eligibleParticipantsJson) {
+        try { certificationEligibleParticipants = JSON.parse(eligibleParticipantsJson); } catch (e) { console.error('Failed to parse eligibleParticipants', e); }
+    }
+    if (templatesJson) {
+        try { certificationTemplates = JSON.parse(templatesJson); } catch (e) { console.error('Failed to parse templates', e); }
+    }
+    if (issuedCertificatesJson) {
+        try { certificationIssuedCertificates = JSON.parse(issuedCertificatesJson); } catch (e) { console.error('Failed to parse issuedCertificates', e); }
+    }
+    if (eventsForFilterJson) {
+        try { certificationEventsForFilter = JSON.parse(eventsForFilterJson); } catch (e) { console.error('Failed to parse eventsForFilter', e); }
+    }
+    if (certificationFiltersJson) {
+        try { certificationFilters = JSON.parse(certificationFiltersJson); } catch (e) { console.error('Failed to parse certification filters', e); }
+    }
+    if (automationSettingsJson) {
+        try { certificationAutomationSettings = JSON.parse(automationSettingsJson); } catch (e) { console.error('Failed to parse automation settings', e); }
+    }
+
     const sessionTimeoutMinutes = parseInt(rootElement.getAttribute('data-session-timeout-minutes') || '10', 10);
     const warningBeforeLogoutSeconds = parseInt(rootElement.getAttribute('data-warning-before-logout-seconds') || '60', 10);
 
@@ -894,6 +931,18 @@ if (rootElement) {
 
                         {sectionAttr === 'participants' && (
                             <ParticipantRegistrationAttendanceModule events={events} participants={participants} role={role} />
+                        )}
+
+                        {sectionAttr === 'certification' && (
+                            <CertificationModule
+                                summaryStats={certificationSummaryStats}
+                                eligibleParticipants={certificationEligibleParticipants}
+                                templates={certificationTemplates}
+                                issuedCertificates={certificationIssuedCertificates}
+                                eventsForFilter={certificationEventsForFilter}
+                                filters={certificationFilters}
+                                automationSettings={certificationAutomationSettings}
+                            />
                         )}
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
@@ -6663,6 +6712,599 @@ function SimulationEventEditForm({ event, scenarios }) {
                     </div>
                 </div>
             </form>
+        </div>
+    );
+}
+
+// Template Editor Modal for Certification (supports template_content with {name}, {date}, etc. and background upload)
+const DEFAULT_TEMPLATE_CONTENT = `<div class="certificate" style="font-family:serif; max-width:800px; margin:0 auto; padding:40px; border:2px solid #16a34a; text-align:center;">
+<h1 style="color:#16a34a;">Certificate of Completion</h1>
+<p style="font-size:18px; margin-top:30px;">This is to certify that</p>
+<p style="font-size:24px; font-weight:bold; margin:15px 0;">{name}</p>
+<p style="font-size:16px;">has successfully completed</p>
+<p style="font-size:18px; font-weight:bold;">{training_type}</p>
+<p style="font-size:14px; margin-top:20px;">Event: {event} &nbsp;|&nbsp; Date: {date}</p>
+<p style="font-size:14px;">Certificate No: {certificate_number} &nbsp;|&nbsp; Score: {score}%</p>
+</div>`;
+
+function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
+    const isEdit = !!template;
+    const [paperSize, setPaperSize] = React.useState(template?.paper_size || 'a4');
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const fileInput = form.querySelector('input[name="background"]');
+        const hasFile = fileInput?.files?.length > 0;
+        // When uploading a file, use POST (not PUT) so PHP populates $_FILES reliably
+        const url = hasFile && isEdit
+            ? `/certification/templates/${template.id}/update`
+            : isEdit ? `/certification/templates/${template.id}` : '/certification/templates';
+
+        if (hasFile) {
+            form.setAttribute('action', url);
+            form.setAttribute('method', 'post');
+            form.setAttribute('enctype', 'multipart/form-data');
+            form.submit();
+            return;
+        }
+
+        const payload = {
+            name: form.name?.value,
+            type: form.type?.value || 'completion',
+            title_text: form.title_text?.value || null,
+            template_content: form.template_content?.value || null,
+            certificate_number_format: form.certificate_number_format?.value || null,
+            status: form.status?.value || 'active',
+            background_opacity: form.background_opacity?.value ? parseFloat(form.background_opacity.value) : 0.35,
+            paper_size: paperSize,
+            _token: csrf,
+        };
+        try {
+            const res = await fetch(url, {
+                method: isEdit ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire({ icon: 'success', text: isEdit ? 'Template updated.' : 'Template created.' });
+                onSaved();
+            } else {
+                Swal.fire({ icon: 'error', text: data.message || 'Failed.' });
+            }
+        } catch (_) {
+            Swal.fire({ icon: 'error', text: 'Request failed.' });
+        }
+    };
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 overflow-y-auto py-6" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-6 my-auto" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">{isEdit ? 'Edit Template' : 'Add Template'}</h3>
+                <form onSubmit={handleSubmit} encType="multipart/form-data">
+                    <input type="hidden" name="_token" value={csrf} />
+                    <input type="hidden" name="paper_size" value={paperSize} />
+                    <div className="space-y-3 mb-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Template Name</label>
+                            <input type="text" name="name" required defaultValue={template?.name} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. Default Completion" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Type</label>
+                            <select name="type" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" defaultValue={template?.type || 'completion'}>
+                                <option value="completion">Completion</option>
+                                <option value="participation">Participation</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Print size</label>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => setPaperSize('a4')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'a4' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>A4</button>
+                                <button type="button" onClick={() => setPaperSize('letter')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'letter' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>Letter</button>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">Choose paper size for a clean print or PDF. A4: 210×297mm · Letter: 8.5×11 in.</p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate content (HTML with placeholders)</label>
+                            <p className="text-xs text-slate-500 mb-1">Use <code className="bg-slate-100 px-1 rounded">{'{name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{event}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{certificate_number}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{score}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{training_type}'}</code> — the system will replace these with the participant data.</p>
+                            <textarea name="template_content" rows={10} defaultValue={template?.template_content ?? DEFAULT_TEMPLATE_CONTENT} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono" placeholder="HTML with {name}, {date}, etc." />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Background image (optional)</label>
+                            {isEdit && template?.background_path && (
+                                <p className="text-xs text-emerald-700 mb-1">Current: {template.background_path.replace(/^.*[/\\]/, '')}</p>
+                            )}
+                            <input type="file" name="background" accept="image/*,.pdf" className="w-full text-sm text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-emerald-50 file:text-emerald-700" />
+                            <p className="text-xs text-slate-500 mt-1">Uploaded image is shown behind the certificate text with reduced opacity so text stays readable.</p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Background opacity</label>
+                            <input type="number" name="background_opacity" min="0.1" max="0.8" step="0.05" defaultValue={template?.background_opacity ?? 0.35} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                            <p className="text-xs text-slate-500 mt-1">0.1 = very faint, 0.35 = default (readable text), 0.8 = stronger. Lower = more readable text.</p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Title Text</label>
+                            <input type="text" name="title_text" defaultValue={template?.title_text} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Certificate of Completion" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate Number Format</label>
+                            <input type="text" name="certificate_number_format" defaultValue={template?.certificate_number_format} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="CERT-{YEAR}-{SEQ}" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+                            <select name="status" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" defaultValue={template?.status || 'active'}>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                        <button type="button" onClick={onClose} className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
+                        <button type="submit" className="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2">{isEdit ? 'Update' : 'Create'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// Certification Issuance Module
+function CertificationModule({
+    summaryStats = null,
+    eligibleParticipants = [],
+    templates = [],
+    issuedCertificates = [],
+    eventsForFilter = [],
+    filters = {},
+    automationSettings = {},
+}) {
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const [activeTab, setActiveTab] = React.useState('overview');
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [eventFilter, setEventFilter] = React.useState(filters.event_id || '');
+    const [statusFilter, setStatusFilter] = React.useState(filters.status || '');
+    const [issueModalOpen, setIssueModalOpen] = React.useState(false);
+    const [issueRow, setIssueRow] = React.useState(null);
+    const [certType, setCertType] = React.useState('completion');
+    const [autoIssue, setAutoIssue] = React.useState(!!automationSettings.auto_issue_when_passed);
+    const [requireAttendance, setRequireAttendance] = React.useState(!!automationSettings.require_attendance);
+    const [requireApproval, setRequireApproval] = React.useState(!!automationSettings.require_supervisor_approval);
+    const [templateEditorOpen, setTemplateEditorOpen] = React.useState(false);
+    const [editingTemplate, setEditingTemplate] = React.useState(null);
+
+    const stats = summaryStats || { total_certified: 0, pending_certifications: 0, issued_today: 0 };
+
+    const filteredEligible = eligibleParticipants.filter((row) => {
+        const matchSearch = !searchTerm || row.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) || row.event_title?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchEvent = !eventFilter || String(row.event_id) === String(eventFilter);
+        const matchStatus = !statusFilter || row.cert_status === statusFilter;
+        return matchSearch && matchEvent && matchStatus;
+    });
+
+    const filteredIssued = issuedCertificates.filter((c) => {
+        const matchSearch = !searchTerm || (c.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (c.simulation_event?.title || '').toLowerCase().includes(searchTerm.toLowerCase());
+        return matchSearch;
+    });
+
+    const buildFilterUrl = (extra = {}) => {
+        const params = new URLSearchParams();
+        if (eventFilter) params.set('event_id', eventFilter);
+        if (statusFilter) params.set('status', statusFilter);
+        Object.entries(extra).forEach(([k, v]) => { if (v) params.set(k, v); });
+        const q = params.toString();
+        return q ? `/certification?${q}` : '/certification';
+    };
+
+    const handleIssueCertificate = (row) => {
+        setIssueRow(row);
+        setIssueModalOpen(true);
+    };
+
+    const handleSubmitIssue = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const payload = {
+            user_id: form.user_id?.value || issueRow?.user_id,
+            simulation_event_id: form.simulation_event_id?.value || issueRow?.event_id,
+            participant_evaluation_id: issueRow?.participant_evaluation_id || null,
+            type: form.type?.value || certType,
+            training_type: form.training_type?.value || '',
+            completion_date: form.completion_date?.value || null,
+            _token: csrf,
+        };
+        try {
+            const res = await fetch('/certification/issue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Certificate Issued', text: data.message });
+                setIssueModalOpen(false);
+                setIssueRow(null);
+                window.location.href = '/certification';
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to issue certificate.' });
+            }
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+        }
+    };
+
+    const handleRevoke = async (certId) => {
+        const { value: reason } = await Swal.fire({
+            title: 'Revoke Certificate',
+            input: 'textarea',
+            inputLabel: 'Reason (optional)',
+            showCancelButton: true,
+            confirmButtonText: 'Revoke',
+            confirmButtonColor: '#dc2626',
+        });
+        if (reason === undefined) return;
+        const formData = new FormData();
+        formData.append('_token', csrf);
+        formData.append('reason', reason || '');
+        try {
+            const res = await fetch(`/certificates/${certId}/revoke`, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) { Swal.fire({ icon: 'success', text: data.message }); window.location.href = '/certification'; }
+        } catch (_) { Swal.fire({ icon: 'error', text: 'Failed to revoke.' }); }
+    };
+
+    const handleSaveAutomation = async () => {
+        const formData = new FormData();
+        formData.append('_token', csrf);
+        formData.append('auto_issue_when_passed', autoIssue ? '1' : '0');
+        formData.append('require_attendance', requireAttendance ? '1' : '0');
+        formData.append('require_supervisor_approval', requireApproval ? '1' : '0');
+        try {
+            await fetch('/certification/settings', { method: 'POST', body: formData });
+            Swal.fire({ icon: 'success', text: 'Settings saved.' });
+        } catch (_) { Swal.fire({ icon: 'error', text: 'Failed to save.' }); }
+    };
+
+    const handleDuplicateTemplate = async (template) => {
+        const formData = new FormData();
+        formData.append('_token', csrf);
+        try {
+            const res = await fetch(`/certification/templates/${template.id}/duplicate`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: formData,
+            });
+            if (res.ok) { Swal.fire({ icon: 'success', text: 'Template duplicated.' }); window.location.href = '/certification'; }
+        } catch (_) { Swal.fire({ icon: 'error', text: 'Failed.' }); }
+    };
+
+    const handleDeleteTemplate = async (template) => {
+        const ok = await Swal.fire({
+            title: 'Delete template?',
+            text: 'This cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+        });
+        if (!ok.isConfirmed) return;
+        try {
+            await fetch(`/certification/templates/${template.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf } });
+            Swal.fire({ icon: 'success', text: 'Deleted.' });
+            window.location.href = '/certification';
+        } catch (_) { Swal.fire({ icon: 'error', text: 'Failed.' }); }
+    };
+
+    return (
+        <div>
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Award className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-slate-800">Certification Issuance</h2>
+            </div>
+
+            {/* Tabs */}
+            <div className="mb-4 border-b border-slate-200">
+                <div className="flex gap-4">
+                    {['overview', 'eligible', 'templates', 'history', 'automation'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-600 hover:text-slate-800'}`}
+                        >
+                            {tab === 'overview' && 'Certifications'}
+                            {tab === 'eligible' && 'Eligible Participants'}
+                            {tab === 'templates' && 'Templates'}
+                            {tab === 'history' && 'Issued History'}
+                            {tab === 'automation' && 'Automation Rules'}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Filters + Export + Issue (for eligible tab) */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Name or event..."
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Event</label>
+                        <select
+                            value={eventFilter}
+                            onChange={(e) => setEventFilter(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                            <option value="">All Events</option>
+                            {eventsForFilter?.map((ev) => (
+                                <option key={ev.id} value={ev.id}>{ev.title}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                            <option value="">All</option>
+                            <option value="eligible">Eligible</option>
+                            <option value="not_eligible">Not Eligible</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                        <a href={`/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2">Export CSV</a>
+                        <a href="/certification/export/pdf" className="inline-flex items-center rounded-md border border-sky-300 bg-sky-100 hover:bg-sky-200 text-sky-800 text-sm font-medium px-3 py-2">Export PDF</a>
+                        <button type="button" onClick={() => window.print()} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2">Print List</button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Overview: Summary cards */}
+            {activeTab === 'overview' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white rounded-xl border border-slate-200 p-6">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Certified</p>
+                        <p className="text-2xl font-bold text-slate-800 mt-1">{stats.total_certified}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-amber-200 bg-amber-50 p-6">
+                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Pending Certifications</p>
+                        <p className="text-2xl font-bold text-amber-800 mt-1">{stats.pending_certifications}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50 p-6">
+                        <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Issued Today</p>
+                        <p className="text-2xl font-bold text-emerald-800 mt-1">{stats.issued_today}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Eligible Participants table */}
+            {activeTab === 'eligible' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table className="min-w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                            <tr>
+                                <th className="px-4 py-2 text-left">Name</th>
+                                <th className="px-4 py-2 text-left">Event</th>
+                                <th className="px-4 py-2 text-left">Score</th>
+                                <th className="px-4 py-2 text-left">Attendance</th>
+                                <th className="px-4 py-2 text-left">Status</th>
+                                <th className="px-4 py-2 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredEligible.length === 0 ? (
+                                <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No participants match filters.</td></tr>
+                            ) : (
+                                filteredEligible.map((row) => (
+                                    <tr key={`${row.user_id}-${row.event_id}`} className="border-t border-slate-100 hover:bg-slate-50">
+                                        <td className="px-4 py-2 font-medium text-slate-800">{row.user_name}</td>
+                                        <td className="px-4 py-2 text-slate-600">{row.event_title}</td>
+                                        <td className="px-4 py-2">{row.score != null ? `${row.score}%` : '—'}</td>
+                                        <td className="px-4 py-2">
+                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${row.attendance_status === 'present' || row.attendance_status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                {row.attendance_status || '—'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                row.cert_status === 'eligible' ? 'bg-emerald-50 text-emerald-700' :
+                                                row.cert_status === 'not_eligible' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
+                                            }`}>
+                                                {row.cert_status === 'eligible' ? 'Eligible' : row.cert_status === 'not_eligible' ? 'Not Eligible' : 'Pending'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            {row.certificate_issued ? (
+                                                <div className="flex gap-2 flex-wrap items-center">
+                                                    <span className="text-xs text-slate-500">Issued</span>
+                                                    {row.certificate_id && (
+                                                        <a href={`/certificates/${row.certificate_id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-md border border-sky-300 bg-sky-100 hover:bg-sky-200 text-sky-800 px-2 py-1 text-xs font-medium">Preview Certificate</a>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex gap-2 flex-wrap">
+                                                    <a href={`/simulation-events/${row.event_id}/evaluation/summary`} className="inline-flex rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">View Details</a>
+                                                    {row.cert_status === 'eligible' && (
+                                                        <button type="button" onClick={() => handleIssueCertificate(row)} className="inline-flex rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-2 py-1 text-xs font-medium">Issue Certificate</button>
+                                                    )}
+                                                    <a href={`/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">Preview</a>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Templates tab */}
+            {activeTab === 'templates' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                        <h3 className="text-sm font-semibold text-slate-800">Certificate Templates</h3>
+                        <button type="button" onClick={() => { setEditingTemplate(null); setTemplateEditorOpen(true); }} className="inline-flex rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5">Add Template</button>
+                    </div>
+                    <table className="min-w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                            <tr>
+                                <th className="px-4 py-2 text-left">Template Name</th>
+                                <th className="px-4 py-2 text-left">Type</th>
+                                <th className="px-4 py-2 text-left">Last Used</th>
+                                <th className="px-4 py-2 text-left">Status</th>
+                                <th className="px-4 py-2 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {templates.length === 0 ? (
+                                <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No templates yet. Add one to get started.</td></tr>
+                            ) : (
+                                templates.map((t) => (
+                                    <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50">
+                                        <td className="px-4 py-2 font-medium text-slate-800">{t.name}</td>
+                                        <td className="px-4 py-2 text-slate-600">{t.type}</td>
+                                        <td className="px-4 py-2 text-slate-600">{t.last_used_at ? formatDate(t.last_used_at) : '—'}</td>
+                                        <td className="px-4 py-2"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${t.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{t.status}</span></td>
+                                        <td className="px-4 py-2 flex gap-2 flex-wrap">
+                                            <a href={`/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline text-xs">Preview</a>
+                                            <button type="button" onClick={() => { setEditingTemplate(t); setTemplateEditorOpen(true); }} className="text-emerald-600 hover:underline text-xs">Edit</button>
+                                            <button type="button" onClick={() => handleDuplicateTemplate(t)} className="text-sky-600 hover:underline text-xs">Duplicate</button>
+                                            <button type="button" onClick={() => handleDeleteTemplate(t)} className="text-rose-600 hover:underline text-xs">Delete</button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Issued History */}
+            {activeTab === 'history' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table className="min-w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                            <tr>
+                                <th className="px-4 py-2 text-left">Certificate ID</th>
+                                <th className="px-4 py-2 text-left">Name</th>
+                                <th className="px-4 py-2 text-left">Event</th>
+                                <th className="px-4 py-2 text-left">Issue Date</th>
+                                <th className="px-4 py-2 text-left">Issued By</th>
+                                <th className="px-4 py-2 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredIssued.length === 0 ? (
+                                <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No issued certificates.</td></tr>
+                            ) : (
+                                filteredIssued.map((c) => (
+                                    <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
+                                        <td className="px-4 py-2 font-mono text-xs text-slate-700">{c.certificate_number}</td>
+                                        <td className="px-4 py-2 font-medium text-slate-800">{c.user?.name}</td>
+                                        <td className="px-4 py-2 text-slate-600">{c.simulation_event?.title}</td>
+                                        <td className="px-4 py-2 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : '—'}</td>
+                                        <td className="px-4 py-2 text-slate-600">{c.issuer?.name || '—'}</td>
+                                        <td className="px-4 py-2 flex gap-2">
+                                            <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline text-xs">View / Print PDF</a>
+                                            <button type="button" onClick={() => handleRevoke(c.id)} className="text-rose-600 hover:underline text-xs">Revoke</button>
+                                            <a href="/certification" className="text-emerald-600 hover:underline text-xs">Reissue</a>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Automation Rules */}
+            {activeTab === 'automation' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Automation Rules</h3>
+                    <div className="space-y-4">
+                        <label className="flex items-center gap-3">
+                            <input type="checkbox" checked={autoIssue} onChange={(e) => setAutoIssue(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                            <span className="text-sm text-slate-700">Auto-issue certificates when participant passes (certification eligible = Yes)</span>
+                        </label>
+                        <label className="flex items-center gap-3">
+                            <input type="checkbox" checked={requireAttendance} onChange={(e) => setRequireAttendance(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                            <span className="text-sm text-slate-700">Require attendance (present/completed)</span>
+                        </label>
+                        <label className="flex items-center gap-3">
+                            <input type="checkbox" checked={requireApproval} onChange={(e) => setRequireApproval(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                            <span className="text-sm text-slate-700">Require supervisor approval before issuing</span>
+                        </label>
+                        <button type="button" onClick={handleSaveAutomation} className="inline-flex rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2">Save Settings</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Issue Certificate Modal */}
+            {issueModalOpen && issueRow && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50" onClick={() => setIssueModalOpen(false)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Issue Certificate</h3>
+                        <form onSubmit={handleSubmitIssue}>
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="user_id" value={issueRow.user_id} />
+                            <input type="hidden" name="simulation_event_id" value={issueRow.event_id} />
+                            <input type="hidden" name="participant_evaluation_id" value={issueRow.participant_evaluation_id || ''} />
+                            <div className="space-y-3 mb-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Participant Name</label>
+                                    <p className="text-sm text-slate-800">{issueRow.user_name}</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Event Name</label>
+                                    <p className="text-sm text-slate-800">{issueRow.event_title}</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Training Type</label>
+                                    <input type="text" name="training_type" defaultValue="Disaster Preparedness Training" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Completion Date</label>
+                                    <input type="date" name="completion_date" defaultValue={issueRow.event_date ? issueRow.event_date.slice(0, 10) : ''} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Final Score</label>
+                                    <p className="text-sm text-slate-800">{issueRow.score != null ? `${issueRow.score}%` : '—'}</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate Type</label>
+                                    <select name="type" value={certType} onChange={(e) => setCertType(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+                                        <option value="completion">Completion</option>
+                                        <option value="participation">Participation</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                                <button type="button" onClick={() => setIssueModalOpen(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
+                                <button type="submit" className="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2">Generate Certificate</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Template Editor Modal */}
+            {templateEditorOpen && (
+                <TemplateEditorModal
+                    template={editingTemplate}
+                    csrf={csrf}
+                    onClose={() => { setTemplateEditorOpen(false); setEditingTemplate(null); }}
+                    onSaved={() => { setTemplateEditorOpen(false); setEditingTemplate(null); window.location.href = '/certification'; }}
+                />
+            )}
         </div>
     );
 }
