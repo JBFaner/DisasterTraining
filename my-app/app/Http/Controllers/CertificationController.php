@@ -30,6 +30,7 @@ class CertificationController extends Controller
         $dateTo = $request->get('date_to');
         $statusFilter = $request->get('status'); // eligible, not_eligible, pending
         $certificateTypeFilter = $request->get('certificate_type');
+        $issuedStatusFilter = $request->get('issued_status'); // active, revoked, all - for Issued History
 
         // Summary cards
         $totalCertified = Certificate::whereNull('revoked_at')->count();
@@ -38,6 +39,10 @@ class CertificationController extends Controller
         $issuedToday = Certificate::whereNull('revoked_at')
             ->whereDate('issued_at', today())
             ->count();
+        // Trend: this week vs last week
+        $thisWeek = Certificate::whereNull('revoked_at')->whereBetween('issued_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
+        $lastWeek = Certificate::whereNull('revoked_at')->whereBetween('issued_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])->count();
+        $trendPct = $lastWeek > 0 ? (int) round((($thisWeek - $lastWeek) / $lastWeek) * 100) : ($thisWeek > 0 ? 100 : 0);
 
         // Eligible participants (for tab)
         $eligibleParticipants = $this->buildEligibleParticipantsList($eventFilter, $statusFilter);
@@ -46,8 +51,12 @@ class CertificationController extends Controller
         $templates = CertificateTemplate::orderBy('name')->get();
 
         // Issued certificates history (with filters)
-        $issuedQuery = Certificate::with(['user', 'simulationEvent', 'issuer'])
-            ->whereNull('revoked_at');
+        $issuedQuery = Certificate::with(['user', 'simulationEvent', 'issuer']);
+        if ($issuedStatusFilter === 'revoked') {
+            $issuedQuery->whereNotNull('revoked_at');
+        } elseif ($issuedStatusFilter !== 'all') {
+            $issuedQuery->whereNull('revoked_at');
+        }
         if ($eventFilter) {
             $issuedQuery->where('simulation_event_id', $eventFilter);
         }
@@ -78,6 +87,7 @@ class CertificationController extends Controller
                 'total_certified' => $totalCertified,
                 'pending_certifications' => $pendingCount,
                 'issued_today' => $issuedToday,
+                'trend_this_week' => $trendPct,
             ],
             'eligibleParticipants' => $eligibleParticipants,
             'templates' => $templates,
@@ -89,6 +99,7 @@ class CertificationController extends Controller
                 'date_to' => $dateTo,
                 'status' => $statusFilter,
                 'certificate_type' => $certificateTypeFilter,
+                'issued_status' => $issuedStatusFilter,
             ],
             'automationSettings' => [
                 'auto_issue_when_passed' => $autoIssueWhenPassed,

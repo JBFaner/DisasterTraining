@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'Template Preview - ' . (optional($template)->name ?? 'Certificate') }}</title>
     <style>
-        body { margin: 0; padding: 20px; background: #e2e8f0; font-family: system-ui, sans-serif; }
-        .toolbar { margin-bottom: 16px; }
-        .toolbar a { display: inline-block; padding: 8px 16px; background: #16a34a; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; }
-        .toolbar a:hover { background: #15803d; }
-        .preview-wrap { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 900px; margin: 0 auto; }
+        body { margin: 0; padding: 24px; background: linear-gradient(to bottom, #f8fafc, #eef2f7); font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; }
+        .toolbar { margin-bottom: 24px; }
+        .toolbar a { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; background: #16a34a; color: white; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 500; transition: all 0.25s ease; }
+        .toolbar a:hover { background: #15803d; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+        .preview-wrap { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 25px 50px rgba(0,0,0,0.1); max-width: 900px; margin: 0 auto; animation: certZoomIn 0.4s ease-out; }
+        @keyframes certZoomIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
         .preview-wrap .certificate { min-height: 0; }
         /* A4/Letter landscape shape (wider than tall) */
         .certificate-outer { aspect-ratio: 297/210; max-width: 800px; width: 100%; margin: 0 auto; }

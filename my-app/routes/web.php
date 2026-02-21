@@ -333,6 +333,7 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::post('/admin/roles', [App\Http\Controllers\RoleController::class, 'store'])->name('admin.roles.store');
     Route::get('/admin/roles/{id}/edit', [App\Http\Controllers\RoleController::class, 'edit'])->name('admin.roles.edit');
     Route::put('/admin/roles/{id}', [App\Http\Controllers\RoleController::class, 'update'])->name('admin.roles.update');
+    Route::delete('/admin/roles/{id}', [App\Http\Controllers\RoleController::class, 'destroy'])->name('admin.roles.destroy');
     Route::get('/admin/permissions', [App\Http\Controllers\PermissionController::class, 'index'])->name('admin.permissions.index');
     Route::post('/admin/permissions', [App\Http\Controllers\PermissionController::class, 'store'])->name('admin.permissions.store');
     Route::get('/admin/permissions/{id}/edit', [App\Http\Controllers\PermissionController::class, 'edit'])->name('admin.permissions.edit');

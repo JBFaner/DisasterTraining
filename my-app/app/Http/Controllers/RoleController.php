@@ -303,4 +303,33 @@ class RoleController extends Controller
             return back()->withErrors(['error' => 'Failed to update role']);
         }
     }
+
+    public function destroy($id)
+    {
+        $user = Auth::user();
+
+        if (! $user || $user->role !== 'LGU_ADMIN') {
+            abort(403);
+        }
+
+        if (! DB::getSchemaBuilder()->hasTable('roles')) {
+            return back()->with('error', 'Roles table does not exist');
+        }
+
+        try {
+            if (DB::getSchemaBuilder()->hasTable('role_has_permissions')) {
+                DB::table('role_has_permissions')->where('role_id', $id)->delete();
+            }
+            if (DB::getSchemaBuilder()->hasTable('model_has_roles')) {
+                DB::table('model_has_roles')->where('role_id', $id)->delete();
+            }
+            DB::table('roles')->where('id', $id)->delete();
+
+            return redirect()->route('admin.roles.index')
+                ->with('success', 'Role deleted successfully');
+        } catch (\Exception $e) {
+            Log::error('Error deleting role: ' . $e->getMessage());
+            return back()->with('error', 'Failed to delete role');
+        }
+    }
 }

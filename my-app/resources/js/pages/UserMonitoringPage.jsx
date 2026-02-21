@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Circle, Clock, Mail, Shield, UserCircle, RefreshCw, Search, Filter } from 'lucide-react';
+import { Users, Circle, Clock, Mail, Shield, UserCircle, RefreshCw, Search, Filter, Activity } from 'lucide-react';
 
 export function UserMonitoringPage({ users: initialUsers = [] }) {
     const [users, setUsers] = useState(initialUsers);
@@ -149,8 +149,8 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
             return (
                 <div className="flex items-center gap-2">
                     <div className="relative">
-                        <Circle className="w-3 h-3 text-emerald-500 fill-emerald-500" />
-                        <Circle className="w-3 h-3 text-emerald-500 fill-emerald-500 absolute top-0 left-0 animate-ping" />
+                        <Circle className="w-3 h-3 text-emerald-500 fill-emerald-500 drop-shadow-sm" />
+                        <Circle className="w-3 h-3 text-emerald-500 fill-emerald-500 absolute top-0 left-0 animate-ping drop-shadow-sm" />
                     </div>
                     <span className="text-sm font-medium text-emerald-700">Online</span>
                 </div>
@@ -158,7 +158,7 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
         } else {
             return (
                 <div className="flex items-center gap-2">
-                    <Circle className="w-3 h-3 text-slate-400 fill-slate-400" />
+                    <Circle className="w-3 h-3 text-slate-400 fill-slate-400 drop-shadow-sm" />
                     <span className="text-sm font-medium text-slate-600">
                         Offline
                         {user.inactive_minutes > 0 && (
@@ -176,56 +176,65 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
     const offlineCount = users.filter(u => !u.is_online).length;
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">User Monitoring</h1>
-                    <p className="text-sm text-slate-600 mt-1">
-                        Monitor real-time online/offline status of all users
-                    </p>
+        <div className="space-y-6 w-full overflow-x-hidden">
+            {/* Hero Header - Certification style */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <Activity className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">User Monitoring</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Monitor real-time online/offline status of all users.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3 shrink-0">
+                        <button
+                            onClick={handleManualRefresh}
+                            disabled={isRefreshing}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                        >
+                            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                    </div>
                 </div>
-                <button
-                    onClick={handleManualRefresh}
-                    disabled={isRefreshing}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shadow-sm"
-                >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
-                </button>
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-md transition-shadow hover:shadow-lg">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-slate-600">Total Users</p>
                             <p className="text-2xl font-bold text-slate-900 mt-1">{users.length}</p>
                         </div>
-                        <div className="p-3 bg-slate-100 rounded-lg">
+                        <div className="p-3 bg-slate-100 rounded-xl">
                             <Users className="w-6 h-6 text-slate-600" />
                         </div>
                     </div>
                 </div>
-                <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-md transition-shadow hover:shadow-lg">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-slate-600">Online</p>
                             <p className="text-2xl font-bold text-emerald-600 mt-1">{onlineCount}</p>
                         </div>
-                        <div className="p-3 bg-emerald-100 rounded-lg">
+                        <div className="p-3 bg-emerald-100 rounded-xl">
                             <Circle className="w-6 h-6 text-emerald-600 fill-emerald-600" />
                         </div>
                     </div>
                 </div>
-                <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-md transition-shadow hover:shadow-lg">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-slate-600">Offline</p>
                             <p className="text-2xl font-bold text-slate-600 mt-1">{offlineCount}</p>
                         </div>
-                        <div className="p-3 bg-slate-100 rounded-lg">
+                        <div className="p-3 bg-slate-100 rounded-xl">
                             <Circle className="w-6 h-6 text-slate-400 fill-slate-400" />
                         </div>
                     </div>
@@ -233,27 +242,24 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-md">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Search */}
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Search by name or email..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
                         />
                     </div>
-
-                    {/* Role Filter */}
                     <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <select
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm appearance-none bg-white"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white appearance-none"
                         >
                             <option value="all">All Roles</option>
                             {uniqueRoles.filter(r => r !== 'all').map(role => (
@@ -263,14 +269,12 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                             ))}
                         </select>
                     </div>
-
-                    {/* Status Filter */}
                     <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm appearance-none bg-white"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white appearance-none"
                         >
                             <option value="all">All Status</option>
                             <option value="online">Online Only</option>
@@ -280,21 +284,23 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                 </div>
             </div>
 
-            {/* Users List */}
+            {/* Users list */}
             <div className="space-y-6">
                 {Object.keys(groupedUsers).length === 0 ? (
-                    <div className="bg-white rounded-lg border border-slate-200 p-12 text-center shadow-sm">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-md">
                         <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                         <p className="text-slate-600 font-medium">No users found</p>
                         <p className="text-sm text-slate-500 mt-1">Try adjusting your filters</p>
                     </div>
                 ) : (
                     Object.entries(groupedUsers).map(([role, roleUsers]) => (
-                        <div key={role} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                        <div key={role} className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden transition-shadow hover:shadow-lg">
                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <Shield className="w-5 h-5 text-slate-600" />
+                                        <div className="p-1.5 bg-slate-200/80 rounded-lg">
+                                            <Shield className="w-5 h-5 text-slate-600" />
+                                        </div>
                                         <h3 className="text-lg font-semibold text-slate-900">
                                             {roleUsers[0]?.role_display || role}
                                         </h3>

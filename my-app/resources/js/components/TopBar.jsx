@@ -149,7 +149,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                             className="hidden md:flex p-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors items-center justify-center"
                             title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                         >
-                            <PanelLeft className="w-4 h-4" />
+                            <PanelLeft className="w-4 h-4 drop-shadow-sm" />
                         </button>
 
                         {/* Module Name */}
@@ -176,7 +176,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                             className="relative p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors flex items-center justify-center"
                             title="Notifications"
                         >
-                            <Bell className="w-4 h-4" />
+                            <Bell className="w-4 h-4 drop-shadow-sm" />
                             {/* Notification badge - can be added later */}
                             {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
                         </button>
@@ -242,7 +242,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                                                 onClick={() => setShowProfileMenu(false)}
                                                 className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors whitespace-nowrap"
                                             >
-                                                <User className="w-4 h-4 flex-shrink-0" />
+                                                <User className="w-4 h-4 flex-shrink-0 drop-shadow-sm" />
                                                 Manage Profile
                                             </a>
                                             <a
@@ -250,7 +250,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                                                 onClick={() => setShowProfileMenu(false)}
                                                 className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors whitespace-nowrap"
                                             >
-                                                <Settings className="w-4 h-4 flex-shrink-0" />
+                                                <Settings className="w-4 h-4 flex-shrink-0 drop-shadow-sm" />
                                                 Settings
                                             </a>
                                             <div className="h-px bg-slate-200 my-1" />
@@ -258,7 +258,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                                                 onClick={handleLogout}
                                                 className="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors text-left whitespace-nowrap"
                                             >
-                                                <LogOut className="w-4 h-4 flex-shrink-0" />
+                                                <LogOut className="w-4 h-4 flex-shrink-0 drop-shadow-sm" />
                                                 Logout
                                             </button>
                                         </div>

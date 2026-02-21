@@ -81,6 +81,213 @@
             backdrop-filter: blur(10px);
             background-color: rgba(255, 255, 255, 0.9);
         }
+        
+        /* Scroll-based reveal (Apple-style) */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .scroll-reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .scroll-reveal-delay-1 { transition-delay: 0.1s; }
+        .scroll-reveal-delay-2 { transition-delay: 0.2s; }
+        .scroll-reveal-delay-3 { transition-delay: 0.3s; }
+        
+        /* Section decorative backgrounds – colors match image backgrounds */
+        .section-about-bg {
+            background-color: #f8f8f8;
+            position: relative;
+            overflow: hidden;
+        }
+        .section-about-bg .section-bg-image-right {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 58%;
+            max-width: 780px;
+            background-image: url('{{ asset('images/Firehat.png') }}');
+            background-size: contain;
+            background-position: right center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: translateX(24px) scale(0.96);
+            transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .section-about-bg.section-image-visible .section-bg-image-right {
+            opacity: 0.92;
+            transform: translateX(0) scale(1);
+        }
+        .section-trainings-bg {
+            background-color: #F1F1F1;
+            position: relative;
+            overflow: hidden;
+        }
+        .section-trainings-bg .section-bg-image-left {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 68%;
+            max-width: 920px;
+            background-image: url('{{ asset('images/Whistle.png') }}');
+            background-size: contain;
+            background-position: left top;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: translateX(-24px) scale(0.96);
+            transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .section-trainings-bg .section-bg-image-left::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: linear-gradient(to right, transparent 15%, #F1F1F1 70%, #F1F1F1 100%);
+            pointer-events: none;
+        }
+        .section-trainings-bg.section-image-visible .section-bg-image-left {
+            opacity: 0.92;
+            transform: translateX(0) scale(1);
+        }
+        .section-how-it-works-bg {
+            background: linear-gradient(
+                180deg,
+                #f4f7f6 0%,
+                #e6f0ee 40%,
+                #dcebea 100%
+            );
+            position: relative;
+        }
+        .how-it-works-card {
+            transition: box-shadow 0.3s ease;
+        }
+        .how-it-works-card:hover {
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+        /* How It Works: single stacked cards, reveal 1→5 on scroll (CodePen-style) */
+        .how-it-works-stack-container {
+            position: relative;
+            height: 520vh;
+        }
+        @media (max-width: 768px) {
+            .how-it-works-stack-container {
+                height: 420vh;
+            }
+        }
+        .how-it-works-stack {
+            position: sticky;
+            top: 5rem;
+            min-height: calc(100vh - 6rem);
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 6rem 1rem 2rem 1rem;
+            box-sizing: border-box;
+        }
+        .how-it-works-stack-heading {
+            flex-shrink: 0;
+            text-align: center;
+            padding-bottom: 2rem;
+        }
+        .how-it-works-stack-cards {
+            position: relative;
+            width: 100%;
+            max-width: 52rem;
+            height: 480px;
+        }
+        .how-it-works-stack-cards .stack-card {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            max-width: 52rem;
+            padding: 2.75rem 3rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            transition: transform 1s cubic-bezier(0.33, 1, 0.68, 1), box-shadow 0.3s ease;
+            will-change: transform;
+        }
+        .how-it-works-stack-cards .stack-card h3 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+        }
+        .how-it-works-stack-cards .stack-card p {
+            font-size: 1.125rem;
+            line-height: 1.5;
+            color: #4b5563;
+        }
+        .how-it-works-stack-cards .stack-card.bg-teal-50 p {
+            color: #4b5563;
+        }
+        .how-it-works-stack-cards .stack-card.bg-gradient-to-r p {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .how-it-works-stack-cards .stack-card:nth-child(1) {
+            z-index: 1;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
+            transform: translate(-50%, -50%) rotate(-0.5deg);
+        }
+        .how-it-works-stack-cards .stack-card:nth-child(2) {
+            z-index: 2;
+            width: 96%;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05);
+            transform: translate(-50%, -50%) translateY(120%) rotate(0.5deg);
+        }
+        .how-it-works-stack-cards .stack-card:nth-child(3) {
+            z-index: 3;
+            width: 92%;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1), 0 6px 14px rgba(0, 0, 0, 0.06);
+            transform: translate(-50%, -50%) translateY(120%) rotate(-0.5deg);
+        }
+        .how-it-works-stack-cards .stack-card:nth-child(4) {
+            z-index: 4;
+            width: 88%;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.11), 0 8px 18px rgba(0, 0, 0, 0.07);
+            transform: translate(-50%, -50%) translateY(120%) rotate(0.5deg);
+        }
+        .how-it-works-stack-cards .stack-card:nth-child(5) {
+            z-index: 5;
+            width: 84%;
+            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.14), 0 10px 22px rgba(0, 0, 0, 0.08);
+            transform: translate(-50%, -50%) translateY(120%) rotate(-0.5deg);
+            border-color: rgba(0, 0, 0, 0.12);
+            background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #115e59 100%);
+        }
+        .how-it-works-stack-cards.reveal-2 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
+        .how-it-works-stack-cards.reveal-3 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
+        .how-it-works-stack-cards.reveal-3 .stack-card:nth-child(3) { transform: translate(-50%, -50%) rotate(-0.5deg); }
+        .how-it-works-stack-cards.reveal-4 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
+        .how-it-works-stack-cards.reveal-4 .stack-card:nth-child(3) { transform: translate(-50%, -50%) rotate(-0.5deg); }
+        .how-it-works-stack-cards.reveal-4 .stack-card:nth-child(4) { transform: translate(-50%, -50%) rotate(0.5deg); }
+        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
+        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(3) { transform: translate(-50%, -50%) rotate(-0.5deg); }
+        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(4) { transform: translate(-50%, -50%) rotate(0.5deg); }
+        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(5) { transform: translate(-50%, -50%) rotate(-0.5deg); }
+        @media (max-width: 768px) {
+            .how-it-works-stack-cards { max-width: 100%; height: 400px; }
+            .how-it-works-stack-cards .stack-card { max-width: 100%; padding: 2rem 1.5rem; }
+            .how-it-works-stack-cards .stack-card h3 { font-size: 1.5rem; }
+            .how-it-works-stack-cards .stack-card p { font-size: 1rem; }
+        }
+        @media (max-width: 640px) {
+            .how-it-works-stack-cards .stack-card:nth-child(1) { width: 100%; }
+            .how-it-works-stack-cards .stack-card:nth-child(2) { width: 98%; }
+            .how-it-works-stack-cards .stack-card:nth-child(3) { width: 96%; }
+            .how-it-works-stack-cards .stack-card:nth-child(4) { width: 94%; }
+            .how-it-works-stack-cards .stack-card:nth-child(5) { width: 92%; }
+            .how-it-works-stack-cards .stack-card { padding: 1.75rem 1.25rem; }
+            .how-it-works-stack-cards .stack-card h3 { font-size: 1.35rem; }
+        }
     </style>
 </head>
 <body class="scroll-smooth">
@@ -169,9 +376,10 @@
     </section>
     
     <!-- 3️⃣ About the System -->
-    <section id="about" class="py-20 bg-gray-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+    <section id="about" class="section-about-bg py-20">
+        <div class="section-bg-image-right" aria-hidden="true"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center mb-16 scroll-reveal">
                 <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">
                     About the System
                 </h2>
@@ -182,7 +390,7 @@
             
             <div class="grid md:grid-cols-3 gap-8 mb-12">
                 <!-- What it is -->
-                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover">
+                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover scroll-reveal scroll-reveal-delay-1">
                     <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mb-6 mx-auto">
                         <svg class="w-8 h-8 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -195,7 +403,7 @@
                 </div>
                 
                 <!-- Who it's for -->
-                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover">
+                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover scroll-reveal scroll-reveal-delay-2">
                     <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-6 mx-auto">
                         <svg class="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -219,7 +427,7 @@
                 </div>
                 
                 <!-- Why it exists -->
-                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover">
+                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover scroll-reveal scroll-reveal-delay-3">
                     <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 mx-auto">
                         <svg class="w-8 h-8 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
@@ -241,14 +449,17 @@
                         </li>
                     </ul>
                 </div>
+                <div class="how-it-works-media-layer image-layer" id="how-it-works-image-layer"></div>
             </div>
+            <div class="how-it-works-media-layer layer-3" id="how-it-works-layer3"></div>
         </div>
     </section>
     
     <!-- 4️⃣ Available Disaster Trainings & Simulations -->
-    <section id="trainings" class="section-bg py-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+    <section id="trainings" class="section-trainings-bg py-20">
+        <div class="section-bg-image-left" aria-hidden="true"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center mb-16 scroll-reveal">
                 <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">
                     Available Trainings & Simulations
                 </h2>
@@ -259,7 +470,7 @@
             
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <!-- Earthquake -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal scroll-reveal-delay-1">
                     <div class="h-48 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
                         <svg class="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -285,7 +496,7 @@
                 </div>
                 
                 <!-- Fire -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal scroll-reveal-delay-2">
                     <div class="h-48 bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
                         <svg class="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clip-rule="evenodd"/>
@@ -311,7 +522,7 @@
                 </div>
                 
                 <!-- Flood -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal scroll-reveal-delay-3">
                     <div class="h-48 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
                         <svg class="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M5.5 3A2.5 2.5 0 003 5.5v9A2.5 2.5 0 005.5 17h9a2.5 2.5 0 002.5-2.5v-9A2.5 2.5 0 0014.5 3h-9zm0 2h9a.5.5 0 01.5.5v7a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5v-7a.5.5 0 01.5-.5z" clip-rule="evenodd"/>
@@ -337,7 +548,7 @@
                 </div>
                 
                 <!-- First Aid -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal">
                     <div class="h-48 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
                         <svg class="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z"/>
@@ -365,93 +576,38 @@
         </div>
     </section>
     
-    <!-- 5️⃣ How the System Works -->
-    <section id="how-it-works" class="py-20 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">
-                    How It Works
-                </h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Simple, transparent process from registration to certification
-                </p>
-            </div>
-            
-            <div class="relative">
-                <!-- Timeline Line -->
-                <div class="hidden md:block absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-teal-200"></div>
-                
-                <div class="space-y-12">
-                    <!-- Step 1 -->
-                    <div class="relative flex items-center md:justify-between">
-                        <div class="flex-1 md:text-right md:pr-12">
-                            <div class="bg-teal-50 p-6 rounded-2xl inline-block">
-                                <h3 class="text-2xl font-bold text-teal-800 mb-2">1. Register as Participant</h3>
-                                <p class="text-gray-700">Create your account with basic information and verify your identity.</p>
-                            </div>
-                        </div>
-                        <div class="hidden md:flex w-16 h-16 bg-teal-700 rounded-full items-center justify-center text-white text-2xl font-bold shadow-lg z-10">
-                            1
-                        </div>
-                        <div class="flex-1 md:pl-12"></div>
+    <!-- 5️⃣ How the System Works (stacked cards, reveal 1→5 on scroll – CodePen-style) -->
+    <section id="how-it-works" class="section-how-it-works-bg py-16">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="how-it-works-stack-container" id="how-it-works-stack-container">
+                <div class="how-it-works-stack">
+                    <div class="how-it-works-stack-heading scroll-reveal">
+                        <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">How It Works</h2>
+                        <p class="text-xl text-gray-600 max-w-3xl mx-auto">Simple, transparent process from registration to certification</p>
                     </div>
-                    
-                    <!-- Step 2 -->
-                    <div class="relative flex items-center md:justify-between">
-                        <div class="flex-1 md:pr-12"></div>
-                        <div class="hidden md:flex w-16 h-16 bg-teal-700 rounded-full items-center justify-center text-white text-2xl font-bold shadow-lg z-10">
-                            2
-                        </div>
-                        <div class="flex-1 md:pl-12">
-                            <div class="bg-teal-50 p-6 rounded-2xl inline-block">
-                                <h3 class="text-2xl font-bold text-teal-800 mb-2">2. Join a Training or Drill</h3>
-                                <p class="text-gray-700">Browse available events and register for the training programs you're interested in.</p>
-                            </div>
-                        </div>
+                    <div class="how-it-works-stack-cards reveal-1" id="how-it-works-stack-cards">
+                    <div class="stack-card bg-teal-50 how-it-works-card">
+                        <h3 class="text-2xl font-bold text-teal-800 mb-2">1. Register as Participant</h3>
+                        <p class="text-gray-700">Create your account with basic information and verify your identity.</p>
                     </div>
-                    
-                    <!-- Step 3 -->
-                    <div class="relative flex items-center md:justify-between">
-                        <div class="flex-1 md:text-right md:pr-12">
-                            <div class="bg-teal-50 p-6 rounded-2xl inline-block">
-                                <h3 class="text-2xl font-bold text-teal-800 mb-2">3. Attend the Simulation</h3>
-                                <p class="text-gray-700">Participate in hands-on training and realistic disaster simulation exercises.</p>
-                            </div>
-                        </div>
-                        <div class="hidden md:flex w-16 h-16 bg-teal-700 rounded-full items-center justify-center text-white text-2xl font-bold shadow-lg z-10">
-                            3
-                        </div>
-                        <div class="flex-1 md:pl-12"></div>
+                    <div class="stack-card bg-teal-50 how-it-works-card">
+                        <h3 class="text-2xl font-bold text-teal-800 mb-2">2. Join a Training or Drill</h3>
+                        <p class="text-gray-700">Browse available events and register for the training programs you're interested in.</p>
                     </div>
-                    
-                    <!-- Step 4 -->
-                    <div class="relative flex items-center md:justify-between">
-                        <div class="flex-1 md:pr-12"></div>
-                        <div class="hidden md:flex w-16 h-16 bg-teal-700 rounded-full items-center justify-center text-white text-2xl font-bold shadow-lg z-10">
-                            4
-                        </div>
-                        <div class="flex-1 md:pl-12">
-                            <div class="bg-teal-50 p-6 rounded-2xl inline-block">
-                                <h3 class="text-2xl font-bold text-teal-800 mb-2">4. Get Evaluated</h3>
-                                <p class="text-gray-700">Your performance is assessed based on established criteria and competency standards.</p>
-                            </div>
-                        </div>
+                    <div class="stack-card bg-teal-50 how-it-works-card">
+                        <h3 class="text-2xl font-bold text-teal-800 mb-2">3. Attend the Simulation</h3>
+                        <p class="text-gray-700">Participate in hands-on training and realistic disaster simulation exercises.</p>
                     </div>
-                    
-                    <!-- Step 5 -->
-                    <div class="relative flex items-center md:justify-between">
-                        <div class="flex-1 md:text-right md:pr-12">
-                            <div class="bg-gradient-to-r from-teal-600 to-teal-700 p-6 rounded-2xl inline-block text-white shadow-xl">
-                                <h3 class="text-2xl font-bold mb-2">5. Receive Certification 🎓</h3>
-                                <p>Download your official digital certificate and add it to your professional profile.</p>
-                            </div>
-                        </div>
-                        <div class="hidden md:flex w-16 h-16 bg-amber-500 rounded-full items-center justify-center text-white text-2xl font-bold shadow-lg z-10">
-                            ✓
-                        </div>
-                        <div class="flex-1 md:pl-12"></div>
+                    <div class="stack-card bg-teal-50 how-it-works-card">
+                        <h3 class="text-2xl font-bold text-teal-800 mb-2">4. Get Evaluated</h3>
+                        <p class="text-gray-700">Your performance is assessed based on established criteria and competency standards.</p>
+                    </div>
+                    <div class="stack-card bg-gradient-to-r from-teal-600 to-teal-700 text-white how-it-works-card">
+                        <h3 class="text-2xl font-bold mb-2">5. Receive Certification 🎓</h3>
+                        <p>Download your official digital certificate and add it to your professional profile.</p>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </section>
@@ -617,7 +773,7 @@
                 <div>
                     <div class="flex items-center space-x-3 mb-4">
                         <img src="{{ asset('images/logo.svg') }}" alt="LGU Logo" class="h-10 w-auto">
-                        <h3 class="text-white font-bold text-lg">LGU LERTARA</h3>
+                        <h3 class="text-white font-bold text-lg">LGU ALERTARA</h3>
                     </div>
                     <p class="text-sm leading-relaxed">
                         Building safer, more resilient communities through comprehensive disaster preparedness training and simulation programs.
@@ -718,6 +874,93 @@
                 nav.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
             }
         });
+        
+        // Scroll-based reveal (Apple-style): reveal elements when they enter viewport
+        (function() {
+            const revealEls = document.querySelectorAll('.scroll-reveal');
+            if (!revealEls.length) return;
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                    }
+                });
+            }, { rootMargin: '0px 0px -60px 0px', threshold: 0.1 });
+            revealEls.forEach(function(el) { observer.observe(el); });
+        })();
+        
+        // Section background images: scroll transition (reveal when section enters view)
+        (function() {
+            const sections = document.querySelectorAll('.section-about-bg, .section-trainings-bg, .section-how-it-works-bg');
+            if (!sections.length) return;
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('section-image-visible');
+                    }
+                });
+            }, { rootMargin: '0px 0px -80px 0px', threshold: 0.15 });
+            sections.forEach(function(section) { observer.observe(section); });
+        })();
+        
+        // How It Works: scroll-driven 3-layer media (SafetyKit.png → video → safetykit2.png)
+        (function() {
+            var section = document.getElementById('how-it-works');
+            var videoLayer = document.getElementById('how-it-works-video-layer');
+            var imageLayer = document.getElementById('how-it-works-image-layer');
+            var video = document.getElementById('how-it-works-video');
+            if (!section || !videoLayer || !imageLayer || !video || typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+
+            gsap.registerPlugin(ScrollTrigger);
+
+            function initScrollTriggerVideo() {
+                ScrollTrigger.create({
+                    trigger: section,
+                    start: 'top top',
+                    end: 'bottom top',
+                    scrub: 1,
+                    onUpdate: function(self) {
+                        var p = self.progress;
+                        if (video.readyState >= 2 && video.duration && !isNaN(video.duration)) {
+                            video.currentTime = p * video.duration;
+                        }
+                        videoLayer.style.opacity = p <= 0.85 ? 1 : Math.max(0, 1 - (p - 0.85) / 0.15);
+                        imageLayer.style.opacity = p <= 0.75 ? 0 : Math.min(1, (p - 0.75) / 0.2);
+                    }
+                });
+                ScrollTrigger.refresh();
+            }
+            
+            video.addEventListener('loadedmetadata', updateHowItWorksMedia);
+            video.addEventListener('loadeddata', updateHowItWorksMedia);
+            window.addEventListener('scroll', updateHowItWorksMedia, { passive: true });
+            window.addEventListener('resize', updateHowItWorksMedia);
+            updateHowItWorksMedia();
+        })();
+
+        // How It Works: stacked cards – reveal card 1→5 as user scrolls (CodePen-style)
+        (function() {
+            var container = document.getElementById('how-it-works-stack-container');
+            var cardsEl = document.getElementById('how-it-works-stack-cards');
+            if (!container || !cardsEl) return;
+            function updateStackReveal() {
+                var rect = container.getBoundingClientRect();
+                var windowHeight = window.innerHeight;
+                var containerHeight = container.offsetHeight;
+                var scrollProgress = 0;
+                if (rect.top < windowHeight && rect.bottom > 0) {
+                    var visibleStart = Math.max(0, windowHeight - rect.top);
+                    scrollProgress = Math.min(1, visibleStart / (containerHeight * 0.85));
+                }
+                var step = Math.floor(scrollProgress * 5) + 1;
+                step = Math.max(1, Math.min(5, step));
+                cardsEl.classList.remove('reveal-1', 'reveal-2', 'reveal-3', 'reveal-4', 'reveal-5');
+                cardsEl.classList.add('reveal-' + step);
+            }
+            window.addEventListener('scroll', updateStackReveal, { passive: true });
+            window.addEventListener('resize', updateStackReveal);
+            updateStackReveal();
+        })();
     </script>
 </body>
 </html>

@@ -21,3 +21,33 @@ body > #app {
     overflow-x: hidden;
     max-width: 100vw;
 }
+
+/* Icon visibility: drop shadow for icons across all modules */
+.icon-shadow {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+.icon-shadow-strong {
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+
+/* Training Modules card grid: fade-in on load */
+@keyframes training-module-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.training-module-card-enter {
+    opacity: 0;
+    animation: training-module-fade-in 0.4s ease forwards;
+}
+
+/* Lesson cards (module detail): same fade-in */
+.lesson-card-enter {
+    opacity: 0;
+    animation: training-module-fade-in 0.4s ease forwards;
+}

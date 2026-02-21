@@ -16,7 +16,7 @@ import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -57,20 +57,8 @@ function formatTime(timeString) {
     return timeString;
 }
 
-// Pagination Component
+// Pagination Component – modern redesign
 function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems }) {
-    const getItemsPerPage = () => {
-        // Responsive items per page based on screen size
-        if (typeof window !== 'undefined') {
-            const width = window.innerWidth;
-            if (width >= 1920) return 20; // Large monitors
-            if (width >= 1440) return 15; // Desktop
-            if (width >= 1024) return 10; // Laptop
-            return 5; // Tablet/Mobile
-        }
-        return 10; // Default
-    };
-
     const maxVisiblePages = typeof window !== 'undefined' && window.innerWidth >= 768 ? 7 : 5;
     const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -83,62 +71,79 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-    // Always show pagination when there are items, even if only one page
     if (totalItems === 0) return null;
 
+    const btnBase = 'inline-flex items-center justify-center min-w-[2.25rem] h-9 rounded-xl text-sm font-medium transition-all duration-200';
+    const btnPrevNext = `${btnBase} px-3 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:shadow-none`;
+    const btnPage = (active) => active
+        ? `${btnBase} bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border border-emerald-600 shadow-sm hover:shadow`
+        : `${btnBase} border border-slate-200 bg-white text-slate-700 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800`;
+
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-slate-200 bg-slate-50">
-            <div className="text-sm text-slate-600">
-                Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
-                <span className="font-medium">{totalItems}</span> results
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="text-sm text-slate-600 order-2 sm:order-1">
+                <span className="font-medium text-slate-800">{startItem}</span>
+                <span className="mx-1">–</span>
+                <span className="font-medium text-slate-800">{endItem}</span>
+                <span className="mx-1 text-slate-400">of</span>
+                <span className="font-semibold text-slate-800">{totalItems}</span>
+                <span className="ml-1 text-slate-500">results</span>
             </div>
             {totalPages > 1 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 order-1 sm:order-2">
                     <button
+                        type="button"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="inline-flex items-center px-2 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className={btnPrevNext}
+                        aria-label="Previous page"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
                     {startPage > 1 && (
                         <>
                             <button
+                                type="button"
                                 onClick={() => onPageChange(1)}
-                                className="px-3 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                                className={btnPage(false)}
                             >
                                 1
                             </button>
-                            {startPage > 2 && <span className="text-slate-400">...</span>}
+                            {startPage > 2 && (
+                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">…</span>
+                            )}
                         </>
                     )}
                     {pages.map((page) => (
                         <button
                             key={page}
+                            type="button"
                             onClick={() => onPageChange(page)}
-                            className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${page === currentPage
-                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                                }`}
+                            className={btnPage(page === currentPage)}
                         >
                             {page}
                         </button>
                     ))}
                     {endPage < totalPages && (
                         <>
-                            {endPage < totalPages - 1 && <span className="text-slate-400">...</span>}
+                            {endPage < totalPages - 1 && (
+                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">…</span>
+                            )}
                             <button
+                                type="button"
                                 onClick={() => onPageChange(totalPages)}
-                                className="px-3 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                                className={btnPage(false)}
                             >
                                 {totalPages}
                             </button>
                         </>
                     )}
                     <button
+                        type="button"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="inline-flex items-center px-2 py-1.5 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className={btnPrevNext}
+                        aria-label="Next page"
                     >
                         <ChevronRight className="w-4 h-4" />
                     </button>
@@ -989,156 +994,80 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'admin_users_create' && (
-                            <div className="max-w-4xl mx-auto px-2 sm:px-0 py-4 sm:py-0">
-                                <div className="mb-4">
-                                    <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-                                        Register New LGU Admin / Trainer / Participant
-                                    </h1>
-                                    <p className="text-sm text-slate-600 mt-2">
-                                        Create a new staff or participant account for the LGU dashboard. Staff accounts require email verification and OTP.
-                                    </p>
+                            <div className="w-full max-w-full py-2">
+                                <a href="/admin/users" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6">
+                                    <ChevronLeft className="w-4 h-4" />
+                                    Back to Users
+                                </a>
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
+                                        <Users className="w-7 h-7 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-800">Add User</h2>
+                                        <p className="text-sm text-slate-500 mt-0.5">Create a new LGU Admin, Trainer, or Participant account</p>
+                                    </div>
                                 </div>
-
                                 {flashStatus && (
-                                    <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+                                    <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
                                         {flashStatus}
                                     </div>
                                 )}
-
-                                <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8">
-                                    <form
-                                        id="admin-registration-form"
-                                        method="POST"
-                                        action="/admin/users"
-                                        className="space-y-8"
-                                    >
-                                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name=\"csrf-token\"]')?.content || ''} />
-
-                                        <div className="space-y-4">
-                                            <h2 className="text-sm font-semibold text-slate-700 tracking-wide uppercase">
-                                                Account Details
-                                            </h2>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="account_type">
-                                                    Account Type
-                                                </label>
-                                                <select
-                                                    id="account_type"
-                                                    name="account_type"
-                                                    className="block w-full max-w-xs rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
-                                                    defaultValue="LGU_ADMIN"
-                                                >
-                                                    <option value="LGU_ADMIN">LGU Admin</option>
-                                                    <option value="LGU_TRAINER">LGU Trainer</option>
-                                                    <option value="PARTICIPANT">Participant</option>
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="barangay_id">
-                                                    Barangay Assignment
-                                                </label>
-                                                <select
-                                                    id="barangay_id"
-                                                    name="barangay_id"
-                                                    className="block w-full max-w-md rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
-                                                >
-                                                    <option value="">— None —</option>
-                                                    {(barangayProfiles || []).map((bp) => (
-                                                        <option key={bp.id} value={bp.id}>
-                                                            {bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="training-module-card-enter bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg">
+                                    <form id="admin-registration-form" method="POST" action="/admin/users" className="space-y-6">
+                                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-slate-800 mb-4">Account Details</h3>
+                                            <div className="space-y-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="last_name">
-                                                        Surname / Last Name
-                                                    </label>
-                                                    <input
-                                                        id="last_name"
-                                                        name="last_name"
-                                                        type="text"
-                                                        required
-                                                        className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                    />
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="account_type">Account Type</label>
+                                                    <select id="account_type" name="account_type" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white" defaultValue="LGU_ADMIN">
+                                                        <option value="LGU_ADMIN">LGU Admin</option>
+                                                        <option value="LGU_TRAINER">LGU Trainer</option>
+                                                        <option value="PARTICIPANT">Participant</option>
+                                                    </select>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="first_name">
-                                                        First Name
-                                                    </label>
-                                                    <input
-                                                        id="first_name"
-                                                        name="first_name"
-                                                        type="text"
-                                                        required
-                                                        className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                    />
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="barangay_id">Barangay Assignment</label>
+                                                    <select id="barangay_id" name="barangay_id" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+                                                        <option value="">— None —</option>
+                                                        {(barangayProfiles || []).map((bp) => (
+                                                            <option key={bp.id} value={bp.id}>{bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="last_name">Surname / Last Name <span className="text-rose-500">*</span></label>
+                                                        <input id="last_name" name="last_name" type="text" required className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="first_name">First Name <span className="text-rose-500">*</span></label>
+                                                        <input id="first_name" name="first_name" type="text" required className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="middle_name">Middle Name (optional)</label>
+                                                        <input id="middle_name" name="middle_name" type="text" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                                    </div>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="middle_name">
-                                                        Middle Name (optional)
-                                                    </label>
-                                                    <input
-                                                        id="middle_name"
-                                                        name="middle_name"
-                                                        type="text"
-                                                        className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                    />
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="email">Official LGU Email <span className="text-rose-500">*</span></label>
+                                                    <input id="email" name="email" type="email" required className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
                                                 </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="email">
-                                                    Official LGU Email
-                                                </label>
-                                                <input
-                                                    id="email"
-                                                    name="email"
-                                                    type="email"
-                                                    required
-                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password">
-                                                    Initial Password
-                                                </label>
-                                                <input
-                                                    id="password"
-                                                    name="password"
-                                                    type="password"
-                                                    required
-                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                />
-                                                <p className="mt-1 text-xs text-slate-500">
-                                                    Minimum 8 characters. The user can change this after first login.
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="password_confirmation">
-                                                    Confirm Password
-                                                </label>
-                                                <input
-                                                    id="password_confirmation"
-                                                    name="password_confirmation"
-                                                    type="password"
-                                                    required
-                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                />
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="password">Initial Password <span className="text-rose-500">*</span></label>
+                                                    <input id="password" name="password" type="password" required className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                                    <p className="mt-1 text-xs text-slate-500">Minimum 8 characters. User can change after first login.</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="password_confirmation">Confirm Password <span className="text-rose-500">*</span></label>
+                                                    <input id="password_confirmation" name="password_confirmation" type="password" required className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                                </div>
                                             </div>
                                         </div>
-
-                                        <div className="flex items-center justify-end pt-4 border-t border-slate-200">
-                                            <button
-                                                type="submit"
-                                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 shadow-sm"
-                                            >
+                                        <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                                            <a href="/admin/users" className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors">Cancel</a>
+                                            <button type="submit" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow-md transition-all duration-200">
                                                 Register Account
                                             </button>
                                         </div>
@@ -1148,141 +1077,71 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'admin_users_edit' && currentUserData && (
-                            <div className="max-w-4xl mx-auto px-2 sm:px-0 py-4 sm:py-0">
-                                <div className="mb-4">
-                                    <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-                                        Edit User
-                                    </h1>
-                                    <p className="text-sm text-slate-600 mt-2">
-                                        Update name, email, role, barangay assignment, or password for this account.
-                                    </p>
+                            <div className="w-full max-w-full py-2">
+                                <a href="/admin/users" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6">
+                                    <ChevronLeft className="w-4 h-4" />
+                                    Back to Users
+                                </a>
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
+                                        <Users className="w-7 h-7 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-800">Edit User</h2>
+                                        <p className="text-sm text-slate-500 mt-0.5">Update name, email, role, barangay, or password</p>
+                                    </div>
                                 </div>
-
                                 {flashStatus && (
-                                    <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+                                    <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
                                         {flashStatus}
                                     </div>
                                 )}
-
-                                <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8">
-                                    <form
-                                        id="admin-edit-user-form"
-                                        method="POST"
-                                        action={`/admin/users/${currentUserData.id}`}
-                                        className="space-y-8"
-                                    >
+                                <div className="training-module-card-enter bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg">
+                                    <form id="admin-edit-user-form" method="POST" action={`/admin/users/${currentUserData.id}`} className="space-y-6">
                                         <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
                                         <input type="hidden" name="_method" value="PUT" />
-
-                                        <div className="space-y-4">
-                                            <h2 className="text-sm font-semibold text-slate-700 tracking-wide uppercase">
-                                                Account Details
-                                            </h2>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_account_type">
-                                                    Account Type
-                                                </label>
-                                                <select
-                                                    id="edit_account_type"
-                                                    name="account_type"
-                                                    defaultValue={currentUserData.role}
-                                                    className="block w-full max-w-xs rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
-                                                >
-                                                    <option value="LGU_ADMIN">LGU Admin</option>
-                                                    <option value="LGU_TRAINER">LGU Trainer</option>
-                                                    <option value="STAFF">Staff</option>
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_barangay_id">
-                                                    Barangay Assignment
-                                                </label>
-                                                <select
-                                                    id="edit_barangay_id"
-                                                    name="barangay_id"
-                                                    defaultValue={currentUserData.barangay_id ?? ''}
-                                                    className="block w-full max-w-md rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2.5 px-3 bg-white"
-                                                >
-                                                    <option value="">— None —</option>
-                                                    {(barangayProfiles || []).map((bp) => (
-                                                        <option key={bp.id} value={bp.id}>
-                                                            {bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_name">
-                                                    Full Name
-                                                </label>
-                                                <input
-                                                    id="edit_name"
-                                                    name="name"
-                                                    type="text"
-                                                    required
-                                                    defaultValue={currentUserData.name ?? ''}
-                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_email">
-                                                    Email Address
-                                                </label>
-                                                <input
-                                                    id="edit_email"
-                                                    name="email"
-                                                    type="email"
-                                                    required
-                                                    defaultValue={currentUserData.email ?? ''}
-                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_password">
-                                                    New Password (leave blank to keep current)
-                                                </label>
-                                                <input
-                                                    id="edit_password"
-                                                    name="password"
-                                                    type="password"
-                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                    autoComplete="new-password"
-                                                />
-                                                <p className="mt-1 text-xs text-slate-500">
-                                                    Minimum 8 characters. Only fill if you want to change the password.
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="edit_password_confirmation">
-                                                    Confirm New Password
-                                                </label>
-                                                <input
-                                                    id="edit_password_confirmation"
-                                                    name="password_confirmation"
-                                                    type="password"
-                                                    className="block w-full rounded-lg border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-base py-3 px-3"
-                                                    autoComplete="new-password"
-                                                />
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-slate-800 mb-4">Account Details</h3>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_account_type">Account Type</label>
+                                                    <select id="edit_account_type" name="account_type" defaultValue={currentUserData.role} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+                                                        <option value="LGU_ADMIN">LGU Admin</option>
+                                                        <option value="LGU_TRAINER">LGU Trainer</option>
+                                                        <option value="STAFF">Staff</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_barangay_id">Barangay Assignment</label>
+                                                    <select id="edit_barangay_id" name="barangay_id" defaultValue={currentUserData.barangay_id ?? ''} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+                                                        <option value="">— None —</option>
+                                                        {(barangayProfiles || []).map((bp) => (
+                                                            <option key={bp.id} value={bp.id}>{bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_name">Full Name <span className="text-rose-500">*</span></label>
+                                                    <input id="edit_name" name="name" type="text" required defaultValue={currentUserData.name ?? ''} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_email">Email Address <span className="text-rose-500">*</span></label>
+                                                    <input id="edit_email" name="email" type="email" required defaultValue={currentUserData.email ?? ''} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_password">New Password (leave blank to keep current)</label>
+                                                    <input id="edit_password" name="password" type="password" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" autoComplete="new-password" />
+                                                    <p className="mt-1 text-xs text-slate-500">Minimum 8 characters. Only fill to change password.</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_password_confirmation">Confirm New Password</label>
+                                                    <input id="edit_password_confirmation" name="password_confirmation" type="password" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" autoComplete="new-password" />
+                                                </div>
                                             </div>
                                         </div>
-
-                                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                                            <a
-                                                href="/admin/users"
-                                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50"
-                                            >
-                                                Cancel
-                                            </a>
-                                            <button
-                                                type="submit"
-                                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 shadow-sm"
-                                            >
+                                        <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                                            <a href="/admin/users" className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors">Cancel</a>
+                                            <button type="submit" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow-md transition-all duration-200">
                                                 Save Changes
                                             </button>
                                         </div>
@@ -1393,8 +1252,8 @@ function DashboardOverview({ modules, events, participants, role }) {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                    <LayoutDashboard className="w-6 h-6 text-emerald-600" />
+                <div className="p-2 bg-emerald-100 rounded-lg shadow-md">
+                    <LayoutDashboard className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
                 </div>
                 <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
             </div>
@@ -1408,7 +1267,7 @@ function DashboardOverview({ modules, events, participants, role }) {
                             <p className="text-2xl font-bold text-blue-900">{totalModules}</p>
                             <p className="text-xs text-blue-600 mt-2">{activeModules} active</p>
                         </div>
-                        <div className="text-4xl text-blue-200">📚</div>
+                        <div className="text-4xl text-blue-200 drop-shadow-md">📚</div>
                     </div>
                 </div>
 
@@ -1420,7 +1279,7 @@ function DashboardOverview({ modules, events, participants, role }) {
                             <p className="text-2xl font-bold text-purple-900">{totalEvents}</p>
                             <p className="text-xs text-purple-600 mt-2">{upcomingEvents} upcoming</p>
                         </div>
-                        <div className="text-4xl text-purple-200">🎯</div>
+                        <div className="text-4xl text-purple-200 drop-shadow-md">🎯</div>
                     </div>
                 </div>
 
@@ -1432,7 +1291,7 @@ function DashboardOverview({ modules, events, participants, role }) {
                             <p className="text-2xl font-bold text-green-900">{totalParticipants}</p>
                             <p className="text-xs text-green-600 mt-2">{activeParticipants} active</p>
                         </div>
-                        <div className="text-4xl text-green-200">👥</div>
+                        <div className="text-4xl text-green-200 drop-shadow-md">👥</div>
                     </div>
                 </div>
 
@@ -1444,7 +1303,7 @@ function DashboardOverview({ modules, events, participants, role }) {
                             <p className="text-lg font-bold text-amber-900">Operational</p>
                             <p className="text-xs text-amber-600 mt-2">All systems nominal</p>
                         </div>
-                        <div className="text-4xl text-amber-200">✅</div>
+                        <div className="text-4xl text-amber-200 drop-shadow-md">✅</div>
                     </div>
                 </div>
             </div>
@@ -1496,21 +1355,21 @@ function DashboardOverview({ modules, events, participants, role }) {
                         {role !== 'PARTICIPANT' && (
                             <>
                                 <a href="/training-modules/create" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium transition-colors">
-                                    <span>➕</span> Create Module
+                                    <span className="drop-shadow-sm">➕</span> Create Module
                                 </a>
                                 <a href="/scenarios/create" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-medium transition-colors">
-                                    <span>🎯</span> Create Scenario
+                                    <span className="drop-shadow-sm">🎯</span> Create Scenario
                                 </a>
                                 <a href="/simulation-events/create" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 text-xs font-medium transition-colors">
-                                    <span>📅</span> Schedule Event
+                                    <span className="drop-shadow-sm">📅</span> Schedule Event
                                 </a>
                             </>
                         )}
                         <a href="/participants" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition-colors">
-                            <span>👥</span> View Participants
+                            <span className="drop-shadow-sm">👥</span> View Participants
                         </a>
                         <a href="/evaluation" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium transition-colors">
-                            <span>📊</span> View Results
+                            <span className="drop-shadow-sm">📊</span> View Results
                         </a>
                     </div>
                 </div>
@@ -1552,27 +1411,27 @@ function DashboardOverview({ modules, events, participants, role }) {
                 <h3 className="text-sm font-semibold text-slate-900 mb-3">Coming Soon 🚀</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2">📱 Mobile App Integration</p>
+                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">📱</span> Mobile App Integration</p>
                         <p className="text-xs text-slate-500">Real-time check-in and notifications on mobile devices</p>
                     </div>
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2">🤖 AI-Powered Analytics</p>
+                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">🤖</span> AI-Powered Analytics</p>
                         <p className="text-xs text-slate-500">Advanced performance insights and recommendations</p>
                     </div>
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2">📹 Video Integration</p>
+                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">📹</span> Video Integration</p>
                         <p className="text-xs text-slate-500">Record and review simulation sessions</p>
                     </div>
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2">🌐 API Access</p>
+                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">🌐</span> API Access</p>
                         <p className="text-xs text-slate-500">Third-party integrations and data sync</p>
                     </div>
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2">📊 Advanced Reporting</p>
+                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">📊</span> Advanced Reporting</p>
                         <p className="text-xs text-slate-500">Custom reports and data exports</p>
                     </div>
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2">🔐 Role-Based Dashboard</p>
+                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">🔐</span> Role-Based Dashboard</p>
                         <p className="text-xs text-slate-500">Customized views per user role</p>
                     </div>
                 </div>
@@ -1636,317 +1495,286 @@ function TrainingModulesTable({ modules = [] }) {
         setCurrentPage(1);
     }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
 
+    const formatCreatedDate = (dateString) => {
+        if (!dateString) return '—';
+        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
     return (
         <div>
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-lg">
-                        <BookOpen className="w-6 h-6 text-emerald-600" />
+            {/* Hero Header - Certification style */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <BookOpen className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Training Modules</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Create and manage training modules, lessons, and materials for disaster preparedness.
+                        </p>
                     </div>
-                    <h2 className="text-lg font-semibold text-slate-800">Training Modules</h2>
+                    <div className="flex flex-wrap gap-3 shrink-0">
+                        <a
+                            href="/training-modules/create"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Create Training Module
+                        </a>
+                    </div>
                 </div>
-                <a
-                    href="/training-modules/create"
-                    className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5"
-                >
-                    + Create Training Module
-                </a>
             </div>
 
-            {/* Search and Filter Bar */}
-            <div className="mb-4 flex items-center gap-3">
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search modules..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                </div>
-                <div className="relative">
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                        <Filter className="w-4 h-4" />
-                        Filters
-                    </button>
-                    {showFilters && (
-                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
-                            <div className="space-y-3">
+            {/* Search and Filter Bar - Evaluations style */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4 mb-6">
+                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
+                        <input
+                            type="text"
+                            placeholder="Search modules..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <select
+                            className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">All Status</option>
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="unpublished">Unpublished</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
+                        >
+                            <Filter className="w-4 h-4" />
+                            Filter
+                        </button>
+                    </div>
+                </form>
+                {showFilters && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Difficulty</label>
+                                <select
+                                    value={filterDifficulty}
+                                    onChange={(e) => setFilterDifficulty(e.target.value)}
+                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                                >
+                                    <option value="">All Difficulties</option>
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
+                            {disasterTypes.length > 0 && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Status
-                                    </label>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
                                     <select
-                                        value={filterStatus}
-                                        onChange={(e) => setFilterStatus(e.target.value)}
-                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        value={filterDisasterType}
+                                        onChange={(e) => setFilterDisasterType(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
                                     >
-                                        <option value="">All Status</option>
-                                        <option value="draft">Draft</option>
-                                        <option value="published">Published</option>
-                                        <option value="unpublished">Unpublished</option>
-                                        <option value="archived">Archived</option>
+                                        <option value="">All Types</option>
+                                        {disasterTypes.map((type) => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Difficulty
-                                    </label>
-                                    <select
-                                        value={filterDifficulty}
-                                        onChange={(e) => setFilterDifficulty(e.target.value)}
-                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                    >
-                                        <option value="">All Difficulties</option>
-                                        <option value="Beginner">Beginner</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Advanced">Advanced</option>
-                                    </select>
-                                </div>
-                                {disasterTypes.length > 0 && (
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                            Disaster Type
-                                        </label>
-                                        <select
-                                            value={filterDisasterType}
-                                            onChange={(e) => setFilterDisasterType(e.target.value)}
-                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        >
-                                            <option value="">All Types</option>
-                                            {disasterTypes.map((type) => (
-                                                <option key={type} value={type}>
-                                                    {type}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => { setFilterStatus(''); setFilterDifficulty(''); setFilterDisasterType(''); setShowFilters(false); }}
+                            className="mt-3 text-xs text-slate-600 hover:text-slate-800 underline transition-colors duration-200"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Card grid or empty state */}
+            {filteredModules.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                        {(modules || []).length === 0 ? (
+                            <>
+                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">📦</div>
+                                <h3 className="text-xl font-semibold text-slate-800 mb-2">No training modules yet.</h3>
+                                <p className="text-slate-600 max-w-sm mb-6">
+                                    Create your first disaster simulation module to begin.
+                                </p>
+                                <a
+                                    href="/training-modules/create"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create Training Module
+                                </a>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">🔍</div>
+                                <h3 className="text-lg font-semibold text-slate-800 mb-1">No modules match your filters.</h3>
+                                <p className="text-slate-600 text-sm mb-4">Try adjusting search or filter criteria.</p>
                                 <button
-                                    onClick={() => {
-                                        setFilterStatus('');
-                                        setFilterDifficulty('');
-                                        setFilterDisasterType('');
-                                    }}
-                                    className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
+                                    type="button"
+                                    onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterDifficulty(''); setFilterDisasterType(''); }}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all duration-200"
                                 >
                                     Clear filters
                                 </button>
-                            </div>
-                        </div>
-                    )}
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Title</th>
-                            <th className="px-4 py-2 text-left">Disaster type</th>
-                            <th className="px-4 py-2 text-left">Difficulty</th>
-                            <th className="px-4 py-2 text-left">Status</th>
-                            <th className="px-4 py-2 text-left">Created By</th>
-                            <th className="px-4 py-2 text-left">Created Date</th>
-                            <th className="px-4 py-2 text-left">Updated</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredModules.length === 0 ? (
-                            <tr>
-                                <td
-                                    colSpan={8}
-                                    className="px-4 py-6 text-center text-slate-500 text-sm"
-                                >
-                                    {(modules || []).length === 0
-                                        ? 'No training modules yet. Click "Create Training Module" to add one.'
-                                        : 'No modules match your search or filter criteria.'}
-                                </td>
-                            </tr>
-                        ) : (
-                            paginatedModules.map((module) => (
-                                <tr key={module.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-medium text-slate-800">
-                                        <div className="flex flex-col">
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {paginatedModules.map((module, index) => (
+                        <div
+                            key={module.id}
+                            className="training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
+                            style={{ animationDelay: `${index * 0.06}s` }}
+                        >
+                            <div className="p-5">
+                                <div className="flex items-start gap-3 mb-3">
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                                        <BookOpen className="w-5 h-5 text-slate-600 drop-shadow-sm" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-semibold text-slate-900 truncate" title={module.title}>
+                                            {module.title || 'Untitled Module'}
+                                        </h3>
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                                {module.category ?? '—'}
+                                            </span>
+                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                {module.difficulty ?? '—'}
+                                            </span>
                                             <span
-                                                className="text-sm font-semibold text-slate-800 truncate max-w-[200px]"
-                                                title={module.title}
+                                                className={'inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold border transition-all duration-200 ' +
+                                                    (module.status === 'published'
+                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                                        : module.status === 'draft'
+                                                            ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                                            : 'border-slate-200 bg-slate-50 text-slate-600')
+                                                }
                                             >
-                                                {module.title}
+                                                {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
                                             </span>
                                         </div>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {module.category ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {module.difficulty}
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <span
-                                            className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm border ' +
-                                                (module.status === 'published'
-                                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                                    : module.status === 'draft'
-                                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                                        : 'border-slate-200 bg-slate-50 text-slate-600')
-                                            }
-                                        >
-                                            {module.status
-                                                ? module.status.charAt(0).toUpperCase() +
-                                                module.status.slice(1)
-                                                : '—'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {module.owner?.name ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-500">
-                                        {module.created_at ? formatDateTime(module.created_at) : '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-500">
-                                        {module.updated_at ? formatDateTime(module.updated_at) : '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        <div className="flex gap-2 justify-start">
-                                            <a
-                                                href={`/training-modules/${module.id}`}
-                                                className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
-                                                title="View Lessons"
-                                            >
-                                                <Eye className="w-4 h-4" />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 mb-4">
+                                    Created: {formatCreatedDate(module.created_at)}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <a
+                                        href={`/training-modules/${module.id}`}
+                                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 hover:shadow-sm transition-all duration-200"
+                                        title="View Lessons"
+                                    >
+                                        <Eye className="w-3.5 h-3.5 drop-shadow-sm" />
+                                        View
+                                    </a>
+                                    {module.status === 'draft' && (
+                                        <>
+                                            <form method="POST" action={`/training-modules/${module.id}/publish`} onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const result = await Swal.fire({
+                                                    title: 'Publish Training Module',
+                                                    html: '<p class="text-left mb-3">Are you sure you want to publish this training module?</p><p class="text-left text-sm text-slate-600 mb-2">Please ensure: Title is filled, Difficulty is selected, at least one lesson is added.</p>',
+                                                    icon: 'question',
+                                                    showCancelButton: true,
+                                                    confirmButtonText: 'Yes, publish',
+                                                    cancelButtonText: 'Cancel',
+                                                    confirmButtonColor: '#16a34a',
+                                                    cancelButtonColor: '#64748b',
+                                                });
+                                                if (result.isConfirmed) e.target.submit();
+                                            }} className="inline-block">
+                                                <input type="hidden" name="_token" value={csrf} />
+                                                <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:shadow-sm transition-all duration-200" title="Publish">
+                                                    <Send className="w-3.5 h-3.5 drop-shadow-sm" />
+                                                    Publish
+                                                </button>
+                                            </form>
+                                            <a href={`/training-modules/${module.id}/edit`} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:shadow-sm transition-all duration-200" title="Edit">
+                                                <Pencil className="w-3.5 h-3.5 drop-shadow-sm" />
+                                                Edit
                                             </a>
-                                            {module.status === 'draft' && (
-                                                <>
-                                                    <form
-                                                        method="POST"
-                                                        action={`/training-modules/${module.id}/publish`}
-                                                        onSubmit={async (e) => {
-                                                            e.preventDefault();
-                                                            const result = await Swal.fire({
-                                                                title: 'Publish Training Module',
-                                                                html: `
-                                                                    <p class="text-left mb-3">Are you sure you want to publish this training module?</p>
-                                                                    <p class="text-left text-sm text-slate-600 mb-2">Please ensure:</p>
-                                                                    <ul class="text-left text-sm text-slate-600 list-disc list-inside space-y-1">
-                                                                        <li>Title is filled</li>
-                                                                        <li>Difficulty is selected</li>
-                                                                        <li>At least one lesson is added</li>
-                                                                    </ul>
-                                                                `,
-                                                                icon: 'question',
-                                                                showCancelButton: true,
-                                                                confirmButtonText: 'Yes, publish',
-                                                                cancelButtonText: 'Cancel',
-                                                                confirmButtonColor: '#16a34a',
-                                                                cancelButtonColor: '#64748b',
-                                                            });
-                                                            if (result.isConfirmed) {
-                                                                e.target.submit();
-                                                            }
-                                                        }}
-                                                        className="inline-block"
-                                                    >
-                                                        <input type="hidden" name="_token" value={csrf} />
-                                                        <button
-                                                            type="submit"
-                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
-                                                            title="Publish"
-                                                        >
-                                                            <Send className="w-4 h-4" />
-                                                        </button>
-                                                    </form>
-                                                    <a
-                                                        href={`/training-modules/${module.id}/edit`}
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
-                                                        title="Edit"
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </a>
-                                                </>
-                                            )}
-                                            {module.status !== 'published' && module.status !== 'draft' && (
-                                                <a
-                                                    href={`/training-modules/${module.id}/edit`}
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </a>
-                                            )}
-                                            <form
-                                                method="POST"
-                                                action={`/training-modules/${module.id}/archive`}
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const result = await Swal.fire({
-                                                        title: 'Warning!',
-                                                        text: 'Archive this module? It will no longer be assignable to new simulations.',
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Yes, archive it',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#f97316',
-                                                        cancelButtonColor: '#64748b',
-                                                    });
-                                                    if (result.isConfirmed) {
-                                                        e.target.submit();
-                                                    }
-                                                }}
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button
-                                                    type="submit"
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
-                                                    title="Archive"
-                                                >
-                                                    <Archive className="w-4 h-4" />
-                                                </button>
-                                            </form>
-                                            <form
-                                                method="POST"
-                                                action={`/training-modules/${module.id}`}
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const result = await Swal.fire({
-                                                        title: 'Warning!',
-                                                        text: 'Permanently delete this module? This action cannot be undone.',
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Yes, delete it',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#dc2626',
-                                                        cancelButtonColor: '#64748b',
-                                                    });
-                                                    if (result.isConfirmed) {
-                                                        e.target.submit();
-                                                    }
-                                                }}
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <input type="hidden" name="_method" value="DELETE" />
-                                                <button
-                                                    type="submit"
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-                {filteredModules.length > 0 && (
+                                        </>
+                                    )}
+                                    {module.status !== 'published' && module.status !== 'draft' && (
+                                        <a href={`/training-modules/${module.id}/edit`} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:shadow-sm transition-all duration-200" title="Edit">
+                                            <Pencil className="w-3.5 h-3.5 drop-shadow-sm" />
+                                            Edit
+                                        </a>
+                                    )}
+                                    <form method="POST" action={`/training-modules/${module.id}/archive`} onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const result = await Swal.fire({
+                                            title: 'Warning!',
+                                            text: 'Archive this module? It will no longer be assignable to new simulations.',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Yes, archive it',
+                                            cancelButtonText: 'Cancel',
+                                            confirmButtonColor: '#f97316',
+                                            cancelButtonColor: '#64748b',
+                                        });
+                                        if (result.isConfirmed) e.target.submit();
+                                    }} className="inline-block">
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:shadow-sm transition-all duration-200" title="Archive">
+                                            <Archive className="w-3.5 h-3.5 drop-shadow-sm" />
+                                            Archive
+                                        </button>
+                                    </form>
+                                    <form method="POST" action={`/training-modules/${module.id}`} onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const result = await Swal.fire({
+                                            title: 'Warning!',
+                                            text: 'Permanently delete this module? This action cannot be undone.',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Yes, delete it',
+                                            cancelButtonText: 'Cancel',
+                                            confirmButtonColor: '#dc2626',
+                                            cancelButtonColor: '#64748b',
+                                        });
+                                        if (result.isConfirmed) e.target.submit();
+                                    }} className="inline-block">
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <input type="hidden" name="_method" value="DELETE" />
+                                        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:shadow-sm transition-all duration-200" title="Delete">
+                                            <Trash2 className="w-3.5 h-3.5 drop-shadow-sm" />
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {filteredModules.length > 0 && (
+                <div className="mt-6">
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
@@ -1954,8 +1782,8 @@ function TrainingModulesTable({ modules = [] }) {
                         itemsPerPage={itemsPerPage}
                         totalItems={filteredModules.length}
                     />
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -2396,11 +2224,42 @@ function StatusToast({ message }) {
     );
 }
 
+const QUICK_TEMPLATES = [
+    {
+        name: 'Basic Earthquake Drill',
+        title: 'Basic Earthquake Drill',
+        description: 'Introduction to earthquake preparedness: drop, cover, and hold. Covers evacuation routes and safe zones.',
+        difficulty: 'Beginner',
+        category: 'Earthquake',
+        objectives: ['Identify safe spots in a room', 'Practice drop, cover, and hold', 'Know evacuation routes'],
+    },
+    {
+        name: 'Fire Evacuation Drill',
+        title: 'Fire Evacuation Drill',
+        description: 'Fire safety and evacuation procedures. Includes use of extinguishers, assembly points, and head count.',
+        difficulty: 'Beginner',
+        category: 'Fire',
+        objectives: ['Recognize fire exits and assembly points', 'Demonstrate safe evacuation', 'Understand basic fire extinguisher use'],
+    },
+    {
+        name: 'Flood Response Simulation',
+        title: 'Flood Response Simulation',
+        description: 'Simulation training for flood early warning response and coordinated evacuation planning.',
+        difficulty: 'Intermediate',
+        category: 'Flood',
+        objectives: ['Interpret flood warnings and advisories', 'Coordinate evacuation with local protocols', 'Identify safe routes and shelters'],
+    },
+];
+
 function TrainingModuleCreateForm({ barangayProfile }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    const [showObjectives, setShowObjectives] = React.useState(true); // Show by default
+    const [title, setTitle] = React.useState('');
+    const [description, setDescription] = React.useState('');
+    const [difficulty, setDifficulty] = React.useState('Beginner');
+    const [category, setCategory] = React.useState('');
+    const [showObjectives, setShowObjectives] = React.useState(true);
     const [objectives, setObjectives] = React.useState(['']);
 
     const addObjective = () => {
@@ -2417,177 +2276,272 @@ function TrainingModuleCreateForm({ barangayProfile }) {
         setObjectives(newObjectives);
     };
 
+    const applyTemplate = (t) => {
+        setTitle(t.title);
+        setDescription(t.description);
+        setDifficulty(t.difficulty);
+        setCategory(t.category);
+        setObjectives(t.objectives && t.objectives.length > 0 ? [...t.objectives] : ['']);
+        setShowObjectives(true);
+    };
+
+    const inputClass = 'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200';
+    const labelClass = 'block text-xs font-semibold text-slate-600 mb-1.5';
+
+    const hazards = barangayProfile?.hazards && Array.isArray(barangayProfile.hazards) ? barangayProfile.hazards : [];
+    const templateCategories = ['Earthquake', 'Fire', 'Flood'];
+    const categoryOptions = hazards.length > 0
+        ? [...new Set([...hazards, ...templateCategories])].sort()
+        : [];
+    const useCategorySelect = categoryOptions.length > 0;
+
     return (
-        <div className="max-w-5xl py-2">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                Create Training Module
-            </h2>
-            <form
-                method="POST"
-                action="/training-modules"
-                className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
+        <div className="w-full max-w-full py-2">
+            <a
+                href="/training-modules"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
-                <input type="hidden" name="_token" value={csrf} />
-                <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="title"
-                    >
-                        Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        id="title"
-                        name="title"
-                        type="text"
-                        required
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
+                <ChevronLeft className="w-4 h-4" />
+                Back to Training Modules
+            </a>
+
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-100 rounded-xl shadow-md">
+                    <BookOpen className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
                 </div>
                 <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="description"
-                    >
-                        Description
-                    </label>
-                    <textarea
-                        id="description"
-                        name="description"
-                        rows={3}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
+                    <h2 className="text-xl font-semibold text-slate-800">
+                        Create Training Module
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                        Add a new disaster preparedness training module
+                    </p>
                 </div>
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-semibold text-slate-600">
-                            Learning Objectives
-                        </label>
-                        <button
-                            type="button"
-                            onClick={() => setShowObjectives(!showObjectives)}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:border-emerald-700 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            Objectives
-                        </button>
-                    </div>
-                    {showObjectives && (
-                        <div className="space-y-2">
-                            {objectives.map((objective, index) => (
-                                <div key={index} className="flex items-start gap-2">
-                                    <input
-                                        type="text"
-                                        name={`learning_objectives[${index}]`}
-                                        value={objective}
-                                        onChange={(e) => updateObjective(index, e.target.value)}
-                                        placeholder={`Objective ${index + 1}`}
-                                        className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                    {objectives.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => removeObjective(index)}
-                                            className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left: widened form (takes most space) */}
+                <div className="lg:col-span-8">
+                    <form
+                        method="POST"
+                        action="/training-modules"
+                        className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
+                    >
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="status" value="draft" />
+
+                        <div>
+                            <label className={labelClass} htmlFor="title">
+                                Title <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="title"
+                                name="title"
+                                type="text"
+                                required
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="e.g. Earthquake Response & Evacuation"
+                                className={inputClass}
+                            />
+                        </div>
+
+                        <div>
+                            <label className={labelClass} htmlFor="description">
+                                Description
+                            </label>
+                            <textarea
+                                id="description"
+                                name="description"
+                                rows={4}
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Brief overview of what this module covers..."
+                                className={inputClass}
+                            />
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-3">
+                                <label className="text-xs font-semibold text-slate-600">
+                                    Learning Objectives
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowObjectives(!showObjectives)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow transition-all duration-200"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    {showObjectives ? 'Hide' : 'Show'} Objectives
+                                </button>
+                            </div>
+                            {showObjectives && (
+                                <div className="space-y-3">
+                                    {objectives.map((objective, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                name={`learning_objectives[${index}]`}
+                                                value={objective}
+                                                onChange={(e) => updateObjective(index, e.target.value)}
+                                                placeholder={`Objective ${index + 1}`}
+                                                className={inputClass}
+                                            />
+                                            {objectives.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeObjective(index)}
+                                                    className="shrink-0 inline-flex items-center justify-center rounded-xl border border-slate-300 w-10 h-10 text-slate-600 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
+                                                    aria-label="Remove objective"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={addObjective}
+                                        className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 transition-colors duration-200"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Add another objective
+                                    </button>
                                 </div>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={addObjective}
-                                className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900"
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className={labelClass} htmlFor="difficulty">
+                                    Difficulty
+                                </label>
+                                <select
+                                    id="difficulty"
+                                    name="difficulty"
+                                    value={difficulty}
+                                    onChange={(e) => setDifficulty(e.target.value)}
+                                    className={inputClass}
+                                >
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelClass} htmlFor="category">
+                                    Disaster type
+                                </label>
+                                {useCategorySelect ? (
+                                    <select
+                                        id="category"
+                                        name="category"
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                        className={inputClass}
+                                    >
+                                        <option value="">Select disaster type</option>
+                                        {categoryOptions.map((hazard, index) => (
+                                            <option key={index} value={hazard}>{hazard}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input
+                                        id="category"
+                                        name="category"
+                                        type="text"
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                        placeholder="e.g. Earthquake, Fire"
+                                        className={inputClass}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className={labelClass} htmlFor="visibility">
+                                Visibility
+                            </label>
+                            <select id="visibility" name="visibility" className={inputClass}>
+                                <option value="all">All participants</option>
+                                <option value="group">Specific groups (later)</option>
+                                <option value="staff_only">Staff only</option>
+                            </select>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                            <a
+                                href="/training-modules"
+                                className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
                             >
-                                <Plus className="w-3 h-3" />
-                                Add another objective
+                                Cancel
+                            </a>
+                            <button
+                                type="submit"
+                                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Create Module
                             </button>
                         </div>
-                    )}
+                    </form>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="difficulty"
-                        >
-                            Difficulty
-                        </label>
-                        <select
-                            id="difficulty"
-                            name="difficulty"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="Beginner">Beginner</option>
-                            <option value="Intermediate">Intermediate</option>
-                            <option value="Advanced">Advanced</option>
-                        </select>
+
+                {/* Right: Module Writing Tips + Quick Templates */}
+                <div className="lg:col-span-4 space-y-5">
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="p-2 rounded-xl bg-slate-100">
+                                <ClipboardList className="w-5 h-5 text-slate-600" />
+                            </div>
+                            <h3 className="font-semibold text-slate-800">Module Writing Tips</h3>
+                        </div>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span>Keep title clear and scenario-based</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span>Limit description to 3–5 sentences</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span>Objectives should be measurable</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span>Match difficulty to target participants</span>
+                            </li>
+                        </ul>
                     </div>
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="category"
-                        >
-                            Disaster type
-                        </label>
-                        {barangayProfile && barangayProfile.hazards && barangayProfile.hazards.length > 0 ? (
-                            <select
-                                id="category"
-                                name="category"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Select disaster type</option>
-                                {barangayProfile.hazards.map((hazard, index) => (
-                                    <option key={index} value={hazard}>
-                                        {hazard}
-                                    </option>
-                                ))}
-                            </select>
-                        ) : (
-                            <input
-                                id="category"
-                                name="category"
-                                type="text"
-                                placeholder="e.g. Earthquake, Fire"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        )}
+
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="p-2 rounded-xl bg-amber-100">
+                                <Zap className="w-5 h-5 text-amber-700" />
+                            </div>
+                            <h3 className="font-semibold text-slate-800">Quick Templates</h3>
+                        </div>
+                        <p className="text-xs text-slate-500 mb-3">
+                            Click one to auto-fill the form.
+                        </p>
+                        <div className="space-y-2">
+                            {QUICK_TEMPLATES.map((t, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => applyTemplate(t)}
+                                    className="w-full text-left rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 transition-all duration-200"
+                                >
+                                    {t.name}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="visibility"
-                    >
-                        Visibility
-                    </label>
-                    <select
-                        id="visibility"
-                        name="visibility"
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                        <option value="all">All participants</option>
-                        <option value="group">Specific groups (later)</option>
-                        <option value="staff_only">Staff only</option>
-                    </select>
-                </div>
-                {/* Status is automatically set to draft when creating */}
-                <input type="hidden" name="status" value="draft" />
-                <div className="flex justify-end gap-2 pt-2">
-                    <a
-                        href="/training-modules"
-                        className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-                    >
-                        Cancel
-                    </a>
-                    <button
-                        type="submit"
-                        className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
-                    >
-                        Save Module
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     );
 }
@@ -2852,27 +2806,24 @@ function TrainingModuleDetail({ module }) {
             <div className="flex items-center justify-between mb-1">
                 <a
                     href="/training-modules"
-                    className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200"
                 >
-                    ← Back to Training Modules
+                    <ChevronLeft className="w-4 h-4" />
+                    Back to Training Modules
                 </a>
                 <div className="text-[0.7rem] text-slate-500">
-                    <a
-                        href="/training-modules"
-                        className="hover:text-slate-700 hover:underline underline-offset-2"
-                    >
+                    <a href="/training-modules" className="hover:text-slate-700 hover:underline underline-offset-2">
                         Training Modules
                     </a>
                     <span className="mx-1">/</span>
-                    <span className="font-semibold text-slate-700">
-                        {module.title}
-                    </span>
+                    <span className="font-semibold text-slate-700">{module.title}</span>
                 </div>
             </div>
 
-            <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
+            {/* Module header card */}
+            <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-md hover:shadow-lg transition-shadow duration-300">
                 <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
                             Training module
                         </div>
@@ -2887,19 +2838,9 @@ function TrainingModuleDetail({ module }) {
                                 <div className="flex justify-end mt-1">
                                     <button
                                         onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                                        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
+                                        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2 transition-colors duration-200"
                                     >
-                                        {isDescriptionExpanded ? (
-                                            <>
-                                                See less
-                                                <ChevronUp className="w-3 h-3" />
-                                            </>
-                                        ) : (
-                                            <>
-                                                See more
-                                                <ChevronDown className="w-3 h-3" />
-                                            </>
-                                        )}
+                                        {isDescriptionExpanded ? <>See less <ChevronUp className="w-3 h-3" /></> : <>See more <ChevronDown className="w-3 h-3" /></>}
                                     </button>
                                 </div>
                             </div>
@@ -2907,54 +2848,43 @@ function TrainingModuleDetail({ module }) {
                     </div>
                     <a
                         href={`/training-modules/${module.id}/edit`}
-                        className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                        className="inline-flex items-center justify-center rounded-xl border border-slate-300 p-2.5 text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200 shrink-0"
                         title="Edit module settings"
                     >
-                        <Pencil className="w-4 h-4" />
+                        <Pencil className="w-4 h-4 drop-shadow-sm" />
                     </a>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-600">
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                    <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
                         Difficulty: {module.difficulty}
                     </span>
                     {module.category && (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                            Disaster type: {module.category}
+                        <span className="inline-flex items-center rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 font-medium">
+                            {module.category}
                         </span>
                     )}
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                        Status: {module.status}
+                    <span className="inline-flex items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 font-medium">
+                        {module.status}
                     </span>
                 </div>
-                <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500">
-                    <div className="flex flex-wrap gap-4">
-                        <div>
-                            <span className="font-semibold text-slate-600">Created By:</span> {module.owner?.name ?? '—'}
-                        </div>
-                        <div>
-                            <span className="font-semibold text-slate-600">Created Date:</span> {module.created_at ? formatDateTime(module.created_at) : '—'}
-                        </div>
-                    </div>
+                <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap gap-4">
+                    <span><span className="font-semibold text-slate-600">Created by:</span> {module.owner?.name ?? '—'}</span>
+                    <span><span className="font-semibold text-slate-600">Created:</span> {module.created_at ? formatDateTime(module.created_at) : '—'}</span>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* Add Lesson Section - First on mobile, second on desktop */}
+                {/* Add Lesson - sidebar */}
                 <div className="lg:order-2 space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-800">
-                        Add Lesson
-                    </h3>
+                    <h3 className="text-sm font-semibold text-slate-800">Add Lesson</h3>
                     <form
                         method="POST"
                         action={`/training-modules/${module.id}/lessons`}
-                        className="space-y-3 rounded-xl bg-white border border-slate-200 shadow-sm p-4"
+                        className="space-y-3 rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-200 hover:shadow-lg"
                     >
                         <input type="hidden" name="_token" value={csrf} />
                         <div>
-                            <label
-                                htmlFor="lesson_title"
-                                className="block text-[0.7rem] font-semibold text-slate-600 mb-1"
-                            >
+                            <label htmlFor="lesson_title" className="block text-[0.7rem] font-semibold text-slate-600 mb-1">
                                 Lesson title <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -2962,217 +2892,177 @@ function TrainingModuleDetail({ module }) {
                                 name="title"
                                 type="text"
                                 required
-                                className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200"
                             />
                         </div>
                         <div>
-                            <label
-                                htmlFor="lesson_description"
-                                className="block text-[0.7rem] font-semibold text-slate-600 mb-1"
-                            >
+                            <label htmlFor="lesson_description" className="block text-[0.7rem] font-semibold text-slate-600 mb-1">
                                 Description / key points
                             </label>
                             <textarea
                                 id="lesson_description"
                                 name="description"
                                 rows={3}
-                                className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200"
                             />
                         </div>
-                        <div className="flex justify-end pt-1">
-                            <button
-                                type="submit"
-                                className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5"
-                            >
-                                Add lesson
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-4 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add lesson
+                        </button>
                     </form>
                 </div>
 
-                {/* Lessons Section - Second on mobile, first on desktop */}
+                {/* Lessons - card grid */}
                 <div className="lg:col-span-2 lg:order-1 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-slate-800">
-                            Lessons
-                        </h3>
-                    </div>
-                    <div className="rounded-xl bg-white border border-slate-200 shadow-sm max-h-[600px] overflow-y-auto">
-                        {lessons.length === 0 ? (
-                            <div className="px-4 py-6 text-sm text-slate-500 text-center">
-                                No lessons yet. Use the form on the right to add the
-                                first lesson.
+                    <h3 className="text-sm font-semibold text-slate-800">Lessons</h3>
+                    {lessons.length === 0 ? (
+                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                                <div className="text-6xl mb-3 opacity-90" aria-hidden="true">📖</div>
+                                <h3 className="text-lg font-semibold text-slate-800 mb-1">No lessons yet.</h3>
+                                <p className="text-slate-600 text-sm">
+                                    Add your first lesson using the form on the right.
+                                </p>
                             </div>
-                        ) : (
-                            <ul className="divide-y divide-slate-100">
-                                {lessons.map((lesson, index) => (
-                                    <li
-                                        key={lesson.id}
-                                        className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-slate-50"
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {lessons.map((lesson, index) => (
+                                <div
+                                    key={lesson.id}
+                                    className="lesson-card-enter rounded-2xl bg-white border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
+                                    style={{ animationDelay: `${index * 0.05}s` }}
+                                >
+                                    <div
+                                        className="p-5 cursor-pointer"
+                                        onClick={() => handleLessonClick(lesson)}
                                     >
-                                        <div
-                                            className="flex-1 cursor-pointer"
-                                            onClick={() => handleLessonClick(lesson)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-slate-400">
-                                                    #{index + 1}
-                                                </span>
-                                                <span className="text-sm font-medium text-slate-800 hover:text-emerald-700 hover:underline">
-                                                    {lesson.title}
-                                                </span>
+                                        <div className="flex items-start gap-3">
+                                            <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                                                <FileText className="w-5 h-5 text-slate-600 drop-shadow-sm" />
                                             </div>
-                                            {lesson.description && (
-                                                <p className="mt-1 text-xs text-slate-600 whitespace-pre-line line-clamp-4">
-                                                    {lesson.description}
-                                                </p>
-                                            )}
-
-                                            <div className="mt-2 space-y-1">
-                                                <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                                                    Materials
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-medium text-slate-400">#{index + 1}</span>
+                                                    <h4 className="font-semibold text-slate-900 truncate">{lesson.title}</h4>
                                                 </div>
-                                                {(!lesson.materials || lesson.materials.length === 0) ? (
-                                                    <p className="text-[0.7rem] text-slate-400">
-                                                        No materials linked yet.
-                                                    </p>
-                                                ) : (
-                                                    <ul className="space-y-1">
-                                                        {lesson.materials.map((mat) => (
-                                                            <li
-                                                                key={mat.id}
-                                                                className="flex items-center justify-between gap-2 text-[0.75rem]"
-                                                            >
+                                                {lesson.description && (
+                                                    <p className="mt-1 text-xs text-slate-600 line-clamp-2">{lesson.description}</p>
+                                                )}
+                                                <div className="mt-2">
+                                                    {(!lesson.materials || lesson.materials.length === 0) ? (
+                                                        <span className="text-[0.7rem] text-slate-400">No materials</span>
+                                                    ) : (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {lesson.materials.slice(0, 3).map((mat) => (
                                                                 <a
+                                                                    key={mat.id}
                                                                     href={mat.path}
                                                                     target="_blank"
                                                                     rel="noreferrer"
-                                                                    className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[0.65rem] font-medium text-slate-600 hover:bg-slate-200 transition-colors"
                                                                 >
-                                                                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-slate-600">
-                                                                        {mat.type}
-                                                                    </span>
-                                                                    <span>
-                                                                        {mat.label || mat.path}
-                                                                    </span>
+                                                                    {mat.type}
                                                                 </a>
-                                                                <form
-                                                                    method="POST"
-                                                                    action={`/training-modules/${module.id}/lessons/${lesson.id}/materials/${mat.id}`}
-                                                                    onSubmit={async (e) => {
-                                                                        e.preventDefault();
-                                                                        const result = await Swal.fire({
-                                                                            title: 'Warning!',
-                                                                            text: 'Remove this learning material from the lesson?',
-                                                                            icon: 'warning',
-                                                                            showCancelButton: true,
-                                                                            confirmButtonText: 'Yes, remove it',
-                                                                            cancelButtonText: 'Cancel',
-                                                                            confirmButtonColor: '#dc2626',
-                                                                            cancelButtonColor: '#64748b',
-                                                                        });
-                                                                        if (result.isConfirmed) {
-                                                                            e.target.submit();
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <input type="hidden" name="_token" value={csrf} />
-                                                                    <input
-                                                                        type="hidden"
-                                                                        name="_method"
-                                                                        value="DELETE"
-                                                                    />
-                                                                    <button
-                                                                        type="submit"
-                                                                        className="text-[0.7rem] font-medium text-rose-700 hover:text-rose-900"
-                                                                    >
-                                                                        Remove
-                                                                    </button>
-                                                                </form>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                                            ))}
+                                                            {lesson.materials.length > 3 && (
+                                                                <span className="text-[0.65rem] text-slate-400">+{lesson.materials.length - 3}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <form
-                                                method="POST"
-                                                action={`/training-modules/${module.id}/lessons/${lesson.id}`}
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const result = await Swal.fire({
-                                                        title: 'Warning!',
-                                                        text: 'Remove this lesson from the module?',
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Yes, remove lesson',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#dc2626',
-                                                        cancelButtonColor: '#64748b',
-                                                    });
-                                                    if (result.isConfirmed) {
-                                                        e.target.submit();
-                                                    }
-                                                }}
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <input
-                                                    type="hidden"
-                                                    name="_method"
-                                                    value="DELETE"
-                                                />
-                                                <button
-                                                    type="submit"
-                                                    className="text-[0.7rem] font-medium text-rose-700 hover:text-rose-900"
-                                                >
-                                                    Remove lesson
-                                                </button>
-                                            </form>
-                                            <form
-                                                method="POST"
-                                                action={`/training-modules/${module.id}/lessons/${lesson.id}/materials`}
-                                                className="space-y-1 text-[0.7rem] w-48"
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <select
-                                                    name="type"
-                                                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-[0.7rem] focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 mb-1"
-                                                >
-                                                    <option value="PDF">PDF</option>
-                                                    <option value="Video">Video</option>
-                                                    <option value="Image">Image</option>
-                                                    <option value="PPT">PPT</option>
-                                                    <option value="Link">Link</option>
-                                                </select>
-                                                <input
-                                                    name="label"
-                                                    type="text"
-                                                    placeholder="Short label (optional)"
-                                                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-[0.7rem] focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 mb-1"
-                                                />
-                                                <input
-                                                    name="url"
-                                                    type="url"
-                                                    required
-                                                    placeholder="https://example.com/resource"
-                                                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-[0.7rem] focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 mb-1"
-                                                />
-                                                <div className="flex justify-end">
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[0.7rem] font-medium px-2.5 py-1"
-                                                    >
-                                                        Add material
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
+                                    </div>
+                                    <div className="px-5 pb-5 pt-4 flex flex-wrap items-center gap-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleLessonClick(lesson)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 hover:shadow-sm transition-all duration-200"
+                                        >
+                                            <Eye className="w-3.5 h-3.5" />
+                                            View
+                                        </button>
+                                        <form method="POST" action={`/training-modules/${module.id}/lessons/${lesson.id}`} onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const result = await Swal.fire({
+                                                title: 'Warning!',
+                                                text: 'Remove this lesson from the module?',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonText: 'Yes, remove lesson',
+                                                cancelButtonText: 'Cancel',
+                                                confirmButtonColor: '#dc2626',
+                                                cancelButtonColor: '#64748b',
+                                            });
+                                            if (result.isConfirmed) e.target.submit();
+                                        }} className="inline-block">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="_method" value="DELETE" />
+                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:shadow-sm transition-all duration-200">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                Remove
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+                                        <div className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide">Add material</div>
+                                        <form method="POST" action={`/training-modules/${module.id}/lessons/${lesson.id}/materials`} className="space-y-2">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <select name="type" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                                <option value="PDF">PDF</option>
+                                                <option value="Video">Video</option>
+                                                <option value="Image">Image</option>
+                                                <option value="PPT">PPT</option>
+                                                <option value="Link">Link</option>
+                                            </select>
+                                            <input name="label" type="text" placeholder="Label (optional)" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                                            <input name="url" type="url" required placeholder="https://..." className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[0.7rem] font-medium px-2.5 py-1.5 transition-all duration-200">
+                                                <Plus className="w-3 h-3" />
+                                                Add material
+                                            </button>
+                                        </form>
+                                        {lesson.materials && lesson.materials.length > 0 && (
+                                            <ul className="space-y-1 mt-2">
+                                                {lesson.materials.map((mat) => (
+                                                    <li key={mat.id} className="flex items-center justify-between gap-2 text-[0.75rem]">
+                                                        <a href={mat.path} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 hover:underline truncate min-w-0">
+                                                            <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase text-slate-600">{mat.type}</span>
+                                                            <span className="truncate">{mat.label || mat.path}</span>
+                                                        </a>
+                                                        <form method="POST" action={`/training-modules/${module.id}/lessons/${lesson.id}/materials/${mat.id}`} onSubmit={async (e) => {
+                                                            e.preventDefault();
+                                                            const result = await Swal.fire({
+                                                                title: 'Warning!',
+                                                                text: 'Remove this learning material from the lesson?',
+                                                                icon: 'warning',
+                                                                showCancelButton: true,
+                                                                confirmButtonText: 'Yes, remove it',
+                                                                cancelButtonText: 'Cancel',
+                                                                confirmButtonColor: '#dc2626',
+                                                                cancelButtonColor: '#64748b',
+                                                            });
+                                                            if (result.isConfirmed) e.target.submit();
+                                                        }} className="shrink-0">
+                                                            <input type="hidden" name="_token" value={csrf} />
+                                                            <input type="hidden" name="_method" value="DELETE" />
+                                                            <button type="submit" className="text-[0.7rem] font-medium text-rose-600 hover:text-rose-800">Remove</button>
+                                                        </form>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -3203,7 +3093,7 @@ function TrainingModuleDetail({ module }) {
                                                 className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
                                                 title="Edit"
                                             >
-                                                <Pencil className="w-4 h-4" />
+                                                <Pencil className="w-4 h-4 drop-shadow-sm" />
                                             </button>
                                         )}
                                         <Dialog.Close asChild>
@@ -3387,301 +3277,290 @@ function ScenariosTable({ scenarios = [], role }) {
         setCurrentPage(1);
     }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
 
+    const formatCreatedDate = (dateString) => {
+        if (!dateString) return '—';
+        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
     return (
         <div>
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-lg">
-                        <Activity className="w-6 h-6 text-emerald-600" />
+            {/* Hero Header - Certification style */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <Activity className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Scenarios</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Design scenario-based exercises and disaster response simulations.
+                        </p>
                     </div>
-                    <h2 className="text-lg font-semibold text-slate-800">Scenarios</h2>
+                    <div className="flex flex-wrap gap-3 shrink-0">
+                        <a
+                            href="/scenarios/create"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Create Scenario
+                        </a>
+                    </div>
                 </div>
-                <a
-                    href="/scenarios/create"
-                    className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5"
-                >
-                    + Create Scenario
-                </a>
             </div>
 
-            {/* Search and Filter Bar */}
-            <div className="mb-4 flex items-center gap-3">
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search scenarios..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                </div>
-                <div className="relative" ref={filterRef}>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                        <Filter className="w-4 h-4" />
-                        Filters
-                    </button>
-                    {showFilters && (
-                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
-                            <div className="space-y-3">
+            {/* Search and Filter Bar - Evaluations style */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4 mb-6">
+                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
+                        <input
+                            type="text"
+                            placeholder="Search scenarios..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <select
+                            className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">All Status</option>
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
+                        >
+                            <Filter className="w-4 h-4" />
+                            Filter
+                        </button>
+                    </div>
+                </form>
+                {showFilters && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Difficulty</label>
+                                <select
+                                    value={filterDifficulty}
+                                    onChange={(e) => setFilterDifficulty(e.target.value)}
+                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                                >
+                                    <option value="">All Difficulties</option>
+                                    <option value="Basic">Basic</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
+                            {disasterTypes.length > 0 && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Status
-                                    </label>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
                                     <select
-                                        value={filterStatus}
-                                        onChange={(e) => setFilterStatus(e.target.value)}
-                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        value={filterDisasterType}
+                                        onChange={(e) => setFilterDisasterType(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
                                     >
-                                        <option value="">All Status</option>
-                                        <option value="draft">Draft</option>
-                                        <option value="published">Published</option>
-                                        <option value="archived">Archived</option>
+                                        <option value="">All Types</option>
+                                        {disasterTypes.map((type) => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Difficulty
-                                    </label>
-                                    <select
-                                        value={filterDifficulty}
-                                        onChange={(e) => setFilterDifficulty(e.target.value)}
-                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                    >
-                                        <option value="">All Difficulties</option>
-                                        <option value="Basic">Basic</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Advanced">Advanced</option>
-                                    </select>
-                                </div>
-                                {disasterTypes.length > 0 && (
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                            Disaster Type
-                                        </label>
-                                        <select
-                                            value={filterDisasterType}
-                                            onChange={(e) => setFilterDisasterType(e.target.value)}
-                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        >
-                                            <option value="">All Types</option>
-                                            {disasterTypes.map((type) => (
-                                                <option key={type} value={type}>
-                                                    {type}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => { setFilterStatus(''); setFilterDifficulty(''); setFilterDisasterType(''); setShowFilters(false); }}
+                            className="mt-3 text-xs text-slate-600 hover:text-slate-800 underline transition-colors duration-200"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Card grid or empty state */}
+            {filteredScenarios.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                        {(scenarios || []).length === 0 ? (
+                            <>
+                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">🎯</div>
+                                <h3 className="text-xl font-semibold text-slate-800 mb-2">No scenarios yet.</h3>
+                                <p className="text-slate-600 max-w-sm mb-6">
+                                    Create your first scenario-based exercise to run simulations.
+                                </p>
+                                <a
+                                    href="/scenarios/create"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create Scenario
+                                </a>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">🔍</div>
+                                <h3 className="text-lg font-semibold text-slate-800 mb-1">No scenarios match your filters.</h3>
+                                <p className="text-slate-600 text-sm mb-4">Try adjusting search or filter criteria.</p>
                                 <button
-                                    onClick={() => {
-                                        setFilterStatus('');
-                                        setFilterDifficulty('');
-                                        setFilterDisasterType('');
-                                    }}
-                                    className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
+                                    type="button"
+                                    onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterDifficulty(''); setFilterDisasterType(''); }}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all duration-200"
                                 >
                                     Clear filters
                                 </button>
-                            </div>
-                        </div>
-                    )}
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Title</th>
-                            <th className="px-4 py-2 text-left">Training Module</th>
-                            <th className="px-4 py-2 text-left">Disaster Type</th>
-                            <th className="px-4 py-2 text-left">Difficulty</th>
-                            <th className="px-4 py-2 text-left">Status</th>
-                            <th className="px-4 py-2 text-left">Created By</th>
-                            <th className="px-4 py-2 text-left">Created Date</th>
-                            <th className="px-4 py-2 text-left">Updated</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredScenarios.length === 0 ? (
-                            <tr>
-                                <td
-                                    colSpan={9}
-                                    className="px-4 py-6 text-center text-slate-500 text-sm"
-                                >
-                                    {(scenarios || []).length === 0
-                                        ? 'No scenarios yet. Click "Create Scenario" to add one.'
-                                        : 'No scenarios match your search or filter criteria.'}
-                                </td>
-                            </tr>
-                        ) : (
-                            paginatedScenarios.map((s) => (
-                                <tr
-                                    key={s.id}
-                                    className="border-t border-slate-100 hover:bg-slate-50"
-                                >
-                                    <td className="px-4 py-2 font-medium text-slate-800">
-                                        <div className="flex flex-col">
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {paginatedScenarios.map((s, index) => (
+                        <div
+                            key={s.id}
+                            className="training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
+                            style={{ animationDelay: `${index * 0.06}s` }}
+                        >
+                            <div className="p-5">
+                                <div className="flex items-start gap-3 mb-3">
+                                    <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                                        <Activity className="w-5 h-5 text-slate-600 drop-shadow-sm" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-semibold text-slate-900 truncate" title={s.title}>
+                                            {s.title || 'Untitled Scenario'}
+                                        </h3>
+                                        {s.training_module?.title && (
+                                            <p className="text-xs text-slate-500 mt-0.5 truncate" title={s.training_module.title}>
+                                                {s.training_module.title}
+                                            </p>
+                                        )}
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                                {s.disaster_type ?? '—'}
+                                            </span>
+                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                {s.difficulty ?? '—'}
+                                            </span>
                                             <span
-                                                className="text-sm font-semibold text-slate-800 truncate max-w-[200px]"
-                                                title={s.title}
+                                                className={'inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold border transition-all duration-200 ' +
+                                                    (s.status === 'published'
+                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                                        : s.status === 'draft'
+                                                            ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                                            : 'border-slate-200 bg-slate-50 text-slate-600')
+                                                }
                                             >
-                                                {s.title}
+                                                {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
                                             </span>
                                         </div>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {s.training_module?.title ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {s.disaster_type}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {s.difficulty}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        <span
-                                            className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm border ' +
-                                                (s.status === 'published'
-                                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                                    : s.status === 'draft'
-                                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                                        : 'border-slate-200 bg-slate-50 text-slate-600')
-                                            }
-                                        >
-                                            {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {s.creator?.name ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-500">
-                                        {s.created_at ? formatDateTime(s.created_at) : '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-500">
-                                        {s.updated_at ? formatDateTime(s.updated_at) : '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        <div className="flex gap-2 items-center">
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 mb-4">
+                                    Created: {formatCreatedDate(s.created_at)}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <a
+                                        href={`/scenarios/${s.id}`}
+                                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 hover:shadow-sm transition-all duration-200"
+                                        title="View Scenario"
+                                    >
+                                        <Eye className="w-3.5 h-3.5 drop-shadow-sm" />
+                                        View
+                                    </a>
+                                    {s.status !== 'published' && (
+                                        <>
                                             <a
-                                                href={`/scenarios/${s.id}`}
-                                                className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
-                                                title="View Scenario"
+                                                href={`/scenarios/${s.id}/edit`}
+                                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:shadow-sm transition-all duration-200"
+                                                title="Edit"
                                             >
-                                                <Eye className="w-4 h-4" />
+                                                <Pencil className="w-3.5 h-3.5 drop-shadow-sm" />
+                                                Edit
                                             </a>
-                                            {s.status !== 'published' && (
-                                                <>
-                                                    <a
-                                                        href={`/scenarios/${s.id}/edit`}
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
-                                                        title="Edit"
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </a>
-
-                                                    <form
-                                                        method="POST"
-                                                        action={`/scenarios/${s.id}/publish`}
-                                                        onSubmit={async (e) => {
-                                                            e.preventDefault();
-                                                            const result = await Swal.fire({
-                                                                title: 'Warning!',
-                                                                text: 'Publish this scenario? It will become selectable for events.',
-                                                                icon: 'warning',
-                                                                showCancelButton: true,
-                                                                confirmButtonText: 'Yes, publish',
-                                                                cancelButtonText: 'Cancel',
-                                                                confirmButtonColor: '#16a34a',
-                                                                cancelButtonColor: '#64748b',
-                                                            });
-                                                            if (result.isConfirmed) e.target.submit();
-                                                        }}
-                                                    >
-                                                        <input type="hidden" name="_token" value={csrf} />
-                                                        <button
-                                                            type="submit"
-                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
-                                                            title="Publish"
-                                                        >
-                                                            <Send className="w-4 h-4" />
-                                                        </button>
-                                                    </form>
-                                                </>
-                                            )}
-
-                                            <form
-                                                method="POST"
-                                                action={`/scenarios/${s.id}/archive`}
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const result = await Swal.fire({
-                                                        title: 'Warning!',
-                                                        text: 'Archive this scenario? It will be hidden from selection.',
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Yes, archive',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#f97316',
-                                                        cancelButtonColor: '#64748b',
-                                                    });
-                                                    if (result.isConfirmed) e.target.submit();
-                                                }}
-                                            >
+                                            <form method="POST" action={`/scenarios/${s.id}/publish`} onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const result = await Swal.fire({
+                                                    title: 'Warning!',
+                                                    text: 'Publish this scenario? It will become selectable for events.',
+                                                    icon: 'warning',
+                                                    showCancelButton: true,
+                                                    confirmButtonText: 'Yes, publish',
+                                                    cancelButtonText: 'Cancel',
+                                                    confirmButtonColor: '#16a34a',
+                                                    cancelButtonColor: '#64748b',
+                                                });
+                                                if (result.isConfirmed) e.target.submit();
+                                            }} className="inline-block">
                                                 <input type="hidden" name="_token" value={csrf} />
-                                                <button
-                                                    type="submit"
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
-                                                    title="Archive"
-                                                >
-                                                    <Archive className="w-4 h-4" />
+                                                <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:shadow-sm transition-all duration-200" title="Publish">
+                                                    <Send className="w-3.5 h-3.5 drop-shadow-sm" />
+                                                    Publish
                                                 </button>
                                             </form>
+                                        </>
+                                    )}
+                                    <form method="POST" action={`/scenarios/${s.id}/archive`} onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const result = await Swal.fire({
+                                            title: 'Warning!',
+                                            text: 'Archive this scenario? It will be hidden from selection.',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Yes, archive',
+                                            cancelButtonText: 'Cancel',
+                                            confirmButtonColor: '#f97316',
+                                            cancelButtonColor: '#64748b',
+                                        });
+                                        if (result.isConfirmed) e.target.submit();
+                                    }} className="inline-block">
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:shadow-sm transition-all duration-200" title="Archive">
+                                            <Archive className="w-3.5 h-3.5 drop-shadow-sm" />
+                                            Archive
+                                        </button>
+                                    </form>
+                                    {canDelete && (
+                                        <form method="POST" action={`/scenarios/${s.id}`} onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const result = await Swal.fire({
+                                                title: 'Warning!',
+                                                text: 'Permanently delete this scenario? This cannot be undone.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonText: 'Yes, delete',
+                                                cancelButtonText: 'Cancel',
+                                                confirmButtonColor: '#dc2626',
+                                                cancelButtonColor: '#64748b',
+                                            });
+                                            if (result.isConfirmed) e.target.submit();
+                                        }} className="inline-block">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="_method" value="DELETE" />
+                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:shadow-sm transition-all duration-200" title="Delete">
+                                                <Trash2 className="w-3.5 h-3.5 drop-shadow-sm" />
+                                                Delete
+                                            </button>
+                                        </form>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
-                                            {canDelete && (
-                                                <form
-                                                    method="POST"
-                                                    action={`/scenarios/${s.id}`}
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Warning!',
-                                                            text: 'Permanently delete this scenario? This cannot be undone.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, delete',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#dc2626',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) e.target.submit();
-                                                    }}
-                                                >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <input type="hidden" name="_method" value="DELETE" />
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </form>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-                {filteredScenarios.length > 0 && (
+            {filteredScenarios.length > 0 && (
+                <div className="mt-6">
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
@@ -3689,11 +3568,50 @@ function ScenariosTable({ scenarios = [], role }) {
                         itemsPerPage={itemsPerPage}
                         totalItems={filteredScenarios.length}
                     />
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
+
+const SCENARIO_QUICK_TEMPLATES = [
+    {
+        name: 'Earthquake Response Drill',
+        title: 'Magnitude 6.5 Earthquake – Downtown Response',
+        short_description: 'A strong earthquake has struck the downtown area during business hours. Multiple buildings have sustained damage, power is out in several blocks, and there are reports of trapped persons.',
+        difficulty: 'Basic',
+        affected_area: 'Barangay Central',
+        incident_time_text: '2:30 PM',
+        general_situation: 'Buildings damaged, power outage, roads cracked. Emergency services mobilizing.',
+        severity_level: 'High',
+        intended_participants: 'Barangay DRRM, volunteers, first responders',
+        criteria: ['All participants accounted for within 15 minutes', 'Triage areas established', 'Communication with LGU reported'],
+    },
+    {
+        name: 'Fire Evacuation Scenario',
+        title: 'Commercial Building Fire – Evacuation Drill',
+        short_description: 'Fire reported on the second floor of a three-story commercial building. Smoke spreading. Evacuation and assembly point management required.',
+        difficulty: 'Basic',
+        affected_area: 'Multi-tenant building',
+        incident_time_text: '10:00 AM',
+        general_situation: 'Active fire, smoke on upper floors. Occupants evacuating.',
+        severity_level: 'Medium',
+        intended_participants: 'Building occupants, safety officers, fire responders',
+        criteria: ['Full evacuation within 5 minutes', 'Assembly point headcount completed', 'Injured persons triaged'],
+    },
+    {
+        name: 'Flood Response Simulation',
+        title: 'Flash Flood – Low-Lying Barangay',
+        short_description: 'Heavy rainfall has caused flash flooding in low-lying areas. Some residents need evacuation; roads are impassable.',
+        difficulty: 'Intermediate',
+        affected_area: 'Barangay Riverside',
+        incident_time_text: '6:00 AM',
+        general_situation: 'Rising water, some houses flooded. Evacuation centers opening.',
+        severity_level: 'High',
+        intended_participants: 'Barangay DRRM, rescue teams, health workers',
+        criteria: ['Evacuation routes communicated', 'Vulnerable households identified', 'Shelter capacity reported'],
+    },
+];
 
 function ScenarioCreateForm({ modules }) {
     const csrf =
@@ -3712,6 +3630,30 @@ function ScenarioCreateForm({ modules }) {
     const learningObjectives = selectedModule?.learning_objectives || [];
 
     const formRef = React.useRef(null);
+
+    const inputClass = 'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200';
+    const labelClass = 'block text-xs font-semibold text-slate-600 mb-1.5';
+
+    const applyScenarioTemplate = (t) => {
+        if (formRef.current) {
+            const set = (name, value) => {
+                const el = formRef.current.querySelector(`[name="${name}"]`);
+                if (el) el.value = value ?? '';
+            };
+            set('title', t.title);
+            set('short_description', t.short_description);
+            set('difficulty', t.difficulty);
+            set('affected_area', t.affected_area);
+            set('incident_time_text', t.incident_time_text);
+            set('general_situation', t.general_situation);
+            set('severity_level', t.severity_level);
+            set('intended_participants', t.intended_participants);
+            set('injured_victims_count', t.injured_victims_count ?? 0);
+            set('trapped_persons_count', t.trapped_persons_count ?? 0);
+        }
+        setCriteria(t.criteria && t.criteria.length > 0 ? [...t.criteria] : ['']);
+        setShowCriteria(true);
+    };
 
     const addCriterion = () => {
         setCriteria([...criteria, '']);
@@ -3809,31 +3751,42 @@ function ScenarioCreateForm({ modules }) {
     };
 
     return (
-        <div className="py-2">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-800">
-                    Create Scenario
-                </h2>
-                <button
-                    type="button"
-                    onClick={() => setShowAiChat(true)}
-                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    Generate with AI
-                </button>
+        <div className="w-full max-w-full py-2">
+            <a
+                href="/scenarios"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
+            >
+                <ChevronLeft className="w-4 h-4" />
+                Back to Scenarios
+            </a>
+
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-100 rounded-xl shadow-md">
+                    <FileText className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-semibold text-slate-800">
+                        Create Scenario
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                        Add a new disaster scenario for training exercises
+                    </p>
+                </div>
             </div>
 
-            {/* AI Chat Popup */}
+            {/* AI Scenario Generator modal – blurred backdrop, page visible behind */}
             {showAiChat && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-200">
-                            <h3 className="text-lg font-semibold text-slate-800">
-                                AI Scenario Generator
-                            </h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-md">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-slate-200">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-xl bg-amber-100">
+                                    <Zap className="w-5 h-5 text-amber-700" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-slate-800">
+                                    AI Scenario Generator
+                                </h3>
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => {
@@ -3841,46 +3794,43 @@ function ScenarioCreateForm({ modules }) {
                                     setAiPrompt('');
                                     setAiError(null);
                                 }}
-                                className="text-slate-400 hover:text-slate-600"
+                                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                aria-label="Close"
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4">
-                            <div className="mb-4">
-                                <label className="block text-sm font-semibold text-slate-600 mb-2">
-                                    Describe the scenario you want to generate:
-                                </label>
-                                <textarea
-                                    value={aiPrompt}
-                                    onChange={(e) => setAiPrompt(e.target.value)}
-                                    placeholder="e.g., A magnitude 7.2 earthquake strikes downtown at 2:30 PM during business hours. Multiple buildings collapse, roads are damaged, power is out, and there are reports of trapped people. The scenario should focus on emergency response coordination."
-                                    rows={6}
-                                    disabled={aiGenerating}
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
-                                />
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Be as detailed as possible. The AI will generate a complete scenario with all relevant fields populated.
-                                </p>
-                            </div>
+                        <div className="flex-1 overflow-y-auto px-6 py-5">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Describe the scenario you want to generate
+                            </label>
+                            <textarea
+                                value={aiPrompt}
+                                onChange={(e) => setAiPrompt(e.target.value)}
+                                placeholder="e.g., A magnitude 7.2 earthquake strikes downtown at 2:30 PM during business hours. Multiple buildings collapse, roads are damaged, power is out, and there are reports of trapped people. The scenario should focus on emergency response coordination."
+                                rows={6}
+                                disabled={aiGenerating}
+                                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 disabled:bg-slate-100 disabled:cursor-not-allowed transition-shadow duration-200"
+                            />
+                            <p className="mt-2 text-xs text-slate-500">
+                                Be as detailed as possible. The AI will generate a complete scenario with all relevant fields populated.
+                            </p>
 
                             {aiError && (
-                                <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
+                                <div className="mt-4 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
                                     {aiError}
                                 </div>
                             )}
 
                             {selectedModule && (
-                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700">
+                                <div className="mt-4 p-4 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-800">
                                     <strong>Note:</strong> Disaster type from selected module ({selectedModule.title}): {derivedDisasterType || 'N/A'}
                                 </div>
                             )}
                         </div>
 
-                        <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200">
+                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/50 rounded-b-2xl">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -3889,7 +3839,7 @@ function ScenarioCreateForm({ modules }) {
                                     setAiError(null);
                                 }}
                                 disabled={aiGenerating}
-                                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Cancel
                             </button>
@@ -3897,7 +3847,7 @@ function ScenarioCreateForm({ modules }) {
                                 type="button"
                                 onClick={handleGenerateWithAi}
                                 disabled={aiGenerating || !aiPrompt.trim()}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm font-medium"
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-amber-400 disabled:to-amber-500 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                             >
                                 {aiGenerating ? (
                                     <>
@@ -3906,9 +3856,7 @@ function ScenarioCreateForm({ modules }) {
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
+                                        <Zap className="w-4 h-4" />
                                         <span>Generate Scenario</span>
                                     </>
                                 )}
@@ -3918,112 +3866,111 @@ function ScenarioCreateForm({ modules }) {
                 </div>
             )}
 
-            <form
-                ref={formRef}
-                method="POST"
-                action="/scenarios"
-                className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-            >
-                <input type="hidden" name="_token" value={csrf} />
-                <input type="hidden" name="disaster_type" value={derivedDisasterType} />
-                <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="scenario_title"
+                    <form
+                        ref={formRef}
+                        method="POST"
+                        action="/scenarios"
+                        className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
                     >
-                        Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        id="scenario_title"
-                        name="title"
-                        type="text"
-                        required
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                </div>
-                <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="scenario_short_description"
-                    >
-                        Short description
-                    </label>
-                    <textarea
-                        id="scenario_short_description"
-                        name="short_description"
-                        rows={3}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                </div>
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="disaster_type" value={derivedDisasterType} />
+                        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                            <h3 className="text-sm font-semibold text-slate-700">Scenario details</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowAiChat(true)}
+                                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
+                            >
+                                <Zap className="w-4 h-4" />
+                                Generate with AI
+                            </button>
+                        </div>
+                        <div>
+                            <label className={labelClass} htmlFor="scenario_title">
+                                Title <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="scenario_title"
+                                name="title"
+                                type="text"
+                                required
+                                className={inputClass}
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClass} htmlFor="scenario_short_description">
+                                Short description
+                            </label>
+                            <textarea
+                                id="scenario_short_description"
+                                name="short_description"
+                                rows={3}
+                                className={inputClass}
+                            />
+                        </div>
 
-                {/* Training Module and Disaster Type Section */}
-                <div className="border-t border-slate-200 pt-4 mt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                className="block text-xs font-semibold text-slate-600 mb-1"
-                                htmlFor="training_module_id"
-                            >
-                                Training Module <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                id="training_module_id"
-                                name="training_module_id"
-                                required
-                                value={selectedModuleId}
-                                onChange={(e) => setSelectedModuleId(e.target.value)}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Select a training module…</option>
-                                {publishedModules.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                        {m.title}
-                                    </option>
-                                ))}
-                            </select>
-                            <p className="mt-1 text-[0.7rem] text-slate-500">
-                                This scenario will be the practical application of the selected training module.
-                            </p>
-                        </div>
-                        <div>
-                            <label
-                                className="block text-xs font-semibold text-slate-600 mb-1"
-                                htmlFor="scenario_difficulty"
-                            >
-                                Difficulty <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                id="scenario_difficulty"
-                                name="difficulty"
-                                required
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="Basic">Basic</option>
-                                <option value="Intermediate">Intermediate</option>
-                                <option value="Advanced">Advanced</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                            Disaster type (from training module)
-                        </label>
-                        <input
-                            type="text"
-                            value={derivedDisasterType || ''}
-                            disabled
-                            placeholder="Select a training module to auto-fill"
-                            className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600"
-                        />
-                    </div>
+                        {/* Training Module and Disaster Type Section */}
+                        <div className="border-t border-slate-200 pt-4 mt-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass} htmlFor="training_module_id">
+                                        Training Module <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        id="training_module_id"
+                                        name="training_module_id"
+                                        required
+                                        value={selectedModuleId}
+                                        onChange={(e) => setSelectedModuleId(e.target.value)}
+                                        className={inputClass}
+                                    >
+                                        <option value="">Select a training module…</option>
+                                        {publishedModules.map((m) => (
+                                            <option key={m.id} value={m.id}>
+                                                {m.title}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                                        This scenario will be the practical application of the selected training module.
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className={labelClass} htmlFor="scenario_difficulty">
+                                        Difficulty <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        id="scenario_difficulty"
+                                        name="difficulty"
+                                        required
+                                        className={inputClass}
+                                    >
+                                        <option value="Basic">Basic</option>
+                                        <option value="Intermediate">Intermediate</option>
+                                        <option value="Advanced">Advanced</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="mt-4">
+                                <label className={labelClass}>
+                                    Disaster type (from training module)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={derivedDisasterType || ''}
+                                    disabled
+                                    placeholder="Select a training module to auto-fill"
+                                    className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-600"
+                                />
+                            </div>
 
                     {/* Learning Objectives from Training Module */}
                     {selectedModule && learningObjectives && learningObjectives.length > 0 && (
                         <div className="mt-4">
-                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                            <label className={labelClass}>
                                 Learning Objectives <span className="text-red-500">*</span>
                             </label>
-                            <div className="rounded-md border border-slate-300 bg-slate-50 p-3">
+                            <div className="rounded-xl border border-slate-300 bg-slate-50 p-3">
                                 <ul className="space-y-2">
                                     {learningObjectives.map((objective, index) => (
                                         <li key={index} className="text-sm text-slate-700 flex items-start gap-2">
@@ -4040,10 +3987,10 @@ function ScenarioCreateForm({ modules }) {
                     )}
                     {selectedModule && (!learningObjectives || learningObjectives.length === 0) && (
                         <div className="mt-4">
-                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                            <label className={labelClass}>
                                 Learning Objectives <span className="text-red-500">*</span>
                             </label>
-                            <div className="rounded-md border border-rose-200 bg-rose-50 p-3">
+                            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
                                 <p className="text-sm text-rose-700">
                                     No learning objectives found in the selected training module. Please add learning objectives to the training module first.
                                 </p>
@@ -4052,10 +3999,10 @@ function ScenarioCreateForm({ modules }) {
                     )}
                     {!selectedModule && (
                         <div className="mt-4">
-                            <label className="block text-xs font-semibold text-slate-600 mb-2">
+                            <label className={labelClass}>
                                 Learning Objectives <span className="text-red-500">*</span>
                             </label>
-                            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                                 <p className="text-sm text-slate-500">
                                     Please select a training module to view learning objectives.
                                 </p>
@@ -4278,16 +4225,16 @@ function ScenarioCreateForm({ modules }) {
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
                 </div>
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex flex-wrap items-center justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
                     <a
                         href="/scenarios"
-                        className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                        className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
                     >
                         Cancel
                     </a>
                     <button
                         type="submit"
-                        className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
                     >
                         Save Scenario
                     </button>
@@ -4826,7 +4773,7 @@ function ScenarioDetail({ scenario }) {
                         className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
                         title="Edit scenario"
                     >
-                        <Pencil className="w-4 h-4" />
+                        <Pencil className="w-4 h-4 drop-shadow-sm" />
                     </a>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-600">
@@ -5064,426 +5011,335 @@ function SimulationEventsTable({ events, role }) {
         }
     };
 
+    const getStatusClass = (status) => {
+        const map = {
+            published: 'bg-emerald-100 text-emerald-700',
+            ongoing: 'bg-blue-100 text-blue-700',
+            completed: 'bg-indigo-100 text-indigo-700',
+            draft: 'bg-slate-100 text-slate-600',
+            archived: 'bg-amber-100 text-amber-700',
+            cancelled: 'bg-rose-100 text-rose-700',
+            ended: 'bg-slate-100 text-slate-600',
+        };
+        return map[status] || 'bg-slate-100 text-slate-600';
+    };
+
     return (
-        <div>
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-lg">
-                        <CalendarClock className="w-6 h-6 text-emerald-600" />
+        <div className="space-y-6">
+            {/* Hero Header - Certification style */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <CalendarClock className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Simulation Event Planning</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Plan and manage disaster simulation events, schedules, and participant registration.
+                        </p>
                     </div>
-                    <h2 className="text-lg font-semibold text-slate-800">Simulation Events</h2>
+                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+                            <span className="text-sm font-medium text-slate-700">Auto-Approve</span>
+                            <button
+                                type="button"
+                                onClick={handleToggleAutoApproval}
+                                disabled={isLoadingToggle}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${autoApprovalEnabled ? 'bg-emerald-600' : 'bg-slate-300'} ${isLoadingToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                role="switch"
+                                aria-checked={autoApprovalEnabled}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoApprovalEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                            <span className="text-xs text-slate-500">{autoApprovalEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <a
+                            href="/simulation-events/create"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Create Event
+                        </a>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    {/* Auto-Approval Toggle */}
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm">
-                        <span className="text-sm font-medium text-slate-700">Auto-Approve Registrations</span>
+            </div>
+
+            {/* Search and filters - Evaluations style */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4">
+                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
+                        <input
+                            type="text"
+                            placeholder="Search events..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <select
+                            className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">All Status</option>
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="ongoing">Ongoing</option>
+                            <option value="ended">Ended</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="archived">Archived</option>
+                        </select>
                         <button
                             type="button"
-                            onClick={handleToggleAutoApproval}
-                            disabled={isLoadingToggle}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${autoApprovalEnabled ? 'bg-emerald-600' : 'bg-slate-300'
-                                } ${isLoadingToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                            role="switch"
-                            aria-checked={autoApprovalEnabled}
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
                         >
-                            <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoApprovalEnabled ? 'translate-x-6' : 'translate-x-1'
-                                    }`}
-                            />
+                            <Filter className="w-4 h-4" />
+                            Filter
                         </button>
-                        <span className="text-xs text-slate-500">
-                            {autoApprovalEnabled ? '(All events)' : '(Manual approval)'}
-                        </span>
                     </div>
-
-                    <a
-                        href="/simulation-events/create"
-                        className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5"
-                    >
-                        + Create Event
-                    </a>
-                </div>
-            </div>
-
-            {/* Search and Filter Bar */}
-            <div className="mb-4 flex items-center gap-3">
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search events..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                </div>
-                <div className="relative" ref={filterRef}>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                        <Filter className="w-4 h-4" />
-                        Filters
-                    </button>
-                    {showFilters && (
-                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
-                            <div className="space-y-3">
+                </form>
+                {showFilters && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {disasterTypes.length > 0 && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Status
-                                    </label>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
                                     <select
-                                        value={filterStatus}
-                                        onChange={(e) => setFilterStatus(e.target.value)}
-                                        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        value={filterDisasterType}
+                                        onChange={(e) => setFilterDisasterType(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
                                     >
-                                        <option value="">All Status</option>
-                                        <option value="draft">Draft</option>
-                                        <option value="published">Published</option>
-                                        <option value="ongoing">Ongoing</option>
-                                        <option value="ended">Ended</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                        <option value="archived">Archived</option>
+                                        <option value="">All Types</option>
+                                        {disasterTypes.map((type) => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
                                     </select>
                                 </div>
-                                {disasterTypes.length > 0 && (
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                            Disaster Type
-                                        </label>
-                                        <select
-                                            value={filterDisasterType}
-                                            onChange={(e) => setFilterDisasterType(e.target.value)}
-                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        >
-                                            <option value="">All Types</option>
-                                            {disasterTypes.map((type) => (
-                                                <option key={type} value={type}>
-                                                    {type}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                                {categories.length > 0 && (
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                            Category
-                                        </label>
-                                        <select
-                                            value={filterCategory}
-                                            onChange={(e) => setFilterCategory(e.target.value)}
-                                            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        >
-                                            <option value="">All Categories</option>
-                                            {categories.map((cat) => (
-                                                <option key={cat} value={cat}>
-                                                    {cat}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                                <button
-                                    onClick={() => {
-                                        setFilterStatus('');
-                                        setFilterDisasterType('');
-                                        setFilterCategory('');
-                                    }}
-                                    className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
-                                >
-                                    Clear filters
-                                </button>
-                            </div>
+                            )}
+                            {categories.length > 0 && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+                                    <select
+                                        value={filterCategory}
+                                        onChange={(e) => setFilterCategory(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                                    >
+                                        <option value="">All Categories</option>
+                                        {categories.map((cat) => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Title</th>
-                            <th className="px-4 py-2 text-left">Disaster Type</th>
-                            <th className="px-4 py-2 text-left">Category</th>
-                            <th className="px-4 py-2 text-left">Date & Time</th>
-                            <th className="px-4 py-2 text-left">Location</th>
-                            <th className="px-4 py-2 text-left">Status</th>
-                            <th className="px-4 py-2 text-left">Created By</th>
-                            <th className="px-4 py-2 text-left">Created Date</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredEvents.length === 0 ? (
-                            <tr>
-                                <td colSpan={9} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {events.length === 0
-                                        ? 'No simulation events yet. Click "Create Event" to add one.'
-                                        : 'No events match your search or filter criteria.'}
-                                </td>
-                            </tr>
-                        ) : (
-                            paginatedEvents.map((event) => (
-                                <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-medium text-slate-800">
-                                        <a
-                                            href={`/simulation-events/${event.id}/edit`}
-                                            className="text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
-                                        >
-                                            {event.title}
-                                        </a>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">{event.disaster_type}</td>
-                                    <td className="px-4 py-2 text-slate-600">{event.event_category}</td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        <div>{formatDate(event.event_date)}</div>
-                                        <div className="text-xs text-slate-500">{formatTime(event.start_time)} - {formatTime(event.end_time)}</div>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">{event.location || '—'}</td>
-                                    <td className="px-4 py-2">
-                                        <span
-                                            className={
-                                                'inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ' +
-                                                (event.status === 'published'
-                                                    ? 'bg-emerald-50 text-emerald-700'
-                                                    : event.status === 'ongoing'
-                                                        ? 'bg-blue-50 text-blue-700'
-                                                        : event.status === 'completed'
-                                                            ? 'bg-indigo-50 text-indigo-700'
-                                                            : event.status === 'draft'
-                                                                ? 'bg-slate-100 text-slate-600'
-                                                                : event.status === 'archived'
-                                                                    ? 'bg-amber-50 text-amber-700'
-                                                                    : event.status === 'cancelled'
-                                                                        ? 'bg-rose-50 text-rose-700'
-                                                                        : event.status === 'ended'
-                                                                            ? 'bg-slate-50 text-slate-700'
-                                                                            : 'bg-slate-100 text-slate-600')
-                                            }
-                                        >
-                                            {event.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        {event.creator?.name ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-500">
-                                        {event.created_at ? formatDateTime(event.created_at) : '—'}
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <div className="flex gap-2 items-center">
-                                            <a
-                                                href={`/simulation-events/${event.id}`}
-                                                className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
-                                                title="View Event"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </a>
-                                            {/* Edit - Only for draft events */}
-                                            {event.status === 'draft' && (
-                                                <a
-                                                    href={`/simulation-events/${event.id}/edit`}
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </a>
-                                            )}
-                                            {/* Publish - Only for draft events */}
-                                            {event.status === 'draft' && (
-                                                <form
-                                                    method="POST"
-                                                    action={`/simulation-events/${event.id}/publish`}
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-
-                                                        // Validation: Check required fields
-                                                        const missingFields = [];
-                                                        if (!event.title) missingFields.push('Event Title');
-                                                        if (!event.disaster_type) missingFields.push('Disaster Type');
-                                                        if (!event.event_category) missingFields.push('Event Category');
-                                                        if (!event.event_date) missingFields.push('Event Date');
-                                                        if (!event.start_time) missingFields.push('Start Time');
-                                                        if (!event.end_time) missingFields.push('End Time');
-
-                                                        if (missingFields.length > 0) {
-                                                            Swal.fire({
-                                                                title: 'Validation Error!',
-                                                                html: `Please fill in the following required fields before publishing:<br><br>${missingFields.map(f => `• ${f}`).join('<br>')}`,
-                                                                icon: 'error',
-                                                                confirmButtonColor: '#64748b',
-                                                            });
-                                                            return;
-                                                        }
-
-                                                        const result = await Swal.fire({
-                                                            title: 'Warning!',
-                                                            text: 'Publish this simulation event? It will become visible to participants.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, publish',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#16a34a',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) e.target.submit();
-                                                    }}
-                                                >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
-                                                        title="Publish"
-                                                    >
-                                                        <Send className="w-4 h-4" />
-                                                    </button>
-                                                </form>
-                                            )}
-                                            {/* Start - Only for published events when time matches */}
-                                            {event.status === 'published' && (() => {
-                                                // Check if event date matches today
-                                                const eventDate = new Date(event.event_date);
-                                                const today = new Date();
-                                                const isEventDateToday = eventDate.toDateString() === today.toDateString();
-
-                                                if (!isEventDateToday) return null;
-
-                                                // Parse start time (format: HH:MM) and create full datetime
-                                                const parseTime = (timeStr) => {
-                                                    if (!timeStr) return null;
-                                                    const [hours, minutes] = timeStr.split(':').map(Number);
-                                                    // Create datetime using the event date, not today
-                                                    const eventDate = new Date(event.event_date);
-                                                    const time = new Date(eventDate);
-                                                    time.setHours(hours, minutes, 0, 0);
-                                                    return time;
-                                                };
-
-                                                const startTime = parseTime(event.start_time);
-                                                const now = new Date();
-
-                                                // Check if current time is >= start time (on the event date)
-                                                // Allow starting when time is equal or after start time
-                                                const canStart = startTime && now.getTime() >= startTime.getTime();
-
-                                                if (!canStart) return null;
-
-                                                return (
-                                                    <form
-                                                        method="POST"
-                                                        action={`/simulation-events/${event.id}/start`}
-                                                        onSubmit={async (e) => {
-                                                            e.preventDefault();
-                                                            const result = await Swal.fire({
-                                                                title: 'Start Event!',
-                                                                text: 'Are you sure you want to start this simulation event? Status will change to Ongoing.',
-                                                                icon: 'question',
-                                                                showCancelButton: true,
-                                                                confirmButtonText: 'Yes, start event',
-                                                                cancelButtonText: 'Cancel',
-                                                                confirmButtonColor: '#16a34a',
-                                                                cancelButtonColor: '#64748b',
-                                                            });
-                                                            if (result.isConfirmed) e.target.submit();
-                                                        }}
-                                                    >
-                                                        <input type="hidden" name="_token" value={csrf} />
-                                                        <button
-                                                            type="submit"
-                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm"
-                                                            title="Start Event"
-                                                        >
-                                                            <Play className="w-4 h-4" />
-                                                        </button>
-                                                    </form>
-                                                );
-                                            })()}
-                                            {/* Cancel - For published and draft events (not archived/cancelled) */}
-                                            {(event.status === 'published' || event.status === 'draft') && (
-                                                <form
-                                                    method="POST"
-                                                    action={`/simulation-events/${event.id}/cancel`}
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Warning!',
-                                                            text: 'Cancel this simulation event? It will be marked as cancelled, hidden from registration, and participants will be notified. Event data will be preserved.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, cancel event',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#dc2626',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) e.target.submit();
-                                                    }}
-                                                >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
-                                                        title="Cancel"
-                                                    >
-                                                        <XCircle className="w-4 h-4" />
-                                                    </button>
-                                                </form>
-                                            )}
-                                            {/* Archive - For published, draft, and cancelled events (not already archived) */}
-                                            {event.status !== 'archived' && event.status !== 'cancelled' && (
-                                                <form
-                                                    method="POST"
-                                                    action={`/simulation-events/${event.id}/archive`}
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Warning!',
-                                                            text: 'Archive this simulation event? It will be marked as archived and become read-only. Used for completed events and records.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, archive',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#f97316',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) e.target.submit();
-                                                    }}
-                                                >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-sm"
-                                                        title="Archive"
-                                                    >
-                                                        <Archive className="w-4 h-4" />
-                                                    </button>
-                                                </form>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-                {filteredEvents.length > 0 && (
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={setCurrentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalItems={filteredEvents.length}
-                    />
+                        <button
+                            type="button"
+                            onClick={() => { setFilterStatus(''); setFilterDisasterType(''); setFilterCategory(''); setShowFilters(false); }}
+                            className="mt-3 text-xs text-slate-600 hover:text-slate-800 underline transition-colors duration-200"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
                 )}
             </div>
+
+            {/* Content: empty state or card grid */}
+            {filteredEvents.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-12 text-center">
+                    {events.length === 0 ? (
+                        <>
+                            <div className="text-5xl mb-4 opacity-80">📅</div>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-1">No simulation events yet</h3>
+                            <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">Create your first event to schedule drills and exercises for your team.</p>
+                            <a
+                                href="/simulation-events/create"
+                                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all duration-200"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Create Event
+                            </a>
+                        </>
+                    ) : (
+                        <>
+                            <div className="text-4xl mb-4 opacity-80">🔍</div>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-1">No events match your filters</h3>
+                            <p className="text-slate-500 text-sm mb-6">Try adjusting search or filter criteria.</p>
+                            <button
+                                type="button"
+                                onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterDisasterType(''); setFilterCategory(''); }}
+                                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+                            >
+                                Clear filters
+                            </button>
+                        </>
+                    )}
+                </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {paginatedEvents.map((event, index) => (
+                            <div
+                                key={event.id}
+                                className="training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden flex flex-col"
+                                style={{ animationDelay: `${index * 0.06}s` }}
+                            >
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="p-2 bg-emerald-100 rounded-xl shrink-0">
+                                            <CalendarClock className="w-5 h-5 text-emerald-600" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <a
+                                                href={event.status === 'draft' ? `/simulation-events/${event.id}/edit` : `/simulation-events/${event.id}`}
+                                                className="font-semibold text-slate-800 hover:text-emerald-700 line-clamp-2 transition-colors"
+                                            >
+                                                {event.title}
+                                            </a>
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {event.disaster_type && (
+                                                    <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">
+                                                        {event.disaster_type}
+                                                    </span>
+                                                )}
+                                                {event.event_category && (
+                                                    <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">
+                                                        {event.event_category}
+                                                    </span>
+                                                )}
+                                                <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ${getStatusClass(event.status)}`}>
+                                                    {event.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-slate-600 space-y-1 mt-auto">
+                                        <div>{formatDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}</div>
+                                        <div className="text-slate-500">{event.location || '—'}</div>
+                                        <div className="text-xs text-slate-400">By {event.creator?.name ?? '—'} · {event.created_at ? formatDate(event.created_at) : '—'}</div>
+                                    </div>
+                                </div>
+                                <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex flex-wrap gap-2">
+                                    <a
+                                        href={`/simulation-events/${event.id}`}
+                                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
+                                        title="View"
+                                    >
+                                        <Eye className="w-3.5 h-3.5" /> View
+                                    </a>
+                                    {event.status === 'draft' && (
+                                        <a
+                                            href={`/simulation-events/${event.id}/edit`}
+                                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                            title="Edit"
+                                        >
+                                            <Pencil className="w-3.5 h-3.5" /> Edit
+                                        </a>
+                                    )}
+                                    {event.status === 'draft' && (
+                                        <form method="POST" action={`/simulation-events/${event.id}/publish`} onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const missingFields = [];
+                                            if (!event.title) missingFields.push('Event Title');
+                                            if (!event.disaster_type) missingFields.push('Disaster Type');
+                                            if (!event.event_category) missingFields.push('Event Category');
+                                            if (!event.event_date) missingFields.push('Event Date');
+                                            if (!event.start_time) missingFields.push('Start Time');
+                                            if (!event.end_time) missingFields.push('End Time');
+                                            if (missingFields.length > 0) {
+                                                Swal.fire({ title: 'Validation Error!', html: `Please fill in:<br><br>${missingFields.map(f => `• ${f}`).join('<br>')}`, icon: 'error', confirmButtonColor: '#64748b' });
+                                                return;
+                                            }
+                                            const result = await Swal.fire({ title: 'Warning!', text: 'Publish this event? It will become visible to participants.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
+                                            if (result.isConfirmed) e.target.submit();
+                                        }} className="inline-block">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors" title="Publish">
+                                                <Send className="w-3.5 h-3.5" /> Publish
+                                            </button>
+                                        </form>
+                                    )}
+                                    {event.status === 'published' && (() => {
+                                        const eventDate = new Date(event.event_date);
+                                        const today = new Date();
+                                        const isEventDateToday = eventDate.toDateString() === today.toDateString();
+                                        if (!isEventDateToday) return null;
+                                        const parseTime = (timeStr) => {
+                                            if (!timeStr) return null;
+                                            const [hours, minutes] = timeStr.split(':').map(Number);
+                                            const d = new Date(event.event_date);
+                                            d.setHours(hours, minutes, 0, 0);
+                                            return d;
+                                        };
+                                        const startTime = parseTime(event.start_time);
+                                        const now = new Date();
+                                        const canStart = startTime && now.getTime() >= startTime.getTime();
+                                        if (!canStart) return null;
+                                        return (
+                                            <form method="POST" action={`/simulation-events/${event.id}/start`} onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const result = await Swal.fire({ title: 'Start Event!', text: 'Start this simulation event? Status will change to Ongoing.', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, start', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
+                                                if (result.isConfirmed) e.target.submit();
+                                            }} className="inline-block">
+                                                <input type="hidden" name="_token" value={csrf} />
+                                                <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors" title="Start">
+                                                    <Play className="w-3.5 h-3.5" /> Start
+                                                </button>
+                                            </form>
+                                        );
+                                    })()}
+                                    {(event.status === 'published' || event.status === 'draft') && (
+                                        <form method="POST" action={`/simulation-events/${event.id}/cancel`} onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const result = await Swal.fire({ title: 'Warning!', text: 'Cancel this event? It will be marked cancelled and hidden from registration.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, cancel', cancelButtonText: 'Cancel', confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b' });
+                                            if (result.isConfirmed) e.target.submit();
+                                        }} className="inline-block">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors" title="Cancel">
+                                                <XCircle className="w-3.5 h-3.5" /> Cancel
+                                            </button>
+                                        </form>
+                                    )}
+                                    {event.status !== 'archived' && event.status !== 'cancelled' && (
+                                        <form method="POST" action={`/simulation-events/${event.id}/archive`} onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const result = await Swal.fire({ title: 'Warning!', text: 'Archive this event? It will become read-only.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, archive', cancelButtonText: 'Cancel', confirmButtonColor: '#f97316', cancelButtonColor: '#64748b' });
+                                            if (result.isConfirmed) e.target.submit();
+                                        }} className="inline-block">
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors" title="Archive">
+                                                <Archive className="w-3.5 h-3.5" /> Archive
+                                            </button>
+                                        </form>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {totalPages > 1 && (
+                        <div className="mt-4">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                itemsPerPage={itemsPerPage}
+                                totalItems={filteredEvents.length}
+                            />
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }
 
-// Resource Selection Component
-function ResourceSelectionSection({ eventResources = [] }) {
+// Resource Selection Component (inline = true for create form right panel, no modal)
+function ResourceSelectionSection({ eventResources = [], inline = false }) {
     const parseEventResources = (resources) => {
         if (!resources || !Array.isArray(resources) || resources.length === 0) {
             console.log('parseEventResources: No resources or empty array', resources);
@@ -5570,12 +5426,10 @@ function ResourceSelectionSection({ eventResources = [] }) {
         }
     }, [eventResources]);
 
-    // Fetch available resources
+    // Fetch available resources on mount
     React.useEffect(() => {
-        if (showModal) {
-            fetchAvailableResources();
-        }
-    }, [showModal]);
+        fetchAvailableResources();
+    }, []);
 
     const fetchAvailableResources = async () => {
         setLoading(true);
@@ -5745,22 +5599,41 @@ function ResourceSelectionSection({ eventResources = [] }) {
         isManualUpdateRef.current = true;
         setSelectedResources(newResources);
         setShowModal(false);
-        setTempSelections({});
+        // When inline, keep tempSelections in sync so checkboxes stay checked
+        if (inline) {
+            const nextTemp = {};
+            newResources.forEach(r => { nextTemp[r.id] = r.quantity; });
+            setTempSelections(nextTemp);
+        } else {
+            setTempSelections({});
+        }
 
         console.log('Saved resources:', newResources);
 
-        // Force update hidden input immediately - try multiple times to ensure it works
         ensureHiddenInput(newResources);
         setTimeout(() => ensureHiddenInput(newResources), 10);
         setTimeout(() => ensureHiddenInput(newResources), 100);
     };
 
+    // When inline: on mount sync tempSelections from selectedResources so checkboxes match
+    React.useEffect(() => {
+        if (!inline) return;
+        const temp = {};
+        selectedResources.forEach(r => { temp[r.id] = r.quantity; });
+        setTempSelections(temp);
+    }, [inline]);
+
     const handleRemoveResource = (resourceId) => {
-        // Mark as manual update to prevent useEffect from overriding
         isManualUpdateRef.current = true;
         const updatedResources = selectedResources.filter(r => r.id !== resourceId);
         setSelectedResources(updatedResources);
-        // Update hidden input immediately
+        if (inline) {
+            setTempSelections(prev => {
+                const next = { ...prev };
+                delete next[resourceId];
+                return next;
+            });
+        }
         setTimeout(() => ensureHiddenInput(updatedResources), 10);
     };
 
@@ -5820,6 +5693,124 @@ function ResourceSelectionSection({ eventResources = [] }) {
         };
     }, []); // Empty deps - we use ref for latest value
 
+    const pickerContent = (
+        <>
+            <div className="space-y-2">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search resources..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                </div>
+                <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                    <option value="all">All Categories</option>
+                    {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                </select>
+            </div>
+            {loading ? (
+                <div className="py-6 text-center text-sm text-slate-500">Loading resources…</div>
+            ) : filteredResources.length === 0 ? (
+                <div className="py-6 text-center text-sm text-slate-500">No resources match your search.</div>
+            ) : (
+                <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                    {filteredResources.map((resource) => {
+                        const availableQty = resource.available || resource.quantity || 0;
+                        const isSelected = !!tempSelections[resource.id];
+                        const selectedQty = tempSelections[resource.id] || 0;
+                        return (
+                            <div
+                                key={resource.id}
+                                className={`rounded-xl border-2 p-3 transition-all ${isSelected ? 'border-emerald-500 bg-emerald-50/80' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'}`}
+                            >
+                                <div className="flex items-start gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => handleToggleResource(resource)}
+                                        className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-slate-900 truncate">{resource.name}</p>
+                                        <p className="text-xs text-slate-500">{resource.category}</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            Available: <span className="font-medium text-slate-700">{availableQty}</span> units
+                                        </p>
+                                        {isSelected && (
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <label className="text-xs font-medium text-slate-600">Qty:</label>
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={availableQty}
+                                                    value={selectedQty}
+                                                    onChange={(e) => handleQuantityChange(resource.id, e.target.value)}
+                                                    className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </>
+    );
+
+    const selectedListBlock = selectedResources.length > 0 && (
+        <div className="border-t border-slate-200 pt-3 mt-3">
+            <p className="text-xs font-semibold text-slate-600 mb-2">Selected for this event</p>
+            <div className="space-y-1.5 max-h-[140px] overflow-y-auto">
+                {selectedResources.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-slate-100 border border-slate-200">
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">{r.name}</p>
+                            <p className="text-xs text-slate-500">{r.category} · {r.quantity} unit{r.quantity !== 1 ? 's' : ''}</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => handleRemoveResource(r.id)}
+                            className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Remove"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    if (inline) {
+        return (
+            <div className="space-y-4">
+                {pickerContent}
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={handleSaveResources}
+                        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add selected to event
+                    </button>
+                </div>
+                {selectedListBlock}
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-sm font-semibold text-slate-800 mb-4">10. Resources</h3>
@@ -5827,25 +5818,24 @@ function ResourceSelectionSection({ eventResources = [] }) {
                 <button
                     type="button"
                     onClick={handleAddResources}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-md transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
                 >
                     <Plus className="w-4 h-4" />
-                    +Resources
+                    + Resources
                 </button>
-
                 {selectedResources.length > 0 && (
                     <div className="space-y-2">
-                        <p className="text-xs font-semibold text-slate-600">Selected Resources:</p>
+                        <p className="text-xs font-semibold text-slate-600">Selected:</p>
                         {selectedResources.map((resource) => (
-                            <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-md border border-slate-200">
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-slate-900">{resource.name}</p>
-                                    <p className="text-xs text-slate-600">{resource.category} • Quantity: {resource.quantity}</p>
+                            <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-900 truncate">{resource.name}</p>
+                                    <p className="text-xs text-slate-600">{resource.category} · {resource.quantity}</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => handleRemoveResource(resource.id)}
-                                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                                     title="Remove"
                                 >
                                     <X className="w-4 h-4" />
@@ -5854,131 +5844,37 @@ function ResourceSelectionSection({ eventResources = [] }) {
                         ))}
                     </div>
                 )}
-
-                {/* Resource Selection Modal */}
                 {showModal && (
-                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-                            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                                <h3 className="text-lg font-semibold text-slate-900">Select Resources</h3>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg max-h-[85vh] flex flex-col">
+                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+                                <h3 className="text-lg font-semibold text-slate-800">Select resources</h3>
                                 <button
-                                    onClick={() => {
-                                        setShowModal(false);
-                                        setTempSelections({});
-                                    }}
-                                    className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    type="button"
+                                    onClick={() => { setShowModal(false); setTempSelections({}); }}
+                                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-
-                            <div className="p-6 flex-1 overflow-y-auto">
-                                {/* Search and Filter */}
-                                <div className="mb-4 space-y-3">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search resources..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <select
-                                            value={categoryFilter}
-                                            onChange={(e) => setCategoryFilter(e.target.value)}
-                                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        >
-                                            <option value="all">All Categories</option>
-                                            {categories.map(cat => (
-                                                <option key={cat} value={cat}>{cat}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Resources List */}
-                                {loading ? (
-                                    <div className="text-center py-8 text-slate-500">Loading resources...</div>
-                                ) : filteredResources.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-500">No available resources found</div>
-                                ) : (
-                                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                                        {filteredResources.map((resource) => {
-                                            const availableQty = resource.available || resource.quantity || 0;
-                                            const isSelected = !!tempSelections[resource.id];
-                                            const selectedQty = tempSelections[resource.id] || 0;
-
-                                            return (
-                                                <div
-                                                    key={resource.id}
-                                                    className={`p-4 rounded-md border-2 transition-colors ${isSelected
-                                                        ? 'border-emerald-500 bg-emerald-50'
-                                                        : 'border-slate-200 hover:border-slate-300'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-start gap-3">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isSelected}
-                                                            onChange={() => handleToggleResource(resource)}
-                                                            className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                                        />
-                                                        <div className="flex-1">
-                                                            <div className="flex items-start justify-between">
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-slate-900">{resource.name}</p>
-                                                                    <p className="text-xs text-slate-600">{resource.category}</p>
-                                                                    <p className="text-xs text-slate-500 mt-1">
-                                                                        Available: <span className="font-medium">{availableQty}</span> units
-                                                                        {resource.quantity && resource.quantity !== availableQty && (
-                                                                            <span className="ml-2">(Total: {resource.quantity})</span>
-                                                                        )}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            {isSelected && (
-                                                                <div className="mt-3">
-                                                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                                                        Quantity Needed
-                                                                    </label>
-                                                                    <input
-                                                                        type="number"
-                                                                        min="1"
-                                                                        max={availableQty}
-                                                                        value={selectedQty}
-                                                                        onChange={(e) => handleQuantityChange(resource.id, e.target.value)}
-                                                                        className="w-32 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                                    />
-                                                                    <p className="text-xs text-slate-500 mt-1">Max: {availableQty}</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                            <div className="p-5 flex-1 overflow-y-auto space-y-4">
+                                {pickerContent}
+                                {selectedListBlock}
                             </div>
-
-                            <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
+                            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-200 bg-slate-50/50">
                                 <button
-                                    onClick={() => {
-                                        setShowModal(false);
-                                        setTempSelections({});
-                                    }}
-                                    className="px-4 py-2 rounded-md border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+                                    type="button"
+                                    onClick={() => { setShowModal(false); setTempSelections({}); }}
+                                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleSaveResources}
-                                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
                                 >
-                                    Add Selected Resources
+                                    Add selected
                                 </button>
                             </div>
                         </div>
@@ -5995,17 +5891,28 @@ function SimulationEventCreateForm({ scenarios }) {
     const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
     const formRef = React.useRef(null);
     const [startTimeValue, setStartTimeValue] = React.useState('');
+    const [endTimeValue, setEndTimeValue] = React.useState('');
+    // Pre-launch checklist (driven by form fields)
+    const [checklistTitle, setChecklistTitle] = React.useState('');
+    const [checklistEventDate, setChecklistEventDate] = React.useState('');
+    const [checklistLocation, setChecklistLocation] = React.useState('');
 
     const minDate = new Date().toISOString().split('T')[0];
+
+    const eventTitleAdded = checklistTitle.trim() !== '';
+    const disasterTypeSelected = !!(selectedScenario && selectedScenario.disaster_type);
+    const scenarioAssigned = selectedScenarioId !== '';
+    const dateTimeSet = !!(checklistEventDate && startTimeValue && endTimeValue);
+    const locationFilled = checklistLocation.trim() !== '';
+    const allReady = eventTitleAdded && disasterTypeSelected && scenarioAssigned && dateTimeSet && locationFilled;
 
     const handleStartTimeChange = (e) => {
         const start = e.target.value;
         setStartTimeValue(start);
+        if (start && endTimeValue && endTimeValue < start) setEndTimeValue('');
         if (formRef.current && start) {
             const endInput = formRef.current.querySelector('#end_time');
-            if (endInput && endInput.value && endInput.value < start) {
-                endInput.value = '';
-            }
+            if (endInput && endInput.value && endInput.value < start) endInput.value = '';
         }
     };
 
@@ -6075,235 +5982,324 @@ function SimulationEventCreateForm({ scenarios }) {
     };
 
     return (
-        <div className="py-2">
-            <form
-                id="simulation-event-create-form"
-                ref={formRef}
-                method="POST"
-                action="/simulation-events"
-                className="space-y-6"
-                onSubmit={handleFormSubmit}
+        <div className="w-full max-w-full py-2">
+            <a
+                href="/simulation-events"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
-                <input type="hidden" name="_token" value={csrf} />
-                <input type="hidden" name="status" value="draft" />
-                <input type="hidden" name="disaster_type" value={selectedScenario?.disaster_type || ''} />
+                <ChevronLeft className="w-4 h-4" />
+                Back to Simulation Events
+            </a>
 
-                {/* Section 1: Basic Event Information */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">1. Basic Event Information</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_title">
-                                Event Title <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="event_title"
-                                name="title"
-                                type="text"
-                                required
-                                placeholder="e.g. Earthquake Evacuation Drill"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-100 rounded-xl shadow-md">
+                    <CalendarClock className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-semibold text-slate-800">
+                        Create Simulation Event
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                        Schedule a new disaster simulation drill or exercise
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-8">
+                    <form
+                        id="simulation-event-create-form"
+                        ref={formRef}
+                        method="POST"
+                        action="/simulation-events"
+                        className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
+                        onSubmit={handleFormSubmit}
+                    >
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="status" value="draft" />
+                        <input type="hidden" name="disaster_type" value={selectedScenario?.disaster_type || ''} />
+
+                        {/* Section 1: Basic Event Information */}
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="disaster_type">
-                                    Disaster Type <span className="text-red-500">*</span>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_title">
+                                    Event Title <span className="text-red-500">*</span>
                                 </label>
                                 <input
-                                    id="disaster_type"
+                                    id="event_title"
+                                    name="title"
                                     type="text"
-                                    value={selectedScenario ? selectedScenario.disaster_type : ''}
-                                    readOnly
-                                    disabled
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-slate-100 text-slate-500 cursor-not-allowed"
-                                    placeholder="Select a scenario first"
+                                    required
+                                    value={checklistTitle}
+                                    onChange={(e) => setChecklistTitle(e.target.value)}
+                                    placeholder="e.g. Earthquake Evacuation Drill"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 />
                             </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="disaster_type">
+                                        Disaster Type <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="disaster_type"
+                                        type="text"
+                                        value={selectedScenario ? selectedScenario.disaster_type : ''}
+                                        readOnly
+                                        disabled
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
+                                        placeholder="Select a scenario first"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_category">
+                                        Event Category <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        id="event_category"
+                                        name="event_category"
+                                        required
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    >
+                                        <option value="">Select category…</option>
+                                        <option value="Drill">Drill</option>
+                                        <option value="Full-scale Exercise">Full-scale Exercise</option>
+                                        <option value="Tabletop">Tabletop</option>
+                                        <option value="Training Session">Training Session</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_category">
-                                    Event Category <span className="text-red-500">*</span>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_description">
+                                    Event Description
+                                </label>
+                                <textarea
+                                    id="event_description"
+                                    name="description"
+                                    rows={4}
+                                    placeholder="What the drill is about and the main learning objectives"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Scenario Assignment */}
+                        <div className="pt-4 border-t border-slate-100 space-y-3">
+                            <h3 className="text-sm font-semibold text-slate-800">Scenario Assignment</h3>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="scenario_id">
+                                    Select Scenario <span className="text-red-500">*</span>
                                 </label>
                                 <select
-                                    id="event_category"
-                                    name="event_category"
+                                    id="scenario_id"
+                                    name="scenario_id"
+                                    value={selectedScenarioId}
+                                    onChange={(e) => setSelectedScenarioId(e.target.value)}
                                     required
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 >
-                                    <option value="">Select category…</option>
-                                    <option value="Drill">Drill</option>
-                                    <option value="Full-scale Exercise">Full-scale Exercise</option>
-                                    <option value="Tabletop">Tabletop</option>
-                                    <option value="Training Session">Training Session</option>
+                                    <option value="">Select a scenario…</option>
+                                    {(scenarios || []).map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.title} ({s.disaster_type} - {s.difficulty})
+                                        </option>
+                                    ))}
                                 </select>
+                                {selectedScenario && (
+                                    <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600">
+                                        <div className="font-semibold mb-1">Scenario Preview</div>
+                                        <div>Hazard: {selectedScenario.disaster_type}</div>
+                                        <div>Difficulty: {selectedScenario.difficulty}</div>
+                                        {selectedScenario.short_description && (
+                                            <div className="mt-1">{selectedScenario.short_description}</div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_description">
-                                Event Description
-                            </label>
-                            <textarea
-                                id="event_description"
-                                name="description"
-                                rows={4}
-                                placeholder="What the drill is about & learning objective"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                    </div>
-                </div>
 
-                {/* Scenario Assignment */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Scenario Assignment</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="scenario_id">
-                                Select Scenario <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                id="scenario_id"
-                                name="scenario_id"
-                                value={selectedScenarioId}
-                                onChange={(e) => setSelectedScenarioId(e.target.value)}
-                                required
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Select a scenario…</option>
-                                {(scenarios || []).map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.title} ({s.disaster_type} - {s.difficulty})
-                                    </option>
-                                ))}
-                            </select>
-                            {selectedScenario && (
-                                <div className="mt-2 p-3 bg-slate-50 rounded-md text-xs text-slate-600">
-                                    <div className="font-semibold mb-1">Scenario Preview:</div>
-                                    <div>Hazard: {selectedScenario.disaster_type}</div>
-                                    <div>Difficulty: {selectedScenario.difficulty}</div>
-                                    {selectedScenario.short_description && (
-                                        <div className="mt-1">{selectedScenario.short_description}</div>
-                                    )}
+                        {/* Section 2: Event Schedule */}
+                        <div className="pt-4 border-t border-slate-100">
+                            <h3 className="text-sm font-semibold text-slate-800 mb-3">2. Event Schedule</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_date">
+                                        Event Date <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="event_date"
+                                        name="event_date"
+                                        type="date"
+                                        required
+                                        min={minDate}
+                                        value={checklistEventDate}
+                                        onChange={(e) => setChecklistEventDate(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
                                 </div>
-                            )}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="start_time">
+                                        Start Time <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="start_time"
+                                        name="start_time"
+                                        type="time"
+                                        required
+                                        value={startTimeValue}
+                                        onChange={handleStartTimeChange}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="end_time">
+                                        End Time <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="end_time"
+                                        name="end_time"
+                                        type="time"
+                                        required
+                                        min={startTimeValue || undefined}
+                                        value={endTimeValue}
+                                        onChange={(e) => setEndTimeValue(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                {/* Section 2: Event Schedule */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">2. Event Schedule</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_date">
-                                Event Date <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="event_date"
-                                name="event_date"
-                                type="date"
-                                required
-                                min={minDate}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="start_time">
-                                Start Time <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="start_time"
-                                name="start_time"
-                                type="time"
-                                required
-                                value={startTimeValue}
-                                onChange={handleStartTimeChange}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="end_time">
-                                End Time <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="end_time"
-                                name="end_time"
-                                type="time"
-                                required
-                                min={startTimeValue || undefined}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Section 3: Event Location */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">3. Event Location</h3>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location">
-                                    Location / Building / Area
-                                </label>
-                                <input
-                                    id="location"
-                                    name="location"
-                                    type="text"
-                                    placeholder="e.g. Barangay Hall"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
+                        {/* Section 3: Event Location */}
+                        <div className="pt-4 border-t border-slate-100 space-y-4">
+                            <h3 className="text-sm font-semibold text-slate-800">3. Event Location</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location">
+                                        Location / Building / Area
+                                    </label>
+                                    <input
+                                        id="location"
+                                        name="location"
+                                        type="text"
+                                        value={checklistLocation}
+                                        onChange={(e) => setChecklistLocation(e.target.value)}
+                                        placeholder="e.g. Barangay Hall"
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="room_zone">
+                                        Room / Zone
+                                    </label>
+                                    <input
+                                        id="room_zone"
+                                        name="room_zone"
+                                        type="text"
+                                        placeholder="e.g. Main Hall, Zone A"
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="room_zone">
-                                    Room / Zone
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location_notes">
+                                    Location Notes
                                 </label>
-                                <input
-                                    id="room_zone"
-                                    name="room_zone"
-                                    type="text"
-                                    placeholder="e.g. Main Hall, Zone A"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                <textarea
+                                    id="location_notes"
+                                    name="location_notes"
+                                    rows={3}
+                                    placeholder="Accessibility notes, exits, hazard zones, assembly points"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location_notes">
-                                Location Notes
-                            </label>
-                            <textarea
-                                id="location_notes"
-                                name="location_notes"
-                                rows={3}
-                                placeholder="Accessibility notes, exits, hazard zones, assembly points"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
+
+                        {/* Publishing Controls */}
+                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                            <p className="text-xs text-slate-500">
+                                This event will be saved as a draft. You can publish it later from the Simulation Events page.
+                            </p>
+                            <div className="flex gap-2">
+                                <a
+                                    href="/simulation-events"
+                                    className="inline-flex items-center rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </a>
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 shadow-sm hover:shadow-md transition-all duration-200"
+                                >
+                                    Save as Draft
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
 
-                {/* Section 10: Resources */}
-                <ResourceSelectionSection />
+                <div className="lg:col-span-4 space-y-4">
+                    {/* Panel 1: Pre-Launch Checklist */}
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">✅ Simulation Readiness</h3>
+                        <div className="space-y-2.5">
+                            <div className="flex items-center gap-2 text-sm">
+                                {eventTitleAdded ? (
+                                    <span className="text-emerald-600">✅</span>
+                                ) : (
+                                    <span className="text-slate-300">⬜</span>
+                                )}
+                                <span className={eventTitleAdded ? 'text-slate-700' : 'text-slate-400'}>Event title added</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                                {disasterTypeSelected ? (
+                                    <span className="text-emerald-600">✅</span>
+                                ) : (
+                                    <span className="text-slate-300">⬜</span>
+                                )}
+                                <span className={disasterTypeSelected ? 'text-slate-700' : 'text-slate-400'}>Disaster type selected</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                                {scenarioAssigned ? (
+                                    <span className="text-emerald-600">✅</span>
+                                ) : (
+                                    <span className="text-slate-300">⬜</span>
+                                )}
+                                <span className={scenarioAssigned ? 'text-slate-700' : 'text-slate-400'}>Scenario assigned</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                                {dateTimeSet ? (
+                                    <span className="text-emerald-600">✅</span>
+                                ) : (
+                                    <span className="text-slate-300">⬜</span>
+                                )}
+                                <span className={dateTimeSet ? 'text-slate-700' : 'text-slate-400'}>Date & time set</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                                {locationFilled ? (
+                                    <span className="text-emerald-600">✅</span>
+                                ) : (
+                                    <span className="text-slate-300">⬜</span>
+                                )}
+                                <span className={locationFilled ? 'text-slate-700' : 'text-slate-400'}>Location filled</span>
+                            </div>
+                        </div>
+                        {allReady && (
+                            <div className="mt-4 pt-4 border-t border-emerald-100">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                                    <span className="text-lg">🟢</span>
+                                    <span>Ready to Publish</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
-                {/* Section 12: Publishing Controls */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">12. Publishing Controls</h3>
-                    <div className="flex justify-end gap-2">
-                        <a
-                            href="/simulation-events"
-                            className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-                        >
-                            Cancel
-                        </a>
-                        <button
-                            type="submit"
-                            className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
-                        >
-                            Save as Draft
-                        </button>
+                    {/* Panel 2: Resources for Simulation */}
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">Resources for Simulation</h3>
+                        <ResourceSelectionSection inline={true} />
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
     );
 }
@@ -6875,10 +6871,14 @@ function CertificationModule({
     automationSettings = {},
 }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [activeTab, setActiveTab] = React.useState('overview');
+    const [activeTab, setActiveTab] = React.useState('eligible');
     const [searchTerm, setSearchTerm] = React.useState('');
+    const [certIdSearch, setCertIdSearch] = React.useState('');
     const [eventFilter, setEventFilter] = React.useState(filters.event_id || '');
     const [statusFilter, setStatusFilter] = React.useState(filters.status || '');
+    const [dateFrom, setDateFrom] = React.useState(filters.date_from || '');
+    const [dateTo, setDateTo] = React.useState(filters.date_to || '');
+    const [issuedStatusFilter, setIssuedStatusFilter] = React.useState(filters.issued_status || 'active');
     const [issueModalOpen, setIssueModalOpen] = React.useState(false);
     const [issueRow, setIssueRow] = React.useState(null);
     const [certType, setCertType] = React.useState('completion');
@@ -6888,7 +6888,7 @@ function CertificationModule({
     const [templateEditorOpen, setTemplateEditorOpen] = React.useState(false);
     const [editingTemplate, setEditingTemplate] = React.useState(null);
 
-    const stats = summaryStats || { total_certified: 0, pending_certifications: 0, issued_today: 0 };
+    const stats = summaryStats || { total_certified: 0, pending_certifications: 0, issued_today: 0, trend_this_week: 0 };
 
     const filteredEligible = eligibleParticipants.filter((row) => {
         const matchSearch = !searchTerm || row.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) || row.event_title?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -6898,17 +6898,28 @@ function CertificationModule({
     });
 
     const filteredIssued = issuedCertificates.filter((c) => {
-        const matchSearch = !searchTerm || (c.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (c.simulation_event?.title || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return matchSearch;
+        const q = (searchTerm || '').toLowerCase().trim();
+        const matchSearch = !q || (c.user?.name || '').toLowerCase().includes(q) || (c.simulation_event?.title || '').toLowerCase().includes(q) || (c.certificate_number || '').toLowerCase().includes(q);
+        const matchCertId = !certIdSearch || (c.certificate_number || '').toLowerCase().includes(certIdSearch.toLowerCase());
+        const matchDateFrom = !dateFrom || (c.issued_at && c.issued_at.slice(0, 10) >= dateFrom);
+        const matchDateTo = !dateTo || (c.issued_at && c.issued_at.slice(0, 10) <= dateTo);
+        return matchSearch && matchCertId && matchDateFrom && matchDateTo;
     });
 
     const buildFilterUrl = (extra = {}) => {
         const params = new URLSearchParams();
         if (eventFilter) params.set('event_id', eventFilter);
         if (statusFilter) params.set('status', statusFilter);
-        Object.entries(extra).forEach(([k, v]) => { if (v) params.set(k, v); });
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+        if (issuedStatusFilter && issuedStatusFilter !== 'active') params.set('issued_status', issuedStatusFilter);
+        Object.entries(extra).forEach(([k, v]) => { if (v != null && v !== '') params.set(k, v); });
         const q = params.toString();
         return q ? `/certification?${q}` : '/certification';
+    };
+
+    const handleApplyHistoryFilters = () => {
+        window.location.href = buildFilterUrl();
     };
 
     const handleIssueCertificate = (row) => {
@@ -7010,24 +7021,85 @@ function CertificationModule({
     };
 
     return (
-        <div>
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                    <Award className="w-6 h-6 text-emerald-600" />
+        <div className="space-y-8">
+            {/* Hero Header - Premium */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <GraduationCap className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Certification Issuance</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Manage templates, issue certificates, and track issuance history.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => { setIssueRow(null); setIssueModalOpen(true); }}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Issue Certificate
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setEditingTemplate(null); setTemplateEditorOpen(true); }}
+                            className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 bg-white hover:bg-slate-50 hover:border-slate-400 hover:-translate-y-0.5 text-slate-700 rounded-xl font-semibold text-sm transition-all duration-250"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Add Template
+                        </button>
+                    </div>
                 </div>
-                <h2 className="text-lg font-semibold text-slate-800">Certification Issuance</h2>
+            </div>
+
+            {/* Premium KPI Cards - always on top */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Issued</p>
+                    <p className="text-[32px] font-bold text-slate-900 mt-1">{stats.total_certified}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                        {typeof stats.trend_this_week === 'number' && stats.trend_this_week !== 0 ? (
+                            <span className={stats.trend_this_week > 0 ? 'text-emerald-600 font-medium' : 'text-rose-600 font-medium'}>
+                                {stats.trend_this_week > 0 ? '↑' : '↓'} {Math.abs(stats.trend_this_week)}% this week
+                            </span>
+                        ) : 'All time certified'}
+                    </p>
+                </div>
+                <div className="bg-white rounded-xl border border-amber-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 group">
+                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Pending</p>
+                    <p className="text-[32px] font-bold text-amber-800 mt-1 flex items-center gap-2">
+                        {stats.pending_certifications}
+                        {(stats.pending_certifications || 0) > 0 && (
+                            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Awaiting issuance" />
+                        )}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Awaiting issuance</p>
+                </div>
+                <div className="bg-white rounded-xl border border-emerald-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                    <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Issued Today</p>
+                    <p className="text-[32px] font-bold text-emerald-800 mt-1">{stats.issued_today}</p>
+                    <p className="text-xs text-slate-500 mt-1">Certificates issued today</p>
+                </div>
             </div>
 
             {/* Tabs */}
-            <div className="mb-4 border-b border-slate-200">
-                <div className="flex gap-4">
-                    {['overview', 'eligible', 'templates', 'history', 'automation'].map((tab) => (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 w-fit">
+                <div className="flex gap-1 flex-wrap">
+                    {['eligible', 'templates', 'history', 'automation'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-600 hover:text-slate-800'}`}
+                            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-250 ${
+                                activeTab === tab
+                                    ? 'bg-emerald-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            }`}
                         >
-                            {tab === 'overview' && 'Certifications'}
                             {tab === 'eligible' && 'Eligible Participants'}
                             {tab === 'templates' && 'Templates'}
                             {tab === 'history' && 'Issued History'}
@@ -7037,255 +7109,293 @@ function CertificationModule({
                 </div>
             </div>
 
-            {/* Filters + Export + Issue (for eligible tab) */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
-                    <div>
+            {/* Filters - contextual per tab */}
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-5">
+                <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
+                    <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
                         <input
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Name or event..."
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            placeholder={activeTab === 'history' ? 'Name, event, or certificate ID...' : activeTab === 'templates' ? 'Search template name...' : 'Search by name or event...'}
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
                         />
                     </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Event</label>
-                        <select
-                            value={eventFilter}
-                            onChange={(e) => setEventFilter(e.target.value)}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        >
-                            <option value="">All Events</option>
-                            {eventsForFilter?.map((ev) => (
-                                <option key={ev.id} value={ev.id}>{ev.title}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        >
-                            <option value="">All</option>
-                            <option value="eligible">Eligible</option>
-                            <option value="not_eligible">Not Eligible</option>
-                            <option value="pending">Pending</option>
-                        </select>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                        <a href={`/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2">Export CSV</a>
-                        <a href="/certification/export/pdf" className="inline-flex items-center rounded-md border border-sky-300 bg-sky-100 hover:bg-sky-200 text-sky-800 text-sm font-medium px-3 py-2">Export PDF</a>
-                        <button type="button" onClick={() => window.print()} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2">Print List</button>
+                    {(activeTab === 'eligible' || activeTab === 'history') && (
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Event</label>
+                            <select
+                                value={eventFilter}
+                                onChange={(e) => setEventFilter(e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 bg-white"
+                            >
+                                <option value="">All Events</option>
+                                {eventsForFilter?.map((ev) => (
+                                    <option key={ev.id} value={ev.id}>{ev.title}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    {activeTab === 'eligible' && (
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 bg-white"
+                            >
+                                <option value="">All</option>
+                                <option value="eligible">Eligible</option>
+                                <option value="not_eligible">Not Eligible</option>
+                                <option value="pending">Pending</option>
+                            </select>
+                        </div>
+                    )}
+                    {activeTab === 'history' && (
+                        <>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate ID</label>
+                                <input type="text" value={certIdSearch} onChange={(e) => setCertIdSearch(e.target.value)} placeholder="Search by cert number..." className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Date From</label>
+                                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Date To</label>
+                                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+                                <select value={issuedStatusFilter} onChange={(e) => setIssuedStatusFilter(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 bg-white">
+                                    <option value="active">Active</option>
+                                    <option value="revoked">Revoked</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                            <button type="button" onClick={handleApplyHistoryFilters} className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 text-white rounded-xl font-medium text-sm transition-all duration-250">
+                                <Filter className="w-4 h-4" />
+                                Apply Filters
+                            </button>
+                        </>
+                    )}
+                </div>
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                        <a href={`/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all duration-200">
+                            <Download className="w-4 h-4" /> Export CSV
+                        </a>
+                        <a href="/certification/export/pdf" className="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-all duration-200">
+                            <Download className="w-4 h-4" /> Export PDF
+                        </a>
                     </div>
                 </div>
             </div>
 
-            {/* Overview: Summary cards */}
-            {activeTab === 'overview' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white rounded-xl border border-slate-200 p-6">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Certified</p>
-                        <p className="text-2xl font-bold text-slate-800 mt-1">{stats.total_certified}</p>
-                    </div>
-                    <div className="bg-white rounded-xl border border-amber-200 bg-amber-50 p-6">
-                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Pending Certifications</p>
-                        <p className="text-2xl font-bold text-amber-800 mt-1">{stats.pending_certifications}</p>
-                    </div>
-                    <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50 p-6">
-                        <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Issued Today</p>
-                        <p className="text-2xl font-bold text-emerald-800 mt-1">{stats.issued_today}</p>
-                    </div>
-                </div>
-            )}
-
-            {/* Eligible Participants table */}
+            {/* Eligible Participants - Profile-style rows */}
             {activeTab === 'eligible' && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                            <tr>
-                                <th className="px-4 py-2 text-left">Name</th>
-                                <th className="px-4 py-2 text-left">Event</th>
-                                <th className="px-4 py-2 text-left">Score</th>
-                                <th className="px-4 py-2 text-left">Attendance</th>
-                                <th className="px-4 py-2 text-left">Status</th>
-                                <th className="px-4 py-2 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredEligible.length === 0 ? (
-                                <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No participants match filters.</td></tr>
-                            ) : (
-                                filteredEligible.map((row) => (
-                                    <tr key={`${row.user_id}-${row.event_id}`} className="border-t border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-2 font-medium text-slate-800">{row.user_name}</td>
-                                        <td className="px-4 py-2 text-slate-600">{row.event_title}</td>
-                                        <td className="px-4 py-2">{row.score != null ? `${row.score}%` : '—'}</td>
-                                        <td className="px-4 py-2">
-                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${row.attendance_status === 'present' || row.attendance_status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                                {row.attendance_status || '—'}
+                <div className="space-y-3 transition-opacity duration-300">
+                    {filteredEligible.length === 0 ? (
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center text-slate-500">No participants match filters.</div>
+                    ) : (
+                        filteredEligible.map((row) => {
+                            const initials = getInitials(row.user_name);
+                            const avatarColor = getAvatarColor(row.user_name);
+                            return (
+                                <div key={`${row.user_id}-${row.event_id}`} className="flex items-center gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 transition-all duration-250">
+                                    <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold text-white shadow-md ${avatarColor}`}>
+                                        {initials}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-slate-900">{row.user_name}</p>
+                                        <p className="text-sm text-slate-600 truncate">{row.event_title}</p>
+                                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                            <span className="text-xs text-slate-500">{row.score != null ? `${row.score}%` : '—'} score</span>
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
+                                                row.attendance_status === 'present' || row.attendance_status === 'completed'
+                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                            }`}>
+                                                {row.attendance_status === 'present' || row.attendance_status === 'completed' ? '✓ Present' : (row.attendance_status || '—')}
                                             </span>
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                                row.cert_status === 'eligible' ? 'bg-emerald-50 text-emerald-700' :
-                                                row.cert_status === 'not_eligible' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
+                                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
+                                                row.cert_status === 'eligible' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 ring-1 ring-emerald-200/50' :
+                                                row.cert_status === 'not_eligible' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                                'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
                                             }`}>
                                                 {row.cert_status === 'eligible' ? 'Eligible' : row.cert_status === 'not_eligible' ? 'Not Eligible' : 'Pending'}
                                             </span>
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            {row.certificate_issued ? (
-                                                <div className="flex gap-2 flex-wrap items-center">
-                                                    <span className="text-xs text-slate-500">Issued</span>
-                                                    {row.certificate_id && (
-                                                        <a href={`/certificates/${row.certificate_id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-md border border-sky-300 bg-sky-100 hover:bg-sky-200 text-sky-800 px-2 py-1 text-xs font-medium">Preview Certificate</a>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="flex gap-2 flex-wrap">
-                                                    <a href={`/simulation-events/${row.event_id}/evaluation/summary`} className="inline-flex rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">View Details</a>
-                                                    {row.cert_status === 'eligible' && (
-                                                        <button type="button" onClick={() => handleIssueCertificate(row)} className="inline-flex rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-2 py-1 text-xs font-medium">Issue Certificate</button>
-                                                    )}
-                                                    <a href={`/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">Preview</a>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {row.certificate_issued ? (
+                                            row.certificate_id && (
+                                                <a href={`/certificates/${row.certificate_id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all duration-250" title="Preview Certificate">
+                                                    <Eye className="w-4 h-4" />
+                                                </a>
+                                            )
+                                        ) : (
+                                            <>
+                                                <a href={`/simulation-events/${row.event_id}/evaluation/summary`} className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="View Details">
+                                                    <Eye className="w-4 h-4" />
+                                                </a>
+                                                {row.cert_status === 'eligible' && (
+                                                    <button type="button" onClick={() => handleIssueCertificate(row)} className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all duration-250" title="Issue Certificate">
+                                                        <Award className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                <a href={`/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="Preview Template">
+                                                    <FileText className="w-4 h-4" />
+                                                </a>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             )}
 
-            {/* Templates tab */}
+            {/* Templates tab - Card layout */}
             {activeTab === 'templates' && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                <div className="space-y-4 transition-opacity duration-300">
+                    <div className="flex justify-between items-center">
                         <h3 className="text-sm font-semibold text-slate-800">Certificate Templates</h3>
-                        <button type="button" onClick={() => { setEditingTemplate(null); setTemplateEditorOpen(true); }} className="inline-flex rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5">Add Template</button>
+                        <button type="button" onClick={() => { setEditingTemplate(null); setTemplateEditorOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 text-white rounded-xl text-sm font-medium transition-all duration-250">Add Template</button>
                     </div>
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                            <tr>
-                                <th className="px-4 py-2 text-left">Template Name</th>
-                                <th className="px-4 py-2 text-left">Type</th>
-                                <th className="px-4 py-2 text-left">Last Used</th>
-                                <th className="px-4 py-2 text-left">Status</th>
-                                <th className="px-4 py-2 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {templates.length === 0 ? (
-                                <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No templates yet. Add one to get started.</td></tr>
-                            ) : (
-                                templates.map((t) => (
-                                    <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-2 font-medium text-slate-800">{t.name}</td>
-                                        <td className="px-4 py-2 text-slate-600">{t.type}</td>
-                                        <td className="px-4 py-2 text-slate-600">{t.last_used_at ? formatDate(t.last_used_at) : '—'}</td>
-                                        <td className="px-4 py-2">
-                                            <span
-                                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold shadow-sm ${
-                                                    t.status === 'active'
-                                                        ? 'bg-emerald-50 text-emerald-700'
-                                                        : 'bg-slate-100 text-slate-600'
-                                                }`}
-                                            >
-                                                {t.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-2 flex gap-2 flex-wrap">
-                                            <a href={`/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm" title="Preview">
-                                                <Eye className="w-4 h-4" />
-                                            </a>
-                                            <button type="button" onClick={() => { setEditingTemplate(t); setTemplateEditorOpen(true); }} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm" title="Edit">
-                                                <Pencil className="w-4 h-4" />
-                                            </button>
-                                            <button type="button" onClick={() => handleDuplicateTemplate(t)} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm" title="Duplicate">
-                                                <Copy className="w-4 h-4" />
-                                            </button>
-                                            <button type="button" onClick={() => handleDeleteTemplate(t)} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm" title="Delete">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                    {templates.length === 0 ? (
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center text-slate-500">No templates yet. Add one to get started.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {templates.map((t) => (
+                                <div key={t.id} className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-250">
+                                    <h4 className="text-lg font-semibold text-slate-900 mb-2">{t.name}</h4>
+                                    <div className="text-sm text-slate-600 space-y-1 mb-4">
+                                        <p><span className="font-medium text-slate-500">Type:</span> {t.type || 'Completion'}</p>
+                                        <p><span className="font-medium text-slate-500">Last Used:</span> {t.last_used_at ? formatDate(t.last_used_at) : '—'}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                                            t.status === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${t.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                            {t.status === 'active' ? 'Active' : (t.status || '—')}
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <a href={`/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all duration-250" title="Preview"> <Eye className="w-4 h-4" /> </a>
+                                            <button type="button" onClick={() => { setEditingTemplate(t); setTemplateEditorOpen(true); }} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all duration-250" title="Edit"> <Pencil className="w-4 h-4" /> </button>
+                                            <button type="button" onClick={() => handleDuplicateTemplate(t)} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:shadow-md transition-all duration-250" title="Duplicate"> <Copy className="w-4 h-4" /> </button>
+                                            <button type="button" onClick={() => handleDeleteTemplate(t)} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:shadow-md transition-all duration-250" title="Delete"> <Trash2 className="w-4 h-4" /> </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Issued History */}
+            {/* Issued History - Modern table */}
             {activeTab === 'history' && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                            <tr>
-                                <th className="px-4 py-2 text-left">Certificate ID</th>
-                                <th className="px-4 py-2 text-left">Name</th>
-                                <th className="px-4 py-2 text-left">Event</th>
-                                <th className="px-4 py-2 text-left">Issue Date</th>
-                                <th className="px-4 py-2 text-left">Issued By</th>
-                                <th className="px-4 py-2 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredIssued.length === 0 ? (
-                                <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No issued certificates.</td></tr>
-                            ) : (
-                                filteredIssued.map((c) => (
-                                    <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-2 font-mono text-xs text-slate-700">{c.certificate_number}</td>
-                                        <td className="px-4 py-2 font-medium text-slate-800">{c.user?.name}</td>
-                                        <td className="px-4 py-2 text-slate-600">{c.simulation_event?.title}</td>
-                                        <td className="px-4 py-2 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : '—'}</td>
-                                        <td className="px-4 py-2 text-slate-600">{c.issuer?.name || '—'}</td>
-                                        <td className="px-4 py-2 flex gap-2">
-                                            <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm" title="View / Print PDF">
-                                                <FileText className="w-4 h-4" />
-                                            </a>
-                                            <button type="button" onClick={() => handleRevoke(c.id)} className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors shadow-sm" title="Revoke">
-                                                <XCircle className="w-4 h-4" />
-                                            </button>
-                                            <a href="/certification" className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm" title="Reissue">
-                                                <RotateCcw className="w-4 h-4" />
-                                            </a>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-200">
+                        <h3 className="text-sm font-semibold text-slate-800">Issued Certificates</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Certificate ID</th>
+                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Name</th>
+                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Event</th>
+                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Issue Date</th>
+                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Issued By</th>
+                                    <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredIssued.length === 0 ? (
+                                    <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-500">No issued certificates.</td></tr>
+                                ) : (
+                                    filteredIssued.map((c, idx) => (
+                                        <tr key={c.id} className={`hover:bg-slate-50/80 transition-colors duration-200 ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}>
+                                            <td className="px-5 py-4 font-mono text-xs text-slate-700">{c.certificate_number}</td>
+                                            <td className="px-5 py-4 font-medium text-slate-800">{c.user?.name}</td>
+                                            <td className="px-5 py-4 text-slate-600">{c.simulation_event?.title}</td>
+                                            <td className="px-5 py-4 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : '—'}</td>
+                                            <td className="px-5 py-4 text-slate-600">{c.issuer?.name || '—'}</td>
+                                            <td className="px-5 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all" title="View / Print PDF">
+                                                        <FileText className="w-4 h-4" />
+                                                    </a>
+                                                    <button type="button" onClick={() => handleRevoke(c.id)} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:shadow-md transition-all" title="Revoke">
+                                                        <XCircle className="w-4 h-4" />
+                                                    </button>
+                                                    <a href="/certification" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all" title="Reissue">
+                                                        <RotateCcw className="w-4 h-4" />
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* Automation Rules */}
+            {/* Automation Rules - Rule cards */}
             {activeTab === 'automation' && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Automation Rules</h3>
+                <div className="space-y-6">
+                    <h3 className="text-sm font-semibold text-slate-800">Automation Rules</h3>
                     <div className="space-y-4">
-                        <label className="flex items-center gap-3">
-                            <input type="checkbox" checked={autoIssue} onChange={(e) => setAutoIssue(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                            <span className="text-sm text-slate-700">Auto-issue certificates when participant passes (certification eligible = Yes)</span>
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <input type="checkbox" checked={requireAttendance} onChange={(e) => setRequireAttendance(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                            <span className="text-sm text-slate-700">Require attendance (present/completed)</span>
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <input type="checkbox" checked={requireApproval} onChange={(e) => setRequireApproval(e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                            <span className="text-sm text-slate-700">Require supervisor approval before issuing</span>
-                        </label>
-                        <button type="button" onClick={handleSaveAutomation} className="inline-flex rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2">Save Settings</button>
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-250">
+                            <div className="flex items-start gap-4">
+                                <input type="checkbox" checked={autoIssue} onChange={(e) => setAutoIssue(e.target.checked)} className="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                <div className="flex-1">
+                                    <p className="font-medium text-slate-900">When score ≥ 70%</p>
+                                    <p className="text-sm text-slate-600 mt-0.5">AND certification eligible = Yes</p>
+                                    <p className="text-sm text-emerald-600 font-medium mt-2">→ Auto Issue Certificate</p>
+                                    <span className={`inline-flex items-center gap-1.5 mt-2 rounded-full px-3 py-1 text-xs font-semibold ${autoIssue ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${autoIssue ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                        {autoIssue ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-250">
+                            <div className="flex items-start gap-4">
+                                <input type="checkbox" checked={requireAttendance} onChange={(e) => setRequireAttendance(e.target.checked)} className="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                <div className="flex-1">
+                                    <p className="font-medium text-slate-900">Require attendance</p>
+                                    <p className="text-sm text-slate-600 mt-0.5">Participant must be marked present or completed</p>
+                                    <span className={`inline-flex items-center gap-1.5 mt-2 rounded-full px-3 py-1 text-xs font-semibold ${requireAttendance ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${requireAttendance ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                        {requireAttendance ? 'Required' : 'Not required'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-250">
+                            <div className="flex items-start gap-4">
+                                <input type="checkbox" checked={requireApproval} onChange={(e) => setRequireApproval(e.target.checked)} className="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                <div className="flex-1">
+                                    <p className="font-medium text-slate-900">Require supervisor approval</p>
+                                    <p className="text-sm text-slate-600 mt-0.5">Before auto-issuing certificate</p>
+                                    <span className={`inline-flex items-center gap-1.5 mt-2 rounded-full px-3 py-1 text-xs font-semibold ${requireApproval ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${requireApproval ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                        {requireApproval ? 'Required' : 'Not required'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                    <button type="button" onClick={handleSaveAutomation} className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250">
+                        <Zap className="w-4 h-4" /> Save Settings
+                    </button>
                 </div>
             )}
 
@@ -7355,45 +7465,85 @@ function CertificationModule({
 function ParticipantRegistrationAttendanceModule({ events = [], participants = [], role }) {
     const [activeTab, setActiveTab] = React.useState('participants');
 
+    const PARTICIPANT_TABS = [
+        { id: 'participants', label: 'Participant List', icon: '👥' },
+        { id: 'registrations', label: 'Event Registrations', icon: '📋' },
+        { id: 'attendance', label: 'Event Attendance', icon: '✓' },
+    ];
+
+    // Stats for summary cards (Certification-style, shown when on participants tab)
+    const totalParticipants = participants.length;
+    const activeParticipants = participants.filter(p => p.status === 'active').length;
+    const inactiveParticipants = participants.filter(p => p.status === 'inactive').length;
+    const thisMonth = new Date();
+    thisMonth.setDate(1);
+    const registeredThisMonth = participants.filter(p => {
+        if (!p.created_at) return false;
+        return new Date(p.created_at) >= thisMonth;
+    }).length;
+
     return (
-        <div>
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                    <Users className="w-6 h-6 text-emerald-600" />
+        <div className="space-y-6">
+            {/* Hero Header - Certification style */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <Users className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Participant Registration & Management</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Manage participant list, event registrations, and attendance.
+                        </p>
+                    </div>
                 </div>
-                <h2 className="text-lg font-semibold text-slate-800">Participant Registration & Management</h2>
             </div>
 
-            {/* Tabs */}
-            <div className="mb-4 border-b border-slate-200">
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => setActiveTab('participants')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'participants'
-                            ? 'border-emerald-500 text-emerald-700'
-                            : 'border-transparent text-slate-600 hover:text-slate-800'
+            {/* Summary Cards - Certification style (below header, above tabs) */}
+            {activeTab === 'participants' && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Participants</p>
+                        <p className="text-[32px] font-bold text-slate-900 mt-1">{totalParticipants}</p>
+                        <p className="text-xs text-slate-500 mt-1">All registered</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-emerald-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Active</p>
+                        <p className="text-[32px] font-bold text-emerald-800 mt-1">{activeParticipants}</p>
+                        <p className="text-xs text-slate-500 mt-1">Currently active</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Inactive</p>
+                        <p className="text-[32px] font-bold text-slate-900 mt-1">{inactiveParticipants}</p>
+                        <p className="text-xs text-slate-500 mt-1">Deactivated</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Registered This Month</p>
+                        <p className="text-[32px] font-bold text-slate-900 mt-1">{registeredThisMonth}</p>
+                        <p className="text-xs text-slate-500 mt-1">New this month</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Tabs - Certification style (pill strip, green active) */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 w-fit">
+                <div className="flex gap-1 flex-wrap">
+                    {PARTICIPANT_TABS.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-250 flex items-center gap-2 ${
+                                activeTab === tab.id
+                                    ? 'bg-emerald-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                             }`}
-                    >
-                        👥 Participant List
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('registrations')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'registrations'
-                            ? 'border-emerald-500 text-emerald-700'
-                            : 'border-transparent text-slate-600 hover:text-slate-800'
-                            }`}
-                    >
-                        📋 Event Registrations
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('attendance')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'attendance'
-                            ? 'border-emerald-500 text-emerald-700'
-                            : 'border-transparent text-slate-600 hover:text-slate-800'
-                            }`}
-                    >
-                        ✓ Event Attendance
-                    </button>
+                        >
+                            <span>{tab.icon}</span>
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -7407,6 +7557,27 @@ function ParticipantRegistrationAttendanceModule({ events = [], participants = [
             )}
         </div>
     );
+}
+
+// Helper: Generate initials from name
+function getInitials(name) {
+    if (!name) return '??';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+}
+
+// Helper: Get avatar color based on name
+function getAvatarColor(name) {
+    const colors = [
+        'bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-pink-500',
+        'bg-amber-500', 'bg-indigo-500', 'bg-rose-500', 'bg-teal-500'
+    ];
+    if (!name) return colors[0];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
 }
 
 // Tab 1: Participants List
@@ -7425,9 +7596,9 @@ function ParticipantsListTab({ participants = [] }) {
     });
 
     return (
-        <div>
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+        <div className="space-y-6">
+            {/* Filters - card with shadow */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-md p-4">
                 <div className="grid grid-cols-3 gap-4">
                     <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
@@ -7436,7 +7607,7 @@ function ParticipantsListTab({ participants = [] }) {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search by name, email, or ID..."
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
                     </div>
                     <div>
@@ -7444,7 +7615,7 @@ function ParticipantsListTab({ participants = [] }) {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                             <option value="all">All Status</option>
                             <option value="active">Active</option>
@@ -7454,7 +7625,7 @@ function ParticipantsListTab({ participants = [] }) {
                     <div className="flex items-end">
                         <a
                             href="/participants/export/csv"
-                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
+                            className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center transition-colors"
                         >
                             📥 Export CSV
                         </a>
@@ -7462,126 +7633,130 @@ function ParticipantsListTab({ participants = [] }) {
                 </div>
             </div>
 
-            {/* Participants Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Participant ID</th>
-                            <th className="px-4 py-2 text-left">Name</th>
-                            <th className="px-4 py-2 text-left">Email</th>
-                            <th className="px-4 py-2 text-left">Phone</th>
-                            <th className="px-4 py-2 text-left">Status</th>
-                            <th className="px-4 py-2 text-left">Events</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredParticipants.length === 0 ? (
-                            <tr>
-                                <td colSpan={7} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {participants.length === 0
-                                        ? 'No participants registered yet. Participants will appear here after self-registration.'
-                                        : 'No participants match your search criteria.'}
-                                </td>
-                            </tr>
-                        ) : (
-                            filteredParticipants.map((participant) => (
-                                <tr key={participant.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-mono text-xs text-slate-600">
-                                        {participant.participant_id || 'N/A'}
-                                    </td>
-                                    <td className="px-4 py-2 font-medium text-slate-800">
+            {/* Participants Table - Profile Row Style */}
+            <div className="space-y-3">
+                {filteredParticipants.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-12 text-center text-slate-500">
+                        {participants.length === 0
+                            ? 'No participants registered yet. Participants will appear here after self-registration.'
+                            : 'No participants match your search criteria.'}
+                    </div>
+                ) : (
+                    filteredParticipants.map((participant) => {
+                        const initials = getInitials(participant.name);
+                        const avatarColor = getAvatarColor(participant.name);
+                        return (
+                            <div
+                                key={participant.id}
+                                className="bg-white rounded-xl border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 transition-all duration-200 p-5"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4 flex-1">
+                                        {/* Avatar */}
+                                        <div className={`${avatarColor} w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0`}>
+                                            {initials}
+                                        </div>
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <a
+                                                    href={`/participants/${participant.id}`}
+                                                    className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors text-base"
+                                                >
+                                                    {participant.name}
+                                                </a>
+                                            </div>
+                                            <p className="text-sm text-slate-600 mb-1">{participant.email}</p>
+                                            <p className="text-xs text-slate-500 font-mono">ID: {participant.participant_id || 'N/A'}</p>
+                                        </div>
+                                        {/* Status & Events */}
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex flex-col items-end gap-2">
+                                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                                    participant.status === 'active' 
+                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                                        : 'bg-red-100 text-red-800 border border-red-200'
+                                                }`}>
+                                                    {participant.status === 'active' ? '🟢' : '🔴'} {participant.status === 'active' ? 'Active' : 'Inactive'}
+                                                </span>
+                                                <a
+                                                    href={`/participants/${participant.id}`}
+                                                    className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-semibold hover:bg-blue-100 transition-colors"
+                                                >
+                                                    Events: {participant.event_registrations_count || 0}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-2 ml-4 shrink-0">
                                         <a
                                             href={`/participants/${participant.id}`}
-                                            className="text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
+                                            className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
                                         >
-                                            {participant.name}
+                                            View Profile
                                         </a>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600 text-xs">{participant.email}</td>
-                                    <td className="px-4 py-2 text-slate-600 text-xs">{participant.phone || '—'}</td>
-                                    <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${participant.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                            }`}>
-                                            {participant.status || 'active'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600 text-center">
-                                        <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-semibold">
-                                            {participant.event_registrations_count || 0}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <div className="flex gap-2 items-center">
-                                            <a
-                                                href={`/participants/${participant.id}`}
-                                                className="inline-flex items-center rounded-md border border-blue-500/60 bg-blue-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
+                                        {participant.status === 'active' ? (
+                                            <form
+                                                method="POST"
+                                                action={`/participants/${participant.id}/deactivate`}
+                                                onSubmit={async (e) => {
+                                                    e.preventDefault();
+                                                    const result = await Swal.fire({
+                                                        title: 'Deactivate Participant?',
+                                                        text: 'This will prevent them from accessing the system.',
+                                                        icon: 'warning',
+                                                        showCancelButton: true,
+                                                        confirmButtonText: 'Yes, deactivate',
+                                                        cancelButtonText: 'Cancel',
+                                                        confirmButtonColor: '#dc2626',
+                                                        cancelButtonColor: '#64748b',
+                                                    });
+                                                    if (result.isConfirmed) e.target.submit();
+                                                }}
                                             >
-                                                View Profile
-                                            </a>
-                                            {participant.status === 'active' ? (
-                                                <form
-                                                    method="POST"
-                                                    action={`/participants/${participant.id}/deactivate`}
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Deactivate Participant?',
-                                                            text: 'This will prevent them from accessing the system.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, deactivate',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#f97316',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) e.target.submit();
-                                                    }}
+                                                <input type="hidden" name="_token" value={csrf} />
+                                                <button
+                                                    type="submit"
+                                                    className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200"
                                                 >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center rounded-md border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
-                                                    >
-                                                        Deactivate
-                                                    </button>
-                                                </form>
-                                            ) : (
-                                                <form
-                                                    method="POST"
-                                                    action={`/participants/${participant.id}/reactivate`}
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const result = await Swal.fire({
-                                                            title: 'Reactivate Participant?',
-                                                            text: 'This will restore their access to the system.',
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonText: 'Yes, reactivate',
-                                                            cancelButtonText: 'Cancel',
-                                                            confirmButtonColor: '#16a34a',
-                                                            cancelButtonColor: '#64748b',
-                                                        });
-                                                        if (result.isConfirmed) e.target.submit();
-                                                    }}
+                                                    Deactivate
+                                                </button>
+                                            </form>
+                                        ) : (
+                                            <form
+                                                method="POST"
+                                                action={`/participants/${participant.id}/reactivate`}
+                                                onSubmit={async (e) => {
+                                                    e.preventDefault();
+                                                    const result = await Swal.fire({
+                                                        title: 'Reactivate Participant?',
+                                                        text: 'This will restore their access to the system.',
+                                                        icon: 'warning',
+                                                        showCancelButton: true,
+                                                        confirmButtonText: 'Yes, reactivate',
+                                                        cancelButtonText: 'Cancel',
+                                                        confirmButtonColor: '#16a34a',
+                                                        cancelButtonColor: '#64748b',
+                                                    });
+                                                    if (result.isConfirmed) e.target.submit();
+                                                }}
+                                            >
+                                                <input type="hidden" name="_token" value={csrf} />
+                                                <button
+                                                    type="submit"
+                                                    className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
                                                 >
-                                                    <input type="hidden" name="_token" value={csrf} />
-                                                    <button
-                                                        type="submit"
-                                                        className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
-                                                    >
-                                                        Reactivate
-                                                    </button>
-                                                </form>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                                                    Reactivate
+                                                </button>
+                                            </form>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
             </div>
         </div>
     );
@@ -7647,8 +7822,8 @@ function RegistrationEventsTable({ events = [] }) {
 
     return (
         <div>
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+            {/* Filters - card with shadow like Resources */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-md p-4 mb-4">
                 <div className="grid grid-cols-3 gap-4">
                     <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
@@ -7685,64 +7860,76 @@ function RegistrationEventsTable({ events = [] }) {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Event Title</th>
-                            <th className="px-4 py-2 text-left">Date & Time</th>
-                            <th className="px-4 py-2 text-left">Location</th>
-                            <th className="px-4 py-2 text-left">Registrations</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pageEvents.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
-                                </td>
-                            </tr>
-                        ) : (
-                            pageEvents.map((event) => (
-                                <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        <div>{formatDate(event.event_date)}</div>
-                                        <div className="text-xs text-slate-500">{formatTime(event.start_time)} - {formatTime(event.end_time)}</div>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">{event.location || '—'}</td>
-                                    <td className="px-4 py-2 text-slate-600 text-center">
-                                        <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-semibold">
-                                            {event.registrations_count || 0} registered
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <a
-                                            href={`/simulation-events/${event.id}/registrations`}
-                                            className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
-                                        >
-                                            Manage Registrations
-                                        </a>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-                <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-                    itemsPerPage={ITEMS_PER_PAGE}
-                    totalItems={totalItems}
-                />
+            {/* Event Cards Layout */}
+            <div className="space-y-4">
+                {pageEvents.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-12 text-center text-slate-500">
+                        {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
+                    </div>
+                ) : (
+                    <>
+                        {pageEvents.map((event) => {
+                            const statusColor = event.status === 'published' ? 'bg-blue-100 text-blue-800' :
+                                event.status === 'ongoing' ? 'bg-emerald-100 text-emerald-800' :
+                                    event.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
+                                        'bg-slate-100 text-slate-700';
+                            return (
+                                <div
+                                    key={event.id}
+                                    className="bg-white rounded-xl border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 transition-all duration-200 overflow-hidden"
+                                >
+                                    <div className="p-5">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
+                                                <div className="space-y-1 text-sm text-slate-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>📍</span>
+                                                        <span>{event.location || 'Location TBD'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>🗓</span>
+                                                        <span>
+                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
+                                                {event.status}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-slate-600">👥</span>
+                                                <span className="text-sm font-medium text-slate-900">{event.registrations_count || 0} Registered</span>
+                                            </div>
+                                            <a
+                                                href={`/simulation-events/${event.id}/registrations`}
+                                                className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+                                            >
+                                                Manage Registrations
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                            totalItems={totalItems}
+                        />
+                    </>
+                )}
             </div>
         </div>
     );
 }
 
-// Attendance Tab - Shows events with attendance tracking
+// Attendance Tab - Shows events with attendance tracking (card + shadow style like Resources)
 function AttendanceEventsTable({ events = [] }) {
     const ITEMS_PER_PAGE = 10;
     const [currentPage, setCurrentPage] = React.useState(1);
@@ -7802,8 +7989,8 @@ function AttendanceEventsTable({ events = [] }) {
 
     return (
         <div>
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+            {/* Filters - card with shadow like Resources */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-md p-4 mb-4">
                 <div className="grid grid-cols-3 gap-4">
                     <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
@@ -7840,58 +8027,70 @@ function AttendanceEventsTable({ events = [] }) {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Event Title</th>
-                            <th className="px-4 py-2 text-left">Date & Time</th>
-                            <th className="px-4 py-2 text-left">Location</th>
-                            <th className="px-4 py-2 text-left">Approved Participants</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pageEvents.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">
-                                    {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
-                                </td>
-                            </tr>
-                        ) : (
-                            pageEvents.map((event) => (
-                                <tr key={event.id} className="border-t border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-2 font-medium text-slate-800">{event.title}</td>
-                                    <td className="px-4 py-2 text-slate-600">
-                                        <div>{formatDate(event.event_date)}</div>
-                                        <div className="text-xs text-slate-500">{formatTime(event.start_time)} - {formatTime(event.end_time)}</div>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-600">{event.location || '—'}</td>
-                                    <td className="px-4 py-2 text-slate-600 text-center">
-                                        <span className="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-xs font-semibold">
-                                            {event.approved_registrations_count || 0} approved
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <a
-                                            href={`/simulation-events/${event.id}/attendance`}
-                                            className="inline-flex items-center rounded-md border border-purple-500/60 bg-purple-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-purple-800 hover:bg-purple-100 transition-colors"
-                                        >
-                                            Track Attendance
-                                        </a>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-                <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-                    itemsPerPage={ITEMS_PER_PAGE}
-                    totalItems={totalItems}
-                />
+            {/* Event Cards Layout */}
+            <div className="space-y-4">
+                {pageEvents.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-12 text-center text-slate-500">
+                        {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
+                    </div>
+                ) : (
+                    <>
+                        {pageEvents.map((event) => {
+                            const statusColor = event.status === 'published' ? 'bg-blue-100 text-blue-800' :
+                                event.status === 'ongoing' ? 'bg-emerald-100 text-emerald-800' :
+                                    event.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
+                                        'bg-slate-100 text-slate-700';
+                            return (
+                                <div
+                                    key={event.id}
+                                    className="bg-white rounded-xl border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 transition-all duration-200 overflow-hidden"
+                                >
+                                    <div className="p-5">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
+                                                <div className="space-y-1 text-sm text-slate-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>📍</span>
+                                                        <span>{event.location || 'Location TBD'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>🗓</span>
+                                                        <span>
+                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
+                                                {event.status}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-slate-600">👥</span>
+                                                <span className="text-sm font-medium text-slate-900">{event.approved_registrations_count || 0} Approved Participants</span>
+                                            </div>
+                                            <a
+                                                href={`/simulation-events/${event.id}/attendance`}
+                                                className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+                                            >
+                                                Track Attendance
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                            totalItems={totalItems}
+                        />
+                    </>
+                )}
             </div>
         </div>
     );
@@ -7911,11 +8110,12 @@ function ParticipantsTable({ participants = [], role }) {
         return matchesSearch && matchesStatus;
     });
 
+    // Standardized status colors - stronger and consistent
     const getStatusColor = (status) => {
         switch (status) {
-            case 'active': return 'bg-emerald-50 text-emerald-700';
-            case 'inactive': return 'bg-slate-100 text-slate-600';
-            default: return 'bg-slate-100 text-slate-600';
+            case 'active': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+            case 'inactive': return 'bg-red-100 text-red-800 border border-red-200';
+            default: return 'bg-slate-100 text-slate-700 border border-slate-200';
         }
     };
 
@@ -7923,8 +8123,8 @@ function ParticipantsTable({ participants = [], role }) {
         <div>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-lg">
-                        <Users className="w-6 h-6 text-emerald-600" />
+                    <div className="p-2 bg-emerald-100 rounded-lg shadow-md">
+                        <Users className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
                     </div>
                     <h2 className="text-lg font-semibold text-slate-800">Participants</h2>
                 </div>
@@ -8005,8 +8205,8 @@ function ParticipantsTable({ participants = [], role }) {
                                     <td className="px-4 py-2 text-slate-600">{participant.email}</td>
                                     <td className="px-4 py-2 text-slate-600">{participant.phone || '—'}</td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${getStatusColor(participant.status)}`}>
-                                            {participant.status || 'active'}
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusColor(participant.status)}`}>
+                                            {participant.status === 'active' ? '🟢' : '🔴'} {participant.status || 'active'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600 text-center">
@@ -8039,7 +8239,7 @@ function ParticipantsTable({ participants = [], role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-md border border-amber-500/60 bg-amber-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                                                        className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200"
                                                     >
                                                         Deactivate
                                                     </button>
@@ -8066,7 +8266,7 @@ function ParticipantsTable({ participants = [], role }) {
                                                     <input type="hidden" name="_token" value={csrf} />
                                                     <button
                                                         type="submit"
-                                                        className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                        className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
                                                     >
                                                         Reactivate
                                                     </button>
@@ -8085,77 +8285,251 @@ function ParticipantsTable({ participants = [], role }) {
 }
 
 function ParticipantDetail({ participant }) {
+    const [activeTab, setActiveTab] = React.useState('overview');
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const initials = getInitials(participant.name);
+    const avatarColor = getAvatarColor(participant.name);
+    const statusColor = participant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800';
+    const statusIcon = participant.status === 'active' ? '🟢' : '🔴';
+
     return (
         <div>
             <div className="mb-4">
-                <a href="/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                <a href="/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800 transition-colors">
                     ← Back to Participants
                 </a>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
-                <h3 className="text-sm font-semibold text-slate-800 mb-4">Participant Profile</h3>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Participant ID</label>
-                        <div className="text-sm text-slate-800 font-mono">{participant.participant_id || 'N/A'}</div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                        <div className="text-sm text-slate-800">{participant.status || 'active'}</div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Full Name</label>
-                        <div className="text-sm text-slate-800">{participant.name}</div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Email</label>
-                        <div className="text-sm text-slate-800">{participant.email}</div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Phone</label>
-                        <div className="text-sm text-slate-800">{participant.phone || '—'}</div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Registered At</label>
-                        <div className="text-sm text-slate-800">
-                            {formatDateTime(participant.registered_at)}
+
+            {/* Profile Header Card */}
+            <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                        {/* Avatar */}
+                        <div className={`${avatarColor} w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-md shrink-0`}>
+                            {initials}
                         </div>
+                        {/* Info */}
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-900 mb-1">{participant.name}</h1>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
+                                    {statusIcon} {participant.status === 'active' ? 'Active Participant' : 'Inactive Participant'}
+                                </span>
+                            </div>
+                            <p className="text-sm text-slate-600">
+                                Registered: {formatDateTime(participant.registered_at || participant.created_at)}
+                            </p>
+                        </div>
+                    </div>
+                    {/* Action Button */}
+                    <div>
+                        {participant.status === 'active' ? (
+                            <form
+                                method="POST"
+                                action={`/participants/${participant.id}/deactivate`}
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const result = await Swal.fire({
+                                        title: 'Deactivate Participant?',
+                                        text: 'This will prevent them from accessing the system.',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Yes, deactivate',
+                                        cancelButtonText: 'Cancel',
+                                        confirmButtonColor: '#dc2626',
+                                        cancelButtonColor: '#64748b',
+                                    });
+                                    if (result.isConfirmed) e.target.submit();
+                                }}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200"
+                                >
+                                    Deactivate
+                                </button>
+                            </form>
+                        ) : (
+                            <form
+                                method="POST"
+                                action={`/participants/${participant.id}/reactivate`}
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const result = await Swal.fire({
+                                        title: 'Reactivate Participant?',
+                                        text: 'This will restore their access to the system.',
+                                        icon: 'question',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Yes, reactivate',
+                                        cancelButtonText: 'Cancel',
+                                        confirmButtonColor: '#16a34a',
+                                        cancelButtonColor: '#64748b',
+                                    });
+                                    if (result.isConfirmed) e.target.submit();
+                                }}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
+                                >
+                                    Reactivate
+                                </button>
+                            </form>
+                        )}
                     </div>
                 </div>
             </div>
-            {participant.event_registrations && participant.event_registrations.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Event Registrations</h3>
-                    <div className="space-y-2">
-                        {participant.event_registrations.map((reg) => (
-                            <div key={reg.id} className="p-3 bg-slate-50 rounded-md">
-                                <div className="font-medium text-sm text-slate-800">
-                                    {reg.simulation_event?.title || 'N/A'}
-                                </div>
-                                <div className="text-xs text-slate-600 mt-1">
-                                    Status: {reg.status} • Registered: {formatDate(reg.registered_at)}
-                                </div>
+
+            {/* Tabs */}
+            <div className="mb-6">
+                <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200 shadow-inner">
+                    {[
+                        { id: 'overview', label: 'Overview' },
+                        { id: 'registrations', label: 'Event Registrations' },
+                        { id: 'attendance', label: 'Attendance History' },
+                        { id: 'certificates', label: 'Certificates' },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-250 ease-out ${
+                                activeTab === tab.id
+                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === 'overview' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Participant Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Participant ID</label>
+                            <div className="text-sm text-slate-900 font-mono">{participant.participant_id || 'N/A'}</div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Status</label>
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusColor}`}>
+                                {statusIcon} {participant.status || 'active'}
+                            </span>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Full Name</label>
+                            <div className="text-sm text-slate-900">{participant.name}</div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Email</label>
+                            <div className="text-sm text-slate-900">{participant.email}</div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Phone</label>
+                            <div className="text-sm text-slate-900">{participant.phone || '—'}</div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Registered At</label>
+                            <div className="text-sm text-slate-900">
+                                {formatDateTime(participant.registered_at || participant.created_at)}
                             </div>
-                        ))}
+                        </div>
                     </div>
                 </div>
             )}
-            {participant.attendances && participant.attendances.length > 0 && (
+
+            {activeTab === 'registrations' && (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Attendance History</h3>
-                    <div className="space-y-2">
-                        {participant.attendances.map((attendance) => (
-                            <div key={attendance.id} className="p-3 bg-slate-50 rounded-md">
-                                <div className="font-medium text-sm text-slate-800">
-                                    {attendance.simulation_event?.title || 'N/A'}
-                                </div>
-                                <div className="text-xs text-slate-600 mt-1">
-                                    Status: {attendance.status} • Check-in: {attendance.check_in_method || 'N/A'}
-                                    {attendance.checked_in_at && ` • ${new Date(attendance.checked_in_at).toLocaleString()}`}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Event Registrations</h3>
+                    {participant.event_registrations && participant.event_registrations.length > 0 ? (
+                        <div className="space-y-3">
+                            {participant.event_registrations.map((reg) => {
+                                const regStatusColor = reg.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                                    reg.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                        'bg-red-100 text-red-800';
+                                return (
+                                    <div key={reg.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:shadow-sm transition-all">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-slate-900 mb-1">
+                                                    {reg.simulation_event?.title || 'N/A'}
+                                                </div>
+                                                <div className="text-xs text-slate-600">
+                                                    Registered: {formatDateTime(reg.registered_at)}
+                                                </div>
+                                            </div>
+                                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${regStatusColor}`}>
+                                                {reg.status === 'approved' ? '✅' : reg.status === 'pending' ? '⏳' : '❌'} {reg.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-slate-500 text-sm">No event registrations yet.</p>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'attendance' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Attendance History</h3>
+                    {participant.attendances && participant.attendances.length > 0 ? (
+                        <div className="space-y-4">
+                            {participant.attendances.map((attendance, idx) => {
+                                const attStatusColor = attendance.status === 'present' ? 'text-emerald-600' :
+                                    attendance.status === 'late' ? 'text-amber-600' :
+                                        attendance.status === 'absent' ? 'text-red-600' :
+                                            'text-slate-600';
+                                const attStatusIcon = attendance.status === 'present' ? '🟢' :
+                                    attendance.status === 'late' ? '🟡' :
+                                        attendance.status === 'absent' ? '🔴' :
+                                            '⚪';
+                                return (
+                                    <div key={attendance.id} className="flex gap-4 items-start">
+                                        {/* Timeline Line */}
+                                        {idx < participant.attendances.length - 1 && (
+                                            <div className="w-0.5 h-full bg-slate-200 mt-2 -mb-4"></div>
+                                        )}
+                                        <div className="flex-1">
+                                            <div className="flex items-start gap-3">
+                                                <div className={`text-xl shrink-0 ${attStatusColor}`}>{attStatusIcon}</div>
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-slate-900 mb-1">
+                                                        {attendance.simulation_event?.title || 'N/A'}
+                                                    </div>
+                                                    <div className={`text-sm font-medium ${attStatusColor} mb-1`}>
+                                                        {attendance.status ? attendance.status.charAt(0).toUpperCase() + attendance.status.slice(1) : 'Not Marked'}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">
+                                                        {attendance.checked_in_at
+                                                            ? `${new Date(attendance.checked_in_at).toLocaleDateString()} | ${new Date(attendance.checked_in_at).toLocaleTimeString()}`
+                                                            : 'No check-in time'}
+                                                        {attendance.check_in_method && ` • ${attendance.check_in_method}`}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-slate-500 text-sm">No attendance records yet.</p>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'certificates' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Certificates</h3>
+                    <p className="text-slate-500 text-sm">Certificate management coming soon.</p>
                 </div>
             )}
         </div>
@@ -8261,12 +8635,8 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                     <td className="px-4 py-2 font-medium text-slate-800">{reg.user?.name || 'N/A'}</td>
                                     <td className="px-4 py-2 text-slate-600">{reg.user?.email || 'N/A'}</td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${reg.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-                                            reg.status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                                                reg.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
-                                                    'bg-slate-100 text-slate-600'
-                                            }`}>
-                                            {reg.status}
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getRegistrationStatusColor(reg.status)}`}>
+                                            {reg.status === 'approved' ? '✅' : reg.status === 'pending' ? '⏳' : reg.status === 'rejected' ? '❌' : ''} {reg.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600 text-xs">{formatDateTime(reg.registered_at)}</td>
@@ -8283,7 +8653,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     if (result.isConfirmed) e.target.submit();
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100">Approve</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 hover:shadow-sm transition-all duration-200">✅ Approve</button>
                                                 </form>
                                                 <form method="POST" action={`/event-registrations/${reg.id}/reject`} onSubmit={async (e) => {
                                                     e.preventDefault();
@@ -8305,7 +8675,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     }
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-md border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100">Reject</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200">❌ Reject</button>
                                                 </form>
                                             </div>
                                         )}
@@ -8371,41 +8741,118 @@ function EventAttendanceTable({ event, registrations = [] }) {
                 <div className="text-xs text-slate-600">{formatDate(event.event_date)} • {event.location || 'Location TBD'}</div>
             </div>
 
-            {/* Attendance Summary Statistics */}
+            {/* Attendance Dashboard - Visual Summary */}
             <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl shadow-sm border border-emerald-200 p-6 mb-4">
-                <h3 className="text-sm font-semibold text-slate-800 mb-4">📊 Attendance Summary</h3>
-                <div className="grid grid-cols-5 gap-4 mb-4">
-                    <div className="bg-white rounded-lg p-4 text-center border border-slate-200">
-                        <div className="text-2xl font-bold text-blue-600">{totalRegistered}</div>
-                        <div className="text-xs text-slate-600 mt-1">Total Registered</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center border border-emerald-200">
-                        <div className="text-2xl font-bold text-emerald-600">{presentCount}</div>
-                        <div className="text-xs text-slate-600 mt-1">Present</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center border border-amber-200">
-                        <div className="text-2xl font-bold text-amber-600">{lateCount}</div>
-                        <div className="text-xs text-slate-600 mt-1">Late</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center border border-rose-200">
-                        <div className="text-2xl font-bold text-rose-600">{absentCount}</div>
-                        <div className="text-xs text-slate-600 mt-1">Absent</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 text-center border border-slate-200">
-                        <div className="text-2xl font-bold text-slate-600">{notMarkedCount}</div>
-                        <div className="text-xs text-slate-600 mt-1">Not Marked</div>
-                    </div>
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-slate-900">📊 Attendance Dashboard</h3>
+                    {!event.attendance_locked && (
+                        <div className="flex gap-2">
+                            <form method="POST" action={`/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
+                                e.preventDefault();
+                                const result = await Swal.fire({
+                                    title: 'Mark All Present?',
+                                    text: `Mark all ${totalRegistered} participants as present?`,
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Yes, mark all present',
+                                    cancelButtonText: 'Cancel',
+                                    confirmButtonColor: '#16a34a',
+                                    cancelButtonColor: '#64748b',
+                                });
+                                if (result.isConfirmed) {
+                                    const form = e.target;
+                                    const statusInput = document.createElement('input');
+                                    statusInput.type = 'hidden';
+                                    statusInput.name = 'status';
+                                    statusInput.value = 'present';
+                                    form.appendChild(statusInput);
+                                    form.submit();
+                                }
+                            }}>
+                                <input type="hidden" name="_token" value={csrf} />
+                                <button type="submit" className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors">
+                                    Mark All Present
+                                </button>
+                            </form>
+                            <form method="POST" action={`/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
+                                e.preventDefault();
+                                const result = await Swal.fire({
+                                    title: 'Mark All Absent?',
+                                    text: `Mark all ${totalRegistered} participants as absent?`,
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Yes, mark all absent',
+                                    cancelButtonText: 'Cancel',
+                                    confirmButtonColor: '#dc2626',
+                                    cancelButtonColor: '#64748b',
+                                });
+                                if (result.isConfirmed) {
+                                    const form = e.target;
+                                    const statusInput = document.createElement('input');
+                                    statusInput.type = 'hidden';
+                                    statusInput.name = 'status';
+                                    statusInput.value = 'absent';
+                                    form.appendChild(statusInput);
+                                    form.submit();
+                                }
+                            }}>
+                                <input type="hidden" name="_token" value={csrf} />
+                                <button type="submit" className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 transition-colors">
+                                    Mark All Absent
+                                </button>
+                            </form>
+                        </div>
+                    )}
                 </div>
-                <div className="bg-white rounded-lg p-4 border border-slate-200">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-slate-700">Attendance Rate:</span>
-                        <span className="text-xl font-bold text-emerald-600">{attendanceRate}%</span>
+                
+                {/* Large Circular Progress Chart */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="md:col-span-2 bg-white rounded-xl p-6 border border-slate-200">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-base font-semibold text-slate-900">Attendance Rate</span>
+                            <span className="text-3xl font-bold text-emerald-600">{attendanceRate}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden">
+                            <div
+                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-4 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                                style={{ width: `${attendanceRate}%` }}
+                            >
+                                {attendanceRate > 10 && (
+                                    <span className="text-xs font-semibold text-white">{attendanceRate}%</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="mt-3 text-xs text-slate-500">
+                            {presentCount + lateCount} of {totalRegistered} participants attended
+                        </div>
                     </div>
-                    <div className="mt-2 w-full bg-slate-200 rounded-full h-2">
-                        <div
-                            className="bg-emerald-500 h-2 rounded-full transition-all"
-                            style={{ width: `${attendanceRate}%` }}
-                        ></div>
+                    
+                    {/* Status Counters */}
+                    <div className="space-y-3">
+                        <div className="bg-white rounded-lg p-4 border border-emerald-200">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-600">🟢 Present</span>
+                                <span className="text-xl font-bold text-emerald-600">{presentCount}</span>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-amber-200">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-600">🟡 Late</span>
+                                <span className="text-xl font-bold text-amber-600">{lateCount}</span>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-red-200">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-600">🔴 Absent</span>
+                                <span className="text-xl font-bold text-red-600">{absentCount}</span>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-600">⚪ Not Marked</span>
+                                <span className="text-xl font-bold text-slate-600">{notMarkedCount}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -8434,15 +8881,16 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                         <td className="px-4 py-2 font-medium text-slate-800">{reg.user?.name || 'N/A'}</td>
                                         <td className="px-4 py-2">
                                             {isMarked ? (
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm ${attendance.status === 'present' ? 'bg-emerald-50 text-emerald-700' :
-                                                    attendance.status === 'late' ? 'bg-amber-50 text-amber-700' :
-                                                        attendance.status === 'absent' ? 'bg-rose-50 text-rose-700' :
-                                                            attendance.status === 'excused' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                    {attendance.status}
+                                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                                    attendance.status === 'present' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                                        attendance.status === 'late' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                                            attendance.status === 'absent' ? 'bg-red-100 text-red-800 border border-red-200' :
+                                                                attendance.status === 'excused' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-100 text-slate-700'
+                                                }`}>
+                                                    {attendance.status === 'present' ? '🟢' : attendance.status === 'late' ? '🟡' : attendance.status === 'absent' ? '🔴' : ''} {attendance.status}
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold shadow-sm bg-slate-100 text-slate-600">Not marked</span>
+                                                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600">Not marked</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.check_in_method || 'Manual'}</td>
@@ -8500,9 +8948,9 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                         <input type="hidden" name="check_in_method" value="manual" />
                                                         <button
                                                             type="submit"
-                                                            className="inline-flex items-center rounded-md border border-emerald-500/60 bg-emerald-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                            className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
                                                         >
-                                                            Present
+                                                            🟢 Present
                                                         </button>
                                                     </form>
                                                     <form
@@ -8555,9 +9003,9 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                         <input type="hidden" name="check_in_method" value="manual" />
                                                         <button
                                                             type="submit"
-                                                            className="inline-flex items-center rounded-md border border-rose-500/60 bg-rose-50 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
+                                                            className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200"
                                                         >
-                                                            Absent
+                                                            🔴 Absent
                                                         </button>
                                                     </form>
                                                 </div>
@@ -8585,16 +9033,11 @@ function EvaluationDashboard({ events }) {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'not_started':
-                return 'bg-slate-100 text-slate-700';
-            case 'in_progress':
-                return 'bg-blue-100 text-blue-700';
-            case 'completed':
-                return 'bg-emerald-100 text-emerald-700';
-            case 'locked':
-                return 'bg-amber-100 text-amber-700';
-            default:
-                return 'bg-slate-100 text-slate-700';
+            case 'not_started': return 'bg-slate-100 text-slate-700 border border-slate-200';
+            case 'in_progress': return 'bg-blue-100 text-blue-800 border border-blue-200';
+            case 'completed': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+            case 'locked': return 'bg-amber-100 text-amber-800 border border-amber-200';
+            default: return 'bg-slate-100 text-slate-700 border border-slate-200';
         }
     };
 
@@ -8624,21 +9067,71 @@ function EvaluationDashboard({ events }) {
         window.location.href = url.toString();
     };
 
-    const totalPages = Math.ceil((events?.length || 0) / itemsPerPage);
-    const paginatedEvents = events?.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || [];
+    const evList = events || [];
+    const totalEvents = evList.length;
+    const inProgressCount = evList.filter(e => e.evaluation_status === 'in_progress').length;
+    const completedCount = evList.filter(e => e.evaluation_status === 'completed').length;
+    const notStartedCount = evList.filter(e => e.evaluation_status === 'not_started' || !e.evaluation_status).length;
+
+    const totalPages = Math.ceil(totalEvents / itemsPerPage);
+    const paginatedEvents = evList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const getEvalStatusIcon = (status) => {
+        switch (status) {
+            case 'in_progress': return '🔵';
+            case 'completed': return '🟢';
+            case 'locked': return '🟡';
+            default: return '⚪';
+        }
+    };
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                    <ClipboardList className="w-6 h-6 text-emerald-600" />
+        <div className="space-y-6">
+            {/* Hero Header - Certification style */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <ClipboardList className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Evaluation &amp; Scoring System</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Evaluate participants, track scores, and view evaluation summaries by event.
+                        </p>
+                    </div>
                 </div>
-                <h1 className="text-2xl font-semibold text-slate-900">Evaluation &amp; Scoring System</h1>
             </div>
-            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-4">
+
+            {/* Evaluation Overview Stats - Certification-style premium KPI cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Events</p>
+                    <p className="text-[32px] font-bold text-slate-900 mt-1">{totalEvents}</p>
+                    <p className="text-xs text-slate-500 mt-1">All events</p>
+                </div>
+                <div className="bg-white rounded-xl border border-blue-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">In Progress</p>
+                    <p className="text-[32px] font-bold text-blue-800 mt-1">{inProgressCount}</p>
+                    <p className="text-xs text-slate-500 mt-1">Evaluation in progress</p>
+                </div>
+                <div className="bg-white rounded-xl border border-emerald-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                    <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Completed</p>
+                    <p className="text-[32px] font-bold text-emerald-800 mt-1">{completedCount}</p>
+                    <p className="text-xs text-slate-500 mt-1">Evaluations completed</p>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Not Started</p>
+                    <p className="text-[32px] font-bold text-slate-900 mt-1">{notStartedCount}</p>
+                    <p className="text-xs text-slate-500 mt-1">Not yet started</p>
+                </div>
+            </div>
+
+            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4">
                 <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
                         <input
                             type="text"
                             placeholder="Search by event title..."
@@ -8661,7 +9154,7 @@ function EvaluationDashboard({ events }) {
                         </select>
                         <button
                             type="submit"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm font-medium text-sm transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
                         >
                             <Filter className="w-4 h-4" />
                             Filter
@@ -8670,95 +9163,69 @@ function EvaluationDashboard({ events }) {
                 </form>
             </div>
 
-            <div className="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                    <div>
-                        <h3 className="text-sm font-semibold text-slate-800">
-                            Simulation Events for Evaluation
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Events that are published, ongoing, or completed and ready for evaluation
-                        </p>
-                    </div>
-                </div>
-                {events && events.length > 0 ? (
+            {/* Event Cards (Smart Cards instead of table) */}
+            <div className="space-y-4">
+                {paginatedEvents.length > 0 ? (
                     <>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-slate-200">
-                                <thead className="bg-slate-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Event Details</th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Eval Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Event State</th>
-                                        <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Participants</th>
-                                        <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-slate-100">
-                                    {paginatedEvents.map((event) => (
-                                        <tr key={event.id} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-semibold text-slate-800">{event.title}</span>
-                                                    <span className="text-[10px] text-slate-500 mt-0.5">
-                                                        {formatDate(event.event_date)} | {event.scenario_name}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shadow-sm ${getStatusColor(event.evaluation_status)}`}>
-                                                    {getStatusLabel(event.evaluation_status)}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shadow-sm border ${event.status === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
-                                                    event.status === 'ongoing' ? 'border-blue-200 bg-blue-50 text-blue-700' :
-                                                        'border-slate-200 bg-slate-50 text-slate-600'
-                                                    }`}>
-                                                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-600">
-                                                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span>{event.participant_count}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <div className="flex items-center justify-end gap-2 text-xs">
-                                                    <a
-                                                        href={`/simulation-events/${event.id}/evaluation`}
-                                                        className="p-1.5 rounded-md text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-sm"
-                                                        title="Open Evaluation"
-                                                    >
-                                                        <ClipboardCheck className="w-4 h-4" />
-                                                    </a>
-                                                    <a
-                                                        href={`/simulation-events/${event.id}/evaluation/summary`}
-                                                        className="p-1.5 rounded-md text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all shadow-sm"
-                                                        title="View Details"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        {paginatedEvents.map((event) => (
+                            <div
+                                key={event.id}
+                                className="bg-white rounded-xl border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 transition-all duration-200 p-5"
+                            >
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-lg font-semibold text-slate-900 mb-1">📘 {event.title}</h3>
+                                        <p className="text-sm text-slate-600">
+                                            Scenario: {event.scenario_name || 'N/A'} | Date: {formatDate(event.event_date)}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(event.evaluation_status)}`}>
+                                            {getEvalStatusIcon(event.evaluation_status)} {getStatusLabel(event.evaluation_status)}
+                                        </span>
+                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                                            event.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                            event.status === 'ongoing' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                            'bg-slate-100 text-slate-600 border border-slate-200'
+                                        }`}>
+                                            {event.status?.charAt(0).toUpperCase()}{event.status?.slice(1)}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1.5 text-sm text-slate-600">
+                                            <Users className="w-4 h-4 text-slate-400" />
+                                            <span className="font-medium">{event.participant_count ?? 0}</span> Participants
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <a
+                                            href={`/simulation-events/${event.id}/evaluation`}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg font-medium text-sm transition-all duration-200"
+                                        >
+                                            <ClipboardCheck className="w-4 h-4" />
+                                            Evaluate
+                                        </a>
+                                        <a
+                                            href={`/simulation-events/${event.id}/evaluation/summary`}
+                                            className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg font-medium text-sm transition-all duration-200"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                            View Summary
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                         {totalPages > 1 && (
                             <Pagination
                                 currentPage={currentPage}
                                 totalPages={totalPages}
                                 onPageChange={(page) => setCurrentPage(page)}
                                 itemsPerPage={itemsPerPage}
-                                totalItems={events.length}
+                                totalItems={totalEvents}
                             />
                         )}
                     </>
                 ) : (
-                    <div className="px-6 py-8 text-center text-sm text-slate-500">
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-12 text-center text-slate-500">
                         No events matching your search or filters.
                     </div>
                 )}
@@ -9128,38 +9595,67 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                     <div><strong>Date:</strong> {formatDate(event.event_date)}</div>
                 </div>
             </div>
-            {/* Screen View - Buttons and Status */}
-            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6 no-print">
-                <div className="flex items-center justify-between mb-4">
+            {/* Screen View - Upgraded Event Header */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-6 no-print hover:shadow-lg transition-shadow duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
-                        <h3 className="text-sm font-semibold text-slate-800">
-                            {event.title}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Scenario: {event.scenario?.title || 'N/A'} |
-                            Date: {formatDate(event.event_date)}
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">{event.title}</h2>
+                        <p className="text-sm text-slate-600">
+                            Scenario: {event.scenario?.title || 'N/A'} | Date: {formatDate(event.event_date)}
                         </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${evaluation.status === 'locked' ? 'bg-amber-100 text-amber-700' :
-                            evaluation.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                evaluation.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-slate-100 text-slate-700'
+                        <div className="flex flex-wrap items-center gap-3 mt-3">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold border ${
+                                evaluation.status === 'locked' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                evaluation.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                evaluation.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
-                            {evaluation.status === 'locked' ? 'Locked' :
-                                evaluation.status === 'completed' ? 'Completed' :
-                                    evaluation.status === 'in_progress' ? 'In Progress' :
-                                        'Not Started'}
-                        </span>
-                        {evaluation.status !== 'locked' && !evaluation.locked_at && (
-                            <button
-                                onClick={handleLockEvaluation}
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-all shadow-sm"
-                                title="Lock Evaluation"
-                            >
-                                <Lock className="w-4 h-4" />
-                            </button>
-                        )}
+                                {evaluation.status === 'locked' ? '🔒 Locked' :
+                                    evaluation.status === 'completed' ? '🟢 Completed' :
+                                    evaluation.status === 'in_progress' ? '🔵 In Progress' : '⚪ Not Started'}
+                            </span>
+                            {(() => {
+                                const evalsArr = Array.isArray(participantEvaluations) ? participantEvaluations : Object.values(participantEvaluations || {});
+                                const submitted = evalsArr.filter(pe => (pe?.status || pe?.Status) === 'submitted');
+                                const total = participants.length || 1;
+                                const evaluated = submitted.length;
+                            return (
+                                <span className="text-sm text-slate-600 font-medium">
+                                    Participants: <span className="text-slate-900">{evaluated}</span> / {total} Evaluated
+                                </span>
+                            );})()}
+                            {evaluation.status !== 'locked' && !evaluation.locked_at && (
+                                <button
+                                    onClick={handleLockEvaluation}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-all text-sm font-medium"
+                                    title="Lock Evaluation"
+                                >
+                                    <Lock className="w-4 h-4" />
+                                    Lock
+                                </button>
+                            )}
+                        </div>
+                        {/* Progress bar */}
+                        {(() => {
+                            const evalsArr = Array.isArray(participantEvaluations) ? participantEvaluations : Object.values(participantEvaluations || {});
+                            const submitted = evalsArr.filter(pe => (pe?.status || pe?.Status) === 'submitted');
+                            const total = participants.length || 1;
+                            const pct = total > 0 ? Math.round((submitted.length / total) * 100) : 0;
+                            return (
+                                <div className="mt-3">
+                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                        <span>Evaluation progress</span>
+                                        <span>{pct}%</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>
@@ -9174,17 +9670,44 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                 </div>
             ) : (
                 <>
-                    {/* Screen View - Evaluation Criteria */}
-                    <div className="mb-4 no-print">
-                        <p className="text-xs font-semibold text-slate-600 mb-2">Evaluation Criteria:</p>
-                        <ul className="space-y-1">
-                            {criteria.map((criterion, index) => (
-                                <li key={index} className="text-xs text-slate-600 flex items-start gap-2">
-                                    <span className="text-emerald-600 mt-0.5">•</span>
-                                    <span>{criterion}</span>
-                                </li>
-                            ))}
-                        </ul>
+                    {/* Screen View - Criteria as Weighted Score Cards (aggregate from evaluated) */}
+                    <div className="mb-6 no-print">
+                        <p className="text-sm font-semibold text-slate-800 mb-3">Evaluation Criteria</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {criteria.map((criterion, index) => {
+                                const evalsArr = Array.isArray(participantEvaluations) ? participantEvaluations : Object.values(participantEvaluations || {});
+                                const submitted = evalsArr.filter(pe => (pe?.status || pe?.Status) === 'submitted');
+                                let avgScore = null, maxScore = 10, passed = false;
+                                if (submitted.length > 0) {
+                                    const criterionName = typeof criterion === 'string' ? criterion : criterion?.name || criterion;
+                                    let sum = 0, count = 0;
+                                    submitted.forEach(pe => {
+                                        const sc = (pe.scores || []).find(s => (s.criterion_name || s.criterion) === criterionName);
+                                        if (sc) { sum += parseFloat(sc.score) || 0; count++; }
+                                    });
+                                    if (count > 0) {
+                                        avgScore = (sum / count).toFixed(1);
+                                        passed = parseFloat(avgScore) >= 7;
+                                    }
+                                }
+                                return (
+                                    <div key={index} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md hover:border-slate-300 transition-all duration-200">
+                                        <p className="text-sm font-medium text-slate-800 mb-2">{typeof criterion === 'string' ? criterion : criterion?.name || criterion}</p>
+                                        {avgScore != null ? (
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden mr-3">
+                                                    <div className={`h-full rounded-full ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${(parseFloat(avgScore) / maxScore) * 100}%` }} />
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-900">{avgScore} / {maxScore}</span>
+                                                <span className={passed ? 'text-emerald-600' : 'text-rose-600'}>{passed ? '✅' : '❌'}</span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-slate-500">No scores yet</p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Participant Evaluated Section - Screen View */}
@@ -9207,62 +9730,63 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                             
                             return (
                                 <>
-                                    {/* Screen View - Participant Evaluated */}
+                                    {/* Screen View - Participant Evaluated (Profile-style rows) */}
                                     <div className="border-t border-slate-200 pt-4 mb-4 no-print">
-                                        <h4 className="text-xs font-semibold text-slate-800 mb-3">
-                                            Participant Evaluated ({submittedEvaluations.length})
+                                        <h4 className="text-sm font-semibold text-slate-800 mb-3">
+                                            Participants Evaluated ({submittedEvaluations.length})
                                         </h4>
                                         {submittedEvaluations.length > 0 ? (
-                                            <div className="rounded-md border border-slate-200 overflow-hidden">
-                                                <table className="min-w-full divide-y divide-slate-200">
-                                                    <thead className="bg-slate-50">
-                                                        <tr>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Attendance</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Evaluated Status</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Score</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-slate-100">
-                                                        {submittedEvaluations.map((pe) => {
-                                                            const attendance = attendances?.find(a => String(a.user_id) === String(pe.user_id));
-                                                            const isPresent = attendance?.status === 'present' || attendance?.status === 'completed';
-                                                            const totalScore = parseFloat(pe.total_score) || 0;
-                                                            const maxScore = criteria ? criteria.length * 10 : 0;
-                                                            const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(2) : '0.00';
-                                                            
-                                                            return (
-                                                                <tr key={pe.id || `pe-${pe.user_id}`} className="hover:bg-slate-50 transition-colors">
-                                                                    <td className="px-4 py-3 text-sm text-slate-800">
-                                                                        {pe.user?.name || attendance?.user?.name || 'Unknown'}
-                                                                    </td>
-                                                                    <td className="px-4 py-3">
-                                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shadow-sm ${
-                                                                            isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                                                        }`}>
-                                                                            {isPresent ? 'Present' : 'Not Marked'}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-4 py-3">
-                                                                        <span className="text-xs font-medium text-emerald-600">
-                                                                            Evaluated
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-4 py-3 text-sm text-slate-800">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-semibold">{totalScore.toFixed(2)} / {maxScore}</span>
-                                                                            <span className="text-xs text-slate-500">{percentage}%</span>
+                                            <div className="space-y-3">
+                                                {submittedEvaluations.map((pe) => {
+                                                    const name = pe.user?.name || attendances?.find(a => String(a.user_id) === String(pe.user_id))?.user?.name || 'Unknown';
+                                                    const attendance = attendances?.find(a => String(a.user_id) === String(pe.user_id));
+                                                    const isPresent = attendance?.status === 'present' || attendance?.status === 'completed';
+                                                    const totalScore = parseFloat(pe.total_score) || 0;
+                                                    const maxScore = criteria ? criteria.length * 10 : 0;
+                                                    const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(0) : 0;
+                                                    const passed = maxScore > 0 && (totalScore / maxScore) >= 0.7;
+                                                    const initials = getInitials(name);
+                                                    const avatarColor = getAvatarColor(name);
+                                                    return (
+                                                        <div key={pe.id || `pe-${pe.user_id}`} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
+                                                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white ${avatarColor}`}>
+                                                                {initials}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="font-semibold text-slate-900">{name}</p>
+                                                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                                                        {isPresent ? '✓ Present' : 'Not Marked'}
+                                                                    </span>
+                                                                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                                                        ✓ Evaluated
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4 shrink-0">
+                                                                <div className="text-right">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                                            <div className={`h-full rounded-full ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(percentage, 100)}%` }} />
                                                                         </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
+                                                                        <span className="text-sm font-bold text-slate-900">{totalScore.toFixed(1)} / {maxScore}</span>
+                                                                    </div>
+                                                                    <span className="text-xs text-slate-500">{percentage}%</span>
+                                                                </div>
+                                                                <a
+                                                                    href={`/simulation-events/${event.id}/evaluation/${pe.user_id}`}
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all"
+                                                                >
+                                                                    View Details
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         ) : (
-                                            <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-center">
-                                                <p className="text-xs text-slate-500">No participants have been evaluated yet.</p>
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center">
+                                                <p className="text-sm text-slate-500">No participants have been evaluated yet.</p>
                                             </div>
                                         )}
                                     </div>
@@ -9291,63 +9815,55 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
 
                         return (
                             <div className="border-t border-slate-200 pt-4 mb-4 no-print">
-                                <h4 className="text-xs font-semibold text-slate-800 mb-3">
-                                    Participant Evaluation List ({pending.length})
+                                <h4 className="text-sm font-semibold text-slate-800 mb-3">
+                                    Participants Pending Evaluation ({pending.length})
                                 </h4>
 
                                 {pending.length > 0 ? (
-                                    <div className="rounded-md border border-slate-200 overflow-hidden">
-                                        <table className="min-w-full divide-y divide-slate-200">
-                                            <thead className="bg-slate-50">
-                                                <tr>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Attendance</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Evaluation Status</th>
-                                                    <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-slate-100">
-                                                {pending.map((p) => {
-                                                    const status = getEvaluationStatus(p.user_id);
-                                                    const isPresent = p.attendance_status === 'present' || p.attendance_status === 'completed';
-
-                                                    return (
-                                                        <tr key={`pending-${p.user_id}`} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-4 py-3 text-sm text-slate-800">
-                                                                {p.user?.name || 'Unknown'}
-                                                            </td>
-                                                            <td className="px-4 py-3">
-                                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shadow-sm ${isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                                                    {isPresent ? 'Present' : 'Not Marked'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-4 py-3">
-                                                                <span className={`text-xs font-medium ${status.color}`}>
-                                                                    {status.label}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right">
-                                                                {isLocked ? (
-                                                                    <span className="text-xs text-slate-500">Locked</span>
-                                                                ) : (
-                                                                    <a
-                                                                        href={`/simulation-events/${event.id}/evaluation/${p.user_id}`}
-                                                                        className={`inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${isPresent ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed pointer-events-none'}`}
-                                                                        title={isPresent ? 'Evaluate participant' : 'Participant must be marked present first'}
-                                                                    >
-                                                                        Evaluate
-                                                                    </a>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                    <div className="space-y-3">
+                                        {pending.map((p) => {
+                                            const status = getEvaluationStatus(p.user_id);
+                                            const isPresent = p.attendance_status === 'present' || p.attendance_status === 'completed';
+                                            const name = p.user?.name || 'Unknown';
+                                            const initials = getInitials(name);
+                                            const avatarColor = getAvatarColor(name);
+                                            return (
+                                                <div key={`pending-${p.user_id}`} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
+                                                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white ${avatarColor}`}>
+                                                        {initials}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-slate-900">{name}</p>
+                                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                                                {isPresent ? '✓ Present' : 'Not Marked'}
+                                                            </span>
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${status.label === 'Evaluated' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                                                {status.label}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="shrink-0">
+                                                        {isLocked ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-lg">🔒 Locked</span>
+                                                        ) : (
+                                                            <a
+                                                                href={isPresent ? `/simulation-events/${event.id}/evaluation/${p.user_id}` : '#'}
+                                                                className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${isPresent ? 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)]' : 'bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none'}`}
+                                                                title={isPresent ? 'Evaluate participant' : 'Participant must be marked present first'}
+                                                            >
+                                                                <ClipboardCheck className="w-4 h-4" />
+                                                                Evaluate
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
-                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-center">
-                                        <p className="text-xs text-slate-500">No participants pending evaluation.</p>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center">
+                                        <p className="text-sm text-slate-500">No participants pending evaluation.</p>
                                     </div>
                                 )}
                             </div>
@@ -9560,59 +10076,75 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
 
     const isLocked = evaluation?.status === 'locked' || evaluation?.locked_at;
 
+    const allScored = criteria?.every(c => {
+        const d = formScores[c] || {};
+        return d.score !== '' && d.score != null;
+    }) ?? false;
+    const canSubmit = !isLocked && allScored;
+
+    const passed = maxScore > 0 && (totalScore / maxScore) >= 0.7;
+
     return (
-        <div className="space-y-4">
-            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6">
-                <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                        Evaluate Participant: {user?.name}
-                    </h3>
-                    <div className="text-xs text-slate-600 space-y-1">
-                        <p><strong>Event:</strong> {event?.title}</p>
-                        <p><strong>Scenario:</strong> {event?.scenario?.title || 'N/A'}</p>
-                        <p><strong>Date:</strong> {formatDate(event?.event_date)}</p>
-                    </div>
+        <div className="space-y-6">
+            {/* Header Card */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-6">
+                <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <h2 className="text-xl font-bold text-slate-900">Evaluate Participant</h2>
+                    <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {user?.name}
+                    </span>
+                    {isLocked && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                            <Lock className="w-4 h-4" /> Locked
+                        </span>
+                    )}
                 </div>
+                <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+                    <span><strong>Event:</strong> {event?.title}</span>
+                    <span><strong>Scenario:</strong> {event?.scenario?.title || 'N/A'}</span>
+                    <span><strong>Date:</strong> {formatDate(event?.event_date)}</span>
+                </div>
+            </div>
 
-                {isLocked && (
-                    <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-                        <p className="text-sm text-amber-700">
-                            <strong>Locked:</strong> This evaluation is locked and cannot be modified.
-                        </p>
-                    </div>
-                )}
+            {isLocked && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm text-amber-700">
+                        <strong>Locked:</strong> This evaluation is locked and cannot be modified.
+                    </p>
+                </div>
+            )}
 
-                <form
-                    method="POST"
-                    action={`/simulation-events/${event.id}/evaluation/${user.id}`}
-                    onSubmit={handleSubmit}
-                    className="space-y-6"
-                >
-                    <input type="hidden" name="_token" value={csrf} />
-                    <input type="hidden" name="status" value="submitted" />
+            <form
+                method="POST"
+                action={`/simulation-events/${event.id}/evaluation/${user.id}`}
+                onSubmit={handleSubmit}
+                className="flex flex-col lg:flex-row gap-6"
+            >
+                <input type="hidden" name="_token" value={csrf} />
+                <input type="hidden" name="status" value="submitted" />
+
+                {/* Left Column - Criteria (70%) */}
+                <div className="flex-1 lg:w-[70%] space-y-4">
                     {criteria && criteria.length > 0 ? (
-                        <div className="space-y-4">
-                            <h4 className="text-xs font-semibold text-slate-800">Evaluation Criteria</h4>
+                        <>
                             {criteria.map((criterion, index) => {
                                 const criterionName = criterion;
                                 const scoreData = formScores[criterionName] || { score: '', comment: '' };
                                 return (
-                                    <div key={index} className="border border-slate-200 rounded-md p-4">
+                                    <div key={index} className="rounded-xl bg-white border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow duration-200">
+                                        <label className="block text-sm font-semibold text-slate-800 mb-3">
+                                            {criterionName} <span className="text-rose-500">*</span>
+                                        </label>
+                                        {/* Segmented bar score selection (0-10) */}
                                         <div className="mb-3">
-                                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                                {criterionName} <span className="text-red-500">*</span>
-                                            </label>
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="block text-xs text-slate-600 mb-2">Score (0-10) *</label>
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex gap-1 flex-wrap">
                                                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
                                                     <label
                                                         key={score}
-                                                        className={`inline-flex items-center justify-center w-10 h-10 rounded border-2 cursor-pointer transition-all ${
+                                                        className={`flex-1 min-w-[2rem] h-9 rounded-md flex items-center justify-center text-sm font-semibold cursor-pointer transition-all duration-200 ${
                                                             String(scoreData.score) === String(score)
-                                                                ? 'bg-emerald-600 border-emerald-600 text-white'
-                                                                : 'bg-white border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+                                                                ? 'bg-emerald-600 text-white shadow-md'
+                                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                         } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     >
                                                         <input
@@ -9625,10 +10157,11 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                                             required
                                                             className="sr-only"
                                                         />
-                                                        <span className="text-sm font-semibold">{score}</span>
+                                                        {score}
                                                     </label>
                                                 ))}
                                             </div>
+                                            <p className="text-xs text-slate-500 mt-1">0 = Poor, 10 = Excellent</p>
                                         </div>
                                         <div>
                                             <label className="block text-xs text-slate-600 mb-1">Comment (Optional)</label>
@@ -9637,86 +10170,94 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                                 value={scoreData.comment}
                                                 onChange={(e) => handleScoreChange(criterionName, 'comment', e.target.value)}
                                                 disabled={isLocked}
-                                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100"
-                                                placeholder="Add comments about this criterion..."
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 disabled:bg-slate-50"
+                                                placeholder="Add comments..."
                                             />
                                         </div>
-                                        {/* Hidden inputs so scores/comments are submitted via normal POST */}
-                                        <input
-                                            type="hidden"
-                                            name={`scores[${criterionName}][score]`}
-                                            value={scoreData.score ?? ''}
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name={`scores[${criterionName}][comment]`}
-                                            value={scoreData.comment ?? ''}
-                                        />
+                                        <input type="hidden" name={`scores[${criterionName}][score]`} value={scoreData.score ?? ''} />
+                                        <input type="hidden" name={`scores[${criterionName}][comment]`} value={scoreData.comment ?? ''} />
                                     </div>
                                 );
                             })}
-                        </div>
+                            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+                                <label className="block text-sm font-semibold text-slate-800 mb-2">Overall Feedback</label>
+                                <textarea
+                                    name="overall_feedback"
+                                    rows={4}
+                                    value={overallFeedback}
+                                    onChange={(e) => setOverallFeedback(e.target.value)}
+                                    disabled={isLocked}
+                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 disabled:bg-slate-50"
+                                    placeholder="Provide overall feedback for this participant..."
+                                />
+                            </div>
+                        </>
                     ) : (
-                        <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
-                            <p className="text-sm text-rose-700">
-                                No evaluation criteria defined for this scenario.
-                            </p>
+                        <div className="rounded-xl border border-rose-200 bg-rose-50 p-6">
+                            <p className="text-sm text-rose-700">No evaluation criteria defined for this scenario.</p>
                         </div>
                     )}
+                </div>
 
-                    <div className="border-t border-slate-200 pt-4">
-                        <label className="block text-xs font-semibold text-slate-700 mb-2">
-                            Overall Feedback
-                        </label>
-                        <textarea
-                            name="overall_feedback"
-                            rows={4}
-                            value={overallFeedback}
-                            onChange={(e) => setOverallFeedback(e.target.value)}
-                            disabled={isLocked}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100"
-                            placeholder="Provide overall feedback for this participant..."
-                        />
-                    </div>
-
-                    {/* Total Score Display */}
-                    <div className="border-t border-slate-200 pt-4">
-                        <div className="bg-slate-50 rounded-md p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-semibold text-slate-700 mb-1">Total Score</p>
-                                    <p className="text-lg font-bold text-emerald-700">
-                                        {totalScore.toFixed(2)} / {maxScore}
-                                    </p>
+                {/* Right Column - Sticky Live Score Summary (30%) */}
+                <div className="lg:w-[30%] lg:min-w-[280px]">
+                    <div className="lg:sticky lg:top-6 rounded-xl bg-white border border-slate-200 shadow-md p-6 space-y-5">
+                        <h4 className="text-sm font-semibold text-slate-800">Live Score Summary</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Score</p>
+                                <p className="text-2xl font-bold text-slate-900 mt-1">{totalScore.toFixed(1)} / {maxScore}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Percentage</p>
+                                <p className="text-2xl font-bold text-slate-900 mt-1">{percentage}%</p>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-xs text-slate-600 mb-1">
+                                    <span>Progress</span>
+                                    <span>{percentage}%</span>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-semibold text-slate-700 mb-1">Final Percentage</p>
-                                    <p className="text-lg font-bold text-emerald-700">
-                                        {percentage}%
-                                    </p>
+                                <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full transition-all duration-500 ${passed ? 'bg-emerald-500' : parseFloat(percentage) > 0 ? 'bg-amber-500' : 'bg-slate-300'}`}
+                                        style={{ width: `${Math.min(parseFloat(percentage) || 0, 100)}%` }}
+                                    />
                                 </div>
                             </div>
+                            <div>
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold ${
+                                    maxScore === 0 ? 'bg-slate-100 text-slate-600' :
+                                    passed ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                    'bg-rose-100 text-rose-800 border border-rose-200'
+                                }`}>
+                                    {maxScore === 0 ? '—' : passed ? '✓ Pass' : '✗ Fail'}
+                                </span>
+                            </div>
                         </div>
+                        {!isLocked && (
+                            <div className="pt-4 border-t border-slate-200 space-y-2">
+                                <button
+                                    type="submit"
+                                    disabled={!canSubmit}
+                                    className="w-full inline-flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition-all duration-200 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] disabled:hover:shadow-none"
+                                >
+                                    <ClipboardCheck className="w-4 h-4" />
+                                    Submit Final Score
+                                </button>
+                                {!allScored && (
+                                    <p className="text-xs text-amber-600 text-center">Score all criteria to enable submit</p>
+                                )}
+                                <a
+                                    href={`/simulation-events/${event.id}/evaluation`}
+                                    className="block text-center text-sm text-slate-600 hover:text-slate-800"
+                                >
+                                    Cancel
+                                </a>
+                            </div>
+                        )}
                     </div>
-
-                    {!isLocked && (
-                        <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200">
-                            <a
-                                href={`/simulation-events/${event.id}/evaluation`}
-                                className="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                            >
-                                Cancel
-                            </a>
-                            <button
-                                type="submit"
-                                className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-medium"
-                            >
-                                Submit Final Score
-                            </button>
-                        </div>
-                    )}
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     );
 }
@@ -9824,85 +10365,162 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                 </div>
             </div>
 
-            {/* Screen view */}
-            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-6 no-print">
-                <div className="flex items-center justify-between mb-6">
+            {/* Screen view - Performance Analytics Dashboard */}
+            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-6 no-print">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <div>
-                        <h3 className="text-sm font-semibold text-slate-800">
+                        <h3 className="text-lg font-bold text-slate-900">
                             Evaluation Summary: {event?.title}
                         </h3>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Scenario: {event?.scenario?.title || 'N/A'} |
-                            Date: {formatDate(event?.event_date)}
+                        <p className="text-sm text-slate-600 mt-1">
+                            Scenario: {event?.scenario?.title || 'N/A'} | Date: {formatDate(event?.event_date)}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handlePrint}
-                            className="inline-flex items-center rounded-md border border-sky-300 bg-sky-100 px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-200"
+                            className="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-800 hover:bg-sky-100 hover:shadow-md transition-all duration-200"
                         >
+                            <Printer className="w-4 h-4" />
                             Print Summary
                         </button>
                         <button
                             onClick={() => handleExport('csv')}
-                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-200"
+                            className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 hover:shadow-md transition-all duration-200"
                         >
+                            <Download className="w-4 h-4" />
                             Export CSV
                         </button>
                     </div>
                 </div>
 
-                {/* Statistics */}
-                <div className="grid grid-cols-4 gap-4 mb-6">
-                    <div className="rounded-md border border-slate-200 p-4">
-                        <p className="text-xs text-slate-600 mb-1">Total Participants</p>
+                {/* Dashboard-style cards with hierarchy */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {/* Average Score - Largest / Primary */}
+                    <div className="md:col-span-2 rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-l-emerald-500">
+                        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Average Score</p>
+                        <p className="text-4xl font-bold text-emerald-800">{avgPct}%</p>
+                        <p className="text-sm text-slate-600 mt-1">Overall performance across all participants</p>
+                    </div>
+                    {/* Passed / Failed side by side */}
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-1 md:gap-3">
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm hover:shadow-md transition-all duration-200">
+                            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Passed</p>
+                            <p className="text-3xl font-bold text-emerald-700">{passedCount || 0}</p>
+                        </div>
+                        <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 shadow-sm hover:shadow-md transition-all duration-200">
+                            <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide mb-1">Failed</p>
+                            <p className="text-3xl font-bold text-rose-700">{failedCount || 0}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="mb-6">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200 border-l-4 border-l-slate-400">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Total Participants</p>
                         <p className="text-2xl font-bold text-slate-800">{totalParticipants || 0}</p>
-                    </div>
-                    <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
-                        <p className="text-xs text-emerald-600 mb-1">Passed</p>
-                        <p className="text-2xl font-bold text-emerald-700">{passedCount || 0}</p>
-                    </div>
-                    <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-xs text-rose-600 mb-1">Failed</p>
-                        <p className="text-2xl font-bold text-rose-700">{failedCount || 0}</p>
-                    </div>
-                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
-                        <p className="text-xs text-blue-600 mb-1">Average Score</p>
-                        <p className="text-2xl font-bold text-blue-700">
-                            {(parseFloat(overallAverage ?? 0) || 0).toFixed(2)}%
-                        </p>
                     </div>
                 </div>
 
-                {/* Criterion Averages */}
-                {criteria && criteria.length > 0 && (
-                    <div className="mb-6">
-                        <h4 className="text-xs font-semibold text-slate-800 mb-3">Criterion</h4>
-                        <div className="space-y-2">
-                            {criteria.map((criterion, index) => {
-                                const criterionName = criterion;
-                                return (
-                                    <div key={index} className="flex items-center justify-between p-3 border border-slate-200 rounded-md">
-                                        <span className="text-sm text-slate-700">{criterionName}</span>
-                                    </div>
-                                );
-                            })}
+                {/* Simple charts */}
+                {(() => {
+                    const maxScore = criteria ? criteria.length * 10 : 0;
+                    const buckets = { '0-49%': 0, '50-69%': 0, '70-84%': 0, '85-100%': 0 };
+                    (participantEvaluations || []).forEach((pe) => {
+                        const totalScore = parseFloat(pe.total_score ?? 0) || 0;
+                        const pct = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+                        if (pct < 50) buckets['0-49%']++;
+                        else if (pct < 70) buckets['50-69%']++;
+                        else if (pct < 85) buckets['70-84%']++;
+                        else buckets['85-100%']++;
+                    });
+                    const maxBucket = Math.max(1, ...Object.values(buckets));
+                    return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                    {/* Pass vs Fail chart */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200">
+                        <h4 className="text-sm font-semibold text-slate-800 mb-4">Pass vs Fail</h4>
+                        <div className="flex items-end gap-2 h-24">
+                            <div className="flex-1 flex flex-col items-center gap-1">
+                                <div
+                                    className="w-full bg-emerald-500 rounded-t transition-all duration-500"
+                                    style={{ height: `${(totalParticipants || 0) > 0 ? ((passedCount || 0) / (totalParticipants || 1)) * 100 : 0}%`, minHeight: (passedCount || 0) > 0 ? 8 : 0 }}
+                                />
+                                <span className="text-xs font-medium text-slate-600">Passed</span>
+                                <span className="text-xs text-slate-500">{passedCount || 0}</span>
+                            </div>
+                            <div className="flex-1 flex flex-col items-center gap-1">
+                                <div
+                                    className="w-full bg-rose-500 rounded-t transition-all duration-500"
+                                    style={{ height: `${(totalParticipants || 0) > 0 ? ((failedCount || 0) / (totalParticipants || 1)) * 100 : 0}%`, minHeight: (failedCount || 0) > 0 ? 8 : 0 }}
+                                />
+                                <span className="text-xs font-medium text-slate-600">Failed</span>
+                                <span className="text-xs text-slate-500">{failedCount || 0}</span>
+                            </div>
                         </div>
                     </div>
-                )}
 
-                {/* Participant Results */}
+                    {/* Score Distribution chart */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200">
+                        <h4 className="text-sm font-semibold text-slate-800 mb-4">Score Distribution</h4>
+                        <div className="flex items-end gap-2 h-24">
+                            {Object.entries(buckets).map(([label, count]) => (
+                                <div key={label} className="flex-1 flex flex-col items-center gap-1">
+                                    <div
+                                        className={`w-full rounded-t transition-all duration-500 ${
+                                            label === '85-100%' ? 'bg-emerald-500' :
+                                            label === '70-84%' ? 'bg-emerald-400' :
+                                            label === '50-69%' ? 'bg-amber-500' : 'bg-rose-500'
+                                        }`}
+                                        style={{ height: `${(count / maxBucket) * 100}%`, minHeight: count > 0 ? 8 : 0 }}
+                                    />
+                                    <span className="text-xs font-medium text-slate-600">{label}</span>
+                                    <span className="text-xs text-slate-500">{count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Criteria Performance chart */}
+                    {criteria && criteria.length > 0 && criterionAverages && Object.keys(criterionAverages).length > 0 && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200">
+                            <h4 className="text-sm font-semibold text-slate-800 mb-4">Criteria Performance</h4>
+                            <div className="space-y-3">
+                                {criteria.map((criterion, index) => {
+                                    const criterionName = typeof criterion === 'string' ? criterion : criterion?.name || criterion;
+                                    const avg = parseFloat(criterionAverages[criterionName] ?? 0) || 0;
+                                    const pct = Math.min(100, (avg / 10) * 100);
+                                    const passed = avg >= 7;
+                                    return (
+                                        <div key={index} className="flex items-center gap-3">
+                                            <span className="text-xs font-medium text-slate-700 w-32 truncate" title={criterionName}>{criterionName}</span>
+                                            <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-800 w-10">{avg.toFixed(1)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                    );
+                })()}
+
+                {/* Participant Results - improved table */}
                 <div>
-                    <h4 className="text-xs font-semibold text-slate-800 mb-3">Participant Results</h4>
-                    <div className="rounded-md border border-slate-200 overflow-hidden">
+                    <h4 className="text-sm font-semibold text-slate-800 mb-3">Participant Results</h4>
+                    <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                         <table className="min-w-full divide-y divide-slate-200">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Participant</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Total Score</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Average Score</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Result</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Certification Eligible</th>
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Participant</th>
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Score</th>
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Result</th>
+                                    <th className="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Certification</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-100">
@@ -9910,41 +10528,50 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                     participantEvaluations.map((pe) => {
                                         const totalScore = parseFloat(pe.total_score ?? 0) || 0;
                                         const averageScore = parseFloat(pe.average_score ?? 0) || 0;
+                                        const maxScore = criteria ? criteria.length * 10 : 0;
+                                        const pct = maxScore > 0 ? Math.min(100, (totalScore / maxScore) * 100) : 0;
+                                        const passed = pe.result === 'passed';
 
                                         return (
-                                        <tr key={pe.id} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 text-sm text-slate-800">
-                                                {pe.user?.name || 'Unknown'}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-600">
-                                                {totalScore.toFixed(2)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-600">
-                                                {averageScore.toFixed(2)}%
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shadow-sm ${pe.result === 'passed'
-                                                    ? 'bg-emerald-50 text-emerald-700'
-                                                    : 'bg-rose-50 text-rose-700'
+                                            <tr key={pe.id} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="px-5 py-4">
+                                                    <span className="font-medium text-slate-900">{pe.user?.name || 'Unknown'}</span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-24 h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full transition-all duration-500 ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-slate-800">{totalScore.toFixed(1)} / {maxScore}</span>
+                                                        <span className="text-xs text-slate-500">({averageScore.toFixed(1)}%)</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold border ${
+                                                        passed ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-rose-100 text-rose-800 border-rose-200'
                                                     }`}>
-                                                    {pe.result === 'passed' ? 'Passed' : 'Failed'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {pe.is_eligible_for_certification ? (
-                                                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                                        Yes
+                                                        {passed ? '✓ Passed' : '✗ Failed'}
                                                     </span>
-                                                ) : (
-                                                    <span className="text-xs text-slate-500">No</span>
-                                                )}
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td className="px-5 py-4 text-center">
+                                                    {pe.is_eligible_for_certification ? (
+                                                        <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-medium text-emerald-700 border border-emerald-200">
+                                                            <Award className="w-4 h-4" />
+                                                            Eligible
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400">—</span>
+                                                    )}
+                                                </td>
+                                            </tr>
                                         );
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan="5" className="px-4 py-8 text-center text-sm text-slate-500">
+                                        <td colSpan="4" className="px-5 py-12 text-center text-slate-500">
                                             No evaluations submitted yet.
                                         </td>
                                     </tr>
@@ -9958,7 +10585,7 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
     );
 }
 
-// Barangay Profile List (table with Create button and search)
+// Barangay Profile List (redesigned table)
 function BarangayProfileList({ profiles = [] }) {
     const [search, setSearch] = React.useState('');
     const filtered = React.useMemo(() => {
@@ -10001,72 +10628,123 @@ function BarangayProfileList({ profiles = [] }) {
 
     return (
         <div className="space-y-6 w-full">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-lg">
-                        <Settings className="w-6 h-6 text-emerald-600" />
-                    </div>
+            {/* Page header */}
+            {/* Hero Header - Certification style */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                     <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Barangay Profile</h2>
-                        <p className="text-sm text-slate-600 mt-1">Manage barangay information and disaster hazards.</p>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
+                                <Settings className="w-9 h-9 text-emerald-600" />
+                            </div>
+                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Barangay Profile</h1>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
+                            Manage barangay information and disaster hazards for your area.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3 shrink-0">
+                        <a
+                            href="/barangay-profile/create"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Create profile
+                        </a>
                     </div>
                 </div>
-                <a
-                    href="/barangay-profile/create"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 transition-colors"
-                >
-                    <Plus className="w-4 h-4" />
-                    Create profile
-                </a>
             </div>
-            <div className="relative max-w-xs">
+
+            {/* Search */}
+            <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                     type="text"
                     placeholder="Search by name, municipality, or province..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-md border border-slate-300 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
                 />
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+
+            {/* Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full divide-y divide-slate-200 text-sm">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Barangay Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Municipality</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Province</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Disaster Hazards</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Actions</th>
+                    <table className="w-full min-w-[640px] text-sm">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Barangay Name
+                                </th>
+                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Municipality
+                                </th>
+                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Province
+                                </th>
+                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Disaster Hazards
+                                </th>
+                                <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                                        No barangay profiles yet. Click &quot;Create profile&quot; to add one.
+                                    <td colSpan={5} className="px-5 py-12 text-center">
+                                        <p className="text-slate-500 font-medium">
+                                            {profiles.length === 0
+                                                ? 'No barangay profiles yet.'
+                                                : 'No profiles match your search.'}
+                                        </p>
+                                        <p className="text-slate-400 text-xs mt-1">
+                                            {profiles.length === 0 ? 'Click "Create profile" to add one.' : 'Try a different search term.'}
+                                        </p>
+                                        {profiles.length === 0 && (
+                                            <a
+                                                href="/barangay-profile/create"
+                                                className="inline-flex items-center gap-2 mt-4 rounded-xl px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                Create profile
+                                            </a>
+                                        )}
                                     </td>
                                 </tr>
                             ) : (
                                 filtered.map((p) => (
-                                    <tr key={p.id} className="hover:bg-slate-50/70">
-                                        <td className="px-4 py-3 font-medium text-slate-900">{p.barangay_name || '—'}</td>
-                                        <td className="px-4 py-3 text-slate-700">{p.municipality_city || '—'}</td>
-                                        <td className="px-4 py-3 text-slate-700">{p.province || '—'}</td>
-                                        <td className="px-4 py-3 text-slate-700">{hazardDisplay(p.hazards)}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
+                                    <tr
+                                        key={p.id}
+                                        className="bg-white hover:bg-slate-50/80 transition-colors duration-150"
+                                    >
+                                        <td className="px-5 py-4 font-semibold text-slate-900">
+                                            {p.barangay_name || '—'}
+                                        </td>
+                                        <td className="px-5 py-4 text-slate-700">
+                                            {p.municipality_city || '—'}
+                                        </td>
+                                        <td className="px-5 py-4 text-slate-700">
+                                            {p.province || '—'}
+                                        </td>
+                                        <td className="px-5 py-4 text-slate-600 max-w-[200px]">
+                                            <span className="line-clamp-2" title={hazardDisplay(p.hazards)}>
+                                                {hazardDisplay(p.hazards)}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <a
                                                     href={`/barangay-profile/${p.id}`}
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors shadow-sm"
+                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
                                                     title="View"
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                 </a>
                                                 <a
                                                     href={`/barangay-profile/${p.id}/edit`}
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
+                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
                                                     title="Edit"
                                                 >
                                                     <Pencil className="w-4 h-4" />
@@ -10074,7 +10752,7 @@ function BarangayProfileList({ profiles = [] }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleDelete(p)}
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors shadow-sm"
+                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors"
                                                     title="Delete"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -10137,7 +10815,7 @@ function BarangayProfileDetail({ profile }) {
     );
 }
 
-// Barangay Profile Form Component
+// Barangay Profile Form Component (create & edit)
 function BarangayProfileForm({ profile }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const isEditing = !!profile;
@@ -10164,10 +10842,7 @@ function BarangayProfileForm({ profile }) {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
-        // Clear error for this field
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: null }));
-        }
+        if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
     };
 
     const handleHazardToggle = (hazard) => {
@@ -10181,42 +10856,22 @@ function BarangayProfileForm({ profile }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Client-side validation
         const newErrors = {};
-        if (!formData.barangay_name.trim()) {
-            newErrors.barangay_name = 'Barangay name is required';
-        }
-        if (!formData.municipality_city.trim()) {
-            newErrors.municipality_city = 'Municipality/City is required';
-        }
-        if (!formData.province.trim()) {
-            newErrors.province = 'Province is required';
-        }
-
+        if (!formData.barangay_name.trim()) newErrors.barangay_name = 'Barangay name is required';
+        if (!formData.municipality_city.trim()) newErrors.municipality_city = 'Municipality/City is required';
+        if (!formData.province.trim()) newErrors.province = 'Province is required';
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             return;
         }
-
-        const hazards = [...formData.hazards];
-
-        // Submit form
         const form = e.target;
         const formDataToSubmit = new FormData(form);
-
-        // Add hazards as array
         formDataToSubmit.delete('hazards[]');
-        hazards.forEach(hazard => {
-            formDataToSubmit.append('hazards[]', hazard);
-        });
-
+        formData.hazards.forEach(hazard => formDataToSubmit.append('hazards[]', hazard));
         try {
             const result = await Swal.fire({
                 title: isEditing ? 'Update Profile' : 'Create Profile',
-                text: isEditing
-                    ? 'Are you sure you want to update the barangay profile?'
-                    : 'Are you sure you want to create the barangay profile?',
+                text: isEditing ? 'Update this barangay profile?' : 'Create this barangay profile?',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: isEditing ? 'Yes, update' : 'Yes, create',
@@ -10224,47 +10879,55 @@ function BarangayProfileForm({ profile }) {
                 confirmButtonColor: '#10b981',
                 cancelButtonColor: '#64748b',
             });
-
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        } catch (error) {
-            console.error('Error submitting form:', error);
+            if (result.isConfirmed) form.submit();
+        } catch (err) {
+            console.error('Error submitting form:', err);
         }
     };
 
+    const labelClass = 'block text-xs font-semibold text-slate-600 mb-1';
+    const inputClass = (name) =>
+        `w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow ${errors[name] ? 'border-rose-500' : 'border-slate-300'}`;
+
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="w-full max-w-full py-2">
+            <a
+                href="/barangay-profile"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
+            >
+                <ChevronLeft className="w-4 h-4" />
+                Back to Barangay Profile
+            </a>
+
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
+                    <Settings className="w-7 h-7 text-emerald-600" />
+                </div>
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">
+                    <h2 className="text-xl font-bold text-slate-800">
                         {isEditing ? 'Edit Barangay Profile' : 'Create Barangay Profile'}
                     </h2>
-                    <p className="text-sm text-slate-600 mt-1">
-                        Manage your barangay's information and disaster preparedness context
+                    <p className="text-sm text-slate-500 mt-0.5">
+                        {isEditing ? 'Update barangay information and hazards' : 'Add a new barangay and its disaster hazards'}
                     </p>
                 </div>
             </div>
 
-            {/* Form */}
             <form
                 method="POST"
                 action={isEditing ? `/barangay-profile/${profile.id}` : '/barangay-profile'}
                 onSubmit={handleSubmit}
-                className="space-y-6"
+                className="training-module-card-enter bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg space-y-6"
             >
                 <input type="hidden" name="_token" value={csrf} />
                 {isEditing && <input type="hidden" name="_method" value="PUT" />}
 
-                {/* Barangay Information Section */}
-                <div className="bg-white rounded-xl border border-slate-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Barangay Information</h3>
-
+                {/* Barangay Information */}
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Barangay Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Barangay Name */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className={labelClass}>
                                 Barangay Name <span className="text-rose-500">*</span>
                             </label>
                             <input
@@ -10272,18 +10935,15 @@ function BarangayProfileForm({ profile }) {
                                 name="barangay_name"
                                 value={formData.barangay_name}
                                 onChange={handleInputChange}
-                                className={`w-full px-3 py-2 border rounded-md text-sm ${errors.barangay_name ? 'border-rose-500' : 'border-slate-300'
-                                    } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                className={inputClass('barangay_name')}
                                 placeholder="e.g., Barangay San Jose"
                             />
                             {errors.barangay_name && (
                                 <p className="text-xs text-rose-600 mt-1">{errors.barangay_name}</p>
                             )}
                         </div>
-
-                        {/* Municipality/City */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className={labelClass}>
                                 Municipality / City <span className="text-rose-500">*</span>
                             </label>
                             <input
@@ -10291,18 +10951,15 @@ function BarangayProfileForm({ profile }) {
                                 name="municipality_city"
                                 value={formData.municipality_city}
                                 onChange={handleInputChange}
-                                className={`w-full px-3 py-2 border rounded-md text-sm ${errors.municipality_city ? 'border-rose-500' : 'border-slate-300'
-                                    } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                className={inputClass('municipality_city')}
                                 placeholder="e.g., Quezon City"
                             />
                             {errors.municipality_city && (
                                 <p className="text-xs text-rose-600 mt-1">{errors.municipality_city}</p>
                             )}
                         </div>
-
-                        {/* Province */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className={labelClass}>
                                 Province <span className="text-rose-500">*</span>
                             </label>
                             <input
@@ -10310,78 +10967,65 @@ function BarangayProfileForm({ profile }) {
                                 name="province"
                                 value={formData.province}
                                 onChange={handleInputChange}
-                                className={`w-full px-3 py-2 border rounded-md text-sm ${errors.province ? 'border-rose-500' : 'border-slate-300'
-                                    } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                className={inputClass('province')}
                                 placeholder="e.g., Metro Manila"
                             />
                             {errors.province && (
                                 <p className="text-xs text-rose-600 mt-1">{errors.province}</p>
                             )}
                         </div>
-
-                        {/* Barangay Address */}
                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Barangay Address
-                            </label>
+                            <label className={labelClass}>Barangay Address</label>
                             <textarea
                                 name="barangay_address"
                                 value={formData.barangay_address}
                                 onChange={handleInputChange}
-                                rows="2"
-                                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                rows={3}
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
                                 placeholder="Complete barangay address"
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* Disaster Hazards Section */}
-                <div className="bg-white rounded-xl border border-slate-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Disaster Hazards</h3>
-
-                    {/* Hidden inputs for selected hazards */}
+                {/* Disaster Hazards */}
+                <div className="pt-4 border-t border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 mb-3">Disaster Hazards</h3>
                     {formData.hazards.map((hazard, index) => (
-                        <input
-                            key={index}
-                            type="hidden"
-                            name="hazards[]"
-                            value={hazard}
-                        />
+                        <input key={index} type="hidden" name="hazards[]" value={hazard} />
                     ))}
-
-                    {/* Disaster Hazards Checkboxes */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Disaster Hazards
-                        </label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {hazardOptions.map(hazard => (
-                                <label key={hazard} className="flex items-center space-x-2 cursor-pointer">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {hazardOptions.map(hazard => {
+                            const checked = formData.hazards.includes(hazard);
+                            return (
+                                <label
+                                    key={hazard}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-colors ${checked ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'}`}
+                                >
                                     <input
                                         type="checkbox"
-                                        checked={formData.hazards.includes(hazard)}
+                                        checked={checked}
                                         onChange={() => handleHazardToggle(hazard)}
-                                        className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                     />
-                                    <span className="text-sm text-slate-700">{hazard}</span>
+                                    <span className="text-sm font-medium text-slate-700">{hazard}</span>
                                 </label>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-end gap-3">
+                {/* Actions */}
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                     <a
                         href="/barangay-profile"
-                        className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors"
+                        className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
                     >
                         Cancel
                     </a>
                     <button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors"
+                        className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow-md transition-all duration-200"
                     >
                         {isEditing ? 'Update Profile' : 'Create Profile'}
                     </button>

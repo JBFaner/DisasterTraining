@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             RolesSeeder::class,
             PermissionsSeeder::class,
             EdrillParticipantSeeder::class,
+            RegisteredParticipantForEvaluationSeeder::class,
         ]);
     }
 }

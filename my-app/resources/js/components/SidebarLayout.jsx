@@ -662,7 +662,7 @@ function NavItem({ icon: Icon, label, href, active, isCollapsed, onNavigate, isS
             ].join(' ')}
             title={isCollapsed ? label : undefined}
         >
-            <Icon className="w-4 h-4 text-emerald-400 shrink-0" />
+            <Icon className="w-4 h-4 text-emerald-400 shrink-0 drop-shadow-md" />
             {!isCollapsed && <span className="text-[0.86rem] font-medium">{label}</span>}
         </a>
     );
@@ -716,10 +716,10 @@ function NavGroup({ icon: Icon, label, isCollapsed, items, onNavigate }) {
                 ].join(' ')}
             >
                 <span className="flex items-center gap-3">
-                    <Icon className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <Icon className="w-4 h-4 text-emerald-400 shrink-0 drop-shadow-md" />
                     <span className="text-[0.86rem] font-medium">{label}</span>
                 </span>
-                <ToggleIcon className="w-3 h-3 text-slate-300 shrink-0" />
+                <ToggleIcon className="w-3 h-3 text-slate-300 shrink-0 drop-shadow-sm" />
             </button>
             {isOpen && (
                 <div className="ml-1 space-y-0.5">
