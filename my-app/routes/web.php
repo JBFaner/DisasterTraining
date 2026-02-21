@@ -116,8 +116,8 @@ Route::get('/dashboard', function (Request $request) {
         return redirect()->route('admin.login');
     }
     
-    // Regular authenticated dashboard access
-    return view('app', ['section' => 'dashboard']);
+    // Regular authenticated dashboard access – data-driven operations command center
+    return app(\App\Http\Controllers\DashboardController::class)->index($request);
 })->name('dashboard');
 
 // Protected app routes (session inactivity checked on every request)

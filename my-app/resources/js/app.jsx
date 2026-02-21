@@ -16,7 +16,7 @@ import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap, TrendingUp, AlertTriangle, BarChart3, Calendar, Target } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -233,6 +233,15 @@ if (rootElement) {
             participants = JSON.parse(participantsJson);
         } catch (e) {
             console.error('Failed to parse participants JSON', e);
+        }
+    }
+    let dashboardStats = null;
+    const dashboardStatsJson = rootElement.getAttribute('data-dashboard-stats');
+    if (dashboardStatsJson) {
+        try {
+            dashboardStats = JSON.parse(dashboardStatsJson);
+        } catch (e) {
+            console.error('Failed to parse dashboard stats JSON', e);
         }
     }
     if (participantJson) {
@@ -859,7 +868,7 @@ if (rootElement) {
                     <div className="w-full max-w-full mx-auto overflow-x-hidden">
 
                         {sectionAttr === 'dashboard' && (
-                            <DashboardOverview modules={modules} events={events} participants={participants} role={role} />
+                            <DashboardOverview modules={modules} events={events} participants={participants} role={role} dashboardStats={dashboardStats} />
                         )}
 
                         {sectionAttr === 'training' && (
@@ -1235,206 +1244,273 @@ if (rootElement) {
     );
 }
 
-function DashboardOverview({ modules, events, participants, role }) {
-    // Calculate statistics
-    const totalModules = modules?.length || 0;
-    const activeModules = modules?.filter(m => m.status === 'active')?.length || 0;
-    const totalEvents = events?.length || 0;
-    const upcomingEvents = events?.filter(e => new Date(e.scheduled_date) > new Date())?.length || 0;
-    const totalParticipants = participants?.length || 0;
-    const activeParticipants = participants?.filter(p => p.status === 'active')?.length || 0;
+function DashboardOverview({ modules, events, participants, role, dashboardStats }) {
+    const stats = dashboardStats || {};
+    const activeEvents = stats.active_events ?? 0;
+    const upcomingEvents = stats.upcoming_events ?? 0;
+    const totalParticipants = stats.total_participants ?? (participants?.length || 0);
+    const certificatesCount = stats.certificates_count ?? 0;
+    const eventsStartingToday = stats.events_starting_today ?? 0;
+    const pendingEvaluations = stats.pending_evaluations_count ?? 0;
+    const pendingCertificates = stats.pending_certificates_count ?? 0;
 
-    // Get recent items
-    const recentModules = modules?.slice(0, 3) || [];
-    const recentEvents = events?.slice(0, 3) || [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDateStr = (e) => {
+        const d = e.event_date;
+        return !d ? null : typeof d === 'string' ? d : (d.date || d);
+    };
+    const eventDate = (e) => {
+        const str = eventDateStr(e);
+        return str ? new Date(str) : null;
+    };
+    const upcomingEventList = (events || []).filter((e) => {
+        const d = eventDate(e);
+        return d && d >= today && ['published', 'ongoing'].includes(e.status);
+    }).slice(0, 10);
+    const completedRecent = (events || []).filter((e) => e.status === 'completed').slice(0, 5);
+    const recentModules = (modules || []).slice(0, 5);
+
+    // Build recent activity items (dynamic feed)
+    const activityItems = [];
+    completedRecent.forEach((e) => {
+        activityItems.push({ type: 'event_completed', label: `${e.title} completed`, time: e.completed_at || e.updated_at, link: `/simulation-events/${e.id}` });
+    });
+    recentModules.forEach((m) => {
+        activityItems.push({ type: 'module', label: `Module: ${m.title}`, time: m.updated_at, link: `/training-modules/${m.id}` });
+    });
+    activityItems.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+    const recentActivity = activityItems.slice(0, 8);
+
+    // Calendar: get current month and dates that have events
+    const calendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const eventDatesSet = new Set();
+    (events || []).forEach((e) => {
+        const d = eventDate(e);
+        if (d && d >= today && d.getMonth() === calendarMonth.getMonth() && d.getFullYear() === calendarMonth.getFullYear()) {
+            eventDatesSet.add(d.getDate());
+        }
+    });
+    const firstDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
+    const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+    const calendarDays = [];
+    for (let i = 0; i < firstDay; i++) calendarDays.push(null);
+    for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
+
+    // Insights: most active module (first published by title), improvement placeholder
+    const publishedModules = (modules || []).filter((m) => m.status === 'published');
+    const mostActiveModule = publishedModules.length ? publishedModules[0]?.title : '—';
+    const topScenario = (events || []).filter((e) => e.status === 'completed' && e.scenario).length
+        ? (events.find((e) => e.status === 'completed' && e.scenario)?.scenario?.title || '—')
+        : '—';
+
+    const KpiCard = ({ title, value, href, Icon, trend }) => {
+        const content = (
+            <div className="relative rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md transition-all duration-250 hover:shadow-lg hover:-translate-y-0.5">
+                <div className="absolute right-4 top-4 text-slate-300">
+                    <Icon className="w-8 h-8" />
+                </div>
+                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
+                <p className="mt-1 text-[38px] font-bold tracking-tight text-slate-900">{value}</p>
+                {trend != null && (
+                    <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+                        <TrendingUp className="w-3.5 h-3.5" /> {trend}
+                    </p>
+                )}
+            </div>
+        );
+        if (href) return <a href={href} className="block">{content}</a>;
+        return content;
+    };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-emerald-100 rounded-lg shadow-md">
-                    <LayoutDashboard className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
+        <div className="space-y-8 pb-8">
+            {/* Header — larger, more spacing */}
+            <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-100 rounded-2xl shadow-md">
+                    <LayoutDashboard className="w-8 h-8 text-emerald-600" />
                 </div>
-                <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-            </div>
-            {/* Key Statistics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Training Modules */}
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm border border-blue-200 p-6">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-blue-600 mb-1">Training Modules</p>
-                            <p className="text-2xl font-bold text-blue-900">{totalModules}</p>
-                            <p className="text-xs text-blue-600 mt-2">{activeModules} active</p>
-                        </div>
-                        <div className="text-4xl text-blue-200 drop-shadow-md">📚</div>
-                    </div>
-                </div>
-
-                {/* Simulation Events */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm border border-purple-200 p-6">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-purple-600 mb-1">Simulation Events</p>
-                            <p className="text-2xl font-bold text-purple-900">{totalEvents}</p>
-                            <p className="text-xs text-purple-600 mt-2">{upcomingEvents} upcoming</p>
-                        </div>
-                        <div className="text-4xl text-purple-200 drop-shadow-md">🎯</div>
-                    </div>
-                </div>
-
-                {/* Participants */}
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-6">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-green-600 mb-1">Participants</p>
-                            <p className="text-2xl font-bold text-green-900">{totalParticipants}</p>
-                            <p className="text-xs text-green-600 mt-2">{activeParticipants} active</p>
-                        </div>
-                        <div className="text-4xl text-green-200 drop-shadow-md">👥</div>
-                    </div>
-                </div>
-
-                {/* System Status */}
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg shadow-sm border border-amber-200 p-6">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-amber-600 mb-1">System Status</p>
-                            <p className="text-lg font-bold text-amber-900">Operational</p>
-                            <p className="text-xs text-amber-600 mt-2">All systems nominal</p>
-                        </div>
-                        <div className="text-4xl text-amber-200 drop-shadow-md">✅</div>
-                    </div>
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+                    <p className="text-slate-600 mt-0.5">Operations command center for disaster training</p>
                 </div>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Recent Training Modules */}
-                <div className="lg:col-span-2">
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-sm font-semibold text-slate-900">Recent Training Modules</h2>
-                        </div>
-                        <div className="divide-y divide-slate-200">
-                            {recentModules.length > 0 ? (
-                                recentModules.map((module) => (
-                                    <div key={module.id} className="px-6 py-3 hover:bg-slate-50 transition-colors">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <p className="text-sm font-medium text-slate-900">{module.title}</p>
-                                                <p className="text-xs text-slate-500 mt-1">{module.disaster_type} • {module.lessons?.length || 0} lessons</p>
-                                            </div>
-                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${module.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
-                                                module.status === 'archived' ? 'bg-slate-100 text-slate-600' :
-                                                    'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                {module.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="px-6 py-8 text-center">
-                                    <p className="text-sm text-slate-500">No training modules yet</p>
-                                    {role !== 'PARTICIPANT' && (
-                                        <a href="/training-modules/create" className="text-xs text-blue-600 hover:text-blue-700 font-medium mt-2">
-                                            Create first module →
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+            {/* Row 1 — Operational KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <KpiCard title="Active Events" value={activeEvents} href="/simulation-events" Icon={Play} trend={activeEvents > 0 ? 'Live' : null} />
+                <KpiCard title="Upcoming" value={upcomingEvents} href="/simulation-events" Icon={CalendarClock} />
+                <KpiCard title="Participants" value={totalParticipants} href={role !== 'PARTICIPANT' ? '/participants' : null} Icon={Users} />
+                <KpiCard title="Certificates" value={certificatesCount} href={role !== 'PARTICIPANT' ? '/certification' : null} Icon={Award} />
+            </div>
 
-                {/* Quick Actions */}
-                <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Quick Actions</h3>
-                    <div className="space-y-2">
-                        {role !== 'PARTICIPANT' && (
-                            <>
-                                <a href="/training-modules/create" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium transition-colors">
-                                    <span className="drop-shadow-sm">➕</span> Create Module
+            {/* Row 2 — Requires Attention */}
+            {(eventsStartingToday > 0 || pendingEvaluations > 0 || pendingCertificates > 0 || (role !== 'PARTICIPANT')) && (
+                <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/60 to-white p-6 shadow-md">
+                    <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                        Requires Attention
+                    </h2>
+                    <ul className="space-y-2">
+                        {eventsStartingToday > 0 && (
+                            <li>
+                                <a href="/simulation-events" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
+                                    {eventsStartingToday} event{eventsStartingToday !== 1 ? 's' : ''} starting today
                                 </a>
-                                <a href="/scenarios/create" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-medium transition-colors">
-                                    <span className="drop-shadow-sm">🎯</span> Create Scenario
-                                </a>
-                                <a href="/simulation-events/create" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 text-xs font-medium transition-colors">
-                                    <span className="drop-shadow-sm">📅</span> Schedule Event
-                                </a>
-                            </>
+                            </li>
                         )}
-                        <a href="/participants" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition-colors">
-                            <span className="drop-shadow-sm">👥</span> View Participants
-                        </a>
-                        <a href="/evaluation" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium transition-colors">
-                            <span className="drop-shadow-sm">📊</span> View Results
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            {/* Upcoming Events Section */}
-            {recentEvents.length > 0 && (
-                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
-                        <h2 className="text-sm font-semibold text-slate-900">Upcoming Simulation Events</h2>
-                    </div>
-                    <div className="divide-y divide-slate-200">
-                        {recentEvents.slice(0, 4).map((event) => (
-                            <div key={event.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-slate-900">{event.title}</p>
-                                        <div className="flex gap-4 mt-2">
-                                            <span className="text-xs text-slate-500">📅 {formatDate(event.scheduled_date)}</span>
-                                            <span className="text-xs text-slate-500">⏰ {event.start_time || 'TBA'}</span>
-                                            <span className={`text-xs font-medium ${event.status === 'published' ? 'text-emerald-600' :
-                                                event.status === 'draft' ? 'text-slate-600' :
-                                                    event.status === 'in_progress' ? 'text-blue-600' : 'text-gray-600'
-                                                }`}>
-                                                {event.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <span className="text-xs text-slate-500">{event.registrations?.length || 0} registrations</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                        {pendingEvaluations > 0 && (
+                            <li>
+                                <a href="/evaluations" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
+                                    {pendingEvaluations} participant{pendingEvaluations !== 1 ? 's' : ''} not evaluated
+                                </a>
+                            </li>
+                        )}
+                        {pendingCertificates > 0 && (
+                            <li>
+                                <a href="/certification" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
+                                    {pendingCertificates} pending certificate{pendingCertificates !== 1 ? 's' : ''}
+                                </a>
+                            </li>
+                        )}
+                        {eventsStartingToday === 0 && pendingEvaluations === 0 && pendingCertificates === 0 && role !== 'PARTICIPANT' && (
+                            <li className="text-sm text-slate-500">No pending items. You’re all set.</li>
+                        )}
+                    </ul>
                 </div>
             )}
 
-            {/* Future Features Placeholder */}
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border border-dashed border-slate-300 p-6">
-                <h3 className="text-sm font-semibold text-slate-900 mb-3">Coming Soon 🚀</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">📱</span> Mobile App Integration</p>
-                        <p className="text-xs text-slate-500">Real-time check-in and notifications on mobile devices</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">🤖</span> AI-Powered Analytics</p>
-                        <p className="text-xs text-slate-500">Advanced performance insights and recommendations</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">📹</span> Video Integration</p>
-                        <p className="text-xs text-slate-500">Record and review simulation sessions</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">🌐</span> API Access</p>
-                        <p className="text-xs text-slate-500">Third-party integrations and data sync</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">📊</span> Advanced Reporting</p>
-                        <p className="text-xs text-slate-500">Custom reports and data exports</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700 mb-2"><span className="drop-shadow-sm">🔐</span> Role-Based Dashboard</p>
-                        <p className="text-xs text-slate-500">Customized views per user role</p>
+            {/* Row 3 — Activity Feed (70%) + Performance (30%) */}
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+                <div className="lg:col-span-7">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
+                            <Activity className="w-5 h-5 text-slate-500" />
+                            Recent Activity
+                        </h2>
+                        <ul className="space-y-3">
+                            {recentActivity.length > 0 ? (
+                                recentActivity.map((item, i) => (
+                                    <li key={i}>
+                                        <a href={item.link || '#'} className="text-sm text-slate-700 hover:text-emerald-600 flex items-center gap-2">
+                                            <span className="text-slate-400">•</span>
+                                            {item.label}
+                                        </a>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="text-sm text-slate-500">No recent activity yet.</li>
+                            )}
+                        </ul>
                     </div>
                 </div>
+                <div className="lg:col-span-3">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
+                            <BarChart3 className="w-5 h-5 text-slate-500" />
+                            Performance Overview
+                        </h2>
+                        <ul className="space-y-3 text-sm">
+                            <li className="flex justify-between">
+                                <span className="text-slate-600">Average Score</span>
+                                <span className="font-semibold text-slate-900">{stats.average_score != null ? `${stats.average_score}%` : '—'}</span>
+                            </li>
+                            <li className="flex justify-between">
+                                <span className="text-slate-600">Pass Rate</span>
+                                <span className="font-semibold text-slate-900">{stats.pass_rate != null ? `${stats.pass_rate}%` : '—'}</span>
+                            </li>
+                            <li className="flex justify-between">
+                                <span className="text-slate-600">Attendance Rate</span>
+                                <span className="font-semibold text-slate-900">{stats.attendance_rate != null ? `${stats.attendance_rate}%` : '—'}</span>
+                            </li>
+                        </ul>
+                        <p className="text-xs text-slate-400 mt-3">View details on Evaluations page</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Row 4 — Quick Actions 2x3 icon grid */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {role !== 'PARTICIPANT' && (
+                        <>
+                            <a href="/training-modules/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                                <BookOpen className="w-10 h-10 text-emerald-600" />
+                                <span className="text-sm font-medium text-slate-700">+ Module</span>
+                            </a>
+                            <a href="/scenarios/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                                <Target className="w-10 h-10 text-emerald-600" />
+                                <span className="text-sm font-medium text-slate-700">+ Scenario</span>
+                            </a>
+                            <a href="/simulation-events/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                                <CalendarClock className="w-10 h-10 text-emerald-600" />
+                                <span className="text-sm font-medium text-slate-700">+ Event</span>
+                            </a>
+                        </>
+                    )}
+                    <a href="/participants" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                        <Users className="w-10 h-10 text-emerald-600" />
+                        <span className="text-sm font-medium text-slate-700">Participants</span>
+                    </a>
+                    <a href="/evaluations" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                        <ClipboardList className="w-10 h-10 text-emerald-600" />
+                        <span className="text-sm font-medium text-slate-700">Evaluate</span>
+                    </a>
+                    <a href="#" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                        <FileText className="w-10 h-10 text-emerald-600" />
+                        <span className="text-sm font-medium text-slate-700">Reports</span>
+                    </a>
+                </div>
+            </div>
+
+            {/* Row 5 — Upcoming Events Calendar */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
+                    <Calendar className="w-5 h-5 text-slate-500" />
+                    Upcoming Events — {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                            <span key={d}>{d}</span>
+                        ))}
+                        {calendarDays.map((d, i) => (
+                            <span
+                                key={i}
+                                className={`inline-flex h-8 items-center justify-center rounded-lg ${d == null ? 'invisible' : eventDatesSet.has(d) ? 'bg-emerald-100 text-emerald-800 font-bold' : 'text-slate-600'}`}
+                            >
+                                {d ?? ''}
+                            </span>
+                        ))}
+                    </div>
+                    <div className="space-y-2">
+                        {upcomingEventList.length > 0 ? (
+                            upcomingEventList.slice(0, 5).map((e) => (
+                                <a key={e.id} href={`/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
+                                    <span className="font-medium text-slate-900">{e.title}</span>
+                                    <span className="ml-2 text-slate-500">{formatDate(eventDateStr(e))}</span>
+                                </a>
+                            ))
+                        ) : (
+                            <p className="text-sm text-slate-500">No upcoming events this month.</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Row 6 — System Insights */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
+                    <Zap className="w-5 h-5 text-amber-500" />
+                    Insights
+                </h2>
+                <ul className="space-y-2 text-sm text-slate-700">
+                    <li>Most active module: <span className="font-semibold text-slate-900">{mostActiveModule}</span></li>
+                    <li>Top scenario (recent): <span className="font-semibold text-slate-900">{topScenario}</span></li>
+                    <li>Trend: Aggregate metrics available on Evaluations and Certification pages.</li>
+                </ul>
             </div>
         </div>
     );

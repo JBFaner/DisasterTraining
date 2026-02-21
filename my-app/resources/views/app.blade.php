@@ -161,6 +161,9 @@
             @isset($automationSettings)
                 data-automation-settings='@json($automationSettings)'
             @endisset
+            @isset($dashboard_stats)
+                data-dashboard-stats='@json($dashboard_stats)'
+            @endisset
             @if (session('status'))
                 data-status="{{ session('status') }}"
             @endif
