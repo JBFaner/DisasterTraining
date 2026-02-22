@@ -11,6 +11,7 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
         password_confirmation: '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -29,6 +30,7 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (!acceptedTerms) return;
         setIsSubmitting(true);
         e.target.submit();
     };
@@ -312,9 +314,26 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                         )}
                     </div>
 
+                    <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={acceptedTerms}
+                            onChange={(e) => setAcceptedTerms(e.target.checked)}
+                            required
+                            className="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="text-xs text-slate-600">
+                            I agree to the{' '}
+                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-[#1FA463] underline underline-offset-2">
+                                Terms and Conditions
+                            </a>{' '}
+                            and understand how my data will be used.
+                        </span>
+                    </label>
+
                     <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !acceptedTerms}
                         className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-[#16A34A] hover:bg-[#1FA463] disabled:bg-[#16A34A]/60 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-all duration-200 ease-out transform-gpu hover:-translate-y-[1px] hover:shadow-[0_6px_14px_rgba(0,0,0,0.12)]"
                     >
                         {isSubmitting ? (
