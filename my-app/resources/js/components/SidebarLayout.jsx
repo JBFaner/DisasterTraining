@@ -23,6 +23,7 @@ import {
     Settings,
     FileText,
     History,
+    Zap,
 } from 'lucide-react';
 import { TopBar } from './TopBar';
 
@@ -624,6 +625,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         label="User Monitoring"
                         href="/admin/user-monitoring"
                         active={currentSection === 'user_monitoring'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={Zap}
+                        label="Deployment"
+                        href="/admin/deploy"
+                        active={currentSection === 'deployment'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

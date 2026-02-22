@@ -19,6 +19,7 @@ use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\UserMonitoringController;
+use App\Http\Controllers\DeployController;
 use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Middleware\CheckSessionInactivity;
 
@@ -347,5 +348,10 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     // User Monitoring (Admin only)
     Route::get('/admin/user-monitoring', [UserMonitoringController::class, 'index'])->name('admin.user-monitoring.index');
     Route::get('/api/user-monitoring/status', [UserMonitoringController::class, 'status'])->name('admin.user-monitoring.status');
+
+    // Deployment (Admin only) – Git pull and Laravel build from dashboard
+    Route::get('/admin/deploy', [DeployController::class, 'index'])->name('admin.deploy.index');
+    Route::post('/admin/deploy/git-pull', [DeployController::class, 'gitPull'])->name('admin.deploy.git-pull');
+    Route::post('/admin/deploy/laravel-build', [DeployController::class, 'laravelBuild'])->name('admin.deploy.laravel-build');
 });
 

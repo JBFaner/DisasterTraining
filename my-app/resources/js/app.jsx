@@ -15,6 +15,7 @@ import { PermissionsPage } from './pages/PermissionsPage';
 import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
+import { DeploymentPage } from './pages/DeploymentPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap, TrendingUp, AlertTriangle, BarChart3, Calendar, Target, LayoutGrid, List } from 'lucide-react';
@@ -805,6 +806,9 @@ if (rootElement) {
         if (sectionAttr === 'user_monitoring') {
             return [{ label: 'User Monitoring', href: '/admin/user-monitoring' }];
         }
+        if (sectionAttr === 'deployment') {
+            return [{ label: 'Deployment', href: '/admin/deploy' }];
+        }
 
         return [{ label: 'Dashboard', href: '/dashboard' }];
     };
@@ -828,6 +832,9 @@ if (rootElement) {
         }
         if (sectionAttr === 'user_monitoring') {
             return 'User Monitoring';
+        }
+        if (sectionAttr === 'deployment') {
+            return 'Deployment';
         }
         if (
             sectionAttr === 'barangay_profile' ||
@@ -1166,6 +1173,10 @@ if (rootElement) {
 
                         {sectionAttr === 'user_monitoring' && (
                             <UserMonitoringPage users={users || []} />
+                        )}
+
+                        {sectionAttr === 'deployment' && (
+                            <DeploymentPage />
                         )}
 
                         {sectionAttr === 'resources' && (
