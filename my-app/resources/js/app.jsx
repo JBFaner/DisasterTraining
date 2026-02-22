@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { createPortal } from 'react-dom';
 import './bootstrap';
 import '../css/app.css';
 import { SidebarLayout } from './components/SidebarLayout';
@@ -16,7 +17,7 @@ import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap, TrendingUp, AlertTriangle, BarChart3, Calendar, Target } from 'lucide-react';
+import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap, TrendingUp, AlertTriangle, BarChart3, Calendar, Target, LayoutGrid, List } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -1525,8 +1526,11 @@ function TrainingModulesTable({ modules = [] }) {
     const [filterDifficulty, setFilterDifficulty] = React.useState('');
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [viewMode, setViewMode] = React.useState('grid'); // 'grid' | 'list'
+    const [openManageId, setOpenManageId] = React.useState(null);
     const itemsPerPage = 10; // Fixed to 10 items per page
     const filterRef = React.useRef(null);
+    const manageMenuRef = React.useRef(null);
 
     // Get unique disaster types for filter
     const disasterTypes = [...new Set((modules || []).map(m => m.category).filter(Boolean))];
@@ -1547,6 +1551,19 @@ function TrainingModulesTable({ modules = [] }) {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [showFilters]);
+
+    // Close Manage menu when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (manageMenuRef.current && !manageMenuRef.current.contains(event.target)) {
+                setOpenManageId(null);
+            }
+        };
+        if (openManageId != null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openManageId]);
 
     // Filter modules
     const filteredModules = (modules || []).filter((module) => {
@@ -1574,6 +1591,22 @@ function TrainingModulesTable({ modules = [] }) {
     const formatCreatedDate = (dateString) => {
         if (!dateString) return '—';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const formatUpdatedDate = (dateString) => {
+        if (!dateString) return null;
+        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const statusStyle = (status) => {
+        if (status === 'published') return 'text-emerald-600';
+        if (status === 'draft') return 'text-blue-600';
+        if (status === 'archived') return 'text-slate-500';
+        return 'text-slate-600';
+    };
+    const statusDotStyle = (status) => {
+        if (status === 'published') return 'bg-emerald-500';
+        if (status === 'draft') return 'bg-blue-500';
+        if (status === 'archived') return 'bg-slate-400';
+        return 'bg-slate-400';
     };
 
     return (
@@ -1637,6 +1670,26 @@ function TrainingModulesTable({ modules = [] }) {
                             <Filter className="w-4 h-4" />
                             Filter
                         </button>
+                        <div className="flex rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('grid')}
+                                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                title="Grid view"
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                                Grid
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('list')}
+                                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                title="List view"
+                            >
+                                <List className="w-4 h-4" />
+                                List
+                            </button>
+                        </div>
                     </div>
                 </form>
                 {showFilters && (
@@ -1717,131 +1770,98 @@ function TrainingModulesTable({ modules = [] }) {
                         )}
                     </div>
                 </div>
+            ) : viewMode === 'list' ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+                    <ul className="divide-y divide-slate-200">
+                        {paginatedModules.map((module) => (
+                            <li key={module.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors">
+                                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                                    <BookOpen className="w-5 h-5 text-slate-600" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-slate-900 truncate">{module.title || 'Untitled Module'}</h3>
+                                    <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
+                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(module.created_at)}{formatUpdatedDate(module.updated_at) ? ` • Updated: ${formatUpdatedDate(module.updated_at)}` : ''}</p>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
+                                        {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
+                                    </span>
+                                    <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                                        >
+                                            Manage <ChevronDown className="w-4 h-4" />
+                                        </button>
+                                        {openManageId === module.id && (
+                                            <div className="absolute right-0 top-full mt-1 py-1 w-44 rounded-xl border border-slate-200 bg-white shadow-lg z-50">
+                                                <a href={`/training-modules/${module.id}`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                                                <a href={`/training-modules/${module.id}/edit`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                                                {module.status === 'draft' && (
+                                                    <form method="POST" action={`/training-modules/${module.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', text: 'Publish this training module?', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                                                )}
+                                                <form method="POST" action={`/training-modules/${module.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this module?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
+                                                <form method="POST" action={`/training-modules/${module.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this module?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {paginatedModules.map((module, index) => (
                         <div
                             key={module.id}
-                            className="training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
+                            className={`training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 relative ${openManageId === module.id ? 'z-[100]' : ''}`}
                             style={{ animationDelay: `${index * 0.06}s` }}
                         >
-                            <div className="p-5">
-                                <div className="flex items-start gap-3 mb-3">
+                            <div className="p-4">
+                                <div className="flex items-start gap-3 mb-2">
                                     <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                                        <BookOpen className="w-5 h-5 text-slate-600 drop-shadow-sm" />
+                                        <BookOpen className="w-5 h-5 text-slate-600" />
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <h3 className="font-semibold text-slate-900 truncate" title={module.title}>
                                             {module.title || 'Untitled Module'}
                                         </h3>
-                                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                                                {module.category ?? '—'}
-                                            </span>
-                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                {module.difficulty ?? '—'}
-                                            </span>
-                                            <span
-                                                className={'inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold border transition-all duration-200 ' +
-                                                    (module.status === 'published'
-                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                                        : module.status === 'draft'
-                                                            ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                                            : 'border-slate-200 bg-slate-50 text-slate-600')
-                                                }
-                                            >
-                                                {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
-                                            </span>
-                                        </div>
+                                        <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-500 mb-4">
+                                <p className="text-xs text-slate-400 mb-2">
                                     Created: {formatCreatedDate(module.created_at)}
+                                    {formatUpdatedDate(module.updated_at) && ` • Updated: ${formatUpdatedDate(module.updated_at)}`}
                                 </p>
-                                <div className="flex flex-wrap gap-2">
-                                    <a
-                                        href={`/training-modules/${module.id}`}
-                                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 hover:shadow-sm transition-all duration-200"
-                                        title="View Lessons"
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
+                                        Status: {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
+                                    </span>
+                                </div>
+                                <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
+                                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-medium hover:bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
                                     >
-                                        <Eye className="w-3.5 h-3.5 drop-shadow-sm" />
-                                        View
-                                    </a>
-                                    {module.status === 'draft' && (
-                                        <>
-                                            <form method="POST" action={`/training-modules/${module.id}/publish`} onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const result = await Swal.fire({
-                                                    title: 'Publish Training Module',
-                                                    html: '<p class="text-left mb-3">Are you sure you want to publish this training module?</p><p class="text-left text-sm text-slate-600 mb-2">Please ensure: Title is filled, Difficulty is selected, at least one lesson is added.</p>',
-                                                    icon: 'question',
-                                                    showCancelButton: true,
-                                                    confirmButtonText: 'Yes, publish',
-                                                    cancelButtonText: 'Cancel',
-                                                    confirmButtonColor: '#16a34a',
-                                                    cancelButtonColor: '#64748b',
-                                                });
-                                                if (result.isConfirmed) e.target.submit();
-                                            }} className="inline-block">
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:shadow-sm transition-all duration-200" title="Publish">
-                                                    <Send className="w-3.5 h-3.5 drop-shadow-sm" />
-                                                    Publish
-                                                </button>
-                                            </form>
-                                            <a href={`/training-modules/${module.id}/edit`} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:shadow-sm transition-all duration-200" title="Edit">
-                                                <Pencil className="w-3.5 h-3.5 drop-shadow-sm" />
-                                                Edit
-                                            </a>
-                                        </>
+                                        Manage <ChevronDown className="w-4 h-4" />
+                                    </button>
+                                        {openManageId === module.id && (
+                                        <div className="absolute left-0 right-0 top-full mt-1 py-1 rounded-xl border border-slate-200 bg-white shadow-lg z-50">
+                                            <a href={`/training-modules/${module.id}`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                                            <a href={`/training-modules/${module.id}/edit`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                                            {module.status === 'draft' && (
+                                                <form method="POST" action={`/training-modules/${module.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', html: 'Publish this training module? Ensure title, difficulty, and at least one lesson are set.', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                                            )}
+                                            <form method="POST" action={`/training-modules/${module.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this module? It will no longer be assignable to new simulations.', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
+                                            <form method="POST" action={`/training-modules/${module.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this module? This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
+                                        </div>
                                     )}
-                                    {module.status !== 'published' && module.status !== 'draft' && (
-                                        <a href={`/training-modules/${module.id}/edit`} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:shadow-sm transition-all duration-200" title="Edit">
-                                            <Pencil className="w-3.5 h-3.5 drop-shadow-sm" />
-                                            Edit
-                                        </a>
-                                    )}
-                                    <form method="POST" action={`/training-modules/${module.id}/archive`} onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const result = await Swal.fire({
-                                            title: 'Warning!',
-                                            text: 'Archive this module? It will no longer be assignable to new simulations.',
-                                            icon: 'warning',
-                                            showCancelButton: true,
-                                            confirmButtonText: 'Yes, archive it',
-                                            cancelButtonText: 'Cancel',
-                                            confirmButtonColor: '#f97316',
-                                            cancelButtonColor: '#64748b',
-                                        });
-                                        if (result.isConfirmed) e.target.submit();
-                                    }} className="inline-block">
-                                        <input type="hidden" name="_token" value={csrf} />
-                                        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:shadow-sm transition-all duration-200" title="Archive">
-                                            <Archive className="w-3.5 h-3.5 drop-shadow-sm" />
-                                            Archive
-                                        </button>
-                                    </form>
-                                    <form method="POST" action={`/training-modules/${module.id}`} onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const result = await Swal.fire({
-                                            title: 'Warning!',
-                                            text: 'Permanently delete this module? This action cannot be undone.',
-                                            icon: 'warning',
-                                            showCancelButton: true,
-                                            confirmButtonText: 'Yes, delete it',
-                                            cancelButtonText: 'Cancel',
-                                            confirmButtonColor: '#dc2626',
-                                            cancelButtonColor: '#64748b',
-                                        });
-                                        if (result.isConfirmed) e.target.submit();
-                                    }} className="inline-block">
-                                        <input type="hidden" name="_token" value={csrf} />
-                                        <input type="hidden" name="_method" value="DELETE" />
-                                        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:shadow-sm transition-all duration-200" title="Delete">
-                                            <Trash2 className="w-3.5 h-3.5 drop-shadow-sm" />
-                                            Delete
-                                        </button>
-                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -1849,7 +1869,7 @@ function TrainingModulesTable({ modules = [] }) {
                 </div>
             )}
 
-            {filteredModules.length > 0 && (
+            {totalPages > 1 && (
                 <div className="mt-6">
                     <Pagination
                         currentPage={currentPage}
@@ -3307,8 +3327,13 @@ function ScenariosTable({ scenarios = [], role }) {
     const [filterDifficulty, setFilterDifficulty] = React.useState('');
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [viewMode, setViewMode] = React.useState('grid');
+    const [openManageId, setOpenManageId] = React.useState(null);
+    const [dropdownPosition, setDropdownPosition] = React.useState(null);
     const itemsPerPage = 10; // Fixed to 10 items per page
     const filterRef = React.useRef(null);
+    const manageMenuRef = React.useRef(null);
+    const managePortalRef = React.useRef(null);
 
     // Get unique values for filters
     const disasterTypes = [...new Set((scenarios || []).map(s => s.disaster_type).filter(Boolean))];
@@ -3329,6 +3354,22 @@ function ScenariosTable({ scenarios = [], role }) {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [showFilters]);
+
+    // Close Manage menu when clicking outside (button or portal dropdown)
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (event.target.closest('[data-manage-button]')) return;
+            const inPortal = managePortalRef.current && managePortalRef.current.contains(event.target);
+            if (!inPortal) {
+                setOpenManageId(null);
+                setDropdownPosition(null);
+            }
+        };
+        if (openManageId != null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openManageId]);
 
     // Filter scenarios
     const filteredScenarios = (scenarios || []).filter((scenario) => {
@@ -3356,6 +3397,22 @@ function ScenariosTable({ scenarios = [], role }) {
     const formatCreatedDate = (dateString) => {
         if (!dateString) return '—';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const formatUpdatedDate = (dateString) => {
+        if (!dateString) return null;
+        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const scenarioStatusStyle = (status) => {
+        if (status === 'published') return 'text-emerald-600';
+        if (status === 'draft') return 'text-blue-600';
+        if (status === 'archived') return 'text-slate-500';
+        return 'text-slate-600';
+    };
+    const scenarioStatusDotStyle = (status) => {
+        if (status === 'published') return 'bg-emerald-500';
+        if (status === 'draft') return 'bg-blue-500';
+        if (status === 'archived') return 'bg-slate-400';
+        return 'bg-slate-400';
     };
 
     return (
@@ -3386,7 +3443,7 @@ function ScenariosTable({ scenarios = [], role }) {
                 </div>
             </div>
 
-            {/* Search and Filter Bar - Evaluations style */}
+            {/* Search and Filter Bar - same as training modules */}
             <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4 mb-6">
                 <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
@@ -3418,6 +3475,10 @@ function ScenariosTable({ scenarios = [], role }) {
                             <Filter className="w-4 h-4" />
                             Filter
                         </button>
+                        <div className="flex rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
+                            <button type="button" onClick={() => setViewMode('grid')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="Grid view"><LayoutGrid className="w-4 h-4" /> Grid</button>
+                            <button type="button" onClick={() => setViewMode('list')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="List view"><List className="w-4 h-4" /> List</button>
+                        </div>
                     </div>
                 </form>
                 {showFilters && (
@@ -3498,136 +3559,75 @@ function ScenariosTable({ scenarios = [], role }) {
                         )}
                     </div>
                 </div>
+            ) : viewMode === 'list' ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
+                    <ul className="divide-y divide-slate-200">
+                        {paginatedScenarios.map((s) => (
+                            <li key={s.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors relative ${openManageId === s.id ? 'z-[100]' : ''}`}>
+                                <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                                    <Activity className="w-5 h-5 text-slate-600" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-slate-900 truncate">{s.title || 'Untitled Scenario'}</h3>
+                                    <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? '—'} • {s.difficulty ?? '—'}</p>
+                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) ? ` • Updated: ${formatUpdatedDate(s.updated_at)}` : ''}</p>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${scenarioStatusStyle(s.status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${scenarioStatusDotStyle(s.status)}`} />
+                                        {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
+                                    </span>
+                                    <div className="relative" ref={openManageId === s.id ? manageMenuRef : null}>
+                                        <button
+                                            type="button"
+                                            data-manage-button
+                                            onClick={(e) => {
+                                                if (openManageId === s.id) { setOpenManageId(null); setDropdownPosition(null); return; }
+                                                const r = e.currentTarget.getBoundingClientRect();
+                                                setDropdownPosition({ top: r.bottom + 4, left: r.right - 176, width: 176 });
+                                                setOpenManageId(s.id);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                                        >Manage <ChevronDown className="w-4 h-4" /></button>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {paginatedScenarios.map((s, index) => (
-                        <div
-                            key={s.id}
-                            className="training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
-                            style={{ animationDelay: `${index * 0.06}s` }}
-                        >
-                            <div className="p-5">
-                                <div className="flex items-start gap-3 mb-3">
+                        <div key={s.id} className={`training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 relative ${openManageId === s.id ? 'z-[100]' : ''}`} style={{ animationDelay: `${index * 0.06}s` }}>
+                            <div className="p-4">
+                                <div className="flex items-start gap-3 mb-2">
                                     <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                                        <Activity className="w-5 h-5 text-slate-600 drop-shadow-sm" />
+                                        <Activity className="w-5 h-5 text-slate-600" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <h3 className="font-semibold text-slate-900 truncate" title={s.title}>
-                                            {s.title || 'Untitled Scenario'}
-                                        </h3>
-                                        {s.training_module?.title && (
-                                            <p className="text-xs text-slate-500 mt-0.5 truncate" title={s.training_module.title}>
-                                                {s.training_module.title}
-                                            </p>
-                                        )}
-                                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                                                {s.disaster_type ?? '—'}
-                                            </span>
-                                            <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                {s.difficulty ?? '—'}
-                                            </span>
-                                            <span
-                                                className={'inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold border transition-all duration-200 ' +
-                                                    (s.status === 'published'
-                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                                        : s.status === 'draft'
-                                                            ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                                            : 'border-slate-200 bg-slate-50 text-slate-600')
-                                                }
-                                            >
-                                                {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
-                                            </span>
-                                        </div>
+                                        <h3 className="font-semibold text-slate-900 truncate" title={s.title}>{s.title || 'Untitled Scenario'}</h3>
+                                        <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? '—'} • {s.difficulty ?? '—'}</p>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-500 mb-4">
-                                    Created: {formatCreatedDate(s.created_at)}
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    <a
-                                        href={`/scenarios/${s.id}`}
-                                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 hover:shadow-sm transition-all duration-200"
-                                        title="View Scenario"
-                                    >
-                                        <Eye className="w-3.5 h-3.5 drop-shadow-sm" />
-                                        View
-                                    </a>
-                                    {s.status !== 'published' && (
-                                        <>
-                                            <a
-                                                href={`/scenarios/${s.id}/edit`}
-                                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:shadow-sm transition-all duration-200"
-                                                title="Edit"
-                                            >
-                                                <Pencil className="w-3.5 h-3.5 drop-shadow-sm" />
-                                                Edit
-                                            </a>
-                                            <form method="POST" action={`/scenarios/${s.id}/publish`} onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const result = await Swal.fire({
-                                                    title: 'Warning!',
-                                                    text: 'Publish this scenario? It will become selectable for events.',
-                                                    icon: 'warning',
-                                                    showCancelButton: true,
-                                                    confirmButtonText: 'Yes, publish',
-                                                    cancelButtonText: 'Cancel',
-                                                    confirmButtonColor: '#16a34a',
-                                                    cancelButtonColor: '#64748b',
-                                                });
-                                                if (result.isConfirmed) e.target.submit();
-                                            }} className="inline-block">
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:shadow-sm transition-all duration-200" title="Publish">
-                                                    <Send className="w-3.5 h-3.5 drop-shadow-sm" />
-                                                    Publish
-                                                </button>
-                                            </form>
-                                        </>
-                                    )}
-                                    <form method="POST" action={`/scenarios/${s.id}/archive`} onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const result = await Swal.fire({
-                                            title: 'Warning!',
-                                            text: 'Archive this scenario? It will be hidden from selection.',
-                                            icon: 'warning',
-                                            showCancelButton: true,
-                                            confirmButtonText: 'Yes, archive',
-                                            cancelButtonText: 'Cancel',
-                                            confirmButtonColor: '#f97316',
-                                            cancelButtonColor: '#64748b',
-                                        });
-                                        if (result.isConfirmed) e.target.submit();
-                                    }} className="inline-block">
-                                        <input type="hidden" name="_token" value={csrf} />
-                                        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:shadow-sm transition-all duration-200" title="Archive">
-                                            <Archive className="w-3.5 h-3.5 drop-shadow-sm" />
-                                            Archive
-                                        </button>
-                                    </form>
-                                    {canDelete && (
-                                        <form method="POST" action={`/scenarios/${s.id}`} onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const result = await Swal.fire({
-                                                title: 'Warning!',
-                                                text: 'Permanently delete this scenario? This cannot be undone.',
-                                                icon: 'warning',
-                                                showCancelButton: true,
-                                                confirmButtonText: 'Yes, delete',
-                                                cancelButtonText: 'Cancel',
-                                                confirmButtonColor: '#dc2626',
-                                                cancelButtonColor: '#64748b',
-                                            });
-                                            if (result.isConfirmed) e.target.submit();
-                                        }} className="inline-block">
-                                            <input type="hidden" name="_token" value={csrf} />
-                                            <input type="hidden" name="_method" value="DELETE" />
-                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:shadow-sm transition-all duration-200" title="Delete">
-                                                <Trash2 className="w-3.5 h-3.5 drop-shadow-sm" />
-                                                Delete
-                                            </button>
-                                        </form>
-                                    )}
+                                <p className="text-xs text-slate-400 mb-2">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) && ` • Updated: ${formatUpdatedDate(s.updated_at)}`}</p>
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${scenarioStatusStyle(s.status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${scenarioStatusDotStyle(s.status)}`} />
+                                        Status: {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
+                                    </span>
+                                </div>
+                                <div className="relative" ref={openManageId === s.id ? manageMenuRef : null}>
+                                    <button
+                                        type="button"
+                                        data-manage-button
+                                        onClick={(e) => {
+                                            if (openManageId === s.id) { setOpenManageId(null); setDropdownPosition(null); return; }
+                                            const r = e.currentTarget.getBoundingClientRect();
+                                            setDropdownPosition({ top: r.bottom + 4, left: r.left, width: r.width });
+                                            setOpenManageId(s.id);
+                                        }}
+                                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-medium hover:bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
+                                    >Manage <ChevronDown className="w-4 h-4" /></button>
                                 </div>
                             </div>
                         </div>
@@ -3635,7 +3635,33 @@ function ScenariosTable({ scenarios = [], role }) {
                 </div>
             )}
 
-            {filteredScenarios.length > 0 && (
+            {openManageId && dropdownPosition && (() => {
+                const openScenario = paginatedScenarios.find((sc) => sc.id === openManageId);
+                if (!openScenario) return null;
+                const close = () => { setOpenManageId(null); setDropdownPosition(null); };
+                return createPortal(
+                    <div
+                        ref={managePortalRef}
+                        className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40"
+                        style={{ position: 'fixed', top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width }}
+                    >
+                        <a href={`/scenarios/${openScenario.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                        {openScenario.status !== 'published' && (
+                            <a href={`/scenarios/${openScenario.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                        )}
+                        {openScenario.status !== 'published' && (
+                            <form method="POST" action={`/scenarios/${openScenario.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', text: 'Publish this scenario?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                        )}
+                        <form method="POST" action={`/scenarios/${openScenario.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this scenario?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
+                        {canDelete && (
+                            <form method="POST" action={`/scenarios/${openScenario.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this scenario?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
+                        )}
+                    </div>,
+                    document.body
+                );
+            })()}
+
+            {totalPages > 1 && (
                 <div className="mt-6">
                     <Pagination
                         currentPage={currentPage}
@@ -4844,13 +4870,15 @@ function ScenarioDetail({ scenario }) {
                             </p>
                         )}
                     </div>
-                    <a
-                        href={`/scenarios/${scenario.id}/edit`}
-                        className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
-                        title="Edit scenario"
-                    >
-                        <Pencil className="w-4 h-4 drop-shadow-sm" />
-                    </a>
+                    {scenario.status !== 'published' && (
+                        <a
+                            href={`/scenarios/${scenario.id}/edit`}
+                            className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                            title="Edit scenario"
+                        >
+                            <Pencil className="w-4 h-4 drop-shadow-sm" />
+                        </a>
+                    )}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-600">
                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
@@ -4995,12 +5023,17 @@ function SimulationEventsTable({ events, role }) {
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
     const [filterCategory, setFilterCategory] = React.useState('');
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [viewMode, setViewMode] = React.useState('grid');
+    const [openManageId, setOpenManageId] = React.useState(null);
+    const [dropdownPosition, setDropdownPosition] = React.useState(null);
     const itemsPerPage = 10; // Fixed to 10 items per page
     const filterRef = React.useRef(null);
+    const manageMenuRef = React.useRef(null);
+    const managePortalRef = React.useRef(null);
 
     // Get unique values for filters
-    const disasterTypes = [...new Set(events.map(e => e.disaster_type).filter(Boolean))];
-    const categories = [...new Set(events.map(e => e.event_category).filter(Boolean))];
+    const disasterTypes = [...new Set((events || []).map(e => e.disaster_type).filter(Boolean))];
+    const categories = [...new Set((events || []).map(e => e.event_category).filter(Boolean))];
 
     // Close filter dropdown when clicking outside
     React.useEffect(() => {
@@ -5019,8 +5052,24 @@ function SimulationEventsTable({ events, role }) {
         };
     }, [showFilters]);
 
+    // Close Manage menu when clicking outside (button or portal dropdown)
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (event.target.closest('[data-manage-button]')) return;
+            const inPortal = managePortalRef.current && managePortalRef.current.contains(event.target);
+            if (!inPortal) {
+                setOpenManageId(null);
+                setDropdownPosition(null);
+            }
+        };
+        if (openManageId != null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openManageId]);
+
     // Filter events
-    const filteredEvents = events.filter((event) => {
+    const filteredEvents = (events || []).filter((event) => {
         const matchesSearch = !searchQuery ||
             event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -5098,6 +5147,46 @@ function SimulationEventsTable({ events, role }) {
             ended: 'bg-slate-100 text-slate-600',
         };
         return map[status] || 'bg-slate-100 text-slate-600';
+    };
+
+    const eventStatusStyle = (status) => {
+        if (status === 'published' || status === 'ongoing') return 'text-emerald-600';
+        if (status === 'completed' || status === 'ended') return 'text-slate-600';
+        if (status === 'draft') return 'text-blue-600';
+        if (status === 'archived') return 'text-slate-500';
+        if (status === 'cancelled') return 'text-rose-600';
+        return 'text-slate-600';
+    };
+    const eventStatusDotStyle = (status) => {
+        if (status === 'published' || status === 'ongoing') return 'bg-emerald-500';
+        if (status === 'completed' || status === 'ended') return 'bg-slate-400';
+        if (status === 'draft') return 'bg-blue-500';
+        if (status === 'archived') return 'bg-slate-400';
+        if (status === 'cancelled') return 'bg-rose-500';
+        return 'bg-slate-400';
+    };
+    const formatEventDate = (dateString) => {
+        if (!dateString) return '—';
+        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    const canStartEvent = (event) => {
+        try {
+            if (!event || event.status !== 'published' || !event.event_date) return false;
+            const eventDate = new Date(event.event_date);
+            if (isNaN(eventDate.getTime())) return false;
+            const today = new Date();
+            if (eventDate.toDateString() !== today.toDateString()) return false;
+            const startTime = event.start_time;
+            if (!startTime || typeof startTime !== 'string') return false;
+            const parts = startTime.split(':').map(Number);
+            if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return false;
+            const start = new Date(event.event_date);
+            start.setHours(parts[0], parts[1], 0, 0);
+            return new Date().getTime() >= start.getTime();
+        } catch (_) {
+            return false;
+        }
     };
 
     return (
@@ -5178,6 +5267,10 @@ function SimulationEventsTable({ events, role }) {
                             <Filter className="w-4 h-4" />
                             Filter
                         </button>
+                        <div className="flex rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
+                            <button type="button" onClick={() => setViewMode('grid')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="Grid view"><LayoutGrid className="w-4 h-4" /> Grid</button>
+                            <button type="button" onClick={() => setViewMode('list')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="List view"><List className="w-4 h-4" /> List</button>
+                        </div>
                     </div>
                 </form>
                 {showFilters && (
@@ -5225,10 +5318,10 @@ function SimulationEventsTable({ events, role }) {
                 )}
             </div>
 
-            {/* Content: empty state or card grid */}
+            {/* Content: empty state or list/grid */}
             {filteredEvents.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-12 text-center">
-                    {events.length === 0 ? (
+                    {(events || []).length === 0 ? (
                         <>
                             <div className="text-5xl mb-4 opacity-80">📅</div>
                             <h3 className="text-lg font-semibold text-slate-800 mb-1">No simulation events yet</h3>
@@ -5258,145 +5351,165 @@ function SimulationEventsTable({ events, role }) {
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {paginatedEvents.map((event, index) => (
-                            <div
-                                key={event.id}
-                                className="training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden flex flex-col"
-                                style={{ animationDelay: `${index * 0.06}s` }}
-                            >
-                                <div className="p-5 flex-1 flex flex-col">
-                                    <div className="flex items-start gap-3 mb-3">
-                                        <div className="p-2 bg-emerald-100 rounded-xl shrink-0">
+                    {viewMode === 'list' ? (
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
+                            <ul className="divide-y divide-slate-200">
+                                {paginatedEvents.map((event) => (
+                                    <li key={event.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors relative ${openManageId === event.id ? 'z-[100]' : ''}`}>
+                                        <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                                             <CalendarClock className="w-5 h-5 text-emerald-600" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <a
-                                                href={event.status === 'draft' ? `/simulation-events/${event.id}/edit` : `/simulation-events/${event.id}`}
-                                                className="font-semibold text-slate-800 hover:text-emerald-700 line-clamp-2 transition-colors"
-                                            >
-                                                {event.title}
-                                            </a>
-                                            <div className="flex flex-wrap gap-1.5 mt-2">
-                                                {event.disaster_type && (
-                                                    <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">
-                                                        {event.disaster_type}
-                                                    </span>
-                                                )}
-                                                {event.event_category && (
-                                                    <span className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">
-                                                        {event.event_category}
-                                                    </span>
-                                                )}
-                                                <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ${getStatusClass(event.status)}`}>
-                                                    {event.status}
-                                                </span>
+                                            <h3 className="font-semibold text-slate-900 truncate">{event.title}</h3>
+                                            <p className="text-sm text-slate-500 mt-0.5">
+                                                {(event.disaster_type || '—')}{event.event_category ? ` • ${event.event_category}` : ''}
+                                            </p>
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                {formatEventDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}
+                                                {event.location ? ` • ${event.location}` : ''}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(event.status)}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${eventStatusDotStyle(event.status)}`} />
+                                                {event.status}
+                                            </span>
+                                            <div className="relative" ref={openManageId === event.id ? manageMenuRef : null}>
+                                                <button
+                                                    type="button"
+                                                    data-manage-button
+                                                    onClick={(e) => {
+                                                        if (openManageId === event.id) { setOpenManageId(null); setDropdownPosition(null); return; }
+                                                        const r = e.currentTarget.getBoundingClientRect();
+                                                        setDropdownPosition({ top: r.bottom + 4, left: r.right - 208, width: 208 });
+                                                        setOpenManageId(event.id);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                                                >
+                                                    Manage <ChevronDown className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="text-sm text-slate-600 space-y-1 mt-auto">
-                                        <div>{formatDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}</div>
-                                        <div className="text-slate-500">{event.location || '—'}</div>
-                                        <div className="text-xs text-slate-400">By {event.creator?.name ?? '—'} · {event.created_at ? formatDate(event.created_at) : '—'}</div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {paginatedEvents.map((event, index) => (
+                                <div
+                                    key={event.id}
+                                    className={`training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 relative ${openManageId === event.id ? 'z-[100]' : ''}`}
+                                    style={{ animationDelay: `${index * 0.06}s` }}
+                                >
+                                    <div className="p-4 flex-1 flex flex-col">
+                                        <div className="flex items-start gap-3 mb-2">
+                                            <div className="p-2 bg-emerald-100 rounded-xl shrink-0">
+                                                <CalendarClock className="w-5 h-5 text-emerald-600" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <a
+                                                    href={event.status === 'draft' ? `/simulation-events/${event.id}/edit` : `/simulation-events/${event.id}`}
+                                                    className="font-semibold text-slate-800 hover:text-emerald-700 line-clamp-2 transition-colors"
+                                                >
+                                                    {event.title}
+                                                </a>
+                                                <p className="text-sm text-slate-500 mt-0.5">
+                                                    {(event.disaster_type || '—')}{event.event_category ? ` • ${event.event_category}` : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-slate-400 mb-2">
+                                            {formatEventDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}
+                                            {event.location ? ` • ${event.location}` : ''}
+                                        </p>
+                                        <div className="flex items-center justify-between gap-2 mb-3">
+                                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(event.status)}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${eventStatusDotStyle(event.status)}`} />
+                                                Status: {event.status}
+                                            </span>
+                                        </div>
+                                        <div className="relative" ref={openManageId === event.id ? manageMenuRef : null}>
+                                            <button
+                                                type="button"
+                                                data-manage-button
+                                                onClick={(e) => {
+                                                    if (openManageId === event.id) { setOpenManageId(null); setDropdownPosition(null); return; }
+                                                    const r = e.currentTarget.getBoundingClientRect();
+                                                    setDropdownPosition({ top: r.bottom + 4, left: r.left, width: r.width });
+                                                    setOpenManageId(event.id);
+                                                }}
+                                                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-medium hover:bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
+                                            >
+                                                Manage <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex flex-wrap gap-2">
-                                    <a
-                                        href={`/simulation-events/${event.id}`}
-                                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
-                                        title="View"
-                                    >
-                                        <Eye className="w-3.5 h-3.5" /> View
-                                    </a>
-                                    {event.status === 'draft' && (
-                                        <a
-                                            href={`/simulation-events/${event.id}/edit`}
-                                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                                            title="Edit"
-                                        >
-                                            <Pencil className="w-3.5 h-3.5" /> Edit
-                                        </a>
-                                    )}
-                                    {event.status === 'draft' && (
-                                        <form method="POST" action={`/simulation-events/${event.id}/publish`} onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const missingFields = [];
-                                            if (!event.title) missingFields.push('Event Title');
-                                            if (!event.disaster_type) missingFields.push('Disaster Type');
-                                            if (!event.event_category) missingFields.push('Event Category');
-                                            if (!event.event_date) missingFields.push('Event Date');
-                                            if (!event.start_time) missingFields.push('Start Time');
-                                            if (!event.end_time) missingFields.push('End Time');
-                                            if (missingFields.length > 0) {
-                                                Swal.fire({ title: 'Validation Error!', html: `Please fill in:<br><br>${missingFields.map(f => `• ${f}`).join('<br>')}`, icon: 'error', confirmButtonColor: '#64748b' });
-                                                return;
-                                            }
-                                            const result = await Swal.fire({ title: 'Warning!', text: 'Publish this event? It will become visible to participants.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
-                                            if (result.isConfirmed) e.target.submit();
-                                        }} className="inline-block">
-                                            <input type="hidden" name="_token" value={csrf} />
-                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors" title="Publish">
-                                                <Send className="w-3.5 h-3.5" /> Publish
-                                            </button>
-                                        </form>
-                                    )}
-                                    {event.status === 'published' && (() => {
-                                        const eventDate = new Date(event.event_date);
-                                        const today = new Date();
-                                        const isEventDateToday = eventDate.toDateString() === today.toDateString();
-                                        if (!isEventDateToday) return null;
-                                        const parseTime = (timeStr) => {
-                                            if (!timeStr) return null;
-                                            const [hours, minutes] = timeStr.split(':').map(Number);
-                                            const d = new Date(event.event_date);
-                                            d.setHours(hours, minutes, 0, 0);
-                                            return d;
-                                        };
-                                        const startTime = parseTime(event.start_time);
-                                        const now = new Date();
-                                        const canStart = startTime && now.getTime() >= startTime.getTime();
-                                        if (!canStart) return null;
-                                        return (
-                                            <form method="POST" action={`/simulation-events/${event.id}/start`} onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const result = await Swal.fire({ title: 'Start Event!', text: 'Start this simulation event? Status will change to Ongoing.', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, start', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
-                                                if (result.isConfirmed) e.target.submit();
-                                            }} className="inline-block">
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors" title="Start">
-                                                    <Play className="w-3.5 h-3.5" /> Start
-                                                </button>
-                                            </form>
-                                        );
-                                    })()}
-                                    {(event.status === 'published' || event.status === 'draft') && (
-                                        <form method="POST" action={`/simulation-events/${event.id}/cancel`} onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const result = await Swal.fire({ title: 'Warning!', text: 'Cancel this event? It will be marked cancelled and hidden from registration.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, cancel', cancelButtonText: 'Cancel', confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b' });
-                                            if (result.isConfirmed) e.target.submit();
-                                        }} className="inline-block">
-                                            <input type="hidden" name="_token" value={csrf} />
-                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors" title="Cancel">
-                                                <XCircle className="w-3.5 h-3.5" /> Cancel
-                                            </button>
-                                        </form>
-                                    )}
-                                    {event.status !== 'archived' && event.status !== 'cancelled' && (
-                                        <form method="POST" action={`/simulation-events/${event.id}/archive`} onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const result = await Swal.fire({ title: 'Warning!', text: 'Archive this event? It will become read-only.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, archive', cancelButtonText: 'Cancel', confirmButtonColor: '#f97316', cancelButtonColor: '#64748b' });
-                                            if (result.isConfirmed) e.target.submit();
-                                        }} className="inline-block">
-                                            <input type="hidden" name="_token" value={csrf} />
-                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors" title="Archive">
-                                                <Archive className="w-3.5 h-3.5" /> Archive
-                                            </button>
-                                        </form>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
+                    {openManageId && dropdownPosition && (() => {
+                        const openEvent = paginatedEvents.find((ev) => ev.id === openManageId);
+                        if (!openEvent) return null;
+                        const close = () => { setOpenManageId(null); setDropdownPosition(null); };
+                        return createPortal(
+                            <div
+                                ref={managePortalRef}
+                                className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40"
+                                style={{ position: 'fixed', top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width }}
+                            >
+                                <a href={`/simulation-events/${openEvent.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                                {openEvent.status === 'draft' && (
+                                    <a href={`/simulation-events/${openEvent.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                                )}
+                                {openEvent.status === 'draft' && (
+                                    <form method="POST" action={`/simulation-events/${openEvent.id}/publish`} onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const missingFields = [];
+                                        if (!openEvent.title) missingFields.push('Event Title');
+                                        if (!openEvent.disaster_type) missingFields.push('Disaster Type');
+                                        if (!openEvent.event_category) missingFields.push('Event Category');
+                                        if (!openEvent.event_date) missingFields.push('Event Date');
+                                        if (!openEvent.start_time) missingFields.push('Start Time');
+                                        if (!openEvent.end_time) missingFields.push('End Time');
+                                        if (missingFields.length > 0) {
+                                            Swal.fire({ title: 'Validation Error!', html: `Please fill in:<br><br>${missingFields.map(f => `• ${f}`).join('<br>')}`, icon: 'error', confirmButtonColor: '#64748b' });
+                                            return;
+                                        }
+                                        const result = await Swal.fire({ title: 'Publish event?', text: 'This event will become visible to participants.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
+                                        if (result.isConfirmed) e.target.submit();
+                                        close();
+                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                                )}
+                                {canStartEvent(openEvent) && (
+                                    <form method="POST" action={`/simulation-events/${openEvent.id}/start`} onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const result = await Swal.fire({ title: 'Start event?', text: 'Start this simulation event now?', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, start', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
+                                        if (result.isConfirmed) e.target.submit();
+                                        close();
+                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Play className="w-4 h-4" /> Start</button></form>
+                                )}
+                                {(openEvent.status === 'published' || openEvent.status === 'draft') && (
+                                    <form method="POST" action={`/simulation-events/${openEvent.id}/cancel`} onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const result = await Swal.fire({ title: 'Cancel event?', text: 'Cancel this event? It will be hidden from registration.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, cancel', cancelButtonText: 'Keep', confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b' });
+                                        if (result.isConfirmed) e.target.submit();
+                                        close();
+                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><XCircle className="w-4 h-4" /> Cancel</button></form>
+                                )}
+                                {openEvent.status !== 'archived' && openEvent.status !== 'cancelled' && (
+                                    <form method="POST" action={`/simulation-events/${openEvent.id}/archive`} onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const result = await Swal.fire({ title: 'Archive event?', text: 'Archive this event? It will become read-only.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, archive', cancelButtonText: 'Cancel', confirmButtonColor: '#f97316', cancelButtonColor: '#64748b' });
+                                        if (result.isConfirmed) e.target.submit();
+                                        close();
+                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
+                                )}
+                            </div>,
+                            document.body
+                        );
+                    })()}
                     {totalPages > 1 && (
                         <div className="mt-4">
                             <Pagination
