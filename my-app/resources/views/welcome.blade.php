@@ -822,7 +822,7 @@
                     <h4 class="text-white font-bold mb-4">Legal</h4>
                     <ul class="space-y-2 text-sm">
                         <li><a href="#" class="hover:text-teal-400 transition">Privacy Policy</a></li>
-                        <li><a href="#" class="hover:text-teal-400 transition">Terms of Use</a></li>
+                        <li><a href="/terms" class="hover:text-teal-400 transition">Terms and Conditions</a></li>
                         <li><a href="#" class="hover:text-teal-400 transition">Data Protection</a></li>
                         <li><a href="#" class="hover:text-teal-400 transition">Accessibility</a></li>
                     </ul>
