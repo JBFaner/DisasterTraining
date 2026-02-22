@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD Pipeline — Disaster Preparedness Training & Simulation System</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        .title {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+        }
+        .pipeline {
+            display: flex;
+            gap: 2rem;
+            justify-content: space-between;
+            align-items: flex-start;
+            max-width: 1400px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+        .section {
+            flex: 1;
+            min-width: 280px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .section h2 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+            margin: 0 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #475569;
+        }
+        .dev-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .box {
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            width: 100%;
+            font-size: 0.9rem;
+        }
+        .box.highlight { border-color: #0d9488; background: rgba(13, 148, 136, 0.15); }
+        .box small { display: block; color: #94a3b8; font-size: 0.75rem; margin-top: 0.25rem; }
+        .arrow { color: #64748b; font-size: 1.25rem; }
+        .pipeline-loop {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .stage {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: #1e293b;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            font-size: 0.85rem;
+        }
+        .stage .icon { width: 24px; text-align: center; color: #0d9488; }
+        .stage .cmd { color: #94a3b8; font-size: 0.75rem; }
+        .envs { display: flex; flex-direction: column; gap: 1rem; }
+        .env-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.85rem;
+        }
+        .env-card.prod { border-color: #0d9488; }
+        .env-card h3 { margin: 0 0 0.35rem 0; font-size: 0.95rem; }
+        .env-card p { margin: 0; color: #94a3b8; font-size: 0.8rem; }
+        .connector { text-align: center; color: #475569; font-size: 1.5rem; margin: 0.25rem 0; }
+        .monitor { text-align: center; color: #64748b; font-size: 0.75rem; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <h1 class="title">CI/CD Pipeline</h1>
+    <p class="subtitle">Disaster Preparedness Training & Simulation System · Cursor · VS Code → Hostinger</p>
+
+    <div class="pipeline">
+        <div class="section">
+            <h2>Development</h2>
+            <div class="dev-flow">
+                <div class="box">👤 Developer</div>
+                <span class="arrow">↓</span>
+                <div class="box highlight">Cursor AI · VS Code<br><small>Code creation</small></div>
+                <span class="arrow">↓</span>
+                <div class="box">Web Code<br><small>Laravel 12 · React · PHP 8.x · Vite</small></div>
+                <span class="arrow">↓</span>
+                <div class="box">Create code<br><small>Local: php artisan serve, npm run dev</small></div>
+                <span class="arrow">⟲</span>
+                <div class="box" style="border-style: dashed;">XAMPP / Local<br><small>Local DB · Debugging</small></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Version control & CI/CD pipeline</h2>
+            <div class="box highlight" style="margin-bottom: 1rem;">Git → GitHub</div>
+            <div class="pipeline-loop">
+                <div class="stage"><span class="icon">📄</span> <strong>Code</strong> <span class="cmd">commit & push</span></div>
+                <span class="arrow">↓</span>
+                <div class="stage"><span class="icon">📦</span> <strong>Build</strong> <span class="cmd">composer install · npm install · npm run build</span></div>
+                <span class="arrow">↓</span>
+                <div class="stage"><span class="icon">📋</span> <strong>Plan</strong> <span class="cmd">migrations</span></div>
+                <span class="arrow">↓</span>
+                <div class="stage"><span class="icon">🔍</span> <strong>Test</strong> <span class="cmd">PHPUnit · Postman API</span></div>
+                <span class="arrow">↓</span>
+                <div class="stage"><span class="icon">🚀</span> <strong>Deploy</strong> <span class="cmd">git pull · Admin Deploy buttons or GitHub Actions</span></div>
+                <span class="arrow">↓</span>
+                <div class="stage"><span class="icon">⚙️</span> <strong>Operate</strong> <span class="cmd">Hostinger cPanel / SSH</span></div>
+                <span class="arrow">↓</span>
+                <div class="stage"><span class="icon">🎁</span> <strong>Release</strong> → back to Code</div>
+            </div>
+            <p class="monitor">⟿ Monitor</p>
+        </div>
+
+        <div class="section">
+            <h2>Deployment environments</h2>
+            <div class="envs">
+                <div class="env-card prod">
+                    <h3>Production</h3>
+                    <p>Hostinger · Apache · PHP 8.x · cPanel · Live DB · disaster-training.alertaraqc.com</p>
+                </div>
+                <div class="env-card">
+                    <h3>Staging</h3>
+                    <p>Smoke tests · Sandbox · UAT · Staging database</p>
+                </div>
+                <div class="env-card">
+                    <h3>Local (XAMPP / artisan)</h3>
+                    <p>Local MySQL / SQLite · Developer tools · Debugging</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
