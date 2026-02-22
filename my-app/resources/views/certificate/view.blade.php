@@ -38,9 +38,9 @@
             .cert-wrap { box-shadow: none; padding: 0; margin: 0; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; max-width: none; min-height: 0; display: block; overflow: hidden; }
             .cert-wrap .certificate { min-height: 0; width: 100%; height: 100%; position: relative; }
             .certificate-outer { page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; max-width: none !important; transform: none !important; }
-            .certificate-bg { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .certificate-content { -webkit-print-color-adjust: exact; print-color-adjust: exact; position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center !important; font-family: Arial, "Open Sans", "Lato", sans-serif; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; }
-            .certificate-content > * { box-sizing: border-box; width: 100% !important; height: 100% !important; max-width: none !important; padding: 12mm !important; text-align: center !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; }
+            .certificate-bg { -webkit-print-color-adjust: exact; print-color-adjust: exact; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+            .certificate-content { -webkit-print-color-adjust: exact; print-color-adjust: exact; position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center !important; font-family: Arial, "Open Sans", "Lato", sans-serif; display: flex !important; align-items: center !important; justify-content: center !important; padding: 12mm !important; box-sizing: border-box; }
+            .certificate-content > * { box-sizing: border-box; max-width: 100% !important; text-align: center !important; }
             .certificate-content p, .certificate-content span, .certificate-content div { text-align: center !important; }
             /* Title & name → serif; body → sans-serif. Sizes in pt for print. */
             .certificate-content h1 { font-size: 48pt !important; font-weight: bold !important; font-family: "Times New Roman", Times, Georgia, serif !important; text-align: center !important; }
@@ -60,11 +60,11 @@
         <a href="{{ route('certification') }}">← Back to Certification</a>
         <button type="button" class="secondary" onclick="window.open('{{ route('certificates.view', ['certificate' => $certificate, 'orientation' => 'portrait', 'print' => 1]) }}', 'print', 'width=800,height=600');">Print / PDF (Portrait)</button>
         <button type="button" class="secondary" onclick="window.open('{{ route('certificates.view', ['certificate' => $certificate, 'orientation' => 'landscape', 'print' => 1]) }}', 'print', 'width=800,height=600');">Print / PDF (Landscape)</button>
-        <span class="toolbar-tip">For a real certificate: in the print dialog set Margins to <strong>None</strong> or <strong>Minimum</strong>, uncheck <strong>Headers and footers</strong>, enable <strong>Background graphics</strong>. Paper: {{ strtoupper($paperSize ?? 'a4') }}.</span>
+        <span class="toolbar-tip">In the print dialog: set Margins to <strong>None</strong>, uncheck <strong>Headers and footers</strong>, and turn <strong>on</strong> <strong>Background graphics</strong>—otherwise the PDF will look lighter than the screen. Paper: {{ strtoupper($paperSize ?? 'a4') }}.</span>
     </div>
     @if(!empty($autoPrint))
-    <div class="print-reminder" role="note">For a real certificate: set Margins to <strong>None</strong> or <strong>Minimum</strong>, uncheck <strong>Headers and footers</strong>, enable <strong>Background graphics</strong>, then Save.</div>
-    <style>.print-reminder { position: fixed; top: 0; left: 0; right: 0; background: #1e40af; color: white; padding: 10px 16px; text-align: center; font-size: 13px; z-index: 9999; } @media print { .print-reminder { display: none !important; } }</style>
+    <div class="print-reminder" role="note">Before saving: set Margins to <strong>None</strong>, uncheck <strong>Headers and footers</strong>, and turn <strong>on</strong> <strong>Background graphics</strong> (under Options). If this is off, the PDF will look lighter than the certificate on screen.</div>
+    <style>.print-reminder { position: fixed; top: 0; left: 0; right: 0; background: #1e40af; color: white; padding: 12px 20px; text-align: center; font-size: 14px; z-index: 9999; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.15); } @media print { .print-reminder { display: none !important; } }</style>
     <script>window.onload = function() { window.print(); }</script>
     @endif
     <div class="cert-wrap">
