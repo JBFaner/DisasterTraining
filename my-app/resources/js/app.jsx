@@ -20,6 +20,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap, TrendingUp, AlertTriangle, BarChart3, Calendar, Target, LayoutGrid, List } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import { computePosition, offset, flip, shift, autoUpdate } from '@floating-ui/dom';
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -56,6 +57,31 @@ function formatTime(timeString) {
         return `${hour12}:${minutes} ${ampm}`;
     }
     return timeString;
+}
+
+// Floating UI dropdown: auto placement, flip, shift, position:fixed for scrollable containers
+function useFloatingDropdown(isOpen, placement = 'bottom-start') {
+    const referenceRef = React.useRef(null);
+    const floatingRef = React.useRef(null);
+    const [floatingStyles, setFloatingStyles] = React.useState({ top: 0, left: 0 });
+
+    React.useEffect(() => {
+        if (!isOpen || !referenceRef.current || !floatingRef.current) return;
+        const reference = referenceRef.current;
+        const floating = floatingRef.current;
+        const update = () => {
+            computePosition(reference, floating, {
+                placement,
+                strategy: 'fixed',
+                middleware: [offset(6), flip(), shift({ padding: 8 })],
+            }).then(({ x, y }) => setFloatingStyles({ top: y, left: x }));
+        };
+        const cleanup = autoUpdate(reference, floating, update);
+        update();
+        return () => cleanup();
+    }, [isOpen, placement]);
+
+    return { referenceRef, floatingRef, floatingStyles };
 }
 
 // Pagination Component – modern redesign
@@ -1530,7 +1556,7 @@ function TrainingModulesTable({ modules = [] }) {
     const [openManageId, setOpenManageId] = React.useState(null);
     const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
     const filterRef = React.useRef(null);
-    const manageMenuRef = React.useRef(null);
+    const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles: manageFloatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique disaster types for filter
     const disasterTypes = [...new Set((modules || []).map(m => m.category).filter(Boolean))];
@@ -1552,12 +1578,12 @@ function TrainingModulesTable({ modules = [] }) {
         };
     }, [showFilters]);
 
-    // Close Manage menu when clicking outside
+    // Close Manage menu when clicking outside (button or portal dropdown)
     React.useEffect(() => {
         const handleClickOutside = (event) => {
-            if (manageMenuRef.current && !manageMenuRef.current.contains(event.target)) {
-                setOpenManageId(null);
-            }
+            const inRef = manageMenuRef.current?.contains(event.target);
+            const inPortal = managePortalRef.current?.contains(event.target);
+            if (!inRef && !inPortal) setOpenManageId(null);
         };
         if (openManageId != null) {
             document.addEventListener('mousedown', handleClickOutside);
@@ -1791,22 +1817,12 @@ function TrainingModulesTable({ modules = [] }) {
                                     <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
                                         <button
                                             type="button"
+                                            data-manage-button
                                             onClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
                                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
                                         >
                                             Manage <ChevronDown className="w-4 h-4" />
                                         </button>
-                                        {openManageId === module.id && (
-                                            <div className="absolute right-0 top-full mt-1 py-1 w-44 rounded-xl border border-slate-200 bg-white shadow-lg z-50">
-                                                <a href={`/training-modules/${module.id}`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
-                                                <a href={`/training-modules/${module.id}/edit`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
-                                                {module.status === 'draft' && (
-                                                    <form method="POST" action={`/training-modules/${module.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', text: 'Publish this training module?', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
-                                                )}
-                                                <form method="POST" action={`/training-modules/${module.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this module?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
-                                                <form method="POST" action={`/training-modules/${module.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this module?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </li>
@@ -1846,28 +1862,40 @@ function TrainingModulesTable({ modules = [] }) {
                                 <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
                                     <button
                                         type="button"
+                                        data-manage-button
                                         onClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
                                         className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-medium hover:bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
                                     >
                                         Manage <ChevronDown className="w-4 h-4" />
                                     </button>
-                                        {openManageId === module.id && (
-                                        <div className="absolute left-0 right-0 top-full mt-1 py-1 rounded-xl border border-slate-200 bg-white shadow-lg z-50">
-                                            <a href={`/training-modules/${module.id}`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
-                                            <a href={`/training-modules/${module.id}/edit`} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
-                                            {module.status === 'draft' && (
-                                                <form method="POST" action={`/training-modules/${module.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', html: 'Publish this training module? Ensure title, difficulty, and at least one lesson are set.', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
-                                            )}
-                                            <form method="POST" action={`/training-modules/${module.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this module? It will no longer be assignable to new simulations.', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
-                                            <form method="POST" action={`/training-modules/${module.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this module? This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); setOpenManageId(null); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
+
+            {openManageId && (() => {
+                const openModule = paginatedModules.find((m) => m.id === openManageId);
+                if (!openModule) return null;
+                const close = () => setOpenManageId(null);
+                return createPortal(
+                    <div
+                        ref={managePortalRef}
+                        className="py-1 w-44 min-w-[11rem] rounded-xl border border-slate-200 bg-white shadow-xl z-[300] transition-opacity duration-150 ease-out"
+                        style={{ position: 'fixed', top: manageFloatingStyles.top, left: manageFloatingStyles.left }}
+                    >
+                        <a href={`/training-modules/${openModule.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                        <a href={`/training-modules/${openModule.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                        {openModule.status === 'draft' && (
+                            <form method="POST" action={`/training-modules/${openModule.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', text: 'Publish this training module?', icon: 'question', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                        )}
+                        <form method="POST" action={`/training-modules/${openModule.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this module?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
+                        <form method="POST" action={`/training-modules/${openModule.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this module?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
+                    </div>,
+                    document.body
+                );
+            })()}
 
             {totalPages > 1 && (
                 <div className="mt-6">
@@ -3329,11 +3357,9 @@ function ScenariosTable({ scenarios = [], role }) {
     const [currentPage, setCurrentPage] = React.useState(1);
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
-    const [dropdownPosition, setDropdownPosition] = React.useState(null);
     const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
     const filterRef = React.useRef(null);
-    const manageMenuRef = React.useRef(null);
-    const managePortalRef = React.useRef(null);
+    const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique values for filters
     const disasterTypes = [...new Set((scenarios || []).map(s => s.disaster_type).filter(Boolean))];
@@ -3360,10 +3386,7 @@ function ScenariosTable({ scenarios = [], role }) {
         const handleClickOutside = (event) => {
             if (event.target.closest('[data-manage-button]')) return;
             const inPortal = managePortalRef.current && managePortalRef.current.contains(event.target);
-            if (!inPortal) {
-                setOpenManageId(null);
-                setDropdownPosition(null);
-            }
+            if (!inPortal) setOpenManageId(null);
         };
         if (openManageId != null) {
             document.addEventListener('mousedown', handleClickOutside);
@@ -3581,12 +3604,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                         <button
                                             type="button"
                                             data-manage-button
-                                            onClick={(e) => {
-                                                if (openManageId === s.id) { setOpenManageId(null); setDropdownPosition(null); return; }
-                                                const r = e.currentTarget.getBoundingClientRect();
-                                                setDropdownPosition({ top: r.bottom + 4, left: r.right - 176, width: 176 });
-                                                setOpenManageId(s.id);
-                                            }}
+                                            onClick={() => setOpenManageId(openManageId === s.id ? null : s.id)}
                                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
                                         >Manage <ChevronDown className="w-4 h-4" /></button>
                                     </div>
@@ -3620,12 +3638,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                     <button
                                         type="button"
                                         data-manage-button
-                                        onClick={(e) => {
-                                            if (openManageId === s.id) { setOpenManageId(null); setDropdownPosition(null); return; }
-                                            const r = e.currentTarget.getBoundingClientRect();
-                                            setDropdownPosition({ top: r.bottom + 4, left: r.left, width: r.width });
-                                            setOpenManageId(s.id);
-                                        }}
+                                        onClick={() => setOpenManageId(openManageId === s.id ? null : s.id)}
                                         className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-medium hover:bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
                                     >Manage <ChevronDown className="w-4 h-4" /></button>
                                 </div>
@@ -3635,15 +3648,15 @@ function ScenariosTable({ scenarios = [], role }) {
                 </div>
             )}
 
-            {openManageId && dropdownPosition && (() => {
+            {openManageId && (() => {
                 const openScenario = paginatedScenarios.find((sc) => sc.id === openManageId);
                 if (!openScenario) return null;
-                const close = () => { setOpenManageId(null); setDropdownPosition(null); };
+                const close = () => setOpenManageId(null);
                 return createPortal(
                     <div
                         ref={managePortalRef}
-                        className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40"
-                        style={{ position: 'fixed', top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width }}
+                        className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40 transition-opacity duration-150 ease-out"
+                        style={{ position: 'fixed', top: floatingStyles.top, left: floatingStyles.left }}
                     >
                         <a href={`/scenarios/${openScenario.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
                         {openScenario.status !== 'published' && (
@@ -5025,11 +5038,9 @@ function SimulationEventsTable({ events, role }) {
     const [currentPage, setCurrentPage] = React.useState(1);
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
-    const [dropdownPosition, setDropdownPosition] = React.useState(null);
     const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
     const filterRef = React.useRef(null);
-    const manageMenuRef = React.useRef(null);
-    const managePortalRef = React.useRef(null);
+    const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique values for filters
     const disasterTypes = [...new Set((events || []).map(e => e.disaster_type).filter(Boolean))];
@@ -5057,10 +5068,7 @@ function SimulationEventsTable({ events, role }) {
         const handleClickOutside = (event) => {
             if (event.target.closest('[data-manage-button]')) return;
             const inPortal = managePortalRef.current && managePortalRef.current.contains(event.target);
-            if (!inPortal) {
-                setOpenManageId(null);
-                setDropdownPosition(null);
-            }
+            if (!inPortal) setOpenManageId(null);
         };
         if (openManageId != null) {
             document.addEventListener('mousedown', handleClickOutside);
@@ -5378,12 +5386,7 @@ function SimulationEventsTable({ events, role }) {
                                                 <button
                                                     type="button"
                                                     data-manage-button
-                                                    onClick={(e) => {
-                                                        if (openManageId === event.id) { setOpenManageId(null); setDropdownPosition(null); return; }
-                                                        const r = e.currentTarget.getBoundingClientRect();
-                                                        setDropdownPosition({ top: r.bottom + 4, left: r.right - 208, width: 208 });
-                                                        setOpenManageId(event.id);
-                                                    }}
+                                                    onClick={() => setOpenManageId(openManageId === event.id ? null : event.id)}
                                                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
                                                 >
                                                     Manage <ChevronDown className="w-4 h-4" />
@@ -5433,12 +5436,7 @@ function SimulationEventsTable({ events, role }) {
                                             <button
                                                 type="button"
                                                 data-manage-button
-                                                onClick={(e) => {
-                                                    if (openManageId === event.id) { setOpenManageId(null); setDropdownPosition(null); return; }
-                                                    const r = e.currentTarget.getBoundingClientRect();
-                                                    setDropdownPosition({ top: r.bottom + 4, left: r.left, width: r.width });
-                                                    setOpenManageId(event.id);
-                                                }}
+                                                onClick={() => setOpenManageId(openManageId === event.id ? null : event.id)}
                                                 className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-medium hover:bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
                                             >
                                                 Manage <ChevronDown className="w-4 h-4" />
@@ -5449,15 +5447,15 @@ function SimulationEventsTable({ events, role }) {
                             ))}
                         </div>
                     )}
-                    {openManageId && dropdownPosition && (() => {
+                    {openManageId && (() => {
                         const openEvent = paginatedEvents.find((ev) => ev.id === openManageId);
                         if (!openEvent) return null;
-                        const close = () => { setOpenManageId(null); setDropdownPosition(null); };
+                        const close = () => setOpenManageId(null);
                         return createPortal(
                             <div
                                 ref={managePortalRef}
-                                className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40"
-                                style={{ position: 'fixed', top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width }}
+                                className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40 transition-opacity duration-150 ease-out"
+                                style={{ position: 'fixed', top: floatingStyles.top, left: floatingStyles.left }}
                             >
                                 <a href={`/simulation-events/${openEvent.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
                                 {openEvent.status === 'draft' && (
