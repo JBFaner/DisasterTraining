@@ -1539,7 +1539,7 @@ function TrainingModulesTable({ modules = [] }) {
     const [currentPage, setCurrentPage] = React.useState(1);
     const [viewMode, setViewMode] = React.useState('grid'); // 'grid' | 'list'
     const [openManageId, setOpenManageId] = React.useState(null);
-    const itemsPerPage = 10; // Fixed to 10 items per page
+    const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
     const filterRef = React.useRef(null);
     const manageMenuRef = React.useRef(null);
 
@@ -3341,7 +3341,7 @@ function ScenariosTable({ scenarios = [], role }) {
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
     const [dropdownPosition, setDropdownPosition] = React.useState(null);
-    const itemsPerPage = 10; // Fixed to 10 items per page
+    const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
     const filterRef = React.useRef(null);
     const manageMenuRef = React.useRef(null);
     const managePortalRef = React.useRef(null);
@@ -5037,7 +5037,7 @@ function SimulationEventsTable({ events, role }) {
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
     const [dropdownPosition, setDropdownPosition] = React.useState(null);
-    const itemsPerPage = 10; // Fixed to 10 items per page
+    const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
     const filterRef = React.useRef(null);
     const manageMenuRef = React.useRef(null);
     const managePortalRef = React.useRef(null);
