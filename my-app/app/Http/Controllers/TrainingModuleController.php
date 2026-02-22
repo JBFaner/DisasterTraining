@@ -9,6 +9,7 @@ use App\Models\LessonCompletion;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class TrainingModuleController extends Controller
 {
@@ -343,14 +344,34 @@ class TrainingModuleController extends Controller
         $data = $request->validate([
             'type' => ['required', 'string', 'max:50'],
             'label' => ['nullable', 'string', 'max:255'],
-            'url' => ['required', 'url', 'max:2048'],
+            'url' => ['nullable', 'url', 'max:2048'],
+            'file' => ['nullable', 'file', 'max:20480', 'mimes:pdf,doc,docx,ppt,pptx,jpg,jpeg,png,gif,mp4,mov,avi'],
         ]);
+
+        if (! $request->hasFile('file') && empty($data['url'])) {
+            return redirect()->back()
+                ->withErrors([
+                    'file' => 'Please either upload a file or provide a valid link.',
+                ])
+                ->withInput();
+        }
+
+        $storedPath = null;
+
+        if ($request->hasFile('file')) {
+            // Store uploaded file in public storage so it can be downloaded/viewed
+            $relativePath = $request->file('file')->store('lesson-materials', 'public');
+            $storedPath = Storage::url($relativePath);
+        } else {
+            // Fallback to external URL
+            $storedPath = $data['url'];
+        }
 
         LessonMaterial::create([
             'training_lesson_id' => $lesson->id,
             'type' => $data['type'],
             'label' => $data['label'] ?? null,
-            'path' => $data['url'],
+            'path' => $storedPath,
         ]);
 
         return redirect()->route('training.modules.show', $trainingModule)
@@ -363,6 +384,20 @@ class TrainingModuleController extends Controller
 
         if ($lesson->training_module_id !== $trainingModule->id || $material->training_lesson_id !== $lesson->id) {
             abort(404);
+        }
+
+        // Best-effort cleanup of locally stored files
+        if ($material->path) {
+            $publicBase = rtrim(Storage::url(''), '/');
+            $path = $material->path;
+
+            if (str_starts_with($path, $publicBase)) {
+                $relative = ltrim(substr($path, strlen($publicBase)), '/');
+                Storage::disk('public')->delete($relative);
+            } elseif (str_starts_with($path, '/storage/')) {
+                $relative = ltrim(substr($path, strlen('/storage/')), '/');
+                Storage::disk('public')->delete($relative);
+            }
         }
 
         $material->delete();
