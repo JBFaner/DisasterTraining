@@ -3136,7 +3136,12 @@ function TrainingModuleDetail({ module }) {
                                     </div>
                                     <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-2" onClick={(e) => e.stopPropagation()}>
                                         <div className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide">Add material</div>
-                                        <form method="POST" action={`/training-modules/${module.id}/lessons/${lesson.id}/materials`} className="space-y-2">
+                                        <form
+                                            method="POST"
+                                            action={`/training-modules/${module.id}/lessons/${lesson.id}/materials`}
+                                            encType="multipart/form-data"
+                                            className="space-y-2"
+                                        >
                                             <input type="hidden" name="_token" value={csrf} />
                                             <select name="type" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500">
                                                 <option value="PDF">PDF</option>
@@ -3146,7 +3151,21 @@ function TrainingModuleDetail({ module }) {
                                                 <option value="Link">Link</option>
                                             </select>
                                             <input name="label" type="text" placeholder="Label (optional)" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                                            <input name="url" type="url" required placeholder="https://..." className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                                            <input
+                                                name="url"
+                                                type="url"
+                                                placeholder="https://... (optional link)"
+                                                className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                            <input
+                                                name="file"
+                                                type="file"
+                                                accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi"
+                                                className="w-full rounded-lg border border-dashed border-slate-300 px-2.5 py-2 text-[0.7rem] file:mr-3 file:rounded-md file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-[0.7rem] file:font-medium file:text-white hover:file:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                            <p className="text-[0.65rem] text-slate-500">
+                                                You can <span className="font-semibold">upload a file</span> (PDF, image, video, PPT, etc.) or provide a link. If both are provided, the uploaded file will be used.
+                                            </p>
                                             <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[0.7rem] font-medium px-2.5 py-1.5 transition-all duration-200">
                                                 <Plus className="w-3 h-3" />
                                                 Add material
@@ -3738,6 +3757,11 @@ function ScenarioCreateForm({ modules }) {
     const [aiError, setAiError] = React.useState(null);
     const [showCriteria, setShowCriteria] = React.useState(true);
     const [criteria, setCriteria] = React.useState(['']);
+    const [scenarioTitle, setScenarioTitle] = React.useState('');
+    const [difficulty, setDifficulty] = React.useState('Basic');
+    const [severityLevel, setSeverityLevel] = React.useState('');
+    const [injuredCount, setInjuredCount] = React.useState(0);
+    const [trappedCount, setTrappedCount] = React.useState(0);
     const publishedModules = (modules || []).filter((m) => m.status === 'published');
     const selectedModule =
         publishedModules.find((m) => String(m.id) === String(selectedModuleId)) || null;
@@ -3766,6 +3790,11 @@ function ScenarioCreateForm({ modules }) {
             set('injured_victims_count', t.injured_victims_count ?? 0);
             set('trapped_persons_count', t.trapped_persons_count ?? 0);
         }
+        setScenarioTitle(t.title ?? '');
+        setDifficulty(t.difficulty ?? 'Basic');
+        setSeverityLevel(t.severity_level ?? '');
+        setInjuredCount(t.injured_victims_count ?? 0);
+        setTrappedCount(t.trapped_persons_count ?? 0);
         setCriteria(t.criteria && t.criteria.length > 0 ? [...t.criteria] : ['']);
         setShowCriteria(true);
     };
@@ -3838,26 +3867,43 @@ function ScenarioCreateForm({ modules }) {
             // Populate form fields with generated data
             const data = result.data;
             if (formRef.current) {
-                if (data.title) formRef.current.querySelector('[name="title"]').value = data.title;
+                if (data.title) { formRef.current.querySelector('[name="title"]').value = data.title; setScenarioTitle(data.title); }
                 if (data.short_description) formRef.current.querySelector('[name="short_description"]').value = data.short_description;
                 if (data.affected_area) formRef.current.querySelector('[name="affected_area"]').value = data.affected_area;
                 if (data.incident_time_text) formRef.current.querySelector('[name="incident_time_text"]').value = data.incident_time_text;
                 if (data.general_situation) formRef.current.querySelector('[name="general_situation"]').value = data.general_situation;
-                if (data.severity_level) formRef.current.querySelector('[name="severity_level"]').value = data.severity_level;
-                if (data.difficulty) formRef.current.querySelector('[name="difficulty"]').value = data.difficulty;
+                if (data.severity_level) { formRef.current.querySelector('[name="severity_level"]').value = data.severity_level; setSeverityLevel(data.severity_level); }
+                if (data.difficulty) { formRef.current.querySelector('[name="difficulty"]').value = data.difficulty; setDifficulty(data.difficulty); }
                 if (data.intended_participants) formRef.current.querySelector('[name="intended_participants"]').value = data.intended_participants;
-                if (data.injured_victims_count !== undefined) formRef.current.querySelector('[name="injured_victims_count"]').value = data.injured_victims_count;
-                if (data.trapped_persons_count !== undefined) formRef.current.querySelector('[name="trapped_persons_count"]').value = data.trapped_persons_count;
+                if (data.injured_victims_count !== undefined) { formRef.current.querySelector('[name="injured_victims_count"]').value = data.injured_victims_count; setInjuredCount(data.injured_victims_count); }
+                if (data.trapped_persons_count !== undefined) { formRef.current.querySelector('[name="trapped_persons_count"]').value = data.trapped_persons_count; setTrappedCount(data.trapped_persons_count); }
                 if (data.infrastructure_damage) formRef.current.querySelector('[name="infrastructure_damage"]').value = data.infrastructure_damage;
                 if (data.communication_status) formRef.current.querySelector('[name="communication_status"]').value = data.communication_status;
             }
+            setScenarioTitle(data.title ?? '');
+            setDifficulty(data.difficulty ?? 'Basic');
+            setSeverityLevel(data.severity_level ?? '');
+            setInjuredCount(data.injured_victims_count ?? 0);
+            setTrappedCount(data.trapped_persons_count ?? 0);
+            setScenarioTitle(data.title ?? '');
+            setDifficulty(data.difficulty ?? '');
+            setSeverityLevel(data.severity_level ?? '');
+            setInjuredCount(data.injured_victims_count ?? 0);
+            setTrappedCount(data.trapped_persons_count ?? 0);
 
             // Close chat popup
             setShowAiChat(false);
             setAiPrompt('');
 
-            // Show success message (optional - could use a toast notification)
-            alert('Scenario generated successfully! Please review and adjust the fields before saving.');
+            // Show success message with styled modal
+            await Swal.fire({
+                icon: 'success',
+                title: 'Scenario generated',
+                html: 'Please review and adjust the fields below before saving.',
+                confirmButtonText: 'Review scenario',
+                confirmButtonColor: '#16a34a',
+                customClass: { popup: 'rounded-xl shadow-xl' },
+            });
         } catch (error) {
             setAiError(error.message || 'Failed to generate scenario. Please try again.');
         } finally {
@@ -3985,375 +4031,199 @@ function ScenarioCreateForm({ modules }) {
                         ref={formRef}
                         method="POST"
                         action="/scenarios"
-                        className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
+                        className="training-module-card-enter"
                     >
                         <input type="hidden" name="_token" value={csrf} />
                         <input type="hidden" name="disaster_type" value={derivedDisasterType} />
-                        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                            <h3 className="text-sm font-semibold text-slate-700">Scenario details</h3>
-                            <button
-                                type="button"
-                                onClick={() => setShowAiChat(true)}
-                                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
-                            >
-                                <Zap className="w-4 h-4" />
-                                Generate with AI
-                            </button>
-                        </div>
-                        <div>
-                            <label className={labelClass} htmlFor="scenario_title">
-                                Title <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="scenario_title"
-                                name="title"
-                                type="text"
-                                required
-                                className={inputClass}
-                            />
-                        </div>
-                        <div>
-                            <label className={labelClass} htmlFor="scenario_short_description">
-                                Short description
-                            </label>
-                            <textarea
-                                id="scenario_short_description"
-                                name="short_description"
-                                rows={3}
-                                className={inputClass}
-                            />
-                        </div>
 
-                        {/* Training Module and Disaster Type Section */}
-                        <div className="border-t border-slate-200 pt-4 mt-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelClass} htmlFor="training_module_id">
-                                        Training Module <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        id="training_module_id"
-                                        name="training_module_id"
-                                        required
-                                        value={selectedModuleId}
-                                        onChange={(e) => setSelectedModuleId(e.target.value)}
-                                        className={inputClass}
-                                    >
-                                        <option value="">Select a training module…</option>
-                                        {publishedModules.map((m) => (
-                                            <option key={m.id} value={m.id}>
-                                                {m.title}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <p className="mt-1 text-[0.7rem] text-slate-500">
-                                        This scenario will be the practical application of the selected training module.
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className={labelClass} htmlFor="scenario_difficulty">
-                                        Difficulty <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        id="scenario_difficulty"
-                                        name="difficulty"
-                                        required
-                                        className={inputClass}
-                                    >
-                                        <option value="Basic">Basic</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Advanced">Advanced</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="mt-4">
-                                <label className={labelClass}>
-                                    Disaster type (from training module)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={derivedDisasterType || ''}
-                                    disabled
-                                    placeholder="Select a training module to auto-fill"
-                                    className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-600"
-                                />
-                            </div>
-
-                    {/* Learning Objectives from Training Module */}
-                    {selectedModule && learningObjectives && learningObjectives.length > 0 && (
-                        <div className="mt-4">
-                            <label className={labelClass}>
-                                Learning Objectives <span className="text-red-500">*</span>
-                            </label>
-                            <div className="rounded-xl border border-slate-300 bg-slate-50 p-3">
-                                <ul className="space-y-2">
-                                    {learningObjectives.map((objective, index) => (
-                                        <li key={index} className="text-sm text-slate-700 flex items-start gap-2">
-                                            <span className="text-emerald-600 mt-0.5">•</span>
-                                            <span>{objective}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <p className="mt-1 text-[0.7rem] text-slate-500">
-                                Learning objectives from the selected training module.
-                            </p>
-                        </div>
-                    )}
-                    {selectedModule && (!learningObjectives || learningObjectives.length === 0) && (
-                        <div className="mt-4">
-                            <label className={labelClass}>
-                                Learning Objectives <span className="text-red-500">*</span>
-                            </label>
-                            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
-                                <p className="text-sm text-rose-700">
-                                    No learning objectives found in the selected training module. Please add learning objectives to the training module first.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                    {!selectedModule && (
-                        <div className="mt-4">
-                            <label className={labelClass}>
-                                Learning Objectives <span className="text-red-500">*</span>
-                            </label>
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-sm text-slate-500">
-                                    Please select a training module to view learning objectives.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Criteria Section */}
-                    <div className="mt-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="block text-xs font-semibold text-slate-600">
-                                Criterion <span className="text-red-500">*</span>
-                            </label>
-                            <button
-                                type="button"
-                                onClick={() => setShowCriteria(!showCriteria)}
-                                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:border-emerald-700 transition-colors"
-                            >
-                                <Plus className="w-3.5 h-3.5" />
-                                Criteria
-                            </button>
-                        </div>
-                        {showCriteria && (
-                            <div className="space-y-2">
-                                {criteria.map((criterion, index) => (
-                                    <div key={index} className="flex items-start gap-2">
-                                        <input
-                                            type="text"
-                                            name={`criteria[${index}]`}
-                                            value={criterion}
-                                            onChange={(e) => updateCriterion(index, e.target.value)}
-                                            placeholder={`Criterion ${index + 1}`}
-                                            required
-                                            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                        />
-                                        {criteria.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => removeCriterion(index)}
-                                                className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        )}
+                        <div className="flex gap-8">
+                            {/* LEFT COLUMN - 70% - Main scenario content */}
+                            <div className="flex-[7] min-w-0 space-y-6">
+                                {/* 1. Scenario Overview Card */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                    <h2 className="text-lg font-semibold text-slate-800 mb-4">Scenario Overview</h2>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className={labelClass} htmlFor="scenario_title">Title <span className="text-red-500">*</span></label>
+                                            <input id="scenario_title" name="title" type="text" required value={scenarioTitle} onChange={(e) => setScenarioTitle(e.target.value)} className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass} htmlFor="scenario_short_description">Short description</label>
+                                            <textarea id="scenario_short_description" name="short_description" rows={3} className={inputClass} />
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className={labelClass} htmlFor="affected_area">Affected area</label>
+                                                <input id="affected_area" name="affected_area" type="text" placeholder="e.g. Barangay Central" className={inputClass} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClass} htmlFor="incident_time_text">Time of incident</label>
+                                                <input id="incident_time_text" name="incident_time_text" type="text" placeholder="e.g. 10:17 AM" className={inputClass} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className={labelClass} htmlFor="general_situation">General situation</label>
+                                            <textarea id="general_situation" name="general_situation" rows={3} placeholder="e.g. Buildings damaged, power outage" className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass} htmlFor="severity_level">Severity level</label>
+                                            <select id="severity_level" name="severity_level" value={severityLevel} onChange={(e) => setSeverityLevel(e.target.value)} className={inputClass}>
+                                                <option value="">Select severity…</option>
+                                                <option value="Low">Low</option>
+                                                <option value="Medium">Medium</option>
+                                                <option value="High">High</option>
+                                                <option value="Critical">Critical</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={addCriterion}
-                                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                    Add another criterion
-                                </button>
+                                </div>
+
+                                {/* 2. Impact & Damage Card */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                    <h2 className="text-lg font-semibold text-slate-800 mb-4">Impact & Damage</h2>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className={labelClass} htmlFor="injured_victims_count">Number of injured victims</label>
+                                                <input id="injured_victims_count" name="injured_victims_count" type="number" min="0" value={injuredCount} onChange={(e) => setInjuredCount(Number(e.target.value) || 0)} className={inputClass} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClass} htmlFor="trapped_persons_count">Number of trapped persons</label>
+                                                <input id="trapped_persons_count" name="trapped_persons_count" type="number" min="0" value={trappedCount} onChange={(e) => setTrappedCount(Number(e.target.value) || 0)} className={inputClass} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className={labelClass} htmlFor="infrastructure_damage">Infrastructure damage</label>
+                                            <textarea id="infrastructure_damage" name="infrastructure_damage" rows={2} placeholder="e.g. Roads blocked, building collapse" className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass} htmlFor="communication_status">Communication status</label>
+                                            <select id="communication_status" name="communication_status" className={inputClass}>
+                                                <option value="">Select status…</option>
+                                                <option value="working">Working</option>
+                                                <option value="unstable">Unstable</option>
+                                                <option value="down">Down</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3. Participants & Communication Card */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                    <h2 className="text-lg font-semibold text-slate-800 mb-4">Participants & Communication</h2>
+                                    <div>
+                                        <label className={labelClass} htmlFor="intended_participants">Intended participants</label>
+                                        <input id="intended_participants" name="intended_participants" type="text" placeholder="e.g. students, staff, volunteers" className={inputClass} />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                                    <a href="/scenarios" className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancel</a>
+                                    <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5">Save Scenario</button>
+                                </div>
                             </div>
-                        )}
-                        {!showCriteria && (
-                            <p className="text-[0.7rem] text-rose-600">
-                                Criteria is required. Please click "+ Criteria" to add at least one criterion.
-                            </p>
-                        )}
-                    </div>
-                </div>
 
-                {/* Scenario Overview Section */}
-                <div className="border-t border-slate-200 pt-4 mt-4">
-                    <h3 className="text-sm font-semibold text-slate-700 mb-3">Scenario Overview</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                className="block text-xs font-semibold text-slate-600 mb-1"
-                                htmlFor="affected_area"
-                            >
-                                Affected area
-                            </label>
-                            <input
-                                id="affected_area"
-                                name="affected_area"
-                                type="text"
-                                placeholder="e.g. Barangay Central"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                className="block text-xs font-semibold text-slate-600 mb-1"
-                                htmlFor="incident_time_text"
-                            >
-                                Time of incident
-                            </label>
-                            <input
-                                id="incident_time_text"
-                                name="incident_time_text"
-                                type="text"
-                                placeholder="e.g. 10:17 AM"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="general_situation"
-                        >
-                            General situation
-                        </label>
-                        <textarea
-                            id="general_situation"
-                            name="general_situation"
-                            rows={3}
-                            placeholder="e.g. Buildings damaged, power outage"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                    </div>
-                    <div className="mt-4">
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="severity_level"
-                        >
-                            Severity level
-                        </label>
-                        <select
-                            id="severity_level"
-                            name="severity_level"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="">Select severity…</option>
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                            <option value="Critical">Critical</option>
-                        </select>
-                    </div>
-                </div>
+                            {/* RIGHT COLUMN - 30% - Sticky control panel */}
+                            <div className="flex-[3] shrink-0 w-full max-w-md">
+                                <div className="sticky top-6 space-y-6">
+                                    {/* 1. AI Assistant Panel */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                        <h2 className="text-lg font-semibold text-slate-800 mb-3">AI Assistant</h2>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAiChat(true)}
+                                            className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-md hover:shadow-lg transition-all duration-200"
+                                        >
+                                            <Zap className="w-4 h-4" />
+                                            Generate with AI
+                                        </button>
+                                    </div>
 
-                {/* Core Scenario Details Section */}
-                <div className="border-t border-slate-200 pt-4 mt-4">
-                    <h3 className="text-sm font-semibold text-slate-700 mb-3">Core Scenario Details</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                className="block text-xs font-semibold text-slate-600 mb-1"
-                                htmlFor="injured_victims_count"
-                            >
-                                Number of injured victims
-                            </label>
-                            <input
-                                id="injured_victims_count"
-                                name="injured_victims_count"
-                                type="number"
-                                min="0"
-                                defaultValue="0"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                className="block text-xs font-semibold text-slate-600 mb-1"
-                                htmlFor="trapped_persons_count"
-                            >
-                                Number of trapped persons
-                            </label>
-                            <input
-                                id="trapped_persons_count"
-                                name="trapped_persons_count"
-                                type="number"
-                                min="0"
-                                defaultValue="0"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="infrastructure_damage"
-                        >
-                            Infrastructure damage
-                        </label>
-                        <textarea
-                            id="infrastructure_damage"
-                            name="infrastructure_damage"
-                            rows={2}
-                            placeholder="e.g. Roads blocked, building collapse"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                    </div>
-                    <div className="mt-4">
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="communication_status"
-                        >
-                            Communication status
-                        </label>
-                        <select
-                            id="communication_status"
-                            name="communication_status"
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="">Select status…</option>
-                            <option value="working">Working</option>
-                            <option value="unstable">Unstable</option>
-                            <option value="down">Down</option>
-                        </select>
-                    </div>
-                </div>
+                                    {/* 2. Training Module Assignment Panel */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                        <h2 className="text-lg font-semibold text-slate-800 mb-4">Training Module Assignment</h2>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className={labelClass} htmlFor="training_module_id">Training Module <span className="text-red-500">*</span></label>
+                                                <select id="training_module_id" name="training_module_id" required value={selectedModuleId} onChange={(e) => setSelectedModuleId(e.target.value)} className={inputClass}>
+                                                    <option value="">Select a training module…</option>
+                                                    {publishedModules.map((m) => (
+                                                        <option key={m.id} value={m.id}>{m.title}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass} htmlFor="scenario_difficulty">Difficulty <span className="text-red-500">*</span></label>
+                                                <select id="scenario_difficulty" name="difficulty" required value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className={inputClass}>
+                                                    <option value="Basic">Basic</option>
+                                                    <option value="Intermediate">Intermediate</option>
+                                                    <option value="Advanced">Advanced</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>Disaster type</label>
+                                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">{derivedDisasterType || '—'}</div>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>Learning objectives</label>
+                                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                                                    {selectedModule && learningObjectives && learningObjectives.length > 0 ? (
+                                                        <ul className="space-y-1">
+                                                            {learningObjectives.map((obj, i) => (
+                                                                <li key={i}>• {obj}</li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : selectedModule && (!learningObjectives || learningObjectives.length === 0) ? (
+                                                        <p className="text-rose-600">No learning objectives in this module.</p>
+                                                    ) : (
+                                                        <p>Select a module to see objectives.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="intended_participants"
-                    >
-                        Intended participants
-                    </label>
-                    <input
-                        id="intended_participants"
-                        name="intended_participants"
-                        type="text"
-                        placeholder="e.g. students, staff, volunteers"
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
-                    <a
-                        href="/scenarios"
-                        className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                    >
-                        Cancel
-                    </a>
-                    <button
-                        type="submit"
-                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
-                    >
-                        Save Scenario
-                    </button>
-                </div>
+                                    {/* 3. Criteria Manager Panel */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                        <h2 className="text-lg font-semibold text-slate-800 mb-4">Evaluation Criteria</h2>
+                                        {showCriteria && (
+                                            <div className="space-y-2">
+                                                {criteria.map((criterion, index) => (
+                                                    <div key={index} className="flex items-center gap-2">
+                                                        <input type="text" name={`criteria[${index}]`} value={criterion} onChange={(e) => updateCriterion(index, e.target.value)} placeholder={`Criterion ${index + 1}`} required className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                                                        {criteria.length > 1 && (
+                                                            <button type="button" onClick={() => removeCriterion(index)} className="shrink-0 p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors" aria-label="Remove criterion"><X className="w-4 h-4" /></button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                <button type="button" onClick={addCriterion} className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700">
+                                                    <Plus className="w-4 h-4" /> Add criterion
+                                                </button>
+                                            </div>
+                                        )}
+                                        {!showCriteria && (
+                                            <p className="text-sm text-slate-500 mb-2">Criteria required.</p>
+                                        )}
+                                        <button type="button" onClick={() => setShowCriteria(!showCriteria)} className="text-xs font-medium text-emerald-600 hover:text-emerald-700">
+                                            {showCriteria ? 'Hide criteria' : 'Show criteria'}
+                                        </button>
+                                    </div>
+
+                                    {/* 4. Scenario Summary */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                        <h2 className="text-lg font-semibold text-slate-800 mb-4">Scenario Snapshot</h2>
+                                        <dl className="space-y-2 text-sm">
+                                            <div><dt className="text-slate-500">Title</dt><dd className="font-medium text-slate-800">{scenarioTitle || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Module</dt><dd className="font-medium text-slate-800">{selectedModule?.title || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Difficulty</dt><dd className="font-medium text-slate-800">{difficulty || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Severity</dt><dd className="font-medium text-slate-800">{severityLevel || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Victims</dt><dd className="font-medium text-slate-800">{injuredCount}</dd></div>
+                                            <div><dt className="text-slate-500">Trapped</dt><dd className="font-medium text-slate-800">{trappedCount}</dd></div>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
             </form>
         </div>
     );
