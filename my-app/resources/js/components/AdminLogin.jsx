@@ -198,7 +198,7 @@ export function AdminLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, 
                             </p>
                             <p className="text-xs text-slate-500 text-center">
                                 By signing in, you agree to our{' '}
-                                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 underline underline-offset-2">
+                                <a href="/terms" className="text-teal-600 hover:text-teal-700 underline underline-offset-2">
                                     Terms and Conditions
                                 </a>.
                             </p>

@@ -44,9 +44,9 @@ Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
-// Public LGU admin registration is disabled; registration will be handled inside the admin dashboard.
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+// Public LGU admin registration is disabled; `/register` is repurposed for participant self-registration.
+Route::get('/register', [AuthController::class, 'showParticipantRegister'])->name('register');
+Route::post('/register', [AuthController::class, 'participantRegisterStart'])->name('register.post');
 
 // Participant auth routes
 Route::get('/participant/login', [AuthController::class, 'showParticipantLogin'])->name('participant.login');

@@ -256,7 +256,7 @@ export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter
                                 </p>
                                 <p className="text-xs text-slate-500 text-center">
                                     By signing in, you agree to our{' '}
-                                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-[#1FA463] underline underline-offset-2">
+                                    <a href="/terms" className="text-emerald-600 hover:text-[#1FA463] underline underline-offset-2">
                                         Terms and Conditions
                                     </a>.
                                 </p>

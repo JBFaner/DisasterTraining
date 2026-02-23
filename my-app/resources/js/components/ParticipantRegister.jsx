@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Phone, AlertCircle, UserPlus, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, UserPlus, ArrowRight } from 'lucide-react';
 
 export function ParticipantRegister({ errors = {}, oldValues = {} }) {
-    const [registrationMethod, setRegistrationMethod] = useState('email'); // 'email' or 'phone'
     const [formData, setFormData] = useState({
         name: oldValues.name || '',
         email: oldValues.email || '',
@@ -16,16 +15,6 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleMethodChange = (method) => {
-        setRegistrationMethod(method);
-        // Clear the other field when switching
-        if (method === 'email') {
-            setFormData(prev => ({ ...prev, phone: '' }));
-        } else {
-            setFormData(prev => ({ ...prev, email: '' }));
-        }
     };
 
     const handleSubmit = (e) => {
@@ -138,39 +127,6 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                                 </p>
                             </div>
 
-                {/* Registration Method Toggle */}
-                <div className="mb-6">
-                    <label className="block text-xs font-semibold text-slate-600 mb-2">
-                        Register with:
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button
-                            type="button"
-                            onClick={() => handleMethodChange('email')}
-                            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                                registrationMethod === 'email'
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                        >
-                            <Mail className="w-4 h-4" />
-                            <span>Email</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleMethodChange('phone')}
-                            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                                registrationMethod === 'phone'
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                        >
-                            <Phone className="w-4 h-4" />
-                            <span>Phone</span>
-                        </button>
-                    </div>
-                </div>
-
                 {hasErrors && Object.keys(errors).some(key => !['name', 'email', 'phone', 'password', 'password_confirmation'].includes(key)) && (
                     <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
                         <div className="flex items-start gap-2">
@@ -217,54 +173,28 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                         )}
                     </div>
 
-                    {registrationMethod === 'email' ? (
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="email">
-                                Email <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    className={`w-full rounded-md border ${
-                                        getFieldError('email') ? 'border-rose-300' : 'border-slate-300'
-                                    } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
-                                />
-                            </div>
-                            {getFieldError('email') && (
-                                <p className="mt-1 text-xs text-rose-600">{getFieldError('email')}</p>
-                            )}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="email">
+                            Email <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                id="email"
+                                name="email"
+                                type="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required
+                                className={`w-full rounded-md border ${
+                                    getFieldError('email') ? 'border-rose-300' : 'border-slate-300'
+                                } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
+                            />
                         </div>
-                    ) : (
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="phone">
-                                Phone Number <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    id="phone"
-                                    name="phone"
-                                    type="tel"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="+1234567890"
-                                    className={`w-full rounded-md border ${
-                                        getFieldError('phone') ? 'border-rose-300' : 'border-slate-300'
-                                    } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
-                                />
-                            </div>
-                            {getFieldError('phone') && (
-                                <p className="mt-1 text-xs text-rose-600">{getFieldError('phone')}</p>
-                            )}
-                        </div>
-                    )}
+                        {getFieldError('email') && (
+                            <p className="mt-1 text-xs text-rose-600">{getFieldError('email')}</p>
+                        )}
+                    </div>
 
                     <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="password">
@@ -324,7 +254,7 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                         />
                         <span className="text-xs text-slate-600">
                             I agree to the{' '}
-                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-[#1FA463] underline underline-offset-2">
+                            <a href="/terms" className="text-emerald-600 hover:text-[#1FA463] underline underline-offset-2">
                                 Terms and Conditions
                             </a>{' '}
                             and understand how my data will be used.
