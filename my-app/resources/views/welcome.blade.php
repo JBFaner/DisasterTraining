@@ -485,10 +485,10 @@
                             Learn essential earthquake safety procedures, drop-cover-hold techniques, and evacuation protocols.
                         </p>
                         <div class="flex gap-2">
-                            <a href="/register" class="flex-1 bg-teal-700 text-white text-center px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
+                            <a href="/register" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
                                 Register
                             </a>
-                            <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
                                 Details
                             </button>
                         </div>
@@ -511,10 +511,10 @@
                             Master fire safety measures, proper use of fire extinguishers, and safe evacuation procedures.
                         </p>
                         <div class="flex gap-2">
-                            <button class="flex-1 bg-gray-300 text-gray-600 text-center px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed">
+                            <button class="flex-1 inline-flex items-center justify-center min-w-0 bg-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed">
                                 Coming Soon
                             </button>
-                            <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
                                 Details
                             </button>
                         </div>
@@ -537,10 +537,10 @@
                             Understand flood preparedness, water rescue basics, and emergency response during flooding.
                         </p>
                         <div class="flex gap-2">
-                            <a href="/register" class="flex-1 bg-teal-700 text-white text-center px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
+                            <a href="/register" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
                                 Register
                             </a>
-                            <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
                                 Details
                             </button>
                         </div>
@@ -563,10 +563,10 @@
                             Training in emergency first aid, CPR, basic life support, and rescue operations.
                         </p>
                         <div class="flex gap-2">
-                            <a href="/register" class="flex-1 bg-teal-700 text-white text-center px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
+                            <a href="/register" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
                                 Register
                             </a>
-                            <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
                                 Details
                             </button>
                         </div>

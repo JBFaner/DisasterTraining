@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('location'); // Warehouse, depot, room number, vehicle storage
             $table->string('serial_number')->unique()->nullable();
             $table->string('image_url')->nullable();
-            $table->foreignId('assigned_to_event_id')->nullable()->constrained('simulation_events')->onDelete('set null');
+            $table->unsignedBigInteger('assigned_to_event_id')->nullable(); // FK added in later migration (simulation_events created in 2025_12_18)
             $table->foreignId('assigned_handler_id')->nullable()->constrained('users')->onDelete('set null');
             $table->string('maintenance_status')->nullable(); // Scheduled, In Progress, Completed, Overdue
             $table->datetime('last_maintenance_date')->nullable();
