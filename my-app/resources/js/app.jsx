@@ -198,6 +198,7 @@ if (rootElement) {
     const rolesJson = rootElement.getAttribute('data-roles');
     const permissionsJson = rootElement.getAttribute('data-permissions');
     const flashStatus = rootElement.getAttribute('data-status');
+    const errorsJson = rootElement.getAttribute('data-errors');
 
     let modules = [];
     let scenarios = [];
@@ -209,6 +210,7 @@ if (rootElement) {
     let users = [];
     let currentParticipant = null;
     let registrations = [];
+    let flashErrors = [];
     if (modulesJson) {
         try {
             modules = JSON.parse(modulesJson);
@@ -309,6 +311,16 @@ if (rootElement) {
             permissions = JSON.parse(permissionsJson);
         } catch (e) {
             console.error('Failed to parse permissions JSON', e);
+        }
+    }
+    if (errorsJson) {
+        try {
+            const parsed = JSON.parse(errorsJson);
+            if (Array.isArray(parsed)) {
+                flashErrors = parsed;
+            }
+        } catch (e) {
+            console.error('Failed to parse errors JSON', e);
         }
     }
 
@@ -1041,12 +1053,21 @@ if (rootElement) {
                                     </div>
                                     <div>
                                         <h2 className="text-xl font-bold text-slate-800">Add User</h2>
-                                        <p className="text-sm text-slate-500 mt-0.5">Create a new LGU Admin, Trainer, or Participant account</p>
+                                        <p className="text-sm text-slate-500 mt-0.5">Create a new Admin, Trainer, Staff, or Viewer account</p>
                                     </div>
                                 </div>
                                 {flashStatus && (
                                     <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
                                         {flashStatus}
+                                    </div>
+                                )}
+                                {flashErrors && flashErrors.length > 0 && (
+                                    <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                                        <ul className="list-disc list-inside space-y-0.5">
+                                            {flashErrors.map((error, index) => (
+                                                <li key={index}>{error}</li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 )}
                                 <div className="training-module-card-enter bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg">
@@ -1056,11 +1077,26 @@ if (rootElement) {
                                             <h3 className="text-sm font-semibold text-slate-800 mb-4">Account Details</h3>
                                             <div className="space-y-4">
                                                 <div>
-                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="account_type">Account Type</label>
-                                                    <select id="account_type" name="account_type" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white" defaultValue="LGU_ADMIN">
-                                                        <option value="LGU_ADMIN">LGU Admin</option>
-                                                        <option value="LGU_TRAINER">LGU Trainer</option>
-                                                        <option value="PARTICIPANT">Participant</option>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="account_type">Account Role</label>
+                                                    <select
+                                                        id="account_type"
+                                                        name="account_type"
+                                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                                                        defaultValue={(roles && roles.length > 0) ? (roles[0].name || 'LGU_ADMIN') : 'LGU_ADMIN'}
+                                                    >
+                                                        {(roles && roles.length > 0
+                                                            ? roles.filter((r) => r.name !== 'PARTICIPANT')
+                                                            : [
+                                                                { name: 'LGU_ADMIN', display_name: 'LGU Admin' },
+                                                                { name: 'LGU_TRAINER', display_name: 'LGU Trainer' },
+                                                                { name: 'STAFF', display_name: 'Staff' },
+                                                                { name: 'VIEWER', display_name: 'Viewer' },
+                                                            ]
+                                                        ).map((roleOption) => (
+                                                            <option key={roleOption.id ?? roleOption.name} value={roleOption.name}>
+                                                                {roleOption.display_name ?? roleOption.name}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                                 <div>
@@ -1140,11 +1176,26 @@ if (rootElement) {
                                             <h3 className="text-sm font-semibold text-slate-800 mb-4">Account Details</h3>
                                             <div className="space-y-4">
                                                 <div>
-                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_account_type">Account Type</label>
-                                                    <select id="edit_account_type" name="account_type" defaultValue={currentUserData.role} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
-                                                        <option value="LGU_ADMIN">LGU Admin</option>
-                                                        <option value="LGU_TRAINER">LGU Trainer</option>
-                                                        <option value="STAFF">Staff</option>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_account_type">Account Role</label>
+                                                    <select
+                                                        id="edit_account_type"
+                                                        name="account_type"
+                                                        defaultValue={currentUserData.role}
+                                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                                                    >
+                                                        {(roles && roles.length > 0
+                                                            ? roles.filter((r) => r.name !== 'PARTICIPANT')
+                                                            : [
+                                                                { name: 'LGU_ADMIN', display_name: 'LGU Admin' },
+                                                                { name: 'LGU_TRAINER', display_name: 'LGU Trainer' },
+                                                                { name: 'STAFF', display_name: 'Staff' },
+                                                                { name: 'VIEWER', display_name: 'Viewer' },
+                                                            ]
+                                                        ).map((roleOption) => (
+                                                            <option key={roleOption.id ?? roleOption.name} value={roleOption.name}>
+                                                                {roleOption.display_name ?? roleOption.name}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                                 <div>

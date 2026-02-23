@@ -16,7 +16,7 @@ export function RoleEditPage({ role, groupedPermissions = [], assignedPermission
             'LGU_ADMIN': 'Admin',
             'LGU_TRAINER': 'Trainer',
             'STAFF': 'Staff',
-            'PARTICIPANT': 'Participant',
+            'PARTICIPANT': 'Viewer',
         };
         return roleMap[roleName] || roleName;
     };

@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\BarangayProfile;
 use App\Models\User;
 use App\Services\AuditLogger;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -58,7 +59,7 @@ class AdminUserController extends Controller
         $query = User::query()
             ->with('barangayProfile')
             // Fetch only staff-type users (Super Admin, LGU Admin, Trainer, Staff), never participants
-            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'])
+            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'])
             ->orderByDesc('created_at');
 
         // Search by name or email
@@ -100,12 +101,14 @@ class AdminUserController extends Controller
         }
 
         $barangayProfiles = BarangayProfile::orderBy('barangay_name')->get();
+        $roles = DB::table('roles')->orderBy('name')->get();
 
         // Render inside the SPA shell so sidebar/navigation stays visible.
         // Note: currentUser is automatically available via auth()->user() in the blade template
         return view('app', [
             'section' => 'admin_users_create',
             'barangay_profiles' => $barangayProfiles,
+            'roles' => $roles,
         ]);
     }
 
@@ -122,18 +125,20 @@ class AdminUserController extends Controller
         if (! $this->canManageUser($currentUser, $user)) {
             abort(403, 'You do not have permission to edit this user.');
         }
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
+        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'], true) === false) {
             abort(404);
         }
 
         $user->load('barangayProfile');
         $barangayProfiles = BarangayProfile::orderBy('barangay_name')->get();
+        $roles = DB::table('roles')->orderBy('name')->get();
 
         return view('app', [
             'section' => 'admin_users_edit',
             'user' => $user,
             'currentUser' => $currentUser,
             'barangay_profiles' => $barangayProfiles,
+            'roles' => $roles,
             'canViewSecurity' => false,
             'maskedUsbKeyHash' => '',
         ]);
@@ -165,7 +170,7 @@ class AdminUserController extends Controller
         }
 
         // Only show staff users (not participants)
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true)) {
+        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'], true)) {
             abort(404);
         }
 
@@ -473,8 +478,8 @@ class AdminUserController extends Controller
             abort(403);
         }
 
-        // Admin can create all account types
-        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'PARTICIPANT'];
+        // Admin can create staff/viewer accounts from this screen (participants use a separate registration flow)
+        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
 
         $data = $request->validate([
             'last_name' => ['required', 'string', 'max:255'],
@@ -492,40 +497,7 @@ class AdminUserController extends Controller
             . ' ' . $data['last_name']
         );
 
-        // Participant registration: create active participant with participant_id and no email verification step.
-        if ($data['account_type'] === 'PARTICIPANT') {
-            $participantId = $this->generateParticipantId();
-
-            $participant = User::create([
-                'name' => $fullName,
-                'email' => $data['email'],
-                'password' => $data['password'],
-                'role' => 'PARTICIPANT',
-                'participant_id' => $participantId,
-                'status' => 'active',
-                'registered_at' => now(),
-                'barangay_id' => $data['barangay_id'] ?? null,
-            ]);
-
-            AuditLogger::log([
-                'user' => $currentUser,
-                'action' => 'Created participant',
-                'module' => 'Users & Roles',
-                'status' => 'success',
-                'description' => 'New participant account created from admin panel.',
-                'new_values' => [
-                    'id' => $participant->id,
-                    'name' => $participant->name,
-                    'email' => $participant->email,
-                    'role' => $participant->role,
-                ],
-            ]);
-
-            return redirect()->back()
-                ->with('status', 'New participant registered. They can now log in using their email and password.');
-        }
-
-        // Create the staff (admin or trainer) user in a pending state
+        // Create the staff (admin, trainer, staff, or viewer) user in a pending state
         $admin = User::create([
             'name' => $fullName,
             'email' => $data['email'],
@@ -584,11 +556,11 @@ class AdminUserController extends Controller
         if (! $this->canManageUser($currentUser, $user)) {
             abort(403, 'You do not have permission to edit this user.');
         }
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'], true) === false) {
+        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'], true) === false) {
             abort(404);
         }
 
-        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'];
+        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],

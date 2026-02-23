@@ -19,7 +19,7 @@ export function RolesPage({ roles = [] }) {
             'LGU_ADMIN': 'Admin',
             'LGU_TRAINER': 'Trainer',
             'STAFF': 'Staff',
-            'PARTICIPANT': 'Participant',
+            'PARTICIPANT': 'Viewer',
         };
         return roleMap[roleNameVal] || roleNameVal;
     };

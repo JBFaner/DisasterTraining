@@ -231,7 +231,8 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                             <div className="text-sm font-semibold">
                                 {role === 'LGU_ADMIN' && 'LGU Admin'}
                                 {role === 'LGU_TRAINER' && 'Trainer'}
-                                {role === 'PARTICIPANT' && 'Participant'}
+                                {role === 'STAFF' && 'Staff'}
+                                {role === 'PARTICIPANT' && 'Viewer'}
                             </div>
                             <div className="text-xs text-slate-400">
                                 Account
@@ -341,7 +342,8 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                                 <span className="text-slate-400">
                                     {role === 'LGU_ADMIN' && 'LGU Admin'}
                                     {role === 'LGU_TRAINER' && 'Trainer'}
-                                    {role === 'PARTICIPANT' && 'Participant'}
+                                    {role === 'STAFF' && 'Staff'}
+                                    {role === 'PARTICIPANT' && 'Viewer'}
                                 </span>
                             </div>
                         </div>

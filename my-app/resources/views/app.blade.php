@@ -167,6 +167,9 @@
             @if (session('status'))
                 data-status="{{ session('status') }}"
             @endif
+            @if ($errors->any())
+                data-errors='@json($errors->all())'
+            @endif
         ></div>
         
         {{-- Hide token from URL after page load (for centralized login) --}}
