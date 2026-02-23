@@ -1,6 +1,6 @@
 import React from 'react';
 import Swal from 'sweetalert2';
-import { Search } from 'lucide-react';
+import { CalendarClock, ClipboardList, Play, Search, Users, CheckCircle2, BarChart3 } from 'lucide-react';
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -24,6 +24,39 @@ function formatTime(timeString) {
         return `${hour12}:${minutes} ${ampm}`;
     }
     return timeString;
+}
+
+function titleCaseStatus(status) {
+    if (!status) return '—';
+    return String(status)
+        .replace(/_/g, ' ')
+        .split(' ')
+        .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+        .join(' ');
+}
+
+function getDateTime(dateStr, timeStr) {
+    if (!dateStr) return null;
+    const dt = new Date(dateStr);
+    if (timeStr && timeStr.match(/^\d{2}:\d{2}/)) {
+        const [h, m] = timeStr.split(':').map((v) => Number(v) || 0);
+        dt.setHours(h, m, 0, 0);
+    }
+    return dt;
+}
+
+function formatDurationFromTimes(startTime, endTime) {
+    if (!startTime || !endTime) return '—';
+    const start = getDateTime('2000-01-01', startTime);
+    const end = getDateTime('2000-01-01', endTime);
+    if (!start || !end) return '—';
+    const diffMins = Math.max(0, Math.round((end - start) / 60000));
+    if (!Number.isFinite(diffMins) || diffMins <= 0) return '—';
+    if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''}`;
+    const h = Math.floor(diffMins / 60);
+    const m = diffMins % 60;
+    if (m === 0) return `${h} hr${h !== 1 ? 's' : ''}`;
+    return `${h} hr${h !== 1 ? 's' : ''} ${m} min`;
 }
 
 export function ParticipantSimulationEventsList({ events }) {
@@ -296,6 +329,48 @@ export function ParticipantSimulationEventDetail({ event, role }) {
     const trainingModule = scenario?.training_module;
     const lessons = trainingModule?.lessons || [];
 
+    const startDt = getDateTime(event.event_date, event.start_time);
+    const endDt = getDateTime(event.event_date, event.end_time);
+    const hasEndedByTime =
+        !!endDt &&
+        ['published', 'ongoing'].includes(event.status) &&
+        now >= endDt;
+
+    const statusDisplay = (() => {
+        if (event.status === 'ongoing' && !hasEndedByTime) return 'Ongoing';
+        if (event.status === 'published' && startDt && now < startDt) return 'Scheduled';
+        if (event.status === 'draft') return 'Draft';
+        if (event.status === 'cancelled') return 'Cancelled';
+        if (event.status === 'archived') return 'Archived';
+        if (event.status === 'completed') return 'Completed';
+        if (event.status === 'ended' || hasEndedByTime) return 'Ended';
+        return titleCaseStatus(event.status);
+    })();
+
+    const statusBadgeClass = (() => {
+        if (statusDisplay === 'Ongoing') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (statusDisplay === 'Scheduled') return 'bg-sky-50 text-sky-700 border-sky-200';
+        if (statusDisplay === 'Draft') return 'bg-amber-50 text-amber-800 border-amber-200';
+        if (statusDisplay === 'Cancelled') return 'bg-rose-50 text-rose-700 border-rose-200';
+        if (statusDisplay === 'Completed') return 'bg-slate-50 text-slate-700 border-slate-200';
+        if (statusDisplay === 'Ended') return 'bg-slate-50 text-slate-700 border-slate-200';
+        if (statusDisplay === 'Archived') return 'bg-slate-50 text-slate-600 border-slate-200';
+        return 'bg-slate-50 text-slate-700 border-slate-200';
+    })();
+
+    const durationLabel = formatDurationFromTimes(event.start_time, event.end_time);
+    const difficulty = scenario?.difficulty || '—';
+    const severity = scenario?.severity_level || '—';
+
+    const quickActions = role !== 'PARTICIPANT'
+        ? [
+            { label: 'Manage Participants', href: `/simulation-events/${event.id}/registrations`, Icon: Users },
+            { label: 'View Attendance', href: `/simulation-events/${event.id}/attendance`, Icon: CheckCircle2 },
+            { label: 'View Evaluation', href: `/simulation-events/${event.id}/evaluation`, Icon: ClipboardList },
+            { label: 'View Reports', href: `/simulation-events/${event.id}/evaluation/summary`, Icon: BarChart3 },
+        ]
+        : [];
+
     const handleRegisterSubmit = async (e) => {
         e.preventDefault();
         const result = await Swal.fire({
@@ -343,303 +418,257 @@ export function ParticipantSimulationEventDetail({ event, role }) {
 
     return (
         <div className="space-y-6">
-            {/* Admin: Start Event Banner */}
-            {role !== 'PARTICIPANT' && event.status === 'published' && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-semibold text-slate-800">
-                                Event Status: Published
-                            </p>
-                            <p className="text-xs text-slate-600 mt-1">
-                                {canStartEvent 
-                                    ? 'The event is ready to start. Click the button to begin.' 
-                                    : isEventDateToday && !isEventTimeReached
-                                    ? `Event starts at ${event.start_time}. Button will appear when start time is reached.`
-                                    : !isEventDateToday
-                                    ? 'Event is scheduled for a future date. Button will appear on the event date.'
-                                    : 'Event is ready to proceed.'}
-                            </p>
+            {/* Event header */}
+            <div className="rounded-2xl bg-white border border-slate-200 shadow-md p-6 md:p-7">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="min-w-0">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2.5 bg-emerald-100 rounded-2xl shadow-sm shrink-0">
+                                <CalendarClock className="w-6 h-6 text-emerald-700" />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-2xl font-bold text-slate-900 tracking-tight truncate">
+                                    {event.title}
+                                </h1>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass}`}>
+                                        {statusDisplay}
+                                    </span>
+                                    {role === 'PARTICIPANT' && isRegistered && !isCancelled && (
+                                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                                            {isPending ? 'Registration pending' : isApproved ? 'Registered' : isRejected ? 'Registration rejected' : 'Registered'}
+                                        </span>
+                                    )}
+                                    <span className="text-xs font-medium text-slate-500">
+                                        {event.disaster_type || '—'} • {event.event_category || '—'}
+                                    </span>
+                                </div>
+                                <div className="mt-2 text-sm text-slate-600">
+                                    {formatDate(event.event_date)} • {formatTime(event.start_time)} – {formatTime(event.end_time)}
+                                    {durationLabel !== '—' && <span className="text-slate-400"> • {durationLabel}</span>}
+                                </div>
+                                <div className="mt-1 text-sm text-slate-600">
+                                    {(event.location || 'Location TBD')}
+                                    {event.building ? ` — ${event.building}` : ''}
+                                    {event.room_zone ? ` (${event.room_zone})` : ''}
+                                </div>
+                            </div>
                         </div>
-                        {canStartEvent && (
+                    </div>
+
+                    {/* Quick header actions */}
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                        {role !== 'PARTICIPANT' && event.status === 'draft' && (
+                            <a
+                                href={`/simulation-events/${event.id}/edit`}
+                                className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all"
+                            >
+                                Edit
+                            </a>
+                        )}
+                        {role !== 'PARTICIPANT' && canStartEvent && (
                             <form method="POST" action={`/simulation-events/${event.id}/start`} onSubmit={handleStartEventSubmit}>
                                 <input type="hidden" name="_token" value={csrf} />
                                 <button
                                     type="submit"
-                                    className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-4 py-2 transition-colors"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold shadow-sm transition-colors"
                                 >
-                                    Start Event
+                                    <Play className="w-4 h-4" /> Start
                                 </button>
                             </form>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {/* Admin: Complete Event Banner */}
-            {role !== 'PARTICIPANT' && event.status === 'ongoing' && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-semibold text-slate-800">
-                                Event Status: Ongoing
-                            </p>
-                            <p className="text-xs text-slate-600 mt-1">
-                                The event is currently in progress. Mark it as completed when the event has ended and attendance is finalized.
-                            </p>
-                        </div>
-                        <form 
-                            method="POST" 
-                            action={`/simulation-events/${event.id}/complete`}
-                            onSubmit={(e) => {
-                                if (!confirm('Are you sure you want to mark this event as completed? This will allow evaluation to begin.')) {
-                                    e.preventDefault();
-                                }
-                            }}
-                        >
-                            <input type="hidden" name="_token" value={csrf} />
-                            <button
-                                type="submit"
-                                className="inline-flex items-center rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-2 transition-colors"
-                            >
-                                Complete Event
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Registration Status Banner - only for participants */}
-            {role === 'PARTICIPANT' && isRegistered && !isCancelled && (
-                <div className={`rounded-xl border p-4 ${
-                    isPending ? 'bg-amber-50 border-amber-200' :
-                    isApproved ? 'bg-emerald-50 border-emerald-200' :
-                    isRejected ? 'bg-rose-50 border-rose-200' :
-                    'bg-slate-50 border-slate-200'
-                }`}>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-semibold text-slate-800">
-                                {isPending ? '⏳ Registration Pending' :
-                                 isApproved ? '✅ Registration Approved' :
-                                 isRejected ? '❌ Registration Rejected' :
-                                 'Registration Status'}
-                            </p>
-                            <p className="text-xs text-slate-600 mt-1">
-                                {isPending ? 'Your registration is awaiting approval from the organizer.' :
-                                 isApproved ? 'You are registered for this event. See you there!' :
-                                 isRejected && userRegistration?.rejection_reason ? `Reason: ${userRegistration.rejection_reason}` :
-                                 'Check your email for updates.'}
-                            </p>
-                        </div>
-                        {canCancelRegistration && (
-                            <form method="POST" action={`/simulation-events/${event.id}/cancel-registration`} onSubmit={handleCancelRegistrationSubmit}>
-                                <input type="hidden" name="_token" value={csrf} />
-                                <button
-                                    type="submit"
-                                    className="inline-flex items-center rounded-md border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-medium px-3 py-1.5"
-                                >
-                                    Cancel Registration
-                                </button>
-                            </form>
+                        {role === 'PARTICIPANT' && (
+                            <>
+                                {canRegister && (
+                                    <form method="POST" action={`/simulation-events/${event.id}/register`} onSubmit={handleRegisterSubmit}>
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold shadow-sm transition-colors"
+                                        >
+                                            Register
+                                        </button>
+                                    </form>
+                                )}
+                                {canCancelRegistration && (
+                                    <form method="POST" action={`/simulation-events/${event.id}/cancel-registration`} onSubmit={handleCancelRegistrationSubmit}>
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 px-4 py-2 text-sm font-semibold transition-colors"
+                                        >
+                                            Cancel registration
+                                        </button>
+                                    </form>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
-            )}
 
-            {/* Event Details */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h2 className="text-xl font-bold text-slate-800 mb-4">{event.title}</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Disaster Type</p>
-                        <p className="text-sm text-slate-800">{event.disaster_type}</p>
+                {/* KPI strip */}
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">Duration</div>
+                        <div className="mt-0.5 text-sm font-semibold text-slate-900">{durationLabel}</div>
                     </div>
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Event Category</p>
-                        <p className="text-sm text-slate-800">{event.event_category}</p>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">Difficulty</div>
+                        <div className="mt-0.5 text-sm font-semibold text-slate-900">{difficulty}</div>
                     </div>
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Date & Time</p>
-                        <p className="text-sm text-slate-800">{formatDate(event.event_date)} — {formatTime(event.start_time)} to {formatTime(event.end_time)}</p>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">Severity</div>
+                        <div className="mt-0.5 text-sm font-semibold text-slate-900">{severity}</div>
                     </div>
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Duration</p>
-                        <p className="text-sm text-slate-800">
-                            {(() => {
-                                const start = new Date(`2000-01-01 ${event.start_time}`);
-                                const end = new Date(`2000-01-01 ${event.end_time}`);
-                                const diffHours = Math.abs(end - start) / 36e5;
-                                return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
-                            })()}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Location</p>
-                        <p className="text-sm text-slate-800">{event.location || 'To be announced'}</p>
-                        {event.building && <p className="text-xs text-slate-600">Building: {event.building}</p>}
-                        {event.room_zone && <p className="text-xs text-slate-600">Room/Zone: {event.room_zone}</p>}
-                    </div>
-                    
-                    {event.description && (
-                        <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Description</p>
-                            <p className="text-sm text-slate-700 whitespace-pre-line">{event.description}</p>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* Scenario Overview (Participant-Safe Version) */}
-            {scenario && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-3">⚠️ Scenario Overview</h3>
-                    <p className="text-xs text-slate-500 mb-3 italic">
-                        This is a brief overview to help you prepare. Full scenario details will be revealed during the drill.
-                    </p>
-                    
-                    {scenario.short_description && (
-                        <div className="mb-4">
-                            <p className="text-sm text-slate-700 whitespace-pre-line">{scenario.short_description}</p>
+            {/* Main 2-col layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 items-start">
+                {/* LEFT: Scenario overview */}
+                <div className="lg:col-span-7 space-y-6">
+                    {scenario && (
+                        <div id="scenario" className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                                <h2 className="text-lg font-bold text-slate-900">Scenario Overview</h2>
+                                <div className="flex items-center gap-2">
+                                    {scenario.severity_level && (
+                                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                                            Severity: {scenario.severity_level}
+                                        </span>
+                                    )}
+                                    {scenario.difficulty && (
+                                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                                            Difficulty: {scenario.difficulty}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-4">
+                                This is a brief overview to help you prepare. Full scenario details may be revealed during the drill.
+                            </p>
+                            {scenario.short_description ? (
+                                <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">
+                                    {scenario.short_description}
+                                </p>
+                            ) : (
+                                <p className="text-sm text-slate-500">No scenario summary available.</p>
+                            )}
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        {scenario.severity_level && (
-                            <div>
-                                <span className="font-semibold text-slate-600">Severity Level:</span>
-                                <span className="text-slate-700 ml-2">{scenario.severity_level}</span>
-                            </div>
-                        )}
-                        {scenario.difficulty && (
-                            <div>
-                                <span className="font-semibold text-slate-600">Difficulty:</span>
-                                <span className="text-slate-700 ml-2">{scenario.difficulty}</span>
-                            </div>
-                        )}
-                    </div>
+                    {event.description && (
+                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+                            <h2 className="text-lg font-bold text-slate-900 mb-2">Event Description</h2>
+                            <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                                {event.description}
+                            </p>
+                        </div>
+                    )}
                 </div>
-            )}
 
-            {/* Training Module Recommendations */}
-            {trainingModule && lessons.length > 0 && (
-                <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-2">📘 Recommended Training Before This Drill</h3>
-                    <p className="text-xs text-slate-600 mb-4">
-                        Review these lessons to prepare for the simulation. This will help you understand what to expect and how to respond effectively.
-                    </p>
-                    
-                    <div className="bg-white rounded-lg border border-blue-100 p-4">
-                        <p className="text-sm font-semibold text-slate-800 mb-3">
-                            <a href={`/training-modules/${trainingModule.id}`} className="text-blue-700 hover:text-blue-900 hover:underline">
-                                ✔ Training Module: {trainingModule.title}
-                            </a>
-                        </p>
-                        <ul className="space-y-2">
-                            {lessons.slice(0, 5).map((lesson) => (
-                                <li key={lesson.id} className="flex items-start gap-2 text-xs text-slate-700">
-                                    <span className="text-blue-600 mt-0.5">→</span>
-                                    <a href={`/training-modules/${trainingModule.id}#lesson-${lesson.id}`} className="hover:text-blue-700 hover:underline">
-                                        Lesson {lesson.order}: {lesson.title}
-                                    </a>
-                                </li>
-                            ))}
-                            {lessons.length > 5 && (
-                                <li className="text-xs text-slate-500 ml-4">+ {lessons.length - 5} more lessons</li>
-                            )}
-                        </ul>
-                        <div className="mt-3 pt-3 border-t border-slate-100">
+                {/* RIGHT: context panel */}
+                <div className="lg:col-span-3 space-y-4">
+                    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+                        <h3 className="text-sm font-bold text-slate-900 mb-3">Event Details</h3>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between gap-3">
+                                <span className="text-slate-500">Disaster type</span>
+                                <span className="font-medium text-slate-900">{event.disaster_type || '—'}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-slate-500">Category</span>
+                                <span className="font-medium text-slate-900">{event.event_category || '—'}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-slate-500">Date</span>
+                                <span className="font-medium text-slate-900">{formatDate(event.event_date)}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-slate-500">Time</span>
+                                <span className="font-medium text-slate-900">{formatTime(event.start_time)} – {formatTime(event.end_time)}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-slate-500">Duration</span>
+                                <span className="font-medium text-slate-900">{durationLabel}</span>
+                            </div>
+                            <div className="pt-2 border-t border-slate-100">
+                                <div className="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">Location</div>
+                                <div className="text-slate-900 font-medium">
+                                    {event.location || 'To be announced'}
+                                </div>
+                                {(event.building || event.room_zone) && (
+                                    <div className="text-xs text-slate-600 mt-1">
+                                        {event.building ? `Building: ${event.building}` : ''}
+                                        {event.building && event.room_zone ? ' • ' : ''}
+                                        {event.room_zone ? `Zone: ${event.room_zone}` : ''}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {trainingModule && (
+                        <div id="training" className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+                            <h3 className="text-sm font-bold text-slate-900 mb-2">Linked Training Module</h3>
+                            <div className="text-sm font-semibold text-slate-900 truncate" title={trainingModule.title}>
+                                {trainingModule.title}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-600">
+                                {lessons.length} lesson{lessons.length !== 1 ? 's' : ''}{trainingModule.difficulty ? ` • ${trainingModule.difficulty}` : ''}
+                            </div>
+                            <div className="mt-3 flex gap-2">
                             <a
                                 href={`/training-modules/${trainingModule.id}`}
-                                className="inline-flex items-center rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 transition-colors"
+                                className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 transition-colors"
                             >
-                                View Full Training Module
+                                View module
                             </a>
+                                {lessons.length > 0 && (
+                                    <a
+                                        href={`/training-modules/${trainingModule.id}#lesson-${lessons[0]?.id}`}
+                                        className="inline-flex items-center rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2 transition-colors"
+                                    >
+                                        Start first lesson
+                                    </a>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                    )}
 
-            {/* Instructions & Reminders */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 className="text-lg font-semibold text-slate-800 mb-3">📋 Instructions & Reminders</h3>
-                
-                <div className="space-y-3 text-sm">
-                    {event.safety_guidelines && (
-                        <div>
-                            <p className="font-semibold text-slate-700 mb-1">Safety Guidelines:</p>
-                            <p className="text-slate-600 whitespace-pre-line">{event.safety_guidelines}</p>
-                        </div>
-                    )}
-                    
-                    {event.required_ppe && (
-                        <div>
-                            <p className="font-semibold text-slate-700 mb-1">Required PPE/Equipment:</p>
-                            <p className="text-slate-600 whitespace-pre-line">{event.required_ppe}</p>
-                        </div>
-                    )}
-                    
-                    {event.hazard_warnings && (
-                        <div>
-                            <p className="font-semibold text-rose-700 mb-1">⚠️ Hazard Warnings:</p>
-                            <p className="text-slate-600 whitespace-pre-line">{event.hazard_warnings}</p>
-                        </div>
-                    )}
-                    
-                    {event.assembly_points && (
-                        <div>
-                            <p className="font-semibold text-slate-700 mb-1">Assembly Points:</p>
-                            <p className="text-slate-600 whitespace-pre-line">{event.assembly_points}</p>
-                        </div>
-                    )}
-                    
-                    {event.accessibility_notes && (
-                        <div>
-                            <p className="font-semibold text-slate-700 mb-1">Accessibility Notes:</p>
-                            <p className="text-slate-600 whitespace-pre-line">{event.accessibility_notes}</p>
+                    {role !== 'PARTICIPANT' && (
+                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+                            <h3 className="text-sm font-bold text-slate-900 mb-3">Quick Actions</h3>
+                            <div className="space-y-2">
+                                {event.status === 'draft' && (
+                                    <a
+                                        href={`/simulation-events/${event.id}/edit`}
+                                        className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 transition-colors"
+                                    >
+                                        <span>Edit event</span>
+                                        <span className="text-slate-400">→</span>
+                                    </a>
+                                )}
+                                {quickActions.map(({ label, href, Icon }) => (
+                                    <a
+                                        key={href}
+                                        href={href}
+                                        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                                    >
+                                        <Icon className="w-4 h-4 text-slate-500" />
+                                        <span>{label}</span>
+                                    </a>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Register / Cancel Registration - only shown to participants */}
-            {role === 'PARTICIPANT' && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-3">Registration</h3>
-                    {canRegister ? (
-                        <div>
-                            <p className="text-sm text-slate-600 mb-4">Registration is open for this event. Click below to register.</p>
-                            <form method="POST" action={`/simulation-events/${event.id}/register`} onSubmit={handleRegisterSubmit}>
-                                <input type="hidden" name="_token" value={csrf} />
-                                <button type="submit" className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 transition-colors">Register for This Event</button>
-                            </form>
-                        </div>
-                    ) : !event.self_registration_enabled ? (
-                        <p className="text-sm text-slate-600">Self-registration is not enabled for this event. Please contact the organizer for registration.</p>
-                    ) : !isUpcoming ? (
-                        <p className="text-sm text-slate-600">Registration is closed. This event has already occurred or is in progress.</p>
-                    ) : isRegistered && !isCancelled ? (
-                        <p className="text-sm text-slate-600">{isPending && 'Your registration is pending approval.'}{isApproved && 'You are registered for this event.'}{isRejected && 'Your registration was not approved.'}</p>
-                    ) : (
-                        <p className="text-sm text-slate-600">Registration is not available at this time.</p>
-                    )}
-                    {event.max_participants && (
-                        <div className="mt-4 pt-4 border-t border-slate-100">
-                            <p className="text-xs text-slate-500">Capacity: {event.registrations?.length || 0} / {event.max_participants} registered</p>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Back to Events */}
             <div>
                 <a
                     href="/simulation-events"
-                    className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800 transition-colors"
+                    className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
                 >
                     ← Back to Simulation Events
                 </a>

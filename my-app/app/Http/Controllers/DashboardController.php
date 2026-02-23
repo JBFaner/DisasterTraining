@@ -64,10 +64,20 @@ class DashboardController extends Controller
         $today = Carbon::today();
 
         // Operational KPIs and attention metrics
+        // Active = events currently running (status: ongoing)
         $activeEvents = $events->where('status', 'ongoing')->count();
+
+        // Upcoming = published events scheduled today or later that have not started yet
         $upcomingEvents = $events->filter(function ($e) use ($today) {
-            $date = $e->event_date instanceof \Carbon\Carbon ? $e->event_date : Carbon::parse($e->event_date);
-            return $date->gte($today) && in_array($e->status, ['published', 'ongoing']);
+            if ($e->status !== 'published') {
+                return false;
+            }
+
+            $date = $e->event_date instanceof \Carbon\Carbon
+                ? $e->event_date
+                : Carbon::parse($e->event_date);
+
+            return $date->gte($today);
         })->count();
         $totalParticipants = $participants->count();
         $certificatesCount = $user->role !== 'PARTICIPANT'
