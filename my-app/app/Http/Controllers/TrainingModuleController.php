@@ -95,7 +95,7 @@ class TrainingModuleController extends Controller
             ->with('status', 'Training module created successfully.');
     }
 
-    public function publish(TrainingModule $trainingModule)
+    public function publish(Request $request, TrainingModule $trainingModule)
     {
         $this->authorizeOwner($trainingModule);
 
@@ -111,9 +111,18 @@ class TrainingModuleController extends Controller
             $errors[] = 'At least one lesson is required';
         }
 
-        if (!empty($errors)) {
+        if (! empty($errors)) {
+            // If this is an AJAX/fetch request, return JSON so the frontend can show a popup
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot publish module.',
+                    'errors' => $errors,
+                ], 422);
+            }
+
             return redirect()->route('training.modules.show', $trainingModule)
-                ->with('error', 'Cannot publish module: ' . implode(', ', $errors));
+                ->with('error', 'Cannot publish module: '.implode(', ', $errors));
         }
 
         $old = $trainingModule->getOriginal();
@@ -130,6 +139,13 @@ class TrainingModuleController extends Controller
             'old_values' => $old,
             'new_values' => $trainingModule->toArray(),
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Training module published successfully.',
+            ]);
+        }
 
         return redirect()->route('training.modules')
             ->with('status', 'Training module published successfully.');

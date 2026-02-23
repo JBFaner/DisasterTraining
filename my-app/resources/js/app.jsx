@@ -1888,10 +1888,146 @@ function TrainingModulesTable({ modules = [] }) {
                         <a href={`/training-modules/${openModule.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
                         <a href={`/training-modules/${openModule.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
                         {openModule.status === 'draft' && (
-                            <form method="POST" action={`/training-modules/${openModule.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', text: 'Publish this training module?', icon: 'question', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                            <form
+                                method="POST"
+                                action={`/training-modules/${openModule.id}/publish`}
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const form = e.currentTarget;
+                                    const ok = await Swal.fire({
+                                        title: 'Publish?',
+                                        text: 'Publish this training module?',
+                                        icon: 'question',
+                                        showCancelButton: true,
+                                    });
+                                    if (!ok.isConfirmed) return;
+                                    try {
+                                        const res = await fetch(form.action, {
+                                            method: 'POST',
+                                            body: new FormData(form),
+                                            headers: {
+                                                'Accept': 'application/json',
+                                                'X-Requested-With': 'XMLHttpRequest',
+                                            },
+                                        });
+
+                                        if (!res.ok) {
+                                            let message = 'Failed to publish module. Please try again.';
+                                            try {
+                                                const data = await res.json();
+                                                if (data?.errors?.length) {
+                                                    message = data.errors.join(', ');
+                                                } else if (data?.message) {
+                                                    message = data.message;
+                                                }
+                                            } catch {
+                                                // ignore JSON parse errors
+                                            }
+                                            await Swal.fire({
+                                                icon: 'error',
+                                                title: 'Cannot publish',
+                                                text: message,
+                                            });
+                                            return;
+                                        }
+
+                                        await Swal.fire({
+                                            icon: 'success',
+                                            title: 'Module published',
+                                            text: 'This training module is now available for use.',
+                                        });
+                                        window.location.href = '/training-modules';
+                                    } catch (_) {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Error',
+                                            text: 'Failed to publish module. Please try again.',
+                                        });
+                                    } finally {
+                                        close();
+                                    }
+                                }}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                    <Send className="w-4 h-4" /> Publish
+                                </button>
+                            </form>
                         )}
-                        <form method="POST" action={`/training-modules/${openModule.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this module?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
-                        <form method="POST" action={`/training-modules/${openModule.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this module?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
+                        <form
+                            method="POST"
+                            action={`/training-modules/${openModule.id}/archive`}
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.currentTarget;
+                                const ok = await Swal.fire({
+                                    title: 'Archive?',
+                                    text: 'Archive this module?',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                });
+                                if (!ok.isConfirmed) return;
+                                try {
+                                    const res = await fetch(form.action, {
+                                        method: 'POST',
+                                        body: new FormData(form),
+                                    });
+                                    if (!res.ok) throw new Error('Request failed');
+                                    window.location.href = '/training-modules';
+                                } catch (_) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: 'Failed to archive module. Please try again.',
+                                    });
+                                } finally {
+                                    close();
+                                }
+                            }}
+                        >
+                            <input type="hidden" name="_token" value={csrf} />
+                            <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                <Archive className="w-4 h-4" /> Archive
+                            </button>
+                        </form>
+                        <form
+                            method="POST"
+                            action={`/training-modules/${openModule.id}`}
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.currentTarget;
+                                const ok = await Swal.fire({
+                                    title: 'Delete?',
+                                    text: 'Permanently delete this module?',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#dc2626',
+                                });
+                                if (!ok.isConfirmed) return;
+                                try {
+                                    const res = await fetch(form.action, {
+                                        method: 'POST',
+                                        body: new FormData(form),
+                                    });
+                                    if (!res.ok) throw new Error('Request failed');
+                                    window.location.href = '/training-modules';
+                                } catch (_) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: 'Failed to delete module. Please try again.',
+                                    });
+                                } finally {
+                                    close();
+                                }
+                            }}
+                        >
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="_method" value="DELETE" />
+                            <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
+                                <Trash2 className="w-4 h-4" /> Delete
+                            </button>
+                        </form>
                     </div>,
                     document.body
                 );
@@ -2674,14 +2810,32 @@ function TrainingModuleEditForm({ module }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    // Parse existing learning_objectives from module (already cast to array by model)
-    const initialObjectives = module.learning_objectives && Array.isArray(module.learning_objectives)
-        ? module.learning_objectives.filter(obj => obj && obj.trim() !== '')
-        : [];
+    // Base field state (pre-filled from existing module)
+    const [title, setTitle] = React.useState(module.title || '');
+    const [description, setDescription] = React.useState(
+        module.description || '',
+    );
+    const [difficulty, setDifficulty] = React.useState(
+        module.difficulty || 'Beginner',
+    );
+    const [category, setCategory] = React.useState(module.category || '');
+    const [visibility, setVisibility] = React.useState(
+        module.visibility || 'all',
+    );
 
-    const [showObjectives, setShowObjectives] = React.useState(initialObjectives.length > 0);
+    // Parse existing learning_objectives from module (already cast to array by model)
+    const initialObjectives =
+        module.learning_objectives && Array.isArray(module.learning_objectives)
+            ? module.learning_objectives.filter(
+                  (obj) => obj && obj.trim() !== '',
+              )
+            : [];
+
+    const [showObjectives, setShowObjectives] = React.useState(
+        initialObjectives.length > 0,
+    );
     const [objectives, setObjectives] = React.useState(
-        initialObjectives.length > 0 ? initialObjectives : ['']
+        initialObjectives.length > 0 ? initialObjectives : [''],
     );
 
     const addObjective = () => {
@@ -2698,187 +2852,326 @@ function TrainingModuleEditForm({ module }) {
         setObjectives(newObjectives);
     };
 
+    // Reuse same styling helpers as create form
+    const inputClass =
+        'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200';
+    const labelClass =
+        'block text-xs font-semibold text-slate-600 mb-1.5';
+
+    const applyTemplate = (t) => {
+        setTitle(t.title);
+        setDescription(t.description);
+        setDifficulty(t.difficulty);
+        setCategory(t.category);
+        setObjectives(
+            t.objectives && t.objectives.length > 0
+                ? [...t.objectives]
+                : [''],
+        );
+        setShowObjectives(true);
+    };
+
     return (
-        <div className="max-w-5xl py-2">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                Edit Training Module
-            </h2>
-            <form
-                method="POST"
-                action={`/training-modules/${module.id}`}
-                className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
+        <div className="w-full max-w-full py-2">
+            <a
+                href="/training-modules"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
-                <input type="hidden" name="_token" value={csrf} />
-                <input type="hidden" name="_method" value="PUT" />
-                <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="title"
-                    >
-                        Title
-                    </label>
-                    <input
-                        id="title"
-                        name="title"
-                        type="text"
-                        defaultValue={module.title}
-                        required
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
+                <ChevronLeft className="w-4 h-4" />
+                Back to Training Modules
+            </a>
+
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-100 rounded-xl shadow-md">
+                    <BookOpen className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
                 </div>
                 <div>
-                    <label
-                        className="block text-xs font-semibold text-slate-600 mb-1"
-                        htmlFor="description"
-                    >
-                        Description
-                    </label>
-                    <textarea
-                        id="description"
-                        name="description"
-                        rows={3}
-                        defaultValue={module.description || ''}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
+                    <h2 className="text-xl font-semibold text-slate-800">
+                        Edit Training Module
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                        Update this disaster preparedness training module
+                    </p>
                 </div>
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-semibold text-slate-600">
-                            Learning Objectives
-                        </label>
-                        <button
-                            type="button"
-                            onClick={() => setShowObjectives(!showObjectives)}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:border-emerald-700 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            Objectives
-                        </button>
-                    </div>
-                    {showObjectives && (
-                        <div className="space-y-2">
-                            {objectives.map((objective, index) => (
-                                <div key={index} className="flex items-start gap-2">
-                                    <input
-                                        type="text"
-                                        name={`learning_objectives[${index}]`}
-                                        value={objective}
-                                        onChange={(e) => updateObjective(index, e.target.value)}
-                                        placeholder={`Objective ${index + 1}`}
-                                        className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                    {objectives.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => removeObjective(index)}
-                                            className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={addObjective}
-                                className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900"
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left: main edit form */}
+                <div className="lg:col-span-8">
+                    <form
+                        method="POST"
+                        action={`/training-modules/${module.id}`}
+                        className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
+                    >
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="_method" value="PUT" />
+                        {/* Keep status but hidden so validation passes; status is controlled via Manage menu */}
+                        <input
+                            type="hidden"
+                            name="status"
+                            value={module.status}
+                        />
+
+                        <div>
+                            <label className={labelClass} htmlFor="title">
+                                Title <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="title"
+                                name="title"
+                                type="text"
+                                required
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="e.g. Earthquake Response & Evacuation"
+                                className={inputClass}
+                            />
+                        </div>
+
+                        <div>
+                            <label
+                                className={labelClass}
+                                htmlFor="description"
                             >
-                                <Plus className="w-3 h-3" />
-                                Add another objective
+                                Description
+                            </label>
+                            <textarea
+                                id="description"
+                                name="description"
+                                rows={4}
+                                value={description}
+                                onChange={(e) =>
+                                    setDescription(e.target.value)
+                                }
+                                placeholder="Brief overview of what this module covers..."
+                                className={inputClass}
+                            />
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-3">
+                                <label className="text-xs font-semibold text-slate-600">
+                                    Learning Objectives
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowObjectives(!showObjectives)
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow transition-all duration-200"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    {showObjectives ? 'Hide' : 'Show'}{' '}
+                                    Objectives
+                                </button>
+                            </div>
+                            {showObjectives && (
+                                <div className="space-y-3">
+                                    {objectives.map((objective, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <input
+                                                type="text"
+                                                name={`learning_objectives[${index}]`}
+                                                value={objective}
+                                                onChange={(e) =>
+                                                    updateObjective(
+                                                        index,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder={`Objective ${
+                                                    index + 1
+                                                }`}
+                                                className={inputClass}
+                                            />
+                                            {objectives.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        removeObjective(index)
+                                                    }
+                                                    className="shrink-0 inline-flex items-center justify-center rounded-xl border border-slate-300 w-10 h-10 text-slate-600 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
+                                                    aria-label="Remove objective"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={addObjective}
+                                        className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 transition-colors duration-200"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Add another objective
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    className={labelClass}
+                                    htmlFor="difficulty"
+                                >
+                                    Difficulty
+                                </label>
+                                <select
+                                    id="difficulty"
+                                    name="difficulty"
+                                    value={difficulty}
+                                    onChange={(e) =>
+                                        setDifficulty(e.target.value)
+                                    }
+                                    className={inputClass}
+                                >
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">
+                                        Intermediate
+                                    </option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    className={labelClass}
+                                    htmlFor="category"
+                                >
+                                    Disaster type
+                                </label>
+                                <input
+                                    id="category"
+                                    name="category"
+                                    type="text"
+                                    value={category}
+                                    onChange={(e) =>
+                                        setCategory(e.target.value)
+                                    }
+                                    placeholder="e.g. Earthquake, Fire"
+                                    className={inputClass}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                className={labelClass}
+                                htmlFor="visibility"
+                            >
+                                Visibility
+                            </label>
+                            <select
+                                id="visibility"
+                                name="visibility"
+                                value={visibility}
+                                onChange={(e) =>
+                                    setVisibility(e.target.value)
+                                }
+                                className={inputClass}
+                            >
+                                <option value="all">All participants</option>
+                                <option value="group">
+                                    Specific groups (later)
+                                </option>
+                                <option value="staff_only">Staff only</option>
+                            </select>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                            <a
+                                href="/training-modules"
+                                className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
+                            >
+                                Cancel
+                            </a>
+                            <button
+                                type="submit"
+                                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Save Changes
                             </button>
                         </div>
-                    )}
+                    </form>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="difficulty"
-                        >
-                            Difficulty
-                        </label>
-                        <select
-                            id="difficulty"
-                            name="difficulty"
-                            defaultValue={module.difficulty}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="Beginner">Beginner</option>
-                            <option value="Intermediate">Intermediate</option>
-                            <option value="Advanced">Advanced</option>
-                        </select>
+
+                {/* Right: tips + quick templates (same design as create) */}
+                <div className="lg:col-span-4 space-y-5">
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="p-2 rounded-xl bg-slate-100">
+                                <ClipboardList className="w-5 h-5 text-slate-600" />
+                            </div>
+                            <h3 className="font-semibold text-slate-800">
+                                Module Writing Tips
+                            </h3>
+                        </div>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">
+                                    •
+                                </span>
+                                <span>
+                                    Keep title clear and scenario-based
+                                </span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">
+                                    •
+                                </span>
+                                <span>
+                                    Limit description to 3–5 sentences
+                                </span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">
+                                    •
+                                </span>
+                                <span>Objectives should be measurable</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">
+                                    •
+                                </span>
+                                <span>
+                                    Match difficulty to target participants
+                                </span>
+                            </li>
+                        </ul>
                     </div>
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="category"
-                        >
-                            Disaster type
-                        </label>
-                        <input
-                            id="category"
-                            name="category"
-                            type="text"
-                            placeholder="e.g. Earthquake, Fire"
-                            defaultValue={module.category || ''}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="status"
-                        >
-                            Status
-                        </label>
-                        <select
-                            id="status"
-                            name="status"
-                            defaultValue={module.status}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                            <option value="unpublished">Unpublished</option>
-                            <option value="archived">Archived</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label
-                            className="block text-xs font-semibold text-slate-600 mb-1"
-                            htmlFor="visibility"
-                        >
-                            Visibility
-                        </label>
-                        <select
-                            id="visibility"
-                            name="visibility"
-                            defaultValue={module.visibility}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="all">All participants</option>
-                            <option value="group">Specific groups (later)</option>
-                            <option value="staff_only">Staff only</option>
-                        </select>
+
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="p-2 rounded-xl bg-amber-100">
+                                <Zap className="w-5 h-5 text-amber-700" />
+                            </div>
+                            <h3 className="font-semibold text-slate-800">
+                                Quick Templates
+                            </h3>
+                        </div>
+                        <p className="text-xs text-slate-500 mb-3">
+                            Click one to auto-fill this module with a template.
+                        </p>
+                        <div className="space-y-2">
+                            {QUICK_TEMPLATES.map((t, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => applyTemplate(t)}
+                                    className="w-full text-left rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 transition-all duration-200"
+                                >
+                                    {t.name}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
-                <div className="flex justify-end gap-2 pt-2">
-                    <a
-                        href="/training-modules"
-                        className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-                    >
-                        Cancel
-                    </a>
-                    <button
-                        type="submit"
-                        className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
-                    >
-                        Save Changes
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     );
 }
@@ -3682,11 +3975,118 @@ function ScenariosTable({ scenarios = [], role }) {
                             <a href={`/scenarios/${openScenario.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
                         )}
                         {openScenario.status !== 'published' && (
-                            <form method="POST" action={`/scenarios/${openScenario.id}/publish`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Publish?', text: 'Publish this scenario?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                            <form
+                                method="POST"
+                                action={`/scenarios/${openScenario.id}/publish`}
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const form = e.currentTarget;
+                                    const ok = await Swal.fire({
+                                        title: 'Publish?',
+                                        text: 'Publish this scenario?',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                    });
+                                    if (!ok.isConfirmed) return;
+                                    try {
+                                        const res = await fetch(form.action, {
+                                            method: 'POST',
+                                            body: new FormData(form),
+                                        });
+                                        if (!res.ok) throw new Error('Request failed');
+                                        window.location.href = '/scenarios';
+                                    } catch (_) {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Error',
+                                            text: 'Failed to publish scenario. Please try again.',
+                                        });
+                                    } finally {
+                                        close();
+                                    }
+                                }}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                    <Send className="w-4 h-4" /> Publish
+                                </button>
+                            </form>
                         )}
-                        <form method="POST" action={`/scenarios/${openScenario.id}/archive`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Archive?', text: 'Archive this scenario?', icon: 'warning', showCancelButton: true }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
+                        <form
+                            method="POST"
+                            action={`/scenarios/${openScenario.id}/archive`}
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.currentTarget;
+                                const ok = await Swal.fire({
+                                    title: 'Archive?',
+                                    text: 'Archive this scenario?',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                });
+                                if (!ok.isConfirmed) return;
+                                try {
+                                    const res = await fetch(form.action, {
+                                        method: 'POST',
+                                        body: new FormData(form),
+                                    });
+                                    if (!res.ok) throw new Error('Request failed');
+                                    window.location.href = '/scenarios';
+                                } catch (_) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: 'Failed to archive scenario. Please try again.',
+                                    });
+                                } finally {
+                                    close();
+                                }
+                            }}
+                        >
+                            <input type="hidden" name="_token" value={csrf} />
+                            <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                <Archive className="w-4 h-4" /> Archive
+                            </button>
+                        </form>
                         {canDelete && (
-                            <form method="POST" action={`/scenarios/${openScenario.id}`} onSubmit={async (e) => { e.preventDefault(); const ok = await Swal.fire({ title: 'Delete?', text: 'Permanently delete this scenario?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' }); if (ok.isConfirmed) e.target.submit(); close(); }}><input type="hidden" name="_token" value={csrf} /><input type="hidden" name="_method" value="DELETE" /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /> Delete</button></form>
+                            <form
+                                method="POST"
+                                action={`/scenarios/${openScenario.id}`}
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const form = e.currentTarget;
+                                    const ok = await Swal.fire({
+                                        title: 'Delete?',
+                                        text: 'Permanently delete this scenario?',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#dc2626',
+                                    });
+                                    if (!ok.isConfirmed) return;
+                                    try {
+                                        const res = await fetch(form.action, {
+                                            method: 'POST',
+                                            body: new FormData(form),
+                                        });
+                                        if (!res.ok) throw new Error('Request failed');
+                                        window.location.href = '/scenarios';
+                                    } catch (_) {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Error',
+                                            text: 'Failed to delete scenario. Please try again.',
+                                        });
+                                    } finally {
+                                        close();
+                                    }
+                                }}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="hidden" name="_method" value="DELETE" />
+                                <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
+                                    <Trash2 className="w-4 h-4" /> Delete
+                                </button>
+                            </form>
                         )}
                     </div>,
                     document.body
@@ -4713,6 +5113,11 @@ function ScenarioDetail({ scenario }) {
         }
     };
 
+    const injured = scenario.injured_victims_count ?? null;
+    const trapped = scenario.trapped_persons_count ?? null;
+    const severity = scenario.severity_level || '—';
+    const communication = scenario.communication_status || null;
+
     return (
         <div className="py-2 space-y-6">
             {/* Back + breadcrumb */}
@@ -4738,159 +5143,211 @@ function ScenarioDetail({ scenario }) {
             </div>
 
             {/* Scenario Header */}
-            <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                            Scenario
-                        </div>
-                        <h2 className="text-xl font-semibold text-slate-800">
+            <div className="rounded-2xl bg-white border border-slate-200 shadow-md p-6 md:p-7">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                             {scenario.title}
-                        </h2>
+                        </h1>
                         {scenario.short_description && (
-                            <p className="mt-1 text-sm text-slate-600 whitespace-pre-line">
+                            <p className="mt-2 text-sm text-slate-600 whitespace-pre-line leading-relaxed">
                                 {scenario.short_description}
                             </p>
                         )}
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
+                            {scenario.status && (
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-emerald-700">
+                                    {scenario.status.charAt(0).toUpperCase() + scenario.status.slice(1)}
+                                </span>
+                            )}
+                            {scenario.disaster_type && (
+                                <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-3 py-1">
+                                    {scenario.disaster_type}
+                                </span>
+                            )}
+                            {scenario.difficulty && (
+                                <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-3 py-1">
+                                    Difficulty: {scenario.difficulty}
+                                </span>
+                            )}
+                            {scenario.training_module && (
+                                <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-3 py-1">
+                                    Linked Module: {scenario.training_module.title}
+                                </span>
+                            )}
+                        </div>
+                        <div className="mt-3 text-[0.7rem] text-slate-500">
+                            <span className="font-semibold text-slate-600">Created by</span>{' '}
+                            {scenario.creator?.name ?? '—'}
+                            {scenario.created_at && (
+                                <>
+                                    <span className="mx-1">•</span>
+                                    <span>{formatDateTime(scenario.created_at)}</span>
+                                </>
+                            )}
+                        </div>
                     </div>
                     {scenario.status !== 'published' && (
                         <a
                             href={`/scenarios/${scenario.id}/edit`}
-                            className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                            className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all"
                             title="Edit scenario"
                         >
-                            <Pencil className="w-4 h-4 drop-shadow-sm" />
+                            <Pencil className="w-4 h-4 mr-1.5" />
+                            Edit
                         </a>
                     )}
                 </div>
-                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-600">
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                        Difficulty: {scenario.difficulty}
-                    </span>
-                    {scenario.disaster_type && (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                            Disaster type: {scenario.disaster_type}
-                        </span>
-                    )}
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                        Status: {scenario.status}
-                    </span>
-                    {scenario.training_module && (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                            Module: {scenario.training_module.title}
-                        </span>
-                    )}
-                </div>
-                <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500">
-                    <div className="flex flex-wrap gap-4">
-                        <div>
-                            <span className="font-semibold text-slate-600">Created By:</span> {scenario.creator?.name ?? '—'}
+
+                {/* Metrics strip */}
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                            Severity
                         </div>
-                        <div>
-                            <span className="font-semibold text-slate-600">Created Date:</span> {scenario.created_at ? formatDateTime(scenario.created_at) : '—'}
+                        <div className="mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm">
+                            <span className={getSeverityColor(severity).replace('bg-', 'bg-').replace('text-', 'text-')}>
+                                {severity}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                            Injured
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-slate-900">
+                            {injured != null ? injured : '—'}
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                            Trapped
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-slate-900">
+                            {trapped != null ? trapped : '—'}
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                            Communication
+                        </div>
+                        <div className="mt-1">
+                            {communication ? (
+                                <span
+                                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm capitalize ${getCommunicationStatusColor(
+                                        communication,
+                                    )}`}
+                                >
+                                    {communication}
+                                </span>
+                            ) : (
+                                <span className="text-sm font-semibold text-slate-900">—</span>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Scenario Overview */}
-            {(scenario.affected_area || scenario.incident_time_text || scenario.general_situation || scenario.severity_level) && (
-                <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Scenario Overview</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {scenario.affected_area && (
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                    Affected area
-                                </div>
-                                <div className="text-sm text-slate-800">
-                                    {scenario.affected_area}
-                                </div>
-                            </div>
-                        )}
-                        {scenario.incident_time_text && (
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                    Time of incident
-                                </div>
-                                <div className="text-sm text-slate-800">
-                                    {scenario.incident_time_text}
-                                </div>
-                            </div>
-                        )}
-                        {scenario.severity_level && (
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                    Severity level
-                                </div>
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${getSeverityColor(scenario.severity_level)}`}>
-                                    {scenario.severity_level}
-                                </span>
-                            </div>
-                        )}
-                    </div>
+            {/* Main 2-column layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 items-start">
+                {/* LEFT: Narrative */}
+                <div className="lg:col-span-7 space-y-6">
                     {scenario.general_situation && (
-                        <div className="mt-4">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                General situation
-                            </div>
-                            <div className="text-sm text-slate-800 whitespace-pre-line">
+                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+                            <h2 className="text-sm font-semibold text-slate-900 mb-3">
+                                General Situation
+                            </h2>
+                            <div className="border-l-4 border-emerald-500/70 pl-4 text-sm text-slate-800 leading-relaxed whitespace-pre-line">
                                 {scenario.general_situation}
                             </div>
                         </div>
                     )}
                 </div>
-            )}
 
-            {/* Core Scenario Details */}
-            {(scenario.injured_victims_count !== undefined || scenario.trapped_persons_count !== undefined || scenario.infrastructure_damage || scenario.communication_status) && (
-                <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Core Scenario Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {scenario.injured_victims_count !== undefined && (
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                    Injured victims
-                                </div>
-                                <div className="text-sm font-semibold text-slate-800">
-                                    {scenario.injured_victims_count}
-                                </div>
-                            </div>
-                        )}
-                        {scenario.trapped_persons_count !== undefined && (
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                    Trapped persons
-                                </div>
-                                <div className="text-sm font-semibold text-slate-800">
-                                    {scenario.trapped_persons_count}
-                                </div>
-                            </div>
-                        )}
-                        {scenario.communication_status && (
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                    Communication status
-                                </div>
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm capitalize ${getCommunicationStatusColor(scenario.communication_status)}`}>
-                                    {scenario.communication_status}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                    {scenario.infrastructure_damage && (
-                        <div className="mt-4">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                Infrastructure damage
-                            </div>
-                            <div className="text-sm text-slate-800 whitespace-pre-line">
-                                {scenario.infrastructure_damage}
+                {/* RIGHT: Intelligence panel */}
+                <div className="lg:col-span-3 space-y-4">
+                    {(scenario.affected_area || scenario.incident_time_text) && (
+                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+                            <h3 className="text-sm font-bold text-slate-900 mb-3">
+                                Location &amp; Timing
+                            </h3>
+                            <div className="space-y-2 text-sm">
+                                {scenario.affected_area && (
+                                    <div>
+                                        <div className="text-xs font-semibold text-slate-500 uppercase mb-1">
+                                            Area
+                                        </div>
+                                        <div className="text-slate-900">
+                                            {scenario.affected_area}
+                                        </div>
+                                    </div>
+                                )}
+                                {scenario.incident_time_text && (
+                                    <div>
+                                        <div className="text-xs font-semibold text-slate-500 uppercase mb-1">
+                                            Time of incident
+                                        </div>
+                                        <div className="text-slate-900">
+                                            {scenario.incident_time_text}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
-                </div>
-            )}
 
+                    {(injured != null ||
+                        trapped != null ||
+                        communication ||
+                        scenario.infrastructure_damage) && (
+                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+                            <h3 className="text-sm font-bold text-slate-900 mb-3">
+                                Impact Summary
+                            </h3>
+                            <div className="space-y-2 text-sm">
+                                {injured != null && (
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-slate-500">
+                                            Injured
+                                        </span>
+                                        <span className="font-semibold text-slate-900">
+                                            {injured}
+                                        </span>
+                                    </div>
+                                )}
+                                {trapped != null && (
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-slate-500">
+                                            Trapped
+                                        </span>
+                                        <span className="font-semibold text-slate-900">
+                                            {trapped}
+                                        </span>
+                                    </div>
+                                )}
+                                {communication && (
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-slate-500">
+                                            Communication
+                                        </span>
+                                        <span className="font-semibold text-slate-900 capitalize">
+                                            {communication}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                            {scenario.infrastructure_damage && (
+                                <div className="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-700 whitespace-pre-line">
+                                    <div className="text-xs font-semibold text-slate-500 uppercase mb-1">
+                                        Infrastructure
+                                    </div>
+                                    {scenario.infrastructure_damage}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
@@ -5332,47 +5789,200 @@ function SimulationEventsTable({ events, role }) {
                                     <a href={`/simulation-events/${openEvent.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
                                 )}
                                 {openEvent.status === 'draft' && (
-                                    <form method="POST" action={`/simulation-events/${openEvent.id}/publish`} onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const missingFields = [];
-                                        if (!openEvent.title) missingFields.push('Event Title');
-                                        if (!openEvent.disaster_type) missingFields.push('Disaster Type');
-                                        if (!openEvent.event_category) missingFields.push('Event Category');
-                                        if (!openEvent.event_date) missingFields.push('Event Date');
-                                        if (!openEvent.start_time) missingFields.push('Start Time');
-                                        if (!openEvent.end_time) missingFields.push('End Time');
-                                        if (missingFields.length > 0) {
-                                            Swal.fire({ title: 'Validation Error!', html: `Please fill in:<br><br>${missingFields.map(f => `• ${f}`).join('<br>')}`, icon: 'error', confirmButtonColor: '#64748b' });
-                                            return;
-                                        }
-                                        const result = await Swal.fire({ title: 'Publish event?', text: 'This event will become visible to participants.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, publish', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
-                                        if (result.isConfirmed) e.target.submit();
-                                        close();
-                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Send className="w-4 h-4" /> Publish</button></form>
+                                    <form
+                                        method="POST"
+                                        action={`/simulation-events/${openEvent.id}/publish`}
+                                        onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const form = e.currentTarget;
+                                            const missingFields = [];
+                                            if (!openEvent.title) missingFields.push('Event Title');
+                                            if (!openEvent.disaster_type) missingFields.push('Disaster Type');
+                                            if (!openEvent.event_category) missingFields.push('Event Category');
+                                            if (!openEvent.event_date) missingFields.push('Event Date');
+                                            if (!openEvent.start_time) missingFields.push('Start Time');
+                                            if (!openEvent.end_time) missingFields.push('End Time');
+                                            if (missingFields.length > 0) {
+                                                await Swal.fire({
+                                                    title: 'Validation Error!',
+                                                    html: `Please fill in:<br><br>${missingFields.map((f) => `• ${f}`).join('<br>')}`,
+                                                    icon: 'error',
+                                                    confirmButtonColor: '#64748b',
+                                                });
+                                                return;
+                                            }
+                                            const result = await Swal.fire({
+                                                title: 'Publish event?',
+                                                text: 'This event will become visible to participants.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonText: 'Yes, publish',
+                                                cancelButtonText: 'Cancel',
+                                                confirmButtonColor: '#16a34a',
+                                                cancelButtonColor: '#64748b',
+                                            });
+                                            if (!result.isConfirmed) return;
+                                            try {
+                                                const response = await fetch(form.action, {
+                                                    method: 'POST',
+                                                    body: new FormData(form),
+                                                });
+                                                if (!response.ok) {
+                                                    throw new Error('Request failed');
+                                                }
+                                                window.location.href = '/simulation-events';
+                                            } catch (err) {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Error',
+                                                    text: 'Failed to publish event. Please try again.',
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                        >
+                                            <Send className="w-4 h-4" /> Publish
+                                        </button>
+                                    </form>
                                 )}
                                 {canStartEvent(openEvent) && (
-                                    <form method="POST" action={`/simulation-events/${openEvent.id}/start`} onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const result = await Swal.fire({ title: 'Start event?', text: 'Start this simulation event now?', icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, start', cancelButtonText: 'Cancel', confirmButtonColor: '#16a34a', cancelButtonColor: '#64748b' });
-                                        if (result.isConfirmed) e.target.submit();
-                                        close();
-                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Play className="w-4 h-4" /> Start</button></form>
+                                    <form
+                                        method="POST"
+                                        action={`/simulation-events/${openEvent.id}/start`}
+                                        onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const form = e.currentTarget;
+                                            const result = await Swal.fire({
+                                                title: 'Start event?',
+                                                text: 'Start this simulation event now?',
+                                                icon: 'question',
+                                                showCancelButton: true,
+                                                confirmButtonText: 'Yes, start',
+                                                cancelButtonText: 'Cancel',
+                                                confirmButtonColor: '#16a34a',
+                                                cancelButtonColor: '#64748b',
+                                            });
+                                            if (!result.isConfirmed) return;
+                                            try {
+                                                const response = await fetch(form.action, {
+                                                    method: 'POST',
+                                                    body: new FormData(form),
+                                                });
+                                                if (!response.ok) {
+                                                    throw new Error('Request failed');
+                                                }
+                                                window.location.href = '/simulation-events';
+                                            } catch (err) {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Error',
+                                                    text: 'Failed to start event. Please try again.',
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                        >
+                                            <Play className="w-4 h-4" /> Start
+                                        </button>
+                                    </form>
                                 )}
                                 {(openEvent.status === 'published' || openEvent.status === 'draft') && (
-                                    <form method="POST" action={`/simulation-events/${openEvent.id}/cancel`} onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const result = await Swal.fire({ title: 'Cancel event?', text: 'Cancel this event? It will be hidden from registration.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, cancel', cancelButtonText: 'Keep', confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b' });
-                                        if (result.isConfirmed) e.target.submit();
-                                        close();
-                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"><XCircle className="w-4 h-4" /> Cancel</button></form>
+                                    <form
+                                        method="POST"
+                                        action={`/simulation-events/${openEvent.id}/cancel`}
+                                        onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const form = e.currentTarget;
+                                            const result = await Swal.fire({
+                                                title: 'Cancel event?',
+                                                text: 'Cancel this event? It will be hidden from registration.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonText: 'Yes, cancel',
+                                                cancelButtonText: 'Keep',
+                                                confirmButtonColor: '#dc2626',
+                                                cancelButtonColor: '#64748b',
+                                            });
+                                            if (!result.isConfirmed) return;
+                                            try {
+                                                const response = await fetch(form.action, {
+                                                    method: 'POST',
+                                                    body: new FormData(form),
+                                                });
+                                                if (!response.ok) {
+                                                    throw new Error('Request failed');
+                                                }
+                                                window.location.href = '/simulation-events';
+                                            } catch (err) {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Error',
+                                                    text: 'Failed to cancel event. Please try again.',
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
+                                        >
+                                            <XCircle className="w-4 h-4" /> Cancel
+                                        </button>
+                                    </form>
                                 )}
                                 {openEvent.status !== 'archived' && openEvent.status !== 'cancelled' && (
-                                    <form method="POST" action={`/simulation-events/${openEvent.id}/archive`} onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const result = await Swal.fire({ title: 'Archive event?', text: 'Archive this event? It will become read-only.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, archive', cancelButtonText: 'Cancel', confirmButtonColor: '#f97316', cancelButtonColor: '#64748b' });
-                                        if (result.isConfirmed) e.target.submit();
-                                        close();
-                                    }}><input type="hidden" name="_token" value={csrf} /><button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Archive className="w-4 h-4" /> Archive</button></form>
+                                    <form
+                                        method="POST"
+                                        action={`/simulation-events/${openEvent.id}/archive`}
+                                        onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const form = e.currentTarget;
+                                            const result = await Swal.fire({
+                                                title: 'Archive event?',
+                                                text: 'Archive this event? It will become read-only.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonText: 'Yes, archive',
+                                                cancelButtonText: 'Cancel',
+                                                confirmButtonColor: '#f97316',
+                                                cancelButtonColor: '#64748b',
+                                            });
+                                            if (!result.isConfirmed) return;
+                                            try {
+                                                const response = await fetch(form.action, {
+                                                    method: 'POST',
+                                                    body: new FormData(form),
+                                                });
+                                                if (!response.ok) {
+                                                    throw new Error('Request failed');
+                                                }
+                                                window.location.href = '/simulation-events';
+                                            } catch (err) {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Error',
+                                                    text: 'Failed to archive event. Please try again.',
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        <input type="hidden" name="_token" value={csrf} />
+                                        <button
+                                            type="submit"
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                        >
+                                            <Archive className="w-4 h-4" /> Archive
+                                        </button>
+                                    </form>
                                 )}
                             </div>,
                             document.body
@@ -6362,409 +6972,659 @@ function SimulationEventCreateForm({ scenarios }) {
 }
 
 function SimulationEventEditForm({ event, scenarios }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [selectedScenarioId, setSelectedScenarioId] = React.useState(String(event.scenario_id || ''));
-    const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
+    const csrf =
+        document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    // Format date for date input (YYYY-MM-DD)
+    const [selectedScenarioId, setSelectedScenarioId] = React.useState(
+        String(event.scenario_id || ''),
+    );
+    const selectedScenario =
+        (scenarios || []).find(
+            (s) => String(s.id) === String(selectedScenarioId),
+        ) || null;
+
+    // Format helpers
     const formatDateForInput = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
         return date.toISOString().split('T')[0];
     };
-
-    // Format time for time input (HH:MM)
     const formatTimeForInput = (timeString) => {
         if (!timeString) return '';
-        // Handle both "HH:MM:SS" and "HH:MM" formats
         return timeString.substring(0, 5);
     };
 
-    // Get allowed participant types as array
-    const allowedTypes = event.allowed_participant_types || [];
+    const formRef = React.useRef(null);
+
+    // Pre-launch checklist state (initialised from existing event)
+    const [checklistTitle, setChecklistTitle] = React.useState(
+        event.title || '',
+    );
+    const [checklistEventDate, setChecklistEventDate] = React.useState(
+        formatDateForInput(event.event_date) || '',
+    );
+    const [startTimeValue, setStartTimeValue] = React.useState(
+        formatTimeForInput(event.start_time) || '',
+    );
+    const [endTimeValue, setEndTimeValue] = React.useState(
+        formatTimeForInput(event.end_time) || '',
+    );
+    const [checklistLocation, setChecklistLocation] = React.useState(
+        event.location || '',
+    );
+
+    const minDate = new Date().toISOString().split('T')[0];
+
+    const eventTitleAdded = checklistTitle.trim() !== '';
+    const disasterTypeSelected = !!(selectedScenario?.disaster_type || event.disaster_type);
+    const scenarioAssigned = !!(selectedScenarioId || event.scenario_id);
+    const dateTimeSet =
+        !!(checklistEventDate && startTimeValue && endTimeValue) ||
+        !!(event.event_date && event.start_time && event.end_time);
+    const locationFilled = checklistLocation.trim() !== '';
+    const allReady =
+        eventTitleAdded &&
+        disasterTypeSelected &&
+        scenarioAssigned &&
+        dateTimeSet &&
+        locationFilled;
+
+    const handleStartTimeChange = (e) => {
+        const start = e.target.value;
+        setStartTimeValue(start);
+        if (start && endTimeValue && endTimeValue < start) setEndTimeValue('');
+        if (formRef.current && start) {
+            const endInput = formRef.current.querySelector('#end_time_edit');
+            if (endInput && endInput.value && endInput.value < start)
+                endInput.value = '';
+        }
+    };
+
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
+        const form = formRef.current;
+        if (!form) return;
+
+        const eventDateInput = form.querySelector('#event_date_edit');
+        const startTimeInput = form.querySelector('#start_time_edit');
+        const endTimeInput = form.querySelector('#end_time_edit');
+
+        if (
+            eventDateInput &&
+            eventDateInput.value &&
+            eventDateInput.value < minDate
+        ) {
+            Swal.fire({
+                title: 'Invalid date',
+                text: 'Event date cannot be in the past. Please select today or a future date.',
+                icon: 'warning',
+                confirmButtonColor: '#10b981',
+            });
+            return;
+        }
+
+        if (
+            startTimeInput?.value &&
+            endTimeInput?.value &&
+            endTimeInput.value < startTimeInput.value
+        ) {
+            Swal.fire({
+                title: 'Invalid time',
+                text: 'End time must be the same as or later than start time.',
+                icon: 'warning',
+                confirmButtonColor: '#10b981',
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Save changes?',
+            text: 'Update this simulation event with your changes?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+        }).then((result) => {
+            if (result.isConfirmed && formRef.current) {
+                formRef.current.submit();
+            }
+        });
+    };
 
     return (
-        <div className="py-2">
-            <form
-                id="simulation-event-edit-form"
-                method="POST"
-                action={`/simulation-events/${event.id}`}
-                className="space-y-6"
+        <div className="w-full max-w-full py-2">
+            <a
+                href="/simulation-events"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
-                <input type="hidden" name="_token" value={csrf} />
-                <input type="hidden" name="_method" value="PUT" />
-                <input type="hidden" name="_method" value="PUT" />
+                <ChevronLeft className="w-4 h-4" />
+                Back to Simulation Events
+            </a>
 
-                {/* Section 1: Basic Event Information */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">1. Basic Event Information</h3>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="col-span-2">
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_title_edit">
-                                    Event Title *
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-100 rounded-xl shadow-md">
+                    <CalendarClock className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-semibold text-slate-800">
+                        Edit Simulation Event
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                        Update schedule, location, and linked scenario for this
+                        drill or exercise
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left: main edit form */}
+                <div className="lg:col-span-8">
+                    <form
+                        id="simulation-event-edit-form"
+                        ref={formRef}
+                        method="POST"
+                        action={`/simulation-events/${event.id}`}
+                        className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
+                        onSubmit={handleFormSubmit}
+                    >
+                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="_method" value="PUT" />
+
+                        {/* Section 1: Basic Event Information */}
+                        <div className="space-y-4">
+                            <div>
+                                <label
+                                    className="block text-xs font-semibold text-slate-600 mb-1"
+                                    htmlFor="event_title_edit"
+                                >
+                                    Event Title <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     id="event_title_edit"
                                     name="title"
                                     type="text"
                                     required
-                                    defaultValue={event.title}
+                                    value={checklistTitle}
+                                    onChange={(e) =>
+                                        setChecklistTitle(e.target.value)
+                                    }
                                     placeholder="e.g. Earthquake Evacuation Drill"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 />
                             </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        className="block text-xs font-semibold text-slate-600 mb-1"
+                                        htmlFor="disaster_type_edit"
+                                    >
+                                        Disaster Type{' '}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="disaster_type_edit"
+                                        type="text"
+                                        value={
+                                            selectedScenario
+                                                ? selectedScenario.disaster_type
+                                                : event.disaster_type || ''
+                                        }
+                                        readOnly
+                                        disabled
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
+                                        placeholder="Select a scenario first"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="disaster_type"
+                                        value={
+                                            selectedScenario
+                                                ? selectedScenario.disaster_type
+                                                : event.disaster_type || ''
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        className="block text-xs font-semibold text-slate-600 mb-1"
+                                        htmlFor="event_category_edit"
+                                    >
+                                        Event Category{' '}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        id="event_category_edit"
+                                        name="event_category"
+                                        required
+                                        defaultValue={event.event_category}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    >
+                                        <option value="">Select category…</option>
+                                        <option value="Drill">Drill</option>
+                                        <option value="Full-scale Exercise">
+                                            Full-scale Exercise
+                                        </option>
+                                        <option value="Tabletop">Tabletop</option>
+                                        <option value="Training Session">
+                                            Training Session
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_category_edit">
-                                    Event Category *
+                                <label
+                                    className="block text-xs font-semibold text-slate-600 mb-1"
+                                    htmlFor="event_description_edit"
+                                >
+                                    Event Description
+                                </label>
+                                <textarea
+                                    id="event_description_edit"
+                                    name="description"
+                                    rows={4}
+                                    defaultValue={event.description || ''}
+                                    placeholder="What the drill is about and the main learning objectives"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Scenario Assignment */}
+                        <div className="pt-4 border-t border-slate-100 space-y-3">
+                            <h3 className="text-sm font-semibold text-slate-800">
+                                Scenario Assignment
+                            </h3>
+                            <div>
+                                <label
+                                    className="block text-xs font-semibold text-slate-600 mb-1"
+                                    htmlFor="scenario_id_edit"
+                                >
+                                    Select Scenario{' '}
+                                    <span className="text-red-500">*</span>
                                 </label>
                                 <select
-                                    id="event_category_edit"
-                                    name="event_category"
+                                    id="scenario_id_edit"
+                                    name="scenario_id"
+                                    value={selectedScenarioId}
+                                    onChange={(e) =>
+                                        setSelectedScenarioId(e.target.value)
+                                    }
                                     required
-                                    defaultValue={event.event_category}
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 >
-                                    <option value="">Select category…</option>
-                                    <option value="Drill">Drill</option>
-                                    <option value="Full-scale Exercise">Full-scale Exercise</option>
-                                    <option value="Tabletop">Tabletop</option>
-                                    <option value="Training Session">Training Session</option>
+                                    <option value="">Select a scenario…</option>
+                                    {(scenarios || []).map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.title} ({s.disaster_type} -{' '}
+                                            {s.difficulty})
+                                        </option>
+                                    ))}
                                 </select>
+                                {selectedScenario && (
+                                    <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600">
+                                        <div className="font-semibold mb-1">
+                                            Scenario Preview
+                                        </div>
+                                        <div>
+                                            Hazard:{' '}
+                                            {selectedScenario.disaster_type}
+                                        </div>
+                                        <div>
+                                            Difficulty:{' '}
+                                            {selectedScenario.difficulty}
+                                        </div>
+                                        {selectedScenario.short_description && (
+                                            <div className="mt-1">
+                                                {
+                                                    selectedScenario.short_description
+                                                }
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="disaster_type_edit">
-                                Disaster Type *
-                            </label>
-                            <select
-                                id="disaster_type_edit"
-                                name="disaster_type"
-                                required
-                                defaultValue={event.disaster_type}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Select disaster type…</option>
-                                <option value="Earthquake">Earthquake</option>
-                                <option value="Fire">Fire</option>
-                                <option value="Flood">Flood</option>
-                                <option value="Typhoon">Typhoon</option>
-                                <option value="Landslide">Landslide</option>
-                                <option value="Chemical Spill">Chemical Spill</option>
-                                <option value="Multi-hazard">Multi-hazard</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_description_edit">
-                                Event Description
-                            </label>
-                            <textarea
-                                id="event_description_edit"
-                                name="description"
-                                rows={4}
-                                defaultValue={event.description || ''}
-                                placeholder="What the drill is about & learning objective"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Section 2: Event Schedule */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">2. Event Schedule</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_date_edit">
-                                Event Date *
-                            </label>
-                            <input
-                                id="event_date_edit"
-                                name="event_date"
-                                type="date"
-                                required
-                                defaultValue={formatDateForInput(event.event_date)}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="start_time_edit">
-                                Start Time *
-                            </label>
-                            <input
-                                id="start_time_edit"
-                                name="start_time"
-                                type="time"
-                                required
-                                defaultValue={formatTimeForInput(event.start_time)}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="end_time_edit">
-                                End Time *
-                            </label>
-                            <input
-                                id="end_time_edit"
-                                name="end_time"
-                                type="time"
-                                required
-                                defaultValue={formatTimeForInput(event.end_time)}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-2">
-                        <input
-                            id="is_recurring_edit"
-                            name="is_recurring"
-                            type="checkbox"
-                            value="1"
-                            defaultChecked={event.is_recurring}
-                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <label htmlFor="is_recurring_edit" className="text-sm text-slate-700">
-                            Repeat event
-                        </label>
-                    </div>
-                </div>
-
-                {/* Section 3: Event Location */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">3. Event Location</h3>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location_edit">
-                                    Location / Building / Area
-                                </label>
+                            <div className="flex items-center gap-2">
                                 <input
-                                    id="location_edit"
-                                    name="location"
-                                    type="text"
-                                    defaultValue={event.location || ''}
-                                    placeholder="e.g. Barangay Hall"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    id="scenario_is_required_edit"
+                                    name="scenario_is_required"
+                                    type="checkbox"
+                                    value="1"
+                                    defaultChecked={event.scenario_is_required}
+                                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="room_zone_edit">
-                                    Room / Zone
+                                <label
+                                    htmlFor="scenario_is_required_edit"
+                                    className="text-sm text-slate-700"
+                                >
+                                    Required scenario
                                 </label>
-                                <input
-                                    id="room_zone_edit"
-                                    name="room_zone"
-                                    type="text"
-                                    defaultValue={event.room_zone || ''}
-                                    placeholder="e.g. Main Hall, Zone A"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location_notes_edit">
-                                Location Notes
-                            </label>
-                            <textarea
-                                id="location_notes_edit"
-                                name="location_notes"
-                                rows={3}
-                                defaultValue={event.location_notes || ''}
-                                placeholder="Accessibility notes, exits, hazard zones, assembly points"
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input
-                                id="is_high_risk_location_edit"
-                                name="is_high_risk_location"
-                                type="checkbox"
-                                value="1"
-                                defaultChecked={event.is_high_risk_location}
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <label htmlFor="is_high_risk_location_edit" className="text-sm text-slate-700">
-                                Mark location as &quot;high risk&quot;
-                            </label>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Section 4: Scenario Assignment */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">4. Scenario Assignment</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="scenario_id_edit">
-                                Select Scenario
-                            </label>
-                            <select
-                                id="scenario_id_edit"
-                                name="scenario_id"
-                                value={selectedScenarioId}
-                                onChange={(e) => setSelectedScenarioId(e.target.value)}
-                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Select a scenario…</option>
-                                {(scenarios || []).map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.title} ({s.disaster_type} - {s.difficulty})
-                                    </option>
-                                ))}
-                            </select>
-                            {selectedScenario && (
-                                <div className="mt-2 p-3 bg-slate-50 rounded-md text-xs text-slate-600">
-                                    <div className="font-semibold mb-1">Scenario Preview:</div>
-                                    <div>Hazard: {selectedScenario.disaster_type}</div>
-                                    <div>Difficulty: {selectedScenario.difficulty}</div>
-                                    {selectedScenario.short_description && (
-                                        <div className="mt-1">{selectedScenario.short_description}</div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input
-                                id="scenario_is_required_edit"
-                                name="scenario_is_required"
-                                type="checkbox"
-                                value="1"
-                                defaultChecked={event.scenario_is_required}
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <label htmlFor="scenario_is_required_edit" className="text-sm text-slate-700">
-                                Required scenario
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Section 6: Participant Settings */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">6. Participant Settings</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-2">
-                                Who can join (select all that apply)
-                            </label>
-                            <div className="grid grid-cols-2 gap-3">
-                                {['Staff', 'Volunteers', 'Students', 'Responders'].map((type) => (
-                                    <label key={type} className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            name="allowed_participant_types[]"
-                                            value={type.toLowerCase()}
-                                            defaultChecked={allowedTypes.includes(type.toLowerCase())}
-                                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                        />
-                                        <span className="text-sm text-slate-700">{type}</span>
+                        {/* Section 2: Event Schedule */}
+                        <div className="pt-4 border-t border-slate-100">
+                            <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                                2. Event Schedule
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label
+                                        className="block text-xs font-semibold text-slate-600 mb-1"
+                                        htmlFor="event_date_edit"
+                                    >
+                                        Event Date{' '}
+                                        <span className="text-red-500">*</span>
                                     </label>
-                                ))}
+                                    <input
+                                        id="event_date_edit"
+                                        name="event_date"
+                                        type="date"
+                                        required
+                                        value={checklistEventDate}
+                                        min={minDate}
+                                        onChange={(e) =>
+                                            setChecklistEventDate(
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        className="block text-xs font-semibold text-slate-600 mb-1"
+                                        htmlFor="start_time_edit"
+                                    >
+                                        Start Time{' '}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="start_time_edit"
+                                        name="start_time"
+                                        type="time"
+                                        required
+                                        value={startTimeValue}
+                                        onChange={handleStartTimeChange}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        className="block text-xs font-semibold text-slate-600 mb-1"
+                                        htmlFor="end_time_edit"
+                                    >
+                                        End Time{' '}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="end_time_edit"
+                                        name="end_time"
+                                        type="time"
+                                        required
+                                        value={endTimeValue}
+                                        onChange={(e) =>
+                                            setEndTimeValue(e.target.value)
+                                        }
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
                             </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="max_participants_edit">
-                                    Max Participant Limit
-                                </label>
+                            <div className="mt-4 flex items-center gap-2">
                                 <input
-                                    id="max_participants_edit"
-                                    name="max_participants"
-                                    type="number"
-                                    min="1"
-                                    defaultValue={event.max_participants || ''}
-                                    placeholder="No limit if empty"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    id="is_recurring_edit"
+                                    name="is_recurring"
+                                    type="checkbox"
+                                    value="1"
+                                    defaultChecked={event.is_recurring}
+                                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                 />
+                                <label
+                                    htmlFor="is_recurring_edit"
+                                    className="text-sm text-slate-700"
+                                >
+                                    Repeat event
+                                </label>
                             </div>
-                            <div className="flex items-end">
-                                <label className="flex items-center gap-2">
+                        </div>
+
+                        {/* Section 3: Event Location */}
+                        <div className="pt-4 border-t border-slate-100">
+                            <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                                3. Event Location
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label
+                                            className="block text-xs font-semibold text-slate-600 mb-1"
+                                            htmlFor="location_edit"
+                                        >
+                                            Location / Building / Area
+                                        </label>
+                                        <input
+                                            id="location_edit"
+                                            name="location"
+                                            type="text"
+                                            value={checklistLocation}
+                                            onChange={(e) =>
+                                                setChecklistLocation(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="e.g. Barangay Hall"
+                                            className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label
+                                            className="block text-xs font-semibold text-slate-600 mb-1"
+                                            htmlFor="room_zone_edit"
+                                        >
+                                            Room / Zone
+                                        </label>
+                                        <input
+                                            id="room_zone_edit"
+                                            name="room_zone"
+                                            type="text"
+                                            defaultValue={event.room_zone || ''}
+                                            placeholder="e.g. Main Hall, Zone A"
+                                            className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label
+                                        className="block text-xs font-semibold text-slate-600 mb-1"
+                                        htmlFor="location_notes_edit"
+                                    >
+                                        Location Notes
+                                    </label>
+                                    <textarea
+                                        id="location_notes_edit"
+                                        name="location_notes"
+                                        rows={3}
+                                        defaultValue={event.location_notes || ''}
+                                        placeholder="Accessibility notes, exits, hazard zones, assembly points"
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
                                     <input
+                                        id="is_high_risk_location_edit"
+                                        name="is_high_risk_location"
                                         type="checkbox"
-                                        name="self_registration_enabled"
                                         value="1"
-                                        defaultChecked={event.self_registration_enabled}
+                                        defaultChecked={event.is_high_risk_location}
                                         className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                     />
-                                    <span className="text-sm text-slate-700">Enable self-registration</span>
-                                </label>
+                                    <label
+                                        htmlFor="is_high_risk_location_edit"
+                                        className="text-sm text-slate-700"
+                                    >
+                                        Mark location as &quot;high risk&quot;
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        name="qr_code_enabled"
-                                        value="1"
-                                        defaultChecked={event.qr_code_enabled}
-                                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                    />
-                                    <span className="text-sm text-slate-700">Enable QR code</span>
-                                </label>
+
+                        {/* Section 6 & 8 omitted: participant settings and safety managed elsewhere */}
+
+                        {/* Publishing controls */}
+                        <div className="pt-4 border-t border-slate-100">
+                            <div className="flex justify-end gap-3">
+                                <a
+                                    href="/simulation-events"
+                                    className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
+                                >
+                                    Cancel
+                                </a>
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Save Changes
+                                </button>
                             </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
 
-                {/* Section 8: Safety & Compliance */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">8. Safety & Compliance</h3>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="safety_guidelines_edit">
-                                    Safety Guidelines
-                                </label>
-                                <textarea
-                                    id="safety_guidelines_edit"
-                                    name="safety_guidelines"
-                                    rows={3}
-                                    defaultValue={event.safety_guidelines || ''}
-                                    placeholder="Safety rules and guidelines"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
+                {/* Right column: readiness + resources (same style as create) */}
+                <div className="lg:col-span-4 space-y-4">
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                            ✅ Simulation Readiness
+                        </h3>
+                        <div className="space-y-2.5">
+                            <div className="flex items-center gap-2 text-sm">
+                                <span
+                                    className={
+                                        eventTitleAdded
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-300'
+                                    }
+                                >
+                                    {eventTitleAdded ? '✅' : '⬜'}
+                                </span>
+                                <span
+                                    className={
+                                        eventTitleAdded
+                                            ? 'text-slate-700'
+                                            : 'text-slate-400'
+                                    }
+                                >
+                                    Event title added
+                                </span>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="hazard_warnings_edit">
-                                    Hazard Warnings
-                                </label>
-                                <textarea
-                                    id="hazard_warnings_edit"
-                                    name="hazard_warnings"
-                                    rows={3}
-                                    defaultValue={event.hazard_warnings || ''}
-                                    placeholder="Known hazards and warnings"
-                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
+                            <div className="flex items-center gap-2 text-sm">
+                                <span
+                                    className={
+                                        disasterTypeSelected
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-300'
+                                    }
+                                >
+                                    {disasterTypeSelected ? '✅' : '⬜'}
+                                </span>
+                                <span
+                                    className={
+                                        disasterTypeSelected
+                                            ? 'text-slate-700'
+                                            : 'text-slate-400'
+                                    }
+                                >
+                                    Disaster type selected
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                                <span
+                                    className={
+                                        scenarioAssigned
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-300'
+                                    }
+                                >
+                                    {scenarioAssigned ? '✅' : '⬜'}
+                                </span>
+                                <span
+                                    className={
+                                        scenarioAssigned
+                                            ? 'text-slate-700'
+                                            : 'text-slate-400'
+                                    }
+                                >
+                                    Scenario assigned
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                                <span
+                                    className={
+                                        dateTimeSet
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-300'
+                                    }
+                                >
+                                    {dateTimeSet ? '✅' : '⬜'}
+                                </span>
+                                <span
+                                    className={
+                                        dateTimeSet
+                                            ? 'text-slate-700'
+                                            : 'text-slate-400'
+                                    }
+                                >
+                                    Date & time set
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                                <span
+                                    className={
+                                        locationFilled
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-300'
+                                    }
+                                >
+                                    {locationFilled ? '✅' : '⬜'}
+                                </span>
+                                <span
+                                    className={
+                                        locationFilled
+                                            ? 'text-slate-700'
+                                            : 'text-slate-400'
+                                    }
+                                >
+                                    Location filled
+                                </span>
                             </div>
                         </div>
+                        {allReady && (
+                            <div className="mt-4 pt-4 border-t border-emerald-100">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                                    <span className="text-lg">🟢</span>
+                                    <span>Ready to Publish</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                            Resources for Simulation
+                        </h3>
+                        <ResourceSelectionSection
+                            eventResources={
+                                event.resources && Array.isArray(event.resources)
+                                    ? event.resources
+                                    : []
+                            }
+                            inline={true}
+                        />
                     </div>
                 </div>
-
-                {/* Section 10: Resources */}
-                <ResourceSelectionSection eventResources={(event.resources && Array.isArray(event.resources)) ? event.resources : []} />
-                {console.log('SimulationEventEditForm - event.resources:', event.resources, 'Type:', typeof event.resources, 'Is Array:', Array.isArray(event.resources))}
-
-                {/* Section 12: Publishing Controls */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">12. Publishing Controls</h3>
-                    <div className="flex justify-end gap-2">
-                        <a
-                            href="/simulation-events"
-                            className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-                        >
-                            Cancel
-                        </a>
-                        <button
-                            type="submit"
-                            className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
-                        >
-                            Save Changes
-                        </button>
-                    </div>
-                </div>
-            </form>
+            </div>
         </div>
     );
 }
