@@ -13,6 +13,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\LessonCompletionController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\EvaluationController;
@@ -268,6 +269,16 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/resources/{resource}/maintenance-logs', [ResourceController::class, 'maintenanceLogs'])->name('resources.maintenance.logs');
     Route::get('/resources/export/csv', [ResourceController::class, 'export'])->name('resources.export');
     Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('resources.destroy');
+
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profile', [ProfileController::class, 'updateBasic'])->name('profile.update');
+    Route::post('/profile/email', [ProfileController::class, 'requestEmailChange'])->name('profile.email.request');
+    Route::get('/profile/email/confirm/{token}', [ProfileController::class, 'confirmEmailChange'])->name('profile.email.confirm');
+    Route::post('/profile/email/resend', [ProfileController::class, 'resendEmailChange'])->name('profile.email.resend');
+    Route::post('/profile/phone', [ProfileController::class, 'requestPhoneChange'])->name('profile.phone.request');
+    Route::get('/profile/phone/confirm/{token}', [ProfileController::class, 'confirmPhoneChange'])->name('profile.phone.confirm');
+    Route::post('/profile/password', [ProfileController::class, 'changePassword'])->name('profile.password.change');
 
     // Evaluation & Scoring System
     Route::get('/evaluations', [EvaluationController::class, 'index'])->name('evaluations.index');

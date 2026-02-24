@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Resource;
+use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -13,6 +14,12 @@ class ResourceSeeder extends Seeder
      */
     public function run(): void
     {
+        $owner = User::whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER'])->first();
+        if (! $owner) {
+            $this->command?->warn('No admin/trainer user found; skipping ResourceSeeder.');
+            return;
+        }
+
         $resources = [
             [
                 'name' => 'Fire Extinguisher',
@@ -26,6 +33,8 @@ class ResourceSeeder extends Seeder
                 'assigned_to_event_id' => null,
                 'assigned_handler_id' => null,
                 'maintenance_status' => 'No',
+                'created_by' => $owner->id,
+                'updated_by' => $owner->id,
             ],
             [
                 'name' => 'First Aid Kit',
@@ -39,6 +48,8 @@ class ResourceSeeder extends Seeder
                 'assigned_to_event_id' => null,
                 'assigned_handler_id' => null,
                 'maintenance_status' => 'No',
+                'created_by' => $owner->id,
+                'updated_by' => $owner->id,
             ],
             [
                 'name' => 'Emergency Light',
@@ -52,6 +63,8 @@ class ResourceSeeder extends Seeder
                 'assigned_to_event_id' => null,
                 'assigned_handler_id' => null,
                 'maintenance_status' => 'No',
+                'created_by' => $owner->id,
+                'updated_by' => $owner->id,
             ],
         ];
 

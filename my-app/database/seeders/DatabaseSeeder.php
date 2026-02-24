@@ -20,6 +20,12 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             RolesSeeder::class,
             PermissionsSeeder::class,
+            TrainingModuleSeeder::class,
+            ScenarioSeeder::class,
+            SimulationEventSeeder::class,
+            ResourceSeeder::class,
+            BarangayProfileSeeder::class,
+            ParticipantSeeder::class,
             EdrillParticipantSeeder::class,
             RegisteredParticipantForEvaluationSeeder::class,
         ]);

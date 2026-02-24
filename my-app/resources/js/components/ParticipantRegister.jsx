@@ -1,25 +1,61 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, AlertCircle, UserPlus, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, UserPlus, ArrowRight, Phone } from 'lucide-react';
 
 export function ParticipantRegister({ errors = {}, oldValues = {} }) {
     const [formData, setFormData] = useState({
         name: oldValues.name || '',
         email: oldValues.email || '',
-        phone: oldValues.phone || '',
+        countryCode: oldValues.countryCode || '+63',
+        mobileNumber: oldValues.mobileNumber || '',
+        street: oldValues.street || '',
         password: '',
         password_confirmation: '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [clientErrors, setClientErrors] = useState({});
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Mobile number validation
+        if (!formData.mobileNumber) {
+            newErrors.mobileNumber = 'Mobile number is required.';
+        } else if (!/^\d+$/.test(formData.mobileNumber)) {
+            newErrors.mobileNumber = 'Mobile number must contain digits only.';
+        } else if (formData.mobileNumber.length !== 10) {
+            newErrors.mobileNumber = 'Mobile number must be 10 digits (e.g. 9123456789).';
+        } else if (!formData.mobileNumber.startsWith('9')) {
+            newErrors.mobileNumber = 'Mobile number must start with 9.';
+        }
+
+        if (!formData.street.trim()) {
+            newErrors.street = 'Please enter your complete address.';
+        }
+
+        setClientErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!acceptedTerms) return;
+
+        if (!validateForm()) {
+            return;
+        }
+
+        // Compose full phone value in Philippine format expected by backend
+        const phoneInput = e.target.querySelector('input[name="phone"]');
+        if (phoneInput) {
+            phoneInput.value = `${formData.countryCode} ${formData.mobileNumber}`;
+        }
+
         setIsSubmitting(true);
         e.target.submit();
     };
@@ -31,6 +67,8 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
         }
         return null;
     };
+
+    const getClientError = (fieldName) => clientErrors[fieldName] || null;
 
     return (
         <div className="min-h-screen relative">
@@ -148,6 +186,7 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
 
                 <form method="POST" action="/participant/register/start" onSubmit={handleSubmit} className="space-y-4">
                     <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                    <input type="hidden" name="phone" />
 
                     <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="name">
@@ -193,6 +232,76 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                         </div>
                         {getFieldError('email') && (
                             <p className="mt-1 text-xs text-rose-600">{getFieldError('email')}</p>
+                        )}
+                    </div>
+
+                    {/* Contact Number */}
+                    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)] gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="countryCode">
+                                Country Code
+                            </label>
+                            <div className="relative">
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <select
+                                    id="countryCode"
+                                    name="countryCode"
+                                    value={formData.countryCode}
+                                    onChange={handleChange}
+                                    className="w-full rounded-md border border-slate-300 pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] bg-white"
+                                >
+                                    <option value="+63">+63 (Philippines)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="mobileNumber">
+                                Mobile Number <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                                <input
+                                    id="mobileNumber"
+                                    name="mobileNumber"
+                                    type="tel"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength={10}
+                                    placeholder="9123456789"
+                                    value={formData.mobileNumber}
+                                    onChange={(e) => {
+                                        const digitsOnly = e.target.value.replace(/\D/g, '');
+                                        setFormData(prev => ({ ...prev, mobileNumber: digitsOnly }));
+                                    }}
+                                    className={`w-full rounded-md border ${
+                                        getClientError('mobileNumber') ? 'border-rose-300' : 'border-slate-300'
+                                    } pl-3 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463]`}
+                                />
+                            </div>
+                            {getClientError('mobileNumber') && (
+                                <p className="mt-1 text-xs text-rose-600">{getClientError('mobileNumber')}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Address (single field) */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="street">
+                            Address <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                            id="street"
+                            name="street"
+                            type="text"
+                            placeholder="Block 5 Lot 10, Barangay Commonwealth, Quezon City"
+                            value={formData.street}
+                            onChange={handleChange}
+                            className={`w-full rounded-md border ${
+                                getClientError('street') ? 'border-rose-300' : 'border-slate-300'
+                            } px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463]`}
+                        />
+                        {getClientError('street') && (
+                            <p className="mt-1 text-xs text-rose-600">{getClientError('street')}</p>
                         )}
                     </div>
 
