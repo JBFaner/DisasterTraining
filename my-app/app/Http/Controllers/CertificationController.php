@@ -17,7 +17,8 @@ class CertificationController extends Controller
 {
     public function __construct()
     {
-        $this->authorizeCertificationAccess();
+        // Authorization is handled per-action so participants can access
+        // their own certificate dashboard while admin tools remain protected.
     }
 
     /**
@@ -25,6 +26,25 @@ class CertificationController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        // Participant: show own certificates (read-only)
+        if ($user && $user->role === 'PARTICIPANT') {
+            $certificates = Certificate::with('simulationEvent')
+                ->where('user_id', $user->id)
+                ->whereNull('revoked_at')
+                ->orderByDesc('issued_at')
+                ->get();
+
+            return view('app', [
+                'section' => 'certification_participant',
+                'issuedCertificates' => $certificates,
+            ]);
+        }
+
+        // Admin / trainer dashboard
+        $this->authorizeCertificationAccess();
+
         $eventFilter = $request->get('event_id');
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
@@ -185,6 +205,7 @@ class CertificationController extends Controller
      */
     public function issue(Request $request)
     {
+        $this->authorizeCertificationAccess();
         $data = $request->validate([
             'user_id' => ['required', 'exists:users,id'],
             'simulation_event_id' => ['required', 'exists:simulation_events,id'],
@@ -277,6 +298,7 @@ class CertificationController extends Controller
      */
     public function revoke(Request $request, Certificate $certificate)
     {
+        $this->authorizeCertificationAccess();
         $certificate->update([
             'revoked_at' => now(),
             'revoked_by' => Auth::id(),
@@ -293,6 +315,7 @@ class CertificationController extends Controller
      */
     public function reissue(Request $request)
     {
+        $this->authorizeCertificationAccess();
         return $this->issue($request);
     }
 
@@ -301,6 +324,7 @@ class CertificationController extends Controller
      */
     public function storeTemplate(Request $request)
     {
+        $this->authorizeCertificationAccess();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:completion,participation'],
@@ -329,6 +353,7 @@ class CertificationController extends Controller
 
     public function updateTemplate(Request $request, CertificateTemplate $template)
     {
+        $this->authorizeCertificationAccess();
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'type' => ['sometimes', 'string', 'in:completion,participation'],
@@ -371,6 +396,7 @@ class CertificationController extends Controller
      */
     public function templateBackground(CertificateTemplate $template)
     {
+        $this->authorizeCertificationAccess();
         if (!$template->background_path || !Storage::disk('public')->exists($template->background_path)) {
             abort(404);
         }
@@ -451,6 +477,7 @@ class CertificationController extends Controller
      */
     public function certificateBackground(Certificate $certificate)
     {
+        $this->authorizeCertificationAccess();
         if (!$certificate->template_background_path || !Storage::disk('public')->exists($certificate->template_background_path)) {
             abort(404);
         }
@@ -465,6 +492,7 @@ class CertificationController extends Controller
      */
     public function previewParticipant(Request $request)
     {
+        $this->authorizeCertificationAccess();
         $request->validate([
             'user_id' => ['required', 'exists:users,id'],
             'event_id' => ['required', 'exists:simulation_events,id'],
@@ -502,6 +530,7 @@ class CertificationController extends Controller
      */
     public function previewTemplate(CertificateTemplate $template)
     {
+        $this->authorizeCertificationAccess();
         $sample = [
             'name' => 'Juan Dela Cruz',
             'date' => now()->format('F j, Y'),
@@ -522,6 +551,10 @@ class CertificationController extends Controller
      */
     public function viewCertificate(Certificate $certificate)
     {
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true) && $user->id !== $certificate->user_id) {
+            abort(403);
+        }
         $certificate->load(['user', 'simulationEvent', 'certificateTemplate']);
         $template = $certificate->certificateTemplate ?? CertificateTemplate::where('status', 'active')->first();
         
@@ -582,12 +615,14 @@ class CertificationController extends Controller
 
     public function destroyTemplate(CertificateTemplate $template)
     {
+        $this->authorizeCertificationAccess();
         $template->delete();
         return response()->json(['success' => true]);
     }
 
     public function duplicateTemplate(CertificateTemplate $template)
     {
+        $this->authorizeCertificationAccess();
         $new = $template->replicate();
         $new->name = $template->name . ' (Copy)';
         $new->save();
@@ -599,6 +634,7 @@ class CertificationController extends Controller
      */
     public function updateSettings(Request $request)
     {
+        $this->authorizeCertificationAccess();
         $data = $request->validate([
             'auto_issue_when_passed' => ['nullable', 'boolean'],
             'require_attendance' => ['nullable', 'boolean'],
@@ -615,6 +651,7 @@ class CertificationController extends Controller
      */
     public function export(Request $request, string $format = 'csv')
     {
+        $this->authorizeCertificationAccess();
         $query = Certificate::with(['user', 'simulationEvent', 'issuer'])
             ->whereNull('revoked_at');
         if ($request->get('event_id')) {

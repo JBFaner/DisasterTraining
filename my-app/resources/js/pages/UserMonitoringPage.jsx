@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Circle, Clock, Mail, Shield, UserCircle, RefreshCw, Search, Filter, Activity } from 'lucide-react';
+import { Users, Circle, Clock, Mail, Shield, RefreshCw, Search, Filter, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const ITEMS_PER_PAGE = 5;
 
 export function UserMonitoringPage({ users: initialUsers = [] }) {
     const [users, setUsers] = useState(initialUsers);
@@ -7,6 +9,7 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
     const [roleFilter, setRoleFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [rolePage, setRolePage] = useState({});
 
     // Refresh user statuses every 30 seconds
     useEffect(() => {
@@ -89,6 +92,14 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
         }
     };
 
+    const handlePageChange = (role, newPage, totalPages) => {
+        const clampedPage = Math.max(1, Math.min(newPage, totalPages));
+        setRolePage(prev => ({
+            ...prev,
+            [role]: clampedPage,
+        }));
+    };
+
     // Filter users based on search query, role, and status
     const filteredUsers = users.filter(user => {
         const matchesSearch = 
@@ -115,6 +126,10 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
     // Get unique roles for filter
     const uniqueRoles = ['all', ...new Set(users.map(u => u.role))];
 
+    useEffect(() => {
+        setRolePage({});
+    }, [searchQuery, roleFilter, statusFilter]);
+
     const getRoleBadgeColor = (role) => {
         switch (role) {
             case 'LGU_ADMIN':
@@ -131,17 +146,36 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
     };
 
     const formatInactiveTime = (minutes) => {
-        if (minutes < 60) {
-            return `${minutes}m`;
-        } else if (minutes < 1440) {
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-        } else {
-            const days = Math.floor(minutes / 1440);
-            const hours = Math.floor((minutes % 1440) / 60);
-            return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+        if (!minutes || minutes <= 0) {
+            return 'just now';
         }
+
+        if (minutes < 60) {
+            const unit = minutes === 1 ? 'minute' : 'minutes';
+            return `${minutes} ${unit} ago`;
+        }
+
+        const hours = Math.floor(minutes / 60);
+        if (minutes < 1440) {
+            const unit = hours === 1 ? 'hour' : 'hours';
+            return `${hours} ${unit} ago`;
+        }
+
+        const days = Math.floor(minutes / 1440);
+        if (minutes < 43200) { // less than 30 days
+            const unit = days === 1 ? 'day' : 'days';
+            return `${days} ${unit} ago`;
+        }
+
+        const months = Math.floor(minutes / 43200); // approx 30-day months
+        if (minutes < 525600) { // less than 365 days
+            const unit = months === 1 ? 'month' : 'months';
+            return `${months} ${unit} ago`;
+        }
+
+        const years = Math.floor(minutes / 525600);
+        const unit = years === 1 ? 'year' : 'years';
+        return `${years} ${unit} ago`;
     };
 
     const getStatusBadge = (user) => {
@@ -163,7 +197,7 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                         Offline
                         {user.inactive_minutes > 0 && (
                             <span className="ml-1 text-slate-500">
-                                ({formatInactiveTime(user.inactive_minutes)})
+                                for {formatInactiveTime(user.inactive_minutes)}
                             </span>
                         )}
                     </span>
@@ -293,85 +327,128 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                         <p className="text-sm text-slate-500 mt-1">Try adjusting your filters</p>
                     </div>
                 ) : (
-                    Object.entries(groupedUsers).map(([role, roleUsers]) => (
-                        <div key={role} className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden transition-shadow hover:shadow-lg">
-                            <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-1.5 bg-slate-200/80 rounded-lg">
-                                            <Shield className="w-5 h-5 text-slate-600" />
+                    Object.entries(groupedUsers).map(([role, roleUsers]) => {
+                        const totalPages = Math.max(1, Math.ceil(roleUsers.length / ITEMS_PER_PAGE));
+                        const currentPage = Math.min(rolePage[role] || 1, totalPages);
+                        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                        const endIndex = startIndex + ITEMS_PER_PAGE;
+                        const paginatedRoleUsers = roleUsers.slice(startIndex, endIndex);
+                        const startItem = roleUsers.length === 0 ? 0 : startIndex + 1;
+                        const endItem = Math.min(startIndex + paginatedRoleUsers.length, roleUsers.length);
+
+                        return (
+                            <div key={role} className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden transition-shadow hover:shadow-lg">
+                                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-1.5 bg-slate-200/80 rounded-lg">
+                                                <Shield className="w-5 h-5 text-slate-600" />
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-slate-900">
+                                                {roleUsers[0]?.role_display || role}
+                                            </h3>
+                                            <span className="px-2.5 py-0.5 bg-slate-200 text-slate-700 rounded-full text-xs font-medium">
+                                                {roleUsers.length}
+                                            </span>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-slate-900">
-                                            {roleUsers[0]?.role_display || role}
-                                        </h3>
-                                        <span className="px-2.5 py-0.5 bg-slate-200 text-slate-700 rounded-full text-xs font-medium">
-                                            {roleUsers.length}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-4 text-sm text-slate-600">
-                                        <span className="flex items-center gap-1.5">
-                                            <Circle className="w-3 h-3 text-emerald-500 fill-emerald-500" />
-                                            {roleUsers.filter(u => u.is_online).length} online
-                                        </span>
-                                        <span className="flex items-center gap-1.5">
-                                            <Circle className="w-3 h-3 text-slate-400 fill-slate-400" />
-                                            {roleUsers.filter(u => !u.is_online).length} offline
-                                        </span>
+                                        <div className="flex items-center gap-4 text-sm text-slate-600">
+                                            <span className="flex items-center gap-1.5">
+                                                <Circle className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+                                                {roleUsers.filter(u => u.is_online).length} online
+                                            </span>
+                                            <span className="flex items-center gap-1.5">
+                                                <Circle className="w-3 h-3 text-slate-400 fill-slate-400" />
+                                                {roleUsers.filter(u => !u.is_online).length} offline
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="divide-y divide-slate-200">
-                                {roleUsers.map((user) => (
-                                    <div
-                                        key={user.id}
-                                        className="px-6 py-4 hover:bg-slate-50 transition-colors"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                {/* Avatar */}
-                                                <div className="flex-shrink-0">
-                                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-semibold text-lg shadow-sm">
-                                                        {user.name.charAt(0).toUpperCase()}
-                                                    </div>
-                                                </div>
-
-                                                {/* User Info */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <h4 className="text-base font-semibold text-slate-900 truncate">
-                                                            {user.name}
-                                                        </h4>
-                                                        <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
-                                                            {user.role_display}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-4 text-sm text-slate-600">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Mail className="w-3.5 h-3.5" />
-                                                            <span className="truncate">{user.email}</span>
+                                <div className="divide-y divide-slate-200">
+                                    {paginatedRoleUsers.map((user) => (
+                                        <div
+                                            key={user.id}
+                                            className="px-6 py-4 hover:bg-slate-50 transition-colors"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                    {/* Avatar */}
+                                                    <div className="flex-shrink-0">
+                                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-semibold text-lg shadow-sm">
+                                                            {user.name.charAt(0).toUpperCase()}
                                                         </div>
-                                                        {user.last_activity && (
+                                                    </div>
+
+                                                    {/* User Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h4 className="text-base font-semibold text-slate-900 truncate">
+                                                                {user.name}
+                                                            </h4>
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
+                                                                {user.role_display}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-sm text-slate-600">
                                                             <div className="flex items-center gap-1.5">
-                                                                <Clock className="w-3.5 h-3.5" />
-                                                                <span>
-                                                                    Last active: {new Date(user.last_activity).toLocaleString()}
-                                                                </span>
+                                                                <Mail className="w-3.5 h-3.5" />
+                                                                <span className="truncate">{user.email}</span>
                                                             </div>
-                                                        )}
+                                                            {user.last_activity && (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Clock className="w-3.5 h-3.5" />
+                                                                    <span>
+                                                                        Last active: {new Date(user.last_activity).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Status */}
-                                            <div className="flex-shrink-0 ml-4">
-                                                {getStatusBadge(user)}
+                                                {/* Status */}
+                                                <div className="flex-shrink-0 ml-4">
+                                                    {getStatusBadge(user)}
+                                                </div>
                                             </div>
                                         </div>
+                                    ))}
+                                </div>
+                                {roleUsers.length > ITEMS_PER_PAGE && (
+                                    <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50">
+                                        <div className="text-xs text-slate-600">
+                                            Showing <span className="font-semibold">{startItem}</span>–
+                                            <span className="font-semibold">{endItem}</span> of{' '}
+                                            <span className="font-semibold">{roleUsers.length}</span> users
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handlePageChange(role, currentPage - 1, totalPages)}
+                                                disabled={currentPage === 1}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronLeft className="w-3.5 h-3.5" />
+                                                <span>Prev</span>
+                                            </button>
+                                            <span className="text-xs text-slate-600">
+                                                Page <span className="font-semibold">{currentPage}</span> of{' '}
+                                                <span className="font-semibold">{totalPages}</span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handlePageChange(role, currentPage + 1, totalPages)}
+                                                disabled={currentPage === totalPages}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                <span>Next</span>
+                                                <ChevronRight className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
-                                ))}
+                                )}
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>

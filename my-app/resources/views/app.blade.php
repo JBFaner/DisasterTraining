@@ -23,6 +23,12 @@
             @isset($modules)
                 data-modules='@json($modules)'
             @endisset
+            @isset($modulesPagination)
+                data-modules-pagination='@json($modulesPagination)'
+            @endisset
+            @isset($modulesPagination)
+                data-modules-pagination='@json($modulesPagination)'
+            @endisset
             @isset($module)
                 data-module='@json($module)'
             @endisset
@@ -40,6 +46,12 @@
             @endisset
             @isset($participants)
                 data-participants='@json($participants)'
+            @endisset
+            @isset($participantsPagination)
+                data-participants-pagination='@json($participantsPagination)'
+            @endisset
+            @isset($participantsSummary)
+                data-participants-summary='@json($participantsSummary)'
             @endisset
             @isset($participant)
                 data-participant='@json($participant)'

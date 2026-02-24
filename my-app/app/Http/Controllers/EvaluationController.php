@@ -19,6 +19,37 @@ class EvaluationController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        // Participants: show their own evaluation results (read-only)
+        if ($user && $user->role === 'PARTICIPANT') {
+            $participantEvaluations = ParticipantEvaluation::with(['evaluation.simulationEvent'])
+                ->where('user_id', $user->id)
+                ->whereNotNull('submitted_at')
+                ->orderByDesc('submitted_at')
+                ->get()
+                ->map(function (ParticipantEvaluation $pe) {
+                    $event = $pe->evaluation?->simulationEvent;
+
+                    return [
+                        'id' => $pe->id,
+                        'simulation_event_id' => $event?->id,
+                        'event_title' => $event?->title ?? 'N/A',
+                        'event_date' => $event?->event_date,
+                        'average_score' => $pe->average_score,
+                        'total_score' => $pe->total_score,
+                        'result' => $pe->result,
+                        'is_eligible_for_certification' => (bool) $pe->is_eligible_for_certification,
+                        'submitted_at' => $pe->submitted_at,
+                    ];
+                });
+
+            return view('app', [
+                'section' => 'evaluation_results_participant',
+                'participantEvaluations' => $participantEvaluations,
+            ]);
+        }
+
         $this->authorizeEvaluationAccess();
 
         $query = SimulationEvent::whereIn('status', ['published', 'ongoing', 'completed'])

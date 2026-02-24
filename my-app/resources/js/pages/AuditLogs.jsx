@@ -284,19 +284,21 @@ export function AuditLogs() {
                             <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>
-                    <div className="grid grid-cols-2 gap-2">
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            value={filters.date_from}
-                            onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                        />
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            value={filters.date_to}
-                            onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                        />
+                    <div className="md:col-span-2">
+                        <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:gap-3">
+                            <input
+                                type="date"
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                value={filters.date_from}
+                                onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                            />
+                            <input
+                                type="date"
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                value={filters.date_to}
+                                onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -23,6 +23,9 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
+        'email_verified_at',
+        'pending_email',
+        'pending_phone',
         'pending_email',
         'pending_phone',
         'province',
@@ -56,6 +59,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'registered_at' => 'datetime',
             'last_login' => 'datetime',

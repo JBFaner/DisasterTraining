@@ -146,6 +146,9 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/training-modules/create', [TrainingModuleController::class, 'create'])
         ->name('training.modules.create');
 
+    Route::post('/training-modules/generate-ai', [TrainingModuleController::class, 'generateAiModule'])
+        ->name('training.modules.generate-ai');
+
     Route::post('/training-modules', [TrainingModuleController::class, 'store'])
         ->name('training.modules.store');
 

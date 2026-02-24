@@ -196,6 +196,8 @@ export function ParticipantSimulationEventsList({ events }) {
                         const now = new Date();
                         const derivedStatus = deriveSimulationEventStatus(event, now);
                         const startAt = getEventDateTime(event.event_date, event.start_time);
+                        const isUpcoming =
+                            derivedStatus === 'published' && startAt && now < startAt;
 
                         const statusBadge =
                             derivedStatus === 'ongoing'
@@ -207,6 +209,17 @@ export function ParticipantSimulationEventsList({ events }) {
                                         : derivedStatus === 'published' && startAt && now < startAt
                                             ? 'Upcoming'
                                             : titleCaseStatus(derivedStatus);
+
+                        const statusBadgeClass =
+                            derivedStatus === 'ended'
+                                ? 'bg-rose-600/90 text-white'
+                                : derivedStatus === 'cancelled'
+                                    ? 'bg-rose-500/20 text-white'
+                                    : derivedStatus === 'completed'
+                                        ? 'bg-indigo-500/25 text-white'
+                                        : derivedStatus === 'ongoing'
+                                            ? 'bg-emerald-500/25 text-white'
+                                            : 'bg-black/20 text-white';
 
                         const cardBgClass =
                             derivedStatus === 'ongoing'
@@ -226,7 +239,7 @@ export function ParticipantSimulationEventsList({ events }) {
                                     <h3 className="text-base font-semibold mb-3 line-clamp-2">
                                         {event.title}
                                     </h3>
-                                    <div className="inline-flex items-center rounded-full bg-black/20 px-3 py-1 text-xs font-medium mb-2">
+                                    <div className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium mb-2 ${statusBadgeClass}`}>
                                         {statusBadge}
                                     </div>
                                     {event.description && (
@@ -337,7 +350,7 @@ export function ParticipantSimulationEventDetail({ event, role }) {
         if (statusDisplay === 'Draft') return 'bg-amber-50 text-amber-800 border-amber-200';
         if (statusDisplay === 'Cancelled') return 'bg-rose-50 text-rose-700 border-rose-200';
         if (statusDisplay === 'Completed') return 'bg-slate-50 text-slate-700 border-slate-200';
-        if (statusDisplay === 'Ended') return 'bg-slate-50 text-slate-700 border-slate-200';
+        if (statusDisplay === 'Ended') return 'bg-rose-50 text-rose-700 border-rose-200';
         if (statusDisplay === 'Archived') return 'bg-slate-50 text-slate-600 border-slate-200';
         return 'bg-slate-50 text-slate-700 border-slate-200';
     })();

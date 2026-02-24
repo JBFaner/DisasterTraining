@@ -187,12 +187,15 @@ if (rootElement) {
     const roleAttr = rootElement.getAttribute('data-role');
     const sectionAttr = rootElement.getAttribute('data-section') || 'dashboard';
     const modulesJson = rootElement.getAttribute('data-modules');
+    const modulesPaginationJson = rootElement.getAttribute('data-modules-pagination');
     const scenariosJson = rootElement.getAttribute('data-scenarios');
     const moduleJson = rootElement.getAttribute('data-module');
     const scenarioJson = rootElement.getAttribute('data-scenario');
     const eventsJson = rootElement.getAttribute('data-events');
     const eventJson = rootElement.getAttribute('data-event');
     const participantsJson = rootElement.getAttribute('data-participants');
+    const participantsPaginationJson = rootElement.getAttribute('data-participants-pagination');
+    const participantsSummaryJson = rootElement.getAttribute('data-participants-summary');
     const participantJson = rootElement.getAttribute('data-participant');
     const registrationsJson = rootElement.getAttribute('data-registrations');
     const usersJson = rootElement.getAttribute('data-users');
@@ -202,12 +205,15 @@ if (rootElement) {
     const errorsJson = rootElement.getAttribute('data-errors');
 
     let modules = [];
+    let modulesPagination = null;
     let scenarios = [];
     let currentModule = null;
     let currentScenario = null;
     let events = [];
     let currentEvent = null;
     let participants = [];
+    let participantsPagination = null;
+    let participantsSummary = null;
     let users = [];
     let currentParticipant = null;
     let registrations = [];
@@ -217,6 +223,13 @@ if (rootElement) {
             modules = JSON.parse(modulesJson);
         } catch (e) {
             console.error('Failed to parse modules JSON', e);
+        }
+    }
+    if (modulesPaginationJson) {
+        try {
+            modulesPagination = JSON.parse(modulesPaginationJson);
+        } catch (e) {
+            console.error('Failed to parse modules pagination JSON', e);
         }
     }
     if (moduleJson) {
@@ -263,6 +276,20 @@ if (rootElement) {
             participants = JSON.parse(participantsJson);
         } catch (e) {
             console.error('Failed to parse participants JSON', e);
+        }
+    }
+    if (participantsPaginationJson) {
+        try {
+            participantsPagination = JSON.parse(participantsPaginationJson);
+        } catch (e) {
+            console.error('Failed to parse participants pagination JSON', e);
+        }
+    }
+    if (participantsSummaryJson) {
+        try {
+            participantsSummary = JSON.parse(participantsSummaryJson);
+        } catch (e) {
+            console.error('Failed to parse participants summary JSON', e);
         }
     }
     let dashboardStats = null;
@@ -636,10 +663,13 @@ if (rootElement) {
                     sectionAttr.startsWith('participant') ? 'participants' :
                         sectionAttr.startsWith('event_registration') ? 'participants' :
                             sectionAttr.startsWith('event_attendance') ? 'participants' :
-                                sectionAttr.startsWith('resources') ? 'resources' :
-                                    sectionAttr.startsWith('evaluation') ? 'evaluation' :
-                                        sectionAttr.startsWith('barangay_profile') ? 'barangay_profile' :
-                                            sectionAttr;
+                                sectionAttr.startsWith('my_attendance') ? 'participants' :
+                                    sectionAttr.startsWith('evaluation_results_participant') ? 'evaluation' :
+                                        sectionAttr.startsWith('certification_participant') ? 'certification' :
+                                            sectionAttr.startsWith('resources') ? 'resources' :
+                                                sectionAttr.startsWith('evaluation') ? 'evaluation' :
+                                                    sectionAttr.startsWith('barangay_profile') ? 'barangay_profile' :
+                                                        sectionAttr;
 
     // Breadcrumb configuration
     const getBreadcrumbs = () => {
@@ -722,6 +752,11 @@ if (rootElement) {
                 { label: currentParticipant?.name || 'Details', href: null }
             ];
         }
+        if (sectionAttr === 'my_attendance') {
+            return [
+                { label: 'My Attendance', href: '/my-attendance' },
+            ];
+        }
         if (sectionAttr === 'event_registrations') {
             return [
                 { label: 'Simulation Event Planning', href: '/simulation-events' },
@@ -743,6 +778,14 @@ if (rootElement) {
 
         if (sectionAttr === 'evaluation_dashboard') {
             return [{ label: 'Evaluation & Scoring System', href: '/evaluations' }];
+        }
+
+        if (sectionAttr === 'evaluation_results_participant') {
+            return [{ label: 'My Evaluation Results', href: '/evaluations' }];
+        }
+
+        if (sectionAttr === 'certification_participant') {
+            return [{ label: 'My Certificates', href: '/certification' }];
         }
 
         if (sectionAttr === 'evaluation_participants') {
@@ -913,9 +956,9 @@ if (rootElement) {
 
                         {sectionAttr === 'training' && (
                             role === 'PARTICIPANT' ? (
-                                <ParticipantTrainingModulesList modules={modules || []} />
+                                <ParticipantTrainingModulesList modules={modules || []} modulesPagination={modulesPagination} />
                             ) : (
-                                <TrainingModulesTable modules={modules || []} />
+                                <TrainingModulesTable modules={modules || []} modulesPagination={modulesPagination} />
                             )
                         )}
 
@@ -984,7 +1027,17 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'participants' && (
-                            <ParticipantRegistrationAttendanceModule events={events} participants={participants} role={role} />
+                            <ParticipantRegistrationAttendanceModule
+                                events={events}
+                                participants={participants}
+                                participantsPagination={participantsPagination}
+                                participantsSummary={participantsSummary}
+                                role={role}
+                            />
+                        )}
+
+                        {sectionAttr === 'my_attendance' && currentParticipant && (
+                            <ParticipantSelfAttendance participant={currentParticipant} />
                         )}
 
                         {sectionAttr === 'certification' && (
@@ -997,6 +1050,10 @@ if (rootElement) {
                                 filters={certificationFilters}
                                 automationSettings={certificationAutomationSettings}
                             />
+                        )}
+
+                        {sectionAttr === 'certification_participant' && (
+                            <ParticipantCertificatesList certificates={certificationIssuedCertificates || []} />
                         )}
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
@@ -1298,6 +1355,10 @@ if (rootElement) {
                             />
                         )}
 
+                        {sectionAttr === 'evaluation_results_participant' && (
+                            <ParticipantEvaluationResults participantEvaluations={participantEvaluations || []} />
+                        )}
+
                         {sectionAttr === 'barangay_profile' && (
                             <BarangayProfileList profiles={barangayProfiles} />
                         )}
@@ -1595,7 +1656,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
     );
 }
 
-function TrainingModulesTable({ modules = [] }) {
+function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -1603,7 +1664,10 @@ function TrainingModulesTable({ modules = [] }) {
     const [filterStatus, setFilterStatus] = React.useState('');
     const [filterDifficulty, setFilterDifficulty] = React.useState('');
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
-    const [currentPage, setCurrentPage] = React.useState(1);
+    const [currentPage, setCurrentPage] = React.useState(modulesPagination?.current_page || 1);
+    const [modulesData, setModulesData] = React.useState(modules || []);
+    const [pagination, setPagination] = React.useState(modulesPagination);
+    const [isPageLoading, setIsPageLoading] = React.useState(false);
     const [viewMode, setViewMode] = React.useState('grid'); // 'grid' | 'list'
     const [openManageId, setOpenManageId] = React.useState(null);
     const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
@@ -1611,7 +1675,7 @@ function TrainingModulesTable({ modules = [] }) {
     const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles: manageFloatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique disaster types for filter
-    const disasterTypes = [...new Set((modules || []).map(m => m.category).filter(Boolean))];
+    const disasterTypes = [...new Set((modulesData || []).map(m => m.category).filter(Boolean))];
 
     // Close filter dropdown when clicking outside
     React.useEffect(() => {
@@ -1644,7 +1708,7 @@ function TrainingModulesTable({ modules = [] }) {
     }, [openManageId]);
 
     // Filter modules
-    const filteredModules = (modules || []).filter((module) => {
+    const filteredModules = (modulesData || []).filter((module) => {
         const matchesSearch = !searchQuery ||
             module.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (module.description && module.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1655,16 +1719,59 @@ function TrainingModulesTable({ modules = [] }) {
         return matchesSearch && matchesStatus && matchesDifficulty && matchesDisasterType;
     });
 
-    // Pagination
-    const totalPages = Math.ceil(filteredModules.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedModules = filteredModules.slice(startIndex, endIndex);
+    // Pagination (backend-aware)
+    const effectivePagination = pagination;
+    const effectiveItemsPerPage = effectivePagination?.per_page ?? itemsPerPage;
+    const totalPages = effectivePagination?.last_page ?? Math.ceil(filteredModules.length / effectiveItemsPerPage);
+    const effectiveCurrentPage = effectivePagination?.current_page ?? currentPage;
+    const startIndex = (effectiveCurrentPage - 1) * effectiveItemsPerPage;
+    const endIndex = startIndex + effectiveItemsPerPage;
+    const paginatedModules = effectivePagination ? filteredModules : filteredModules.slice(startIndex, endIndex);
 
-    // Reset to page 1 when filters change
+    // Reset to page 1 when filters change (client-side only)
     React.useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
+        if (!effectivePagination) {
+            setCurrentPage(1);
+        }
+    }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType, effectivePagination]);
+
+    const handlePageChange = async (page) => {
+        if (!effectivePagination) {
+            setCurrentPage(page);
+            return;
+        }
+
+        const clamped = Math.max(1, Math.min(page, effectivePagination.last_page || 1));
+        if (clamped === effectivePagination.current_page) return;
+
+        setIsPageLoading(true);
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', clamped);
+
+            const res = await fetch(url.toString(), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to load page ${clamped}`);
+            }
+
+            const data = await res.json();
+            setModulesData(data.modules || []);
+            setPagination(data.pagination || null);
+            setCurrentPage(clamped);
+            window.history.pushState({}, '', url);
+        } catch (error) {
+            console.error('Error loading training modules page', error);
+        } finally {
+            setIsPageLoading(false);
+        }
+    };
 
     const formatCreatedDate = (dateString) => {
         if (!dateString) return '—';
@@ -2088,20 +2195,65 @@ function TrainingModulesTable({ modules = [] }) {
             {totalPages > 1 && (
                 <div className="mt-6">
                     <Pagination
-                        currentPage={currentPage}
+                        currentPage={effectiveCurrentPage}
                         totalPages={totalPages}
-                        onPageChange={setCurrentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalItems={filteredModules.length}
+                        onPageChange={handlePageChange}
+                        itemsPerPage={effectiveItemsPerPage}
+                        totalItems={effectivePagination?.total ?? filteredModules.length}
                     />
+                    {isPageLoading && (
+                        <p className="mt-2 text-xs text-slate-500">Loading modules…</p>
+                    )}
                 </div>
             )}
         </div>
     );
 }
 
-function ParticipantTrainingModulesList({ modules }) {
-    const publishedModules = modules || [];
+function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
+    const [modulesData, setModulesData] = React.useState(modules || []);
+    const [pagination, setPagination] = React.useState(modulesPagination);
+    const [isPageLoading, setIsPageLoading] = React.useState(false);
+
+    const publishedModules = (modulesData || []).filter((m) => m.status === 'published');
+
+    const effectivePagination = pagination;
+    const currentPage = effectivePagination?.current_page ?? 1;
+    const totalPages = effectivePagination?.last_page ?? 1;
+
+    const handlePageChange = async (page) => {
+        if (!effectivePagination) return;
+
+        const clamped = Math.max(1, Math.min(page, effectivePagination.last_page || 1));
+        if (clamped === effectivePagination.current_page) return;
+
+        setIsPageLoading(true);
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', clamped);
+
+            const res = await fetch(url.toString(), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to load page ${clamped}`);
+            }
+
+            const data = await res.json();
+            setModulesData(data.modules || []);
+            setPagination(data.pagination || null);
+            window.history.pushState({}, '', url);
+        } catch (error) {
+            console.error('Error loading participant training modules page', error);
+        } finally {
+            setIsPageLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -2141,6 +2293,20 @@ function ParticipantTrainingModulesList({ modules }) {
                             </div>
                         </a>
                     ))}
+                </div>
+            )}
+            {effectivePagination && totalPages > 1 && (
+                <div className="mt-4">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePageChange}
+                        itemsPerPage={effectivePagination.per_page ?? publishedModules.length}
+                        totalItems={effectivePagination.total ?? publishedModules.length}
+                    />
+                    {isPageLoading && (
+                        <p className="mt-2 text-xs text-slate-500">Loading modules…</p>
+                    )}
                 </div>
             )}
         </div>
@@ -2200,7 +2366,7 @@ function ParticipantTrainingLessonView({ module }) {
                 document.head.querySelector('meta[name="csrf-token"]')
                     ?.content || '';
 
-            await fetch(
+            const response = await fetch(
                 `/training-modules/${module.id}/lessons/${lessonId}/completion`,
                 {
                     method: 'POST',
@@ -2212,6 +2378,10 @@ function ParticipantTrainingLessonView({ module }) {
                     body: JSON.stringify({ completed: next }),
                 },
             );
+
+            if (!response.ok) {
+                throw new Error('Failed to update lesson completion');
+            }
         } catch (e) {
             console.error('Failed to update completion', e);
             // Revert optimistic update on error
@@ -2573,6 +2743,8 @@ function TrainingModuleCreateForm({ barangayProfile }) {
     const [category, setCategory] = React.useState('');
     const [showObjectives, setShowObjectives] = React.useState(true);
     const [objectives, setObjectives] = React.useState(['']);
+    const [isAiGenerating, setIsAiGenerating] = React.useState(false);
+    const [aiError, setAiError] = React.useState(null);
 
     const addObjective = () => {
         setObjectives([...objectives, '']);
@@ -2595,6 +2767,81 @@ function TrainingModuleCreateForm({ barangayProfile }) {
         setCategory(t.category);
         setObjectives(t.objectives && t.objectives.length > 0 ? [...t.objectives] : ['']);
         setShowObjectives(true);
+    };
+
+    const handleGenerateWithAi = async () => {
+        const trimmedTitle = title.trim();
+        if (!trimmedTitle || trimmedTitle.length < 5) {
+            setAiError('Please enter a more descriptive title (at least 5 characters).');
+            return;
+        }
+
+        setIsAiGenerating(true);
+        setAiError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('title', trimmedTitle);
+            formData.append('difficulty', difficulty || '');
+            formData.append('category', category || '');
+            formData.append('_token', csrf);
+
+            const response = await fetch('/training-modules/generate-ai', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                let message = 'Failed to generate module content.';
+                try {
+                    const data = await response.json();
+                    if (data.errors) {
+                        const allErrors = Object.values(data.errors).flat();
+                        if (allErrors.length > 0) {
+                            message = allErrors[0];
+                        }
+                    } else if (data.error) {
+                        message = data.error;
+                    }
+                } catch (_) {
+                    // ignore parse errors
+                }
+                throw new Error(message);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to generate module content.');
+            }
+
+            const data = result.data || {};
+            if (typeof data.description === 'string' && data.description.trim() !== '') {
+                setDescription(data.description.trim());
+            }
+
+            let aiObjectives = Array.isArray(data.learning_objectives)
+                ? data.learning_objectives.filter((obj) => typeof obj === 'string')
+                : [];
+
+            aiObjectives = aiObjectives.map((obj) => obj.trim()).filter((obj) => obj !== '');
+
+            while (aiObjectives.length < 3) {
+                aiObjectives.push('');
+            }
+
+            if (aiObjectives.length > 0) {
+                setObjectives(aiObjectives);
+                setShowObjectives(true);
+            }
+        } catch (error) {
+            console.error('Error generating module with AI', error);
+            setAiError(error.message || 'An unexpected error occurred while generating content.');
+        } finally {
+            setIsAiGenerating(false);
+        }
     };
 
     const inputClass = 'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200';
@@ -2643,9 +2890,19 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                         <input type="hidden" name="status" value="draft" />
 
                         <div>
-                            <label className={labelClass} htmlFor="title">
-                                Title <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className={labelClass} htmlFor="title">
+                                    Title <span className="text-red-500">*</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={handleGenerateWithAi}
+                                    disabled={isAiGenerating || !title.trim()}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    {isAiGenerating ? 'Generating…' : 'Generate with AI'}
+                                </button>
+                            </div>
                             <input
                                 id="title"
                                 name="title"
@@ -2656,6 +2913,11 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                                 placeholder="e.g. Earthquake Response & Evacuation"
                                 className={inputClass}
                             />
+                            {aiError && (
+                                <p className="mt-1 text-xs text-rose-600">
+                                    {aiError}
+                                </p>
+                            )}
                         </div>
 
                         <div>
@@ -8484,7 +8746,7 @@ function CertificationModule({
 
 // Participant Components
 // Participant Registration & Attendance Module
-function ParticipantRegistrationAttendanceModule({ events = [], participants = [], role }) {
+function ParticipantRegistrationAttendanceModule({ events = [], participants = [], participantsPagination = null, participantsSummary = null, role }) {
     const [activeTab, setActiveTab] = React.useState('participants');
 
     const PARTICIPANT_TABS = [
@@ -8494,15 +8756,25 @@ function ParticipantRegistrationAttendanceModule({ events = [], participants = [
     ];
 
     // Stats for summary cards (Certification-style, shown when on participants tab)
-    const totalParticipants = participants.length;
-    const activeParticipants = participants.filter(p => p.status === 'active').length;
-    const inactiveParticipants = participants.filter(p => p.status === 'inactive').length;
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    const registeredThisMonth = participants.filter(p => {
-        if (!p.created_at) return false;
-        return new Date(p.created_at) >= thisMonth;
-    }).length;
+    let totalParticipants = participants.length;
+    let activeParticipants = participants.filter(p => p.status === 'active').length;
+    let inactiveParticipants = participants.filter(p => p.status === 'inactive').length;
+    let registeredThisMonth;
+    {
+        const thisMonth = new Date();
+        thisMonth.setDate(1);
+        registeredThisMonth = participants.filter(p => {
+            if (!p.created_at) return false;
+            return new Date(p.created_at) >= thisMonth;
+        }).length;
+    }
+
+    if (participantsSummary) {
+        totalParticipants = participantsSummary.total ?? totalParticipants;
+        activeParticipants = participantsSummary.active ?? activeParticipants;
+        inactiveParticipants = participantsSummary.inactive ?? inactiveParticipants;
+        registeredThisMonth = participantsSummary.registered_this_month ?? registeredThisMonth;
+    }
 
     return (
         <div className="space-y-6">
@@ -8571,7 +8843,7 @@ function ParticipantRegistrationAttendanceModule({ events = [], participants = [
 
             {/* Tab Content */}
             {activeTab === 'participants' ? (
-                <ParticipantsListTab participants={participants} />
+                <ParticipantsListTab participants={participants} participantsPagination={participantsPagination} />
             ) : activeTab === 'registrations' ? (
                 <RegistrationEventsTable events={events} />
             ) : (
@@ -8603,12 +8875,17 @@ function getAvatarColor(name) {
 }
 
 // Tab 1: Participants List
-function ParticipantsListTab({ participants = [] }) {
+function ParticipantsListTab({ participants = [], participantsPagination = null }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
+    const [participantsData, setParticipantsData] = React.useState(participants || []);
+    const [pagination, setPagination] = React.useState(participantsPagination);
+    const [isPageLoading, setIsPageLoading] = React.useState(false);
 
-    const filteredParticipants = participants.filter((p) => {
+    const baseParticipants = pagination ? participantsData : participants;
+
+    const filteredParticipants = baseParticipants.filter((p) => {
         const matchesSearch = !searchTerm ||
             p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -8616,6 +8893,41 @@ function ParticipantsListTab({ participants = [] }) {
         const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
+
+    const handlePageChange = async (page) => {
+        if (!pagination) return;
+
+        const totalPages = pagination.last_page || 1;
+        const clamped = Math.max(1, Math.min(page, totalPages));
+        if (clamped === pagination.current_page) return;
+
+        setIsPageLoading(true);
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', clamped);
+
+            const res = await fetch(url.toString(), {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to load participants page ${clamped}`);
+            }
+
+            const data = await res.json();
+            setParticipantsData(data.participants || []);
+            setPagination(data.pagination || null);
+            window.history.pushState({}, '', url);
+        } catch (error) {
+            console.error('Error loading participants page', error);
+        } finally {
+            setIsPageLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -9426,6 +9738,20 @@ function ParticipantDetail({ participant }) {
                         </button>
                     ))}
                 </div>
+            {pagination && pagination.last_page > 1 && (
+                <div className="mt-4">
+                    <Pagination
+                        currentPage={pagination.current_page || 1}
+                        totalPages={pagination.last_page || 1}
+                        onPageChange={handlePageChange}
+                        itemsPerPage={pagination.per_page || filteredParticipants.length}
+                        totalItems={pagination.total || filteredParticipants.length}
+                    />
+                    {isPageLoading && (
+                        <p className="mt-2 text-xs text-slate-500">Loading participants…</p>
+                    )}
+                </div>
+            )}
             </div>
 
             {/* Tab Content */}
@@ -9554,6 +9880,64 @@ function ParticipantDetail({ participant }) {
                     <p className="text-slate-500 text-sm">Certificate management coming soon.</p>
                 </div>
             )}
+        </div>
+    );
+}
+
+function ParticipantSelfAttendance({ participant }) {
+    const records = Array.isArray(participant.attendances) ? participant.attendances : [];
+
+    return (
+        <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h1 className="text-xl font-bold text-slate-900 mb-1">My Attendance</h1>
+                <p className="text-sm text-slate-600">
+                    View your participation in simulation events where your attendance was recorded.
+                </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                {records.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                        No attendance records found yet. Once you participate in scheduled simulation events, they will appear here.
+                    </p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-left text-slate-500">
+                                    <th className="py-2 pr-4">Event</th>
+                                    <th className="py-2 pr-4">Date</th>
+                                    <th className="py-2 pr-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {records.map((att) => {
+                                    const event = att.simulation_event || att.simulationEvent;
+                                    const date = event?.event_date || event?.eventDate;
+                                    const status = att.status || 'present';
+
+                                    return (
+                                        <tr key={att.id} className="border-b border-slate-100 last:border-0">
+                                            <td className="py-2 pr-4 text-slate-900">
+                                                {event?.title || 'Simulation Event'}
+                                            </td>
+                                            <td className="py-2 pr-4 text-slate-600">
+                                                {date ? formatDate(date) : '—'}
+                                            </td>
+                                            <td className="py-2 pr-4">
+                                                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -11602,6 +11986,163 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function ParticipantEvaluationResults({ participantEvaluations }) {
+    const evaluationsArray = Array.isArray(participantEvaluations)
+        ? participantEvaluations
+        : Object.values(participantEvaluations || {});
+
+    const hasResults = evaluationsArray.length > 0;
+
+    const formatResultDate = (dateString) => {
+        if (!dateString) return '—';
+        return formatDate(dateString);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h1 className="text-xl font-bold text-slate-900 mb-1">My Evaluation Results</h1>
+                <p className="text-sm text-slate-600">
+                    View your scores and pass/fail status from completed simulation events.
+                </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                {!hasResults ? (
+                    <p className="text-sm text-slate-500">
+                        You don&apos;t have any evaluation results yet. Once an event you attended has been evaluated, your scores will appear here.
+                    </p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-left text-slate-500">
+                                    <th className="py-2 pr-4">Event</th>
+                                    <th className="py-2 pr-4">Date</th>
+                                    <th className="py-2 pr-4">Average Score</th>
+                                    <th className="py-2 pr-4">Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {evaluationsArray.map((pe) => (
+                                    <tr key={pe.id} className="border-b border-slate-100 last:border-0">
+                                        <td className="py-2 pr-4 text-slate-900">
+                                            {pe.event_title || 'Simulation Event'}
+                                        </td>
+                                        <td className="py-2 pr-4 text-slate-600">
+                                            {formatResultDate(pe.event_date)}
+                                        </td>
+                                        <td className="py-2 pr-4 text-slate-900">
+                                            {pe.average_score != null ? `${Number(pe.average_score).toFixed(1)}%` : '—'}
+                                        </td>
+                                        <td className="py-2 pr-4">
+                                            <span
+                                                className={[
+                                                    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border',
+                                                    pe.result === 'passed'
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        : 'bg-rose-50 text-rose-700 border-rose-200',
+                                                ].join(' ')}
+                                            >
+                                                {pe.result ? pe.result.charAt(0).toUpperCase() + pe.result.slice(1) : '—'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function ParticipantCertificatesList({ certificates }) {
+    const rows = Array.isArray(certificates)
+        ? certificates
+        : Object.values(certificates || {});
+
+    const hasCertificates = rows.length > 0;
+
+    const formatIssuedDate = (dateString) => {
+        if (!dateString) return '—';
+        return formatDate(dateString);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h1 className="text-xl font-bold text-slate-900 mb-1">My Certificates</h1>
+                <p className="text-sm text-slate-600">
+                    View certificates issued for completed simulation events where you met the passing criteria.
+                </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                {!hasCertificates ? (
+                    <p className="text-sm text-slate-500">
+                        You don&apos;t have any certificates yet. Once you pass an evaluated event and a certificate is issued,
+                        it will appear here.
+                    </p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-left text-slate-500">
+                                    <th className="py-2 pr-4">Certificate #</th>
+                                    <th className="py-2 pr-4">Event</th>
+                                    <th className="py-2 pr-4">Date</th>
+                                    <th className="py-2 pr-4">Score</th>
+                                    <th className="py-2 pr-4">Type</th>
+                                    <th className="py-2 pr-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((cert) => (
+                                    <tr key={cert.id} className="border-b border-slate-100 last:border-0">
+                                        <td className="py-2 pr-4 text-slate-900">
+                                            {cert.certificate_number || '—'}
+                                        </td>
+                                        <td className="py-2 pr-4 text-slate-900">
+                                            {cert.simulation_event?.title || cert.event_title || 'Simulation Event'}
+                                        </td>
+                                        <td className="py-2 pr-4 text-slate-600">
+                                            {formatIssuedDate(cert.issued_at || cert.completion_date)}
+                                        </td>
+                                        <td className="py-2 pr-4 text-slate-900">
+                                            {cert.final_score != null
+                                                ? `${Number(cert.final_score).toFixed(1)}%`
+                                                : cert.average_score != null
+                                                    ? `${Number(cert.average_score).toFixed(1)}%`
+                                                    : '—'}
+                                        </td>
+                                        <td className="py-2 pr-4 text-slate-900">
+                                            {cert.type ? cert.type.charAt(0).toUpperCase() + cert.type.slice(1) : '—'}
+                                        </td>
+                                        <td className="py-2 pr-4">
+                                            {cert.id && (
+                                                <a
+                                                    href={`/certificates/${cert.id}/view`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                                                >
+                                                    View / Download
+                                                </a>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );

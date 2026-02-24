@@ -7,31 +7,52 @@ use App\Models\TrainingLesson;
 use App\Models\LessonMaterial;
 use App\Models\LessonCompletion;
 use App\Services\AuditLogger;
+use App\Services\GeminiService;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class TrainingModuleController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
+        $perPage = 9;
+
+        $query = TrainingModule::with('owner')
+            ->orderByDesc('updated_at');
+
         // Participants should only see published modules (visibility can be used later if needed)
         if ($user && $user->role === 'PARTICIPANT') {
-            $modules = TrainingModule::with('owner')
-                ->where('status', 'published')
-                ->orderByDesc('updated_at')
-                ->get();
-        } else {
-            $modules = TrainingModule::with('owner')
-                ->orderByDesc('updated_at')
-                ->get();
+            $query->where('status', 'published');
+        }
+
+        $paginator = $query->paginate($perPage)->withQueryString();
+
+        $modules = $paginator->items();
+
+        $modulesPagination = [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'from' => $paginator->firstItem(),
+            'to' => $paginator->lastItem(),
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'modules' => $modules,
+                'pagination' => $modulesPagination,
+            ]);
         }
 
         return view('app', [
             'section' => 'training',
             'modules' => $modules,
+            'modulesPagination' => $modulesPagination,
         ]);
     }
 
@@ -361,7 +382,8 @@ class TrainingModuleController extends Controller
             'type' => ['required', 'string', 'max:50'],
             'label' => ['nullable', 'string', 'max:255'],
             'url' => ['nullable', 'url', 'max:2048'],
-            'file' => ['nullable', 'file', 'max:20480', 'mimes:pdf,doc,docx,ppt,pptx,jpg,jpeg,png,gif,mp4,mov,avi'],
+            // Allow larger files; actual limit is controlled by PHP upload_max_filesize/post_max_size
+            'file' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx,jpg,jpeg,png,gif,mp4,mov,avi'],
         ]);
 
         if (! $request->hasFile('file') && empty($data['url'])) {
@@ -375,9 +397,34 @@ class TrainingModuleController extends Controller
         $storedPath = null;
 
         if ($request->hasFile('file')) {
-            // Store uploaded file in public storage so it can be downloaded/viewed
-            $relativePath = $request->file('file')->store('lesson-materials', 'public');
-            $storedPath = Storage::url($relativePath);
+            $file = $request->file('file');
+            $mime = $file->getMimeType();
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            $isVideo = ($mime && str_starts_with($mime, 'video/'))
+                || in_array($extension, ['mp4', 'mov', 'avi'], true);
+
+            if ($isVideo) {
+                // Upload videos to Cloudinary to better handle large files
+                try {
+                    $upload = Cloudinary::uploadFile(
+                        $file->getRealPath(),
+                        [
+                            'resource_type' => 'video',
+                            'folder' => 'lesson-materials',
+                        ]
+                    );
+                    $storedPath = $upload->getSecurePath();
+                } catch (\Throwable $e) {
+                    // Fallback to local storage if Cloudinary upload fails
+                    $relativePath = $file->store('lesson-materials', 'public');
+                    $storedPath = Storage::url($relativePath);
+                }
+            } else {
+                // Images / documents continue to use local storage
+                $relativePath = $file->store('lesson-materials', 'public');
+                $storedPath = Storage::url($relativePath);
+            }
         } else {
             // Fallback to external URL
             $storedPath = $data['url'];
@@ -420,6 +467,42 @@ class TrainingModuleController extends Controller
 
         return redirect()->route('training.modules.show', $trainingModule)
             ->with('status', 'Learning material removed from lesson.');
+    }
+
+    /**
+     * Generate training module description and learning objectives using AI
+     */
+    public function generateAiModule(Request $request)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'title' => ['required', 'string', 'min:5', 'max:255'],
+            'difficulty' => ['nullable', 'string', 'max:50'],
+            'category' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        try {
+            $gemini = new GeminiService();
+            $result = $gemini->generateTrainingModuleFromTitle(
+                $data['title'],
+                $data['difficulty'] ?? 'Beginner',
+                $data['category'] ?? null,
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     protected function authorizeOwner(TrainingModule $module): void

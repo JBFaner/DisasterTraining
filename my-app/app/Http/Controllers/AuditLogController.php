@@ -84,10 +84,8 @@ class AuditLogController extends Controller
 
         $query->orderBy($sortBy, $sortDir);
 
-        $perPage = (int) $request->get('per_page', 15);
-        $perPage = $perPage > 50 ? 50 : $perPage;
-
-        $logs = $query->paginate($perPage);
+        // Force pagination size to exactly 5 records per page for UI consistency
+        $logs = $query->paginate(5);
 
         return response()->json([
             'data' => $logs->items(),

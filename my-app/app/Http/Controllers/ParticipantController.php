@@ -19,6 +19,17 @@ class ParticipantController extends Controller
     {
         $this->authorizeParticipantAccess();
 
+        // Global summary stats (not affected by filters/pagination)
+        $summaryBase = User::where('role', 'PARTICIPANT');
+        $startOfMonth = now()->startOfMonth();
+
+        $participantsSummary = [
+            'total' => (clone $summaryBase)->count(),
+            'active' => (clone $summaryBase)->where('status', 'active')->count(),
+            'inactive' => (clone $summaryBase)->where('status', 'inactive')->count(),
+            'registered_this_month' => (clone $summaryBase)->where('created_at', '>=', $startOfMonth)->count(),
+        ];
+
         $query = User::where('role', 'PARTICIPANT')
             ->withCount(['eventRegistrations', 'attendances']);
 
@@ -43,7 +54,22 @@ class ParticipantController extends Controller
             $query->where('status', $request->status_filter);
         }
 
-        $participants = $query->orderBy('created_at', 'desc')->get();
+        $perPage = 10;
+
+        $paginator = $query->orderBy('created_at', 'desc')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $participants = $paginator->items();
+
+        $participantsPagination = [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'from' => $paginator->firstItem(),
+            'to' => $paginator->lastItem(),
+        ];
 
         // Load events with registration counts for the tabs
         $events = SimulationEvent::with(['scenario'])
@@ -58,9 +84,18 @@ class ParticipantController extends Controller
             ->orderByDesc('event_date')
             ->get();
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'participants' => $participants,
+                'pagination' => $participantsPagination,
+            ]);
+        }
+
         return view('app', [
             'section' => 'participants',
             'participants' => $participants,
+            'participantsPagination' => $participantsPagination,
+            'participantsSummary' => $participantsSummary,
             'events' => $events,
         ]);
     }

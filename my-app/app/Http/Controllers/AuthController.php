@@ -461,6 +461,16 @@ class AuthController extends Controller
             'registered_at' => now(),
         ]);
 
+        if ($verificationMethod === 'email' && ! empty($registrationData['email'])) {
+            $user->email_verified_at = now();
+        }
+        if ($verificationMethod === 'phone' && ! empty($registrationData['phone'])) {
+            $user->phone_verified_at = now();
+        }
+        if ($user->isDirty(['email_verified_at', 'phone_verified_at'])) {
+            $user->save();
+        }
+
         // Clear session
         $request->session()->forget('participant_registration');
 
@@ -518,6 +528,7 @@ class AuthController extends Controller
             'participant_id' => $participantId,
             'status' => 'active',
             'registered_at' => now(),
+            'email_verified_at' => now(),
         ]);
 
         // Clear session

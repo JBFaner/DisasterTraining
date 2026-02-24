@@ -272,6 +272,64 @@ class GeminiService
     }
 
     /**
+     * Generate a training module description and learning objectives from a title
+     */
+    public function generateTrainingModuleFromTitle(string $title, ?string $difficulty = 'Beginner', ?string $disasterType = null): array
+    {
+        if (!$this->apiKey) {
+            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
+        }
+
+        $prompt = $this->buildTrainingModulePromptFromTitle($title, $difficulty, $disasterType);
+
+        try {
+            // Ensure we have at least one model to try
+            if (empty($this->availableModels)) {
+                $this->modelName = $this->findAvailableModel();
+            }
+
+            $model = $this->modelName;
+            $apiVersion = $this->currentApiVersion ?? 'v1beta';
+
+            $url = $this->baseUrl . '/' . $apiVersion . '/models/' . $model . ':generateContent?key=' . $this->apiKey;
+
+            $response = Http::timeout(60)
+                ->post($url, [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt],
+                            ],
+                        ],
+                    ],
+                ]);
+
+            if (! $response->successful()) {
+                $errorBody = $response->json();
+                $errorMessage = $errorBody['error']['message'] ?? $response->body();
+                throw new \Exception($errorMessage ?: 'Gemini API request failed');
+            }
+
+            $data = $response->json();
+            $generatedText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+            if (empty($generatedText)) {
+                throw new \Exception('Empty response from Gemini API');
+            }
+
+            return $this->parseTrainingModuleFromText($generatedText);
+        } catch (\Exception $e) {
+            Log::error('Gemini training module generation failed', [
+                'error' => $e->getMessage(),
+                'title' => $title,
+                'difficulty' => $difficulty,
+                'disaster_type' => $disasterType,
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Build the prompt for Gemini to generate a scenario from user input
      */
     private function buildScenarioPromptFromUserInput(string $userPrompt, ?string $disasterType, string $difficulty): string
@@ -364,6 +422,81 @@ Important:
             'infrastructure_damage' => $json['infrastructure_damage'] ?? '',
             'communication_status' => $communicationStatus,
             'disaster_type' => $disasterType ?? '',
+        ];
+    }
+
+    /**
+     * Build prompt for training module generation
+     */
+    private function buildTrainingModulePromptFromTitle(string $title, ?string $difficulty, ?string $disasterType): string
+    {
+        $difficultyText = $difficulty ?: 'Beginner';
+        $disasterLine = $disasterType ? "Disaster Type: {$disasterType}\n" : '';
+
+        return "You are a disaster preparedness training expert. Based on the following training module title, generate a concise module description and at least three clear learning objectives.
+
+Module Title: {$title}
+{$disasterLine}Difficulty Level: {$difficultyText}
+
+Return the response ONLY as valid JSON (no markdown, no code blocks, no explanations, just the JSON object):
+{
+  \"description\": \"2-3 sentences describing what this training module covers, written in plain language for participants.\",
+  \"learning_objectives\": [
+    \"First specific learning objective in participant-friendly language.\",
+    \"Second specific learning objective in participant-friendly language.\",
+    \"Third specific learning objective in participant-friendly language.\"
+  ]
+}
+
+Important:
+- learning_objectives must be an array of short strings
+- Include at least three learning objectives
+- Make the content specific to the module title and disaster context (if provided)
+- Do NOT include markdown, bullet markers, or numbering in the JSON itself.";
+    }
+
+    /**
+     * Parse generated training module JSON
+     */
+    private function parseTrainingModuleFromText(string $text): array
+    {
+        $cleanText = preg_replace('/```json\s*/i', '', $text);
+        $cleanText = preg_replace('/```\s*/', '', $cleanText);
+        $cleanText = trim($cleanText ?? '');
+
+        $jsonMatch = preg_match('/\{[\s\S]*\}/', $cleanText, $matches);
+        if (! $jsonMatch) {
+            Log::error('Could not extract JSON from Gemini training-module response', ['text' => $text]);
+            throw new \Exception('Could not extract JSON from AI response. The AI may have returned invalid format.');
+        }
+
+        $json = json_decode($matches[0], true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Log::error('Invalid JSON in Gemini training-module response', [
+                'error' => json_last_error_msg(),
+                'text' => $matches[0],
+            ]);
+            throw new \Exception('Invalid JSON in AI response: ' . json_last_error_msg());
+        }
+
+        $description = trim((string)($json['description'] ?? ''));
+        $objectives = $json['learning_objectives'] ?? [];
+        if (! is_array($objectives)) {
+            $objectives = [];
+        }
+
+        $objectives = array_values(array_filter($objectives, function ($item) {
+            return is_string($item) && trim($item) !== '';
+        }));
+
+        // Ensure at least three objectives (pad with empty strings if needed so UI has fields)
+        while (count($objectives) < 3) {
+            $objectives[] = '';
+        }
+
+        return [
+            'description' => $description,
+            'learning_objectives' => $objectives,
         ];
     }
 }
