@@ -8,7 +8,7 @@ use App\Models\LessonMaterial;
 use App\Models\LessonCompletion;
 use App\Services\AuditLogger;
 use App\Services\GeminiService;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Cloudinary\Cloudinary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -405,20 +405,56 @@ class TrainingModuleController extends Controller
                 || in_array($extension, ['mp4', 'mov', 'avi'], true);
 
             if ($isVideo) {
-                // Upload videos to Cloudinary to better handle large files
                 try {
-                    $upload = Cloudinary::uploadFile(
-                        $file->getRealPath(),
-                        [
-                            'resource_type' => 'video',
-                            'folder' => 'lesson-materials',
-                        ]
-                    );
-                    $storedPath = $upload->getSecurePath();
+                    // Videos MUST be stored in Cloudinary (no local fallback)
+                    $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: null;
+                    if (! $cloudinaryUrl) {
+                        return redirect()->back()
+                            ->withErrors([
+                                'file' => 'Cloudinary is not configured. Please set CLOUDINARY_URL in .env and restart the server.',
+                            ])
+                            ->withInput();
+                    }
+
+                    $parsed = parse_url($cloudinaryUrl);
+                    $cloudName = $parsed['host'] ?? null;
+                    $apiKey = $parsed['user'] ?? null;
+                    $apiSecret = $parsed['pass'] ?? null;
+
+                    if (! $cloudName || ! $apiKey || ! $apiSecret) {
+                        return redirect()->back()
+                            ->withErrors([
+                                'file' => 'Cloudinary is misconfigured. CLOUDINARY_URL must look like cloudinary://API_KEY:API_SECRET@CLOUD_NAME',
+                            ])
+                            ->withInput();
+                    }
+
+                    $cloudinary = new Cloudinary([
+                        'cloud' => [
+                            'cloud_name' => $cloudName,
+                            'api_key' => $apiKey,
+                            'api_secret' => $apiSecret,
+                        ],
+                        'url' => [
+                            'secure' => true,
+                        ],
+                    ]);
+
+                    $uploadResult = $cloudinary->uploadApi()->upload($file->getRealPath(), [
+                        'resource_type' => 'video',
+                        'folder' => 'lesson-materials',
+                    ]);
+
+                    $storedPath = $uploadResult['secure_url'] ?? $uploadResult['url'] ?? null;
+                    if (! $storedPath) {
+                        throw new \Exception('Cloudinary did not return a URL for the uploaded video.');
+                    }
                 } catch (\Throwable $e) {
-                    // Fallback to local storage if Cloudinary upload fails
-                    $relativePath = $file->store('lesson-materials', 'public');
-                    $storedPath = Storage::url($relativePath);
+                    return redirect()->back()
+                        ->withErrors([
+                            'file' => 'Cloudinary upload failed. Please confirm CLOUDINARY_URL is correct and restart the server. Error: '.$e->getMessage(),
+                        ])
+                        ->withInput();
                 }
             } else {
                 // Images / documents continue to use local storage

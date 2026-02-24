@@ -3498,6 +3498,18 @@ function TrainingModuleDetail({ module }) {
     const [selectedLesson, setSelectedLesson] = React.useState(null);
     const [isEditMode, setIsEditMode] = React.useState(false);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
+    const rootEl = document.getElementById('app');
+    const flashStatus = rootEl?.getAttribute('data-status') || '';
+    const flashErrors = React.useMemo(() => {
+        const raw = rootEl?.getAttribute('data-errors');
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+            return [];
+        }
+    }, [rootEl]);
     const [editFormData, setEditFormData] = React.useState({
         title: '',
         description: '',
@@ -3550,6 +3562,22 @@ function TrainingModuleDetail({ module }) {
                     <span className="font-semibold text-slate-700">{module.title}</span>
                 </div>
             </div>
+
+            {flashStatus && (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+                    {flashStatus}
+                </div>
+            )}
+
+            {flashErrors && flashErrors.length > 0 && (
+                <div className="rounded-xl bg-rose-600 text-white px-4 py-3 text-sm font-medium shadow-lg animate-validation-shake" style={{ boxShadow: '0 4px 14px rgba(220, 38, 38, 0.4)' }}>
+                    <ul className="list-disc list-inside space-y-0.5">
+                        {flashErrors.map((error, idx) => (
+                            <li key={idx}>{error}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             {/* Module header card */}
             <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-md hover:shadow-lg transition-shadow duration-300">
