@@ -27,9 +27,10 @@ Route::get('/', function () {
 });
 
 // Public legal pages
-Route::get('/terms', function () {
-    return view('terms');
-})->name('terms');
+Route::view('/privacy', 'privacy')->name('privacy');
+Route::view('/terms', 'terms')->name('terms');
+Route::view('/data-protection', 'data-protection')->name('data.protection');
+Route::view('/accessibility', 'accessibility')->name('accessibility');
 
 // Centralized Login Integration (AlerTara)
 // This route handles incoming requests from login.alertaraqc.com with JWT tokens
