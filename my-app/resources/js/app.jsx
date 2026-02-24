@@ -21,6 +21,7 @@ import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search,
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { computePosition, offset, flip, shift, autoUpdate } from '@floating-ui/dom';
+import { deriveSimulationEventStatus, getEventDateTime } from './utils/simulationEventStatus';
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -1062,7 +1063,7 @@ if (rootElement) {
                                     </div>
                                 )}
                                 {flashErrors && flashErrors.length > 0 && (
-                                    <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                                    <div className="mb-4 rounded-xl bg-red-600 text-white px-4 py-3 text-sm font-medium shadow-lg animate-validation-shake" style={{ boxShadow: '0 4px 14px rgba(220, 38, 38, 0.4)' }}>
                                         <ul className="list-disc list-inside space-y-0.5">
                                             {flashErrors.map((error, index) => (
                                                 <li key={index}>{error}</li>
@@ -5460,7 +5461,8 @@ function SimulationEventsTable({ events, role }) {
             event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
             (event.location && event.location.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesStatus = !filterStatus || event.status === filterStatus;
+        const derivedStatus = deriveSimulationEventStatus(event);
+        const matchesStatus = !filterStatus || derivedStatus === filterStatus;
         const matchesDisasterType = !filterDisasterType || event.disaster_type === filterDisasterType;
         const matchesCategory = !filterCategory || event.event_category === filterCategory;
 
@@ -5522,6 +5524,8 @@ function SimulationEventsTable({ events, role }) {
         }
     };
 
+    // Status/time helpers are centralized in `resources/js/utils/simulationEventStatus.js`.
+
     const getStatusClass = (status) => {
         const map = {
             published: 'bg-emerald-100 text-emerald-700',
@@ -5556,23 +5560,31 @@ function SimulationEventsTable({ events, role }) {
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
-    const canStartEvent = (event) => {
-        try {
-            if (!event || event.status !== 'published' || !event.event_date) return false;
-            const eventDate = new Date(event.event_date);
-            if (isNaN(eventDate.getTime())) return false;
-            const today = new Date();
-            if (eventDate.toDateString() !== today.toDateString()) return false;
-            const startTime = event.start_time;
-            if (!startTime || typeof startTime !== 'string') return false;
-            const parts = startTime.split(':').map(Number);
-            if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return false;
-            const start = new Date(event.event_date);
-            start.setHours(parts[0], parts[1], 0, 0);
-            return new Date().getTime() >= start.getTime();
-        } catch (_) {
-            return false;
+    const getStartEligibility = (event) => {
+        const effectiveStatus = deriveSimulationEventStatus(event);
+        const now = new Date();
+        const start = getEventDateTime(event?.event_date, event?.start_time);
+        const end = getEventDateTime(event?.event_date, event?.end_time);
+
+        if (effectiveStatus === 'ended' || effectiveStatus === 'completed') {
+            return { canStart: false, reason: `This event is already ${effectiveStatus}.`, effectiveStatus };
         }
+        if (effectiveStatus !== 'published') {
+            return { canStart: false, reason: 'Only published events can be started.', effectiveStatus };
+        }
+        if (!start || !end) {
+            return { canStart: false, reason: 'Start/end time is missing or invalid.', effectiveStatus };
+        }
+        if (end.getTime() < start.getTime()) {
+            return { canStart: false, reason: 'End time is before start time.', effectiveStatus };
+        }
+        if (now.getTime() < start.getTime()) {
+            return { canStart: false, reason: 'Event cannot be started before the scheduled start time.', effectiveStatus };
+        }
+        if (now.getTime() > end.getTime()) {
+            return { canStart: false, reason: 'Event already passed its end time.', effectiveStatus: 'ended' };
+        }
+        return { canStart: true, reason: '', effectiveStatus };
     };
 
     return (
@@ -5740,7 +5752,9 @@ function SimulationEventsTable({ events, role }) {
                     {viewMode === 'list' ? (
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
                             <ul className="divide-y divide-slate-200">
-                                {paginatedEvents.map((event) => (
+                                {paginatedEvents.map((event) => {
+                                    const derivedStatus = deriveSimulationEventStatus(event);
+                                    return (
                                     <li key={event.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors relative ${openManageId === event.id ? 'z-[100]' : ''}`}>
                                         <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                                             <CalendarClock className="w-5 h-5 text-emerald-600" />
@@ -5756,9 +5770,9 @@ function SimulationEventsTable({ events, role }) {
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-3 shrink-0">
-                                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(event.status)}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${eventStatusDotStyle(event.status)}`} />
-                                                {event.status}
+                                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(derivedStatus)}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${eventStatusDotStyle(derivedStatus)}`} />
+                                                {derivedStatus}
                                             </span>
                                             <div className="relative" ref={openManageId === event.id ? manageMenuRef : null}>
                                                 <button
@@ -5772,12 +5786,15 @@ function SimulationEventsTable({ events, role }) {
                                             </div>
                                         </div>
                                     </li>
-                                ))}
+                                    );
+                                })}
                             </ul>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {paginatedEvents.map((event, index) => (
+                            {paginatedEvents.map((event, index) => {
+                                const derivedStatus = deriveSimulationEventStatus(event);
+                                return (
                                 <div
                                     key={event.id}
                                     className={`training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 relative ${openManageId === event.id ? 'z-[100]' : ''}`}
@@ -5805,9 +5822,9 @@ function SimulationEventsTable({ events, role }) {
                                             {event.location ? ` • ${event.location}` : ''}
                                         </p>
                                         <div className="flex items-center justify-between gap-2 mb-3">
-                                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(event.status)}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${eventStatusDotStyle(event.status)}`} />
-                                                Status: {event.status}
+                                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(derivedStatus)}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${eventStatusDotStyle(derivedStatus)}`} />
+                                                Status: {derivedStatus}
                                             </span>
                                         </div>
                                         <div className="relative" ref={openManageId === event.id ? manageMenuRef : null}>
@@ -5822,7 +5839,8 @@ function SimulationEventsTable({ events, role }) {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                     {openManageId && (() => {
@@ -5900,51 +5918,87 @@ function SimulationEventsTable({ events, role }) {
                                         </button>
                                     </form>
                                 )}
-                                {canStartEvent(openEvent) && (
-                                    <form
-                                        method="POST"
-                                        action={`/simulation-events/${openEvent.id}/start`}
-                                        onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const form = e.currentTarget;
-                                            const result = await Swal.fire({
-                                                title: 'Start event?',
-                                                text: 'Start this simulation event now?',
-                                                icon: 'question',
-                                                showCancelButton: true,
-                                                confirmButtonText: 'Yes, start',
-                                                cancelButtonText: 'Cancel',
-                                                confirmButtonColor: '#16a34a',
-                                                cancelButtonColor: '#64748b',
-                                            });
-                                            if (!result.isConfirmed) return;
-                                            try {
-                                                const response = await fetch(form.action, {
-                                                    method: 'POST',
-                                                    body: new FormData(form),
+                                {(() => {
+                                    const derivedStatus = deriveSimulationEventStatus(openEvent);
+                                    if (!['published', 'ended', 'completed'].includes(derivedStatus)) return null;
+
+                                    const now = new Date();
+                                    const start = getEventDateTime(openEvent?.event_date, openEvent?.start_time);
+                                    const end = getEventDateTime(openEvent?.event_date, openEvent?.end_time);
+
+                                    let disabledReason = '';
+                                    if (derivedStatus === 'ended' || derivedStatus === 'completed') {
+                                        disabledReason = `This event is already ${derivedStatus}.`;
+                                    } else if (!start || !end) {
+                                        disabledReason = 'Start/end time is missing or invalid.';
+                                    } else if (end.getTime() < start.getTime()) {
+                                        disabledReason = 'End time is before start time.';
+                                    } else if (now.getTime() < start.getTime()) {
+                                        disabledReason = 'Event cannot be started before the scheduled start time.';
+                                    } else if (now.getTime() > end.getTime()) {
+                                        disabledReason = 'Event has already passed its end time.';
+                                    }
+
+                                    const eligibility = getStartEligibility(openEvent);
+                                    if (!eligibility.canStart) {
+                                        return (
+                                            <button
+                                                type="button"
+                                                disabled
+                                                title={disabledReason || eligibility.reason || 'Event cannot be started right now.'}
+                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-400 cursor-not-allowed"
+                                            >
+                                                <Play className="w-4 h-4" /> Start
+                                            </button>
+                                        );
+                                    }
+
+                                    return (
+                                        <form
+                                            method="POST"
+                                            action={`/simulation-events/${openEvent.id}/start`}
+                                            onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const form = e.currentTarget;
+                                                const result = await Swal.fire({
+                                                    title: 'Start event?',
+                                                    text: 'Start this simulation event now?',
+                                                    icon: 'question',
+                                                    showCancelButton: true,
+                                                    confirmButtonText: 'Yes, start',
+                                                    cancelButtonText: 'Cancel',
+                                                    confirmButtonColor: '#16a34a',
+                                                    cancelButtonColor: '#64748b',
                                                 });
-                                                if (!response.ok) {
-                                                    throw new Error('Request failed');
+                                                if (!result.isConfirmed) return;
+                                                try {
+                                                    const response = await fetch(form.action, {
+                                                        method: 'POST',
+                                                        body: new FormData(form),
+                                                    });
+                                                    if (!response.ok) {
+                                                        throw new Error('Request failed');
+                                                    }
+                                                    window.location.href = '/simulation-events';
+                                                } catch (err) {
+                                                    Swal.fire({
+                                                        icon: 'error',
+                                                        title: 'Error',
+                                                        text: 'Failed to start event. Please try again.',
+                                                    });
                                                 }
-                                                window.location.href = '/simulation-events';
-                                            } catch (err) {
-                                                Swal.fire({
-                                                    icon: 'error',
-                                                    title: 'Error',
-                                                    text: 'Failed to start event. Please try again.',
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        <input type="hidden" name="_token" value={csrf} />
-                                        <button
-                                            type="submit"
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                            }}
                                         >
-                                            <Play className="w-4 h-4" /> Start
-                                        </button>
-                                    </form>
-                                )}
+                                            <input type="hidden" name="_token" value={csrf} />
+                                            <button
+                                                type="submit"
+                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                            >
+                                                <Play className="w-4 h-4" /> Start
+                                            </button>
+                                        </form>
+                                    );
+                                })()}
                                 {(openEvent.status === 'published' || openEvent.status === 'draft') && (
                                     <form
                                         method="POST"

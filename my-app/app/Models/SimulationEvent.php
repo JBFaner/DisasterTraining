@@ -146,12 +146,40 @@ class SimulationEvent extends Model
     {
         $now = now();
 
-        static::where('status', 'published')
-            ->whereDate('event_date', '<', $now->toDateString())
+        $candidates = static::where('status', 'published')
             ->whereNull('actual_start_time')
-            ->update([
-                'status' => 'ended',
-                'updated_by' => $userId,
-            ]);
+            ->whereDate('event_date', '<=', $now->toDateString())
+            ->get(['id', 'event_date', 'end_time']);
+
+        foreach ($candidates as $event) {
+            // If event date is before today, it is definitely ended.
+            if ($event->event_date && $event->event_date->lt($now->copy()->startOfDay())) {
+                $event->update([
+                    'status' => 'ended',
+                    'updated_by' => $userId,
+                ]);
+                continue;
+            }
+
+            // Same-day: end only if we can parse end_time and current time is past it.
+            if (! $event->event_date || ! $event->end_time) {
+                continue;
+            }
+
+            try {
+                [$endHour, $endMinute] = explode(':', $event->end_time);
+                $endDateTime = $event->event_date->copy()->setTime((int) $endHour, (int) $endMinute, 0);
+
+                if ($now->gt($endDateTime)) {
+                    $event->update([
+                        'status' => 'ended',
+                        'updated_by' => $userId,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Skip invalid end_time formats; keep stored status.
+                continue;
+            }
+        }
     }
 }

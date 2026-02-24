@@ -533,6 +533,27 @@ class SimulationEventController extends Controller
                 ->with('status', 'Event cannot be started before the scheduled start time.');
         }
 
+        // Prevent starting events that are already past their end time (should be "ended")
+        $endTime = $simulationEvent->end_time; // format: HH:MM
+        try {
+            [$endHour, $endMinute] = explode(':', (string) $endTime);
+            $endDateTime = $eventDate->copy()->setTime((int) $endHour, (int) $endMinute, 0);
+
+            // Rule: published events become ended only when current time is strictly greater than end time.
+            if ($now->gt($endDateTime)) {
+                $simulationEvent->update([
+                    'status' => 'ended',
+                    'updated_by' => Auth::id(),
+                ]);
+
+                return redirect()->route('simulation.events.index')
+                    ->with('status', 'Event has already ended and cannot be started.');
+            }
+        } catch (\Throwable $e) {
+            return redirect()->back()
+                ->with('status', 'Event has an invalid end time and cannot be started.');
+        }
+
         // Ensure resources are assigned before starting (in case they weren't assigned on publish)
         $this->autoAssignResources($simulationEvent);
         

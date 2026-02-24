@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -485,10 +486,12 @@ class AdminUserController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'password' => ['required', 'confirmed', 'min:8'],
             'account_type' => ['required', 'in:' . implode(',', $allowedRoles)],
             'barangay_id' => ['nullable', 'integer', 'exists:barangay_profiles,id'],
+        ], [
+            'email.unique' => 'The email has already been taken.',
         ]);
 
         $fullName = trim(
@@ -539,8 +542,8 @@ class AdminUserController extends Controller
             ],
         ]);
 
-        return redirect()->back()
-            ->with('status', 'New account registered. The user must verify their email before they can log in.');
+        return redirect()->route('admin.users.index')
+            ->with('status', 'Account created successfully. The user must verify their email before they can log in.');
     }
 
     /**

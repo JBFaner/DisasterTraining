@@ -1,6 +1,7 @@
 import React from 'react';
 import Swal from 'sweetalert2';
 import { CalendarClock, ClipboardList, Play, Search, Users, CheckCircle2, BarChart3 } from 'lucide-react';
+import { deriveSimulationEventStatus, getEventDateTime } from '../utils/simulationEventStatus';
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -193,45 +194,28 @@ export function ParticipantSimulationEventsList({ events }) {
                         const isRejected = registrationStatus === 'rejected';
 
                         const now = new Date();
-                        
-                        // Time-based status calculation (matching admin logic)
-                        const hasEventEnded = () => {
-                            if (!event.event_date || !event.end_time) return false;
-                            const [h, m] = (event.end_time || '23:59').split(':').map((v) => Number(v) || 0);
-                            const eventEnd = new Date(event.event_date);
-                            eventEnd.setHours(h, m, 0, 0);
-                            return now >= eventEnd;
-                        };
+                        const derivedStatus = deriveSimulationEventStatus(event, now);
+                        const startAt = getEventDateTime(event.event_date, event.start_time);
 
-                        const getDateTime = (dateStr, timeStr) => {
-                            const dt = new Date(dateStr);
-                            if (timeStr && timeStr.match(/^\d{2}:\d{2}/)) {
-                                const [h, m] = timeStr.split(':').map(Number);
-                                dt.setHours(h, m || 0, 0, 0);
-                            }
-                            return dt;
-                        };
+                        const statusBadge =
+                            derivedStatus === 'ongoing'
+                                ? 'Ongoing'
+                                : derivedStatus === 'completed'
+                                    ? 'Completed'
+                                    : derivedStatus === 'ended'
+                                        ? 'Ended'
+                                        : derivedStatus === 'published' && startAt && now < startAt
+                                            ? 'Upcoming'
+                                            : titleCaseStatus(derivedStatus);
 
-                        const eventStartTime = getDateTime(event.event_date, event.start_time);
-                        
-                        const serverStatus = event.status;
-                        
-                        // Match admin logic: time-based status takes precedence
-                        const hasEnded = hasEventEnded() && (serverStatus === 'published' || serverStatus === 'ongoing');
-                        const isOngoing = serverStatus === 'ongoing' && !hasEnded;
-                        const isUpcoming = serverStatus === 'published' && !hasEnded && now < eventStartTime;
-
-                        const statusBadge = isOngoing
-                            ? 'Ongoing'
-                            : hasEnded
-                                ? 'Ended'
-                                : 'Upcoming';
-
-                        const cardBgClass = isOngoing
-                            ? 'bg-emerald-700'
-                            : hasEnded
-                                ? 'bg-slate-600'
-                                : 'bg-slate-700';
+                        const cardBgClass =
+                            derivedStatus === 'ongoing'
+                                ? 'bg-emerald-700'
+                                : derivedStatus === 'completed'
+                                    ? 'bg-indigo-700'
+                                    : derivedStatus === 'ended'
+                                        ? 'bg-slate-600'
+                                        : 'bg-slate-700';
                         
                         return (
                             <div
