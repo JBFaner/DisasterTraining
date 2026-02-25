@@ -5870,7 +5870,7 @@ function SimulationEventsTable({ events, role }) {
 
     const eventStatusStyle = (status) => {
         if (status === 'published' || status === 'ongoing') return 'text-emerald-600';
-        if (status === 'completed') return 'text-slate-600';
+        if (status === 'completed') return 'text-blue-600';
         if (status === 'ended') return 'text-rose-600';
         if (status === 'draft') return 'text-blue-600';
         if (status === 'archived') return 'text-slate-500';
@@ -5879,7 +5879,7 @@ function SimulationEventsTable({ events, role }) {
     };
     const eventStatusDotStyle = (status) => {
         if (status === 'published' || status === 'ongoing') return 'bg-emerald-500';
-        if (status === 'completed') return 'bg-slate-400';
+        if (status === 'completed') return 'bg-blue-500';
         if (status === 'ended') return 'bg-rose-500';
         if (status === 'draft') return 'bg-blue-500';
         if (status === 'archived') return 'bg-slate-400';
