@@ -176,6 +176,9 @@
             @isset($dashboard_stats)
                 data-dashboard-stats='@json($dashboard_stats)'
             @endisset
+            @isset($dashboard_charts)
+                data-dashboard-charts='@json($dashboard_charts)'
+            @endisset
             @if (session('status'))
                 data-status="{{ session('status') }}"
             @endif

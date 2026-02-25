@@ -17,11 +17,76 @@ import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { CheckCircle2, X, Pencil, Send, Undo2, XCircle, Archive, Trash2, Search, Filter, ChevronLeft, ChevronRight, Plus, ChevronDown, ChevronUp, Play, Lock, ClipboardCheck, Eye, Users, Settings, BookOpen, Activity, CalendarClock, LayoutDashboard, ClipboardList, Download, Printer, Award, Copy, RotateCcw, FileText, Zap, GraduationCap, TrendingUp, AlertTriangle, BarChart3, Calendar, Target, LayoutGrid, List } from 'lucide-react';
+import {
+    CheckCircle2,
+    X,
+    Pencil,
+    Send,
+    Undo2,
+    XCircle,
+    Archive,
+    Trash2,
+    Search,
+    Filter,
+    ChevronLeft,
+    ChevronRight,
+    Plus,
+    ChevronDown,
+    ChevronUp,
+    Play,
+    Lock,
+    ClipboardCheck,
+    Eye,
+    Users,
+    Settings,
+    BookOpen,
+    Activity,
+    CalendarClock,
+    LayoutDashboard,
+    ClipboardList,
+    Download,
+    Printer,
+    Award,
+    Copy,
+    RotateCcw,
+    FileText,
+    Zap,
+    GraduationCap,
+    TrendingUp,
+    AlertTriangle,
+    BarChart3,
+    Calendar,
+    Target,
+    LayoutGrid,
+    List,
+} from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { computePosition, offset, flip, shift, autoUpdate } from '@floating-ui/dom';
 import { deriveSimulationEventStatus, getEventDateTime } from './utils/simulationEventStatus';
+import {
+    Chart as ChartJS,
+    ArcElement,
+    Tooltip as ChartTooltip,
+    Legend as ChartLegend,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    PointElement,
+    LineElement,
+} from 'chart.js';
+import { Doughnut, Bar, Line } from 'react-chartjs-2';
+
+ChartJS.register(
+    ArcElement,
+    ChartTooltip,
+    ChartLegend,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    PointElement,
+    LineElement
+);
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -299,6 +364,15 @@ if (rootElement) {
             dashboardStats = JSON.parse(dashboardStatsJson);
         } catch (e) {
             console.error('Failed to parse dashboard stats JSON', e);
+        }
+    }
+    let dashboardCharts = null;
+    const dashboardChartsJson = rootElement.getAttribute('data-dashboard-charts');
+    if (dashboardChartsJson) {
+        try {
+            dashboardCharts = JSON.parse(dashboardChartsJson);
+        } catch (e) {
+            console.error('Failed to parse dashboard charts JSON', e);
         }
     }
     if (participantJson) {
@@ -669,12 +743,21 @@ if (rootElement) {
                                             sectionAttr.startsWith('resources') ? 'resources' :
                                                 sectionAttr.startsWith('evaluation') ? 'evaluation' :
                                                     sectionAttr.startsWith('barangay_profile') ? 'barangay_profile' :
-                                                        sectionAttr;
+                                                        sectionAttr.startsWith('after_action_review') ? 'after_action_review' :
+                                                            sectionAttr;
 
     // Breadcrumb configuration
     const getBreadcrumbs = () => {
         if (sectionAttr === 'dashboard') {
             return [{ label: 'Dashboard', href: '/dashboard' }];
+        }
+
+        if (sectionAttr === 'after_action_review') {
+            return [{ label: 'After-Action Review', href: '/after-action-review' }];
+        }
+
+        if (sectionAttr === 'profile') {
+            return [{ label: 'Profile', href: '/profile' }];
         }
 
         if (sectionAttr === 'training') {
@@ -920,6 +1003,14 @@ if (rootElement) {
             return 'Barangay Profile';
         }
 
+        if (sectionAttr === 'after_action_review') {
+            return 'After-Action Review';
+        }
+
+        if (sectionAttr === 'profile') {
+            return 'My Profile';
+        }
+
         if (breadcrumbs.length === 1) {
             return breadcrumbs[0].label;
         }
@@ -951,7 +1042,14 @@ if (rootElement) {
                     <div className="w-full max-w-full mx-auto overflow-x-hidden">
 
                         {sectionAttr === 'dashboard' && (
-                            <DashboardOverview modules={modules} events={events} participants={participants} role={role} dashboardStats={dashboardStats} />
+                            <DashboardOverview
+                                modules={modules}
+                                events={events}
+                                participants={participants}
+                                role={role}
+                                dashboardStats={dashboardStats}
+                                dashboardCharts={dashboardCharts}
+                            />
                         )}
 
                         {sectionAttr === 'training' && (
@@ -1058,6 +1156,18 @@ if (rootElement) {
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
                             <ParticipantDetail participant={currentParticipant} />
+                        )}
+
+                        {sectionAttr === 'after_action_review' && (
+                            <AfterActionReviewPage />
+                        )}
+
+                        {sectionAttr === 'drill_history_reports' && (
+                            <DrillHistoryReportsPage drills={events || []} />
+                        )}
+
+                        {sectionAttr === 'profile' && (
+                            <ProfilePage user={currentUser} />
                         )}
 
                         {sectionAttr === 'admin_users_index' && (
@@ -1384,8 +1494,9 @@ if (rootElement) {
     );
 }
 
-function DashboardOverview({ modules, events, participants, role, dashboardStats }) {
+function DashboardOverview({ modules, events, participants, role, dashboardStats, dashboardCharts }) {
     const stats = dashboardStats || {};
+    const charts = dashboardCharts || {};
     const activeEvents = stats.active_events ?? 0;
     const upcomingEvents = stats.upcoming_events ?? 0;
     const totalParticipants = stats.total_participants ?? (participants?.length || 0);
@@ -1464,6 +1575,188 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
         return content;
     };
 
+    const monthLabels = charts.drills_per_month?.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const primaryGreen = '#059669';
+    const secondaryGreen = '#10B981';
+    const softGreen = '#A7F3D0';
+    const slate = '#0F172A';
+
+    const disasterDistributionChartData = charts.disaster_distribution && charts.disaster_distribution.labels?.length
+        ? {
+            labels: charts.disaster_distribution.labels,
+            datasets: [
+                {
+                    data: charts.disaster_distribution.data,
+                    backgroundColor: [
+                        primaryGreen,
+                        secondaryGreen,
+                        softGreen,
+                        '#D1FAE5',
+                        '#E5E7EB',
+                    ],
+                    borderWidth: 0,
+                },
+            ],
+        }
+        : null;
+
+    const evaluationStatusChartData = charts.evaluation_status && charts.evaluation_status.labels?.length
+        ? {
+            labels: charts.evaluation_status.labels,
+            datasets: [
+                {
+                    data: charts.evaluation_status.data,
+                    backgroundColor: [
+                        primaryGreen,
+                        '#FBBF24',
+                        '#EF4444',
+                    ],
+                    borderWidth: 0,
+                },
+            ],
+        }
+        : null;
+
+    const drillsPerMonthChartData = charts.drills_per_month
+        ? {
+            labels: monthLabels,
+            datasets: [
+                {
+                    label: 'Drills',
+                    data: charts.drills_per_month.data,
+                    backgroundColor: primaryGreen,
+                    borderRadius: 8,
+                    maxBarThickness: 32,
+                },
+            ],
+        }
+        : null;
+
+    const performanceTrendChartData = charts.performance_trend
+        ? {
+            labels: charts.performance_trend.labels || monthLabels,
+            datasets: [
+                {
+                    label: 'Average Score (%)',
+                    data: charts.performance_trend.data,
+                    borderColor: primaryGreen,
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 4,
+                    pointBackgroundColor: primaryGreen,
+                },
+            ],
+        }
+        : null;
+
+    const baseChartOptions = {
+        plugins: {
+            legend: {
+                display: true,
+                labels: {
+                    font: { size: 11 },
+                    color: '#64748B',
+                    usePointStyle: true,
+                },
+            },
+            tooltip: {
+                borderWidth: 0,
+                backgroundColor: '#020617',
+                titleFont: { size: 11 },
+                bodyFont: { size: 11 },
+            },
+        },
+    };
+
+    const buildDoughnutOptions = (chartData) => ({
+        ...baseChartOptions,
+        cutout: '70%',
+        plugins: {
+            ...baseChartOptions.plugins,
+            legend: {
+                ...baseChartOptions.plugins.legend,
+                labels: {
+                    ...baseChartOptions.plugins.legend.labels,
+                    generateLabels: (chart) => {
+                        const data = chartData || chart.data;
+                        const dataset = data.datasets?.[0] || { data: [] };
+                        const total = (dataset.data || []).reduce((sum, value) => sum + (Number(value) || 0), 0) || 0;
+
+                        return (data.labels || []).map((label, index) => {
+                            const rawValue = dataset.data?.[index] ?? 0;
+                            const value = Number(rawValue) || 0;
+                            const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+
+                            return {
+                                text: `${label} — ${value} (${percent}%)`,
+                                fillStyle: Array.isArray(dataset.backgroundColor)
+                                    ? dataset.backgroundColor[index] || primaryGreen
+                                    : dataset.backgroundColor || primaryGreen,
+                                strokeStyle: '#ffffff',
+                                lineWidth: 0,
+                                hidden: chart.getDatasetMeta(0).data[index]?.hidden || value === 0,
+                                index,
+                            };
+                        });
+                    },
+                },
+            },
+        },
+    });
+
+    const barOptions = {
+        ...baseChartOptions,
+        scales: {
+            x: {
+                grid: { display: false },
+                ticks: {
+                    color: '#6B7280',
+                    font: { size: 11 },
+                },
+            },
+            y: {
+                grid: {
+                    color: '#E5E7EB',
+                    drawBorder: false,
+                },
+                ticks: {
+                    color: '#6B7280',
+                    font: { size: 11 },
+                    precision: 0,
+                },
+            },
+        },
+    };
+
+    const lineOptions = {
+        ...baseChartOptions,
+        scales: {
+            x: {
+                grid: { display: false },
+                ticks: {
+                    color: '#6B7280',
+                    font: { size: 11 },
+                },
+            },
+            y: {
+                grid: {
+                    color: '#E5E7EB',
+                    drawBorder: false,
+                },
+                ticks: {
+                    color: '#6B7280',
+                    font: { size: 11 },
+                    callback: (value) => `${value}%`,
+                },
+                suggestedMin: 0,
+                suggestedMax: 100,
+            },
+        },
+    };
+
     return (
         <div className="space-y-8 pb-8">
             {/* Header — larger, more spacing */}
@@ -1485,7 +1778,45 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 <KpiCard title="Certificates" value={certificatesCount} href={role !== 'PARTICIPANT' ? '/certification' : null} Icon={Award} />
             </div>
 
-            {/* Row 2 — Requires Attention */}
+            {/* Row 2 — Top analytics: disaster distribution + evaluation status */}
+            {role !== 'PARTICIPANT' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                                <BarChart3 className="w-5 h-5 text-emerald-600" />
+                                Disaster Distribution
+                            </h2>
+                            <span className="text-xs text-slate-500">By drill type</span>
+                        </div>
+                        {disasterDistributionChartData ? (
+                            <div className="h-64">
+                                <Doughnut data={disasterDistributionChartData} options={buildDoughnutOptions(disasterDistributionChartData)} />
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-500">No drills yet with a recorded disaster type.</p>
+                        )}
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                                <ClipboardCheck className="w-5 h-5 text-emerald-600" />
+                                Evaluation Status
+                            </h2>
+                            <span className="text-xs text-slate-500">Across completed drills</span>
+                        </div>
+                        {evaluationStatusChartData ? (
+                            <div className="h-64">
+                                <Doughnut data={evaluationStatusChartData} options={buildDoughnutOptions(evaluationStatusChartData)} />
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-500">No evaluation data available yet.</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Row 3 — Requires Attention */}
             {(eventsStartingToday > 0 || pendingEvaluations > 0 || pendingCertificates > 0 || (role !== 'PARTICIPANT')) && (
                 <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/60 to-white p-6 shadow-md">
                     <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
@@ -1521,31 +1852,45 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             )}
 
-            {/* Row 3 — Activity Feed (70%) + Performance (30%) */}
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-                <div className="lg:col-span-7">
-                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
-                            <Activity className="w-5 h-5 text-slate-500" />
-                            Recent Activity
+            {/* Row 4 — Drills per month (bar chart) */}
+            {role !== 'PARTICIPANT' && (
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                            <BarChart3 className="w-5 h-5 text-emerald-600" />
+                            Drills Per Month
                         </h2>
-                        <ul className="space-y-3">
-                            {recentActivity.length > 0 ? (
-                                recentActivity.map((item, i) => (
-                                    <li key={i}>
-                                        <a href={item.link || '#'} className="text-sm text-slate-700 hover:text-emerald-600 flex items-center gap-2">
-                                            <span className="text-slate-400">•</span>
-                                            {item.label}
-                                        </a>
-                                    </li>
-                                ))
-                            ) : (
-                                <li className="text-sm text-slate-500">No recent activity yet.</li>
-                            )}
-                        </ul>
+                        <span className="text-xs text-slate-500">Current year</span>
                     </div>
+                    {drillsPerMonthChartData ? (
+                        <div className="h-72">
+                            <Bar data={drillsPerMonthChartData} options={barOptions} />
+                        </div>
+                    ) : (
+                        <p className="text-sm text-slate-500">No drills recorded for the current year.</p>
+                    )}
                 </div>
-                <div className="lg:col-span-3">
+            )}
+
+            {/* Row 5 — Performance trend (line chart) + numeric overview (LGU admin only) */}
+            {role !== 'PARTICIPANT' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                                Performance Trend
+                            </h2>
+                            <span className="text-xs text-slate-500">Average score over time</span>
+                        </div>
+                        {performanceTrendChartData ? (
+                            <div className="h-72">
+                                <Line data={performanceTrendChartData} options={lineOptions} />
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-500">No submitted evaluation scores yet.</p>
+                        )}
+                    </div>
                     <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                         <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
                             <BarChart3 className="w-5 h-5 text-slate-500" />
@@ -1568,9 +1913,55 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                         <p className="text-xs text-slate-400 mt-3">View details on Evaluations page</p>
                     </div>
                 </div>
+            )}
+
+            {/* Row 6 — Activity + Upcoming events (visual overview) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
+                            <Activity className="w-5 h-5 text-slate-500" />
+                            Recent Activity
+                        </h2>
+                        <ul className="space-y-3">
+                            {recentActivity.length > 0 ? (
+                                recentActivity.map((item, i) => (
+                                    <li key={i}>
+                                        <a href={item.link || '#'} className="text-sm text-slate-700 hover:text-emerald-600 flex items-center gap-2">
+                                            <span className="text-slate-400">•</span>
+                                            {item.label}
+                                        </a>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="text-sm text-slate-500">No recent activity yet.</li>
+                            )}
+                        </ul>
+                    </div>
+                </div>
+                <div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
+                            <Calendar className="w-5 h-5 text-slate-500" />
+                            Upcoming Events
+                        </h2>
+                        <div className="space-y-2">
+                            {upcomingEventList.length > 0 ? (
+                                upcomingEventList.slice(0, 5).map((e) => (
+                                    <a key={e.id} href={`/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
+                                        <span className="font-medium text-slate-900">{e.title}</span>
+                                        <span className="ml-2 text-slate-500">{formatDate(eventDateStr(e))}</span>
+                                    </a>
+                                ))
+                            ) : (
+                                <p className="text-sm text-slate-500">No upcoming events this month.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Row 4 — Quick Actions 2x3 icon grid */}
+            {/* Row 7 — Quick Actions 2x3 icon grid */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                 <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -12423,6 +12814,926 @@ function BarangayProfileList({ profiles = [] }) {
                 </div>
             </div>
         </div>
+    );
+}
+
+// Drill History Reports page
+function DrillHistoryReportsPage({ drills }) {
+    const [search, setSearch] = React.useState('');
+    const [statusFilter, setStatusFilter] = React.useState('');
+    const [disasterFilter, setDisasterFilter] = React.useState('');
+    const [facilitatorFilter, setFacilitatorFilter] = React.useState('');
+    const [dateFrom, setDateFrom] = React.useState('');
+    const [dateTo, setDateTo] = React.useState('');
+    const [expandedId, setExpandedId] = React.useState(null);
+
+    const safeDrills = Array.isArray(drills) ? drills : [];
+
+    // Derived summary stats from completed events
+    const totalDrills = safeDrills.length;
+    const participantsTrained = safeDrills.reduce(
+        (sum, d) =>
+            sum +
+            (d.approved_registrations_count ??
+                d.registrations_count ??
+                0),
+        0,
+    );
+
+    // Most common disaster type (by SimulationEvent.disaster_type)
+    let mostCommonDisasterType = '—';
+    if (safeDrills.length > 0) {
+        const counts = {};
+        safeDrills.forEach((d) => {
+            const t = (d.disaster_type || '').trim();
+            if (!t) return;
+            counts[t] = (counts[t] || 0) + 1;
+        });
+        const entries = Object.entries(counts);
+        if (entries.length > 0) {
+            entries.sort((a, b) => b[1] - a[1]);
+            mostCommonDisasterType = entries[0][0];
+        }
+    }
+
+    // Average overall score: from derived_average_score if present
+    let averageOverallScore = '—';
+    const eventsWithScore = safeDrills.filter(
+        (d) =>
+            typeof d.derived_average_score === 'number' &&
+            !Number.isNaN(d.derived_average_score),
+    );
+    if (eventsWithScore.length > 0) {
+        const sum = eventsWithScore.reduce(
+            (acc, d) => acc + d.derived_average_score,
+            0,
+        );
+        averageOverallScore = `${(sum / eventsWithScore.length).toFixed(1)}%`;
+    }
+
+    const filteredDrills = safeDrills.filter((event) => {
+        const q = search.trim().toLowerCase();
+        const matchesSearch =
+            !q ||
+            (event.title || '').toLowerCase().includes(q) ||
+            (event.scenario?.title || '').toLowerCase().includes(q);
+
+        const matchesStatus = !statusFilter || event.status === statusFilter;
+        // disasterFilter / facilitatorFilter are placeholders for now
+
+        return matchesSearch && matchesStatus;
+    });
+
+    const handleExport = (format) => {
+        console.log('Export drill history as', format);
+    };
+
+    const handleRowClick = (id) => {
+        setExpandedId((prev) => (prev === id ? null : id));
+    };
+
+    const expandedDrill = safeDrills.find((event) => event.id === expandedId) || null;
+
+    return (
+        <div className="space-y-6 w-full">
+            {/* Header */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                            Drill History Reports
+                        </h1>
+                        <p className="mt-1 text-sm text-slate-600 max-w-xl">
+                            View past simulation events, performance results, and generate formal reports.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+                            <span className="text-xs text-slate-600 mr-1">Date range</span>
+                            <input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                            <span className="text-xs text-slate-400">→</span>
+                            <input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => handleExport('pdf')}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Export (PDF)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleExport('csv')}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-sm"
+                        >
+                            <Download className="w-4 h-4" />
+                            Export (CSV)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Stats cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        Total drills conducted
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900">
+                        {totalDrills || '—'}
+                    </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        Average overall score
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900">
+                        {averageOverallScore}
+                    </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        Participants trained
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900">
+                        {participantsTrained || '—'}
+                    </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        Most common disaster type
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                        {mostCommonDisasterType}
+                    </p>
+                </div>
+            </div>
+
+            {/* Filters panel */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search drills by event name or scenario…"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    >
+                        <option value="">All Status</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Interrupted">Interrupted</option>
+                    </select>
+                    <select
+                        value={disasterFilter}
+                        onChange={(e) => setDisasterFilter(e.target.value)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    >
+                        <option value="">All Disasters</option>
+                        <option value="Earthquake">Earthquake</option>
+                        <option value="Fire">Fire</option>
+                        <option value="Flood">Flood</option>
+                    </select>
+                    <select
+                        value={facilitatorFilter}
+                        onChange={(e) => setFacilitatorFilter(e.target.value)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    >
+                        <option value="">All Facilitators</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* History table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-800">
+                        Drill History
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => handleExport('summary')}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                        <FileText className="w-4 h-4" />
+                        Generate summary report
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Event Name</th>
+                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Scenario</th>
+                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Date</th>
+                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Location</th>
+                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Participants</th>
+                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Avg Score</th>
+                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Status</th>
+                                <th className="text-right px-4 py-3 font-semibold text-slate-700">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredDrills.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">
+                                        No drills match your filters.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredDrills.map((drill) => (
+                                    <tr
+                                        key={drill.id}
+                                        className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
+                                        onClick={() => handleRowClick(drill.id)}
+                                    >
+                                        <td className="px-4 py-3 font-medium text-slate-900">
+                                            {drill.title || 'Untitled event'}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">
+                                            {drill.scenario?.title || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">
+                                            {formatDate(drill.event_date)} {drill.start_time ? `• ${formatTime(drill.start_time)}` : ''}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">
+                                            {drill.location || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">
+                                            {drill.approved_registrations_count ?? drill.registrations_count ?? '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">
+                                            {typeof drill.derived_average_score === 'number'
+                                                ? `${drill.derived_average_score.toFixed(1)}%`
+                                                : '—'}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                {drill.status}
+                                            </span>
+                                        </td>
+                                        <td
+                                            className="px-4 py-3 text-right"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <div className="inline-flex items-center gap-1">
+                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="View Report">
+                                                    <FileText className="w-4 h-4" />
+                                                </button>
+                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="View Attendance">
+                                                    <Users className="w-4 h-4" />
+                                                </button>
+                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="Download AAR">
+                                                    <Download className="w-4 h-4" />
+                                                </button>
+                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="View Timeline">
+                                                    <Calendar className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Expanded drill detail view */} 
+            {expandedDrill && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-6 md:p-8">
+                    <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-4">
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-900">
+                                {expandedDrill.name}
+                            </h2>
+                            <p className="text-sm text-slate-500">
+                                Scenario: {expandedDrill.scenario}
+                            </p>
+                        </div>
+                        <div className="text-sm text-slate-500">
+                            <div><span className="font-semibold text-slate-700">Duration:</span> —</div>
+                            <div><span className="font-semibold text-slate-700">Facilitator:</span> —</div>
+                            <div><span className="font-semibold text-slate-700">Category:</span> —</div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
+                                    Performance Summary
+                                </h3>
+                                <p className="text-slate-700">
+                                    Total participants, average score, pass rate, completion rate.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
+                                    Evaluation Summary
+                                </h3>
+                                <p className="text-slate-700">
+                                    Strengths, weaknesses, and evaluator notes.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
+                                    Resources Used
+                                </h3>
+                                <p className="text-slate-700">
+                                    Equipment list, damaged items, missing items, resource shortages.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
+                                    Timeline Log
+                                </h3>
+                                <p className="text-slate-700">
+                                    Chronological activity log for this drill.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// After-Action Review (AAR) — standard layout with tabs
+const AAR_TABS = [
+    { id: 'summary', label: 'Summary', icon: FileText },
+    { id: 'objectives', label: 'Objectives', icon: Target },
+    { id: 'scores', label: 'Scores', icon: BarChart3 },
+    { id: 'timeline', label: 'Timeline', icon: Calendar },
+    { id: 'issues', label: 'Issues', icon: AlertTriangle },
+    { id: 'recommendations', label: 'Recommendations', icon: ClipboardList },
+    { id: 'resources', label: 'Resources', icon: Copy },
+    { id: 'attendance', label: 'Attendance', icon: Users },
+    { id: 'attachments', label: 'Attachments', icon: FileText },
+];
+
+function AfterActionReviewPage() {
+    const [activeTab, setActiveTab] = React.useState('summary');
+
+    const handleGeneratePdf = () => {
+        window.print();
+    };
+
+    return (
+        <div className="space-y-6 w-full">
+            {/* Hero header */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-6 md:p-8 transition-all duration-250">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
+                            <FileText className="w-9 h-9 text-emerald-600" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                                After-Action Review (AAR)
+                            </h1>
+                            <p className="mt-1 text-sm text-slate-600 max-w-xl">
+                                Standard layout for post-drill reports: executive summary, objectives vs results, performance scores, timeline, issues, and recommendations.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                        <button
+                            type="button"
+                            onClick={handleGeneratePdf}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+                        >
+                            <Printer className="w-5 h-5" />
+                            Generate Official AAR Report (PDF)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Report Identity (Header Section) */}
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6">
+                <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wide mb-4">Report Identity</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div><span className="text-slate-500">Event Title</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Scenario Name</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Disaster Type</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Date &amp; Time</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Location</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Facilitator(s)</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Evaluator(s)</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Report Generated</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Prepared by</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
+                {AAR_TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'}`}
+                        >
+                            <Icon className="w-4 h-4" />
+                            {tab.label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Tab content */}
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
+                {activeTab === 'summary' && (
+                    <div className="space-y-6">
+                        <h2 className="text-lg font-semibold text-slate-900">Executive Summary</h2>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                            Purpose of the exercise, overall performance result, major strengths, and major weaknesses. Quick overview for decision makers.
+                        </p>
+                        <h3 className="text-sm font-semibold text-slate-800">Exercise Overview</h3>
+                        <p className="text-sm text-slate-600">Scenario description, objectives, participants, agencies/teams present, and event phases conducted.</p>
+                    </div>
+                )}
+                {activeTab === 'objectives' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Objectives vs Results</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Objective</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Expected Outcome</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Actual Result</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3"><span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">Achieved / Partially / Not Achieved</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'scores' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Performance Evaluation Summary</h2>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Participants evaluated</div><div className="text-xl font-bold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Average score</div><div className="text-xl font-bold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Highest / Lowest</div><div className="text-xl font-bold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Overall rating</div><div className="text-xl font-bold text-slate-900">—</div></div>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'timeline' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Incident Timeline Log</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700 w-24">Time</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Event</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'issues' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Strengths Observed</h2>
+                        <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">—</ul>
+                        <h2 className="text-lg font-semibold text-slate-900">Areas for Improvement</h2>
+                        <p className="text-sm text-slate-600">Description, impact, and recommended fix per issue.</p>
+                    </div>
+                )}
+                {activeTab === 'recommendations' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Recommendations &amp; Action Plan</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Issue</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Recommendation</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Responsible</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Deadline</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'resources' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Resource Utilization Summary</h2>
+                        <p className="text-sm text-slate-600">Equipment used, damaged, missing items, and shortages.</p>
+                    </div>
+                )}
+                {activeTab === 'attendance' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Attendance &amp; Participation Summary</h2>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Registered</div><div className="text-lg font-semibold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Present</div><div className="text-lg font-semibold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Late / Absent</div><div className="text-lg font-semibold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Completion rate</div><div className="text-lg font-semibold text-slate-900">—</div></div>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'attachments' && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Attachments</h2>
+                        <p className="text-sm text-slate-600">Photos, videos, documents, maps, evaluation sheets. Upload and manage attachments here.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function ProfilePage({ user }) {
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const safeUser = user || {};
+    const initials = (safeUser.name || 'User')
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase?.() || '')
+        .join('');
+
+    return (
+        <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+            <section className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 border border-slate-200/80 shadow-xl p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg font-semibold">
+                                {initials || 'U'}
+                            </span>
+                        </div>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                                My Profile
+                            </h1>
+                            <p className="mt-1 text-sm text-slate-600 max-w-xl">
+                                Manage your account information, contact details, and security settings from a single place.
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    Signed in as <span className="font-semibold text-slate-800">{safeUser.email || '—'}</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
+                                    Role:{' '}
+                                    <span className="font-semibold text-slate-800 text-[0.7rem] uppercase tracking-wide">
+                                        {safeUser.role || 'User'}
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-start md:items-end gap-3">
+                        <a href="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">
+                            <span className="text-base">←</span>
+                            Back to dashboard
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid gap-6 lg:grid-cols-[240px,minmax(0,1fr)] items-start">
+                <aside className="bg-white rounded-2xl shadow-md border border-slate-200 p-4 space-y-4">
+                    <div>
+                        <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-2">
+                            Manage Profile
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                            Switch between profile details, security, and contact information.
+                        </p>
+                    </div>
+                    <nav className="space-y-1 text-sm">
+                        <a href="#profile-information" className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900 text-white font-medium shadow-sm">
+                            <span>Profile Information</span>
+                            <span className="text-[10px] uppercase tracking-wide opacity-80">Main</span>
+                        </a>
+                        <a href="#security" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
+                            Security (Change Password)
+                        </a>
+                        <a href="#email-phone" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
+                            Email &amp; Phone
+                        </a>
+                        <a href="#activity-logs" className="block px-3 py-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
+                            Activity Logs <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-600">Soon</span>
+                        </a>
+                    </nav>
+                </aside>
+
+                <div className="space-y-6">
+                    <section id="profile-information" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl sm:text-2xl font-semibold shadow-md">
+                                {initials || 'U'}
+                            </div>
+                            <div className="space-y-1">
+                                <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
+                                <p className="text-xs text-slate-500">
+                                    Update your name and address details. Your contact information is shown to administrators for coordination.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="/profile" className="space-y-4 max-w-xl">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="_method" value="PUT" />
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
+                                    <label htmlFor="name" className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Full Name
+                                    </label>
+                                    <input
+                                        id="name"
+                                        name="name"
+                                        type="text"
+                                        defaultValue={safeUser.name || ''}
+                                        required
+                                        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+
+                                <div className="sm:col-span-2">
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Email
+                                    </label>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                                        <span className="font-medium text-slate-900">{safeUser.email || 'Not set'}</span>
+                                        {safeUser.email_verified_at ? (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                Verified
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                                Unverified
+                                            </span>
+                                        )}
+                                        {safeUser.pending_email && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                                                Pending: {safeUser.pending_email}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Use the Email &amp; Phone section to request changes and manage verification.
+                                    </p>
+                                </div>
+
+                                <div className="sm:col-span-2">
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Phone Number
+                                    </label>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                                        <span className="font-medium text-slate-900">{safeUser.phone || 'Not provided'}</span>
+                                        {safeUser.phone_verified_at && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                Verified
+                                            </span>
+                                        )}
+                                        {safeUser.pending_phone && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                                                Pending: {safeUser.pending_phone}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Phone changes are confirmed via an email sent to your current address.
+                                    </p>
+                                </div>
+
+                                <div className="sm:col-span-2">
+                                    <label htmlFor="street" className="block text-xs font-semibold text-slate-600 mb-1">
+                                        Address
+                                    </label>
+                                    <input
+                                        id="street"
+                                        name="street"
+                                        type="text"
+                                        defaultValue={safeUser.street || ''}
+                                        placeholder="Block 5 Lot 10, Barangay Commonwealth, Quezon City"
+                                        required
+                                        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    Save changes
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section id="security" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 className="text-sm font-semibold text-slate-900">Security</h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Change your password to keep your account secure.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="/profile/password" className="space-y-3 max-w-md">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="current_password">
+                                    Current Password
+                                </label>
+                                <input
+                                    id="current_password"
+                                    name="current_password"
+                                    type="password"
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="password">
+                                    New Password
+                                </label>
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Minimum 8 characters, with at least one uppercase letter, one lowercase letter, and one number.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="password_confirmation">
+                                    Confirm New Password
+                                </label>
+                                <input
+                                    id="password_confirmation"
+                                    name="password_confirmation"
+                                    type="password"
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+
+                            <div className="pt-2 flex justify-end">
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
+                                >
+                                    Update password
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section id="email-phone" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 className="text-sm font-semibold text-slate-900">
+                                    Email &amp; Phone
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Request changes to your primary email and phone number. All changes are verified before they go live.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <form method="POST" action="/profile/email" className="space-y-2">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="new_email">
+                                    Change Email Address
+                                </label>
+                                <div className="grid gap-1 sm:gap-2 sm:grid-cols-[minmax(0,1.7fr)_auto] items-center">
+                                    <div>
+                                        <input
+                                            id="new_email"
+                                            name="new_email"
+                                            type="email"
+                                            placeholder="you@example.com"
+                                            className="w-full rounded-lg border border-slate-300 px-3 text-sm h-11 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="sm:pl-2">
+                                        <button
+                                            type="submit"
+                                            className="inline-flex items-center justify-center px-4 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold whitespace-nowrap"
+                                        >
+                                            Send verification link
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            {safeUser.pending_email && (
+                                <form method="POST" action="/profile/email/resend" className="space-y-1">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <p className="text-xs text-slate-500">
+                                        We have a pending email change to <strong>{safeUser.pending_email}</strong>. If you did not receive the verification email, you can resend it.
+                                    </p>
+                                    <button
+                                        type="submit"
+                                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[0.7rem] font-semibold"
+                                    >
+                                        Resend verification email
+                                    </button>
+                                </form>
+                            )}
+
+                            <form method="POST" action="/profile/phone" className="space-y-2">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="new_phone">
+                                    Change Phone Number
+                                </label>
+                                <div className="grid gap-1 sm:gap-2 sm:grid-cols-[minmax(0,1.7fr)_auto] items-center">
+                                    <div>
+                                        <input
+                                            id="new_phone"
+                                            name="new_phone"
+                                            type="text"
+                                            placeholder="+63 9XXXXXXXXX"
+                                            className="w-full rounded-lg border border-slate-300 px-3 text-sm h-11 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="sm:pl-2">
+                                        <button
+                                            type="submit"
+                                            className="inline-flex items-center justify-center px-4 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold whitespace-nowrap"
+                                        >
+                                            Send confirmation email
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section id="activity-logs" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-3">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 className="text-sm font-semibold text-slate-900">
+                                    Activity Logs
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    In a future update, this section will show your recent sign-ins and important security events.
+                                </p>
+                            </div>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                Coming soon
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            For now, administrators can review detailed account activity from the Audit Logs module.
+                        </p>
+                    </section>
+                </div>
+            </section>
+        </main>
     );
 }
 

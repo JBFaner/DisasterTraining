@@ -17,6 +17,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\EvaluationController;
+use App\Http\Controllers\AfterActionReviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\UserMonitoringController;
@@ -272,6 +273,14 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/resources/{resource}/maintenance-logs', [ResourceController::class, 'maintenanceLogs'])->name('resources.maintenance.logs');
     Route::get('/resources/export/csv', [ResourceController::class, 'export'])->name('resources.export');
     Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('resources.destroy');
+
+    // After-Action Review (AAR)
+    Route::get('/after-action-review', [\App\Http\Controllers\AfterActionReviewController::class, 'index'])
+        ->name('after_action_review.index');
+
+    // Drill History Reports
+    Route::get('/drill-history-reports', [\App\Http\Controllers\DrillHistoryReportsController::class, 'index'])
+        ->name('drill_history_reports.index');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
