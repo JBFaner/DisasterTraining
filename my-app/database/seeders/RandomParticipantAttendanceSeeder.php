@@ -16,9 +16,13 @@ class RandomParticipantAttendanceSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
-            // Prefer event ID 3 so /simulation-events/3/evaluation has plenty of records
-            $event = SimulationEvent::find(3);
+            // Prefer a completed event so the completed drill detail page is populated
+            $event = SimulationEvent::where('status', 'completed')
+                ->orderBy('id')
+                ->first();
+
             if (! $event) {
+                // Fallback to any existing event if none are completed yet
                 $event = SimulationEvent::whereIn('status', ['published', 'ongoing', 'completed'])->first();
             }
 

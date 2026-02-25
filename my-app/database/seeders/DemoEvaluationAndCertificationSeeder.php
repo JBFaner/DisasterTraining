@@ -22,9 +22,13 @@ class DemoEvaluationAndCertificationSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
-            // Prefer event ID 3 so /simulation-events/3/evaluation shows data
-            $event = SimulationEvent::find(3);
+            // Prefer a completed event so its evaluation & certification views are populated
+            $event = SimulationEvent::where('status', 'completed')
+                ->orderBy('id')
+                ->first();
+
             if (! $event) {
+                // Fallback to any existing event if none are completed yet
                 $event = SimulationEvent::whereIn('status', ['published', 'ongoing', 'completed'])->first();
             }
 
