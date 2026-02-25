@@ -195,7 +195,7 @@ class DashboardController extends Controller
 
             $perMonth = ParticipantEvaluation::whereNotNull('submitted_at')
                 ->whereYear('submitted_at', $year)
-                ->selectRaw('MONTH(submitted_at) as month, AVG(average_score) as avg_score')
+                ->selectRaw("CAST(strftime('%m', submitted_at) AS INTEGER) as month, AVG(average_score) as avg_score")
                 ->groupBy('month')
                 ->orderBy('month')
                 ->get();
