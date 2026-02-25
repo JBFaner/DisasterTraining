@@ -15,11 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // You can add additional seeders here as needed.
         $this->call([
             AdminUserSeeder::class,
             RolesSeeder::class,
             PermissionsSeeder::class,
+            CertificateTemplateSeeder::class,
             TrainingModuleSeeder::class,
             ScenarioSeeder::class,
             SimulationEventSeeder::class,
@@ -28,6 +28,8 @@ class DatabaseSeeder extends Seeder
             ParticipantSeeder::class,
             EdrillParticipantSeeder::class,
             RegisteredParticipantForEvaluationSeeder::class,
+            DemoEvaluationAndCertificationSeeder::class,
+            RandomParticipantAttendanceSeeder::class,
         ]);
     }
 }

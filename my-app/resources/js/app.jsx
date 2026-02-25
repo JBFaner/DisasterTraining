@@ -4167,8 +4167,47 @@ function TrainingModuleDetail({ module }) {
                                             action={`/training-modules/${module.id}/lessons/${lesson.id}/materials`}
                                             encType="multipart/form-data"
                                             className="space-y-2"
+                                            onSubmit={async (e) => {
+                                                const form = e.currentTarget;
+                                                const fileInput = form.querySelector('input[name="file"]');
+                                                const urlInput = form.querySelector('input[name="url"]');
+                                                const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                                                const hasUrl = urlInput && urlInput.value.trim() !== '';
+
+                                                // If no file is attached, let the backend handle validation (no storage choice needed)
+                                                if (!hasFile) {
+                                                    return;
+                                                }
+
+                                                e.preventDefault();
+
+                                                const result = await Swal.fire({
+                                                    title: 'Where do you want to store this file?',
+                                                    text: 'Use Cloudinary for large videos/images to reduce load on the server, or local storage for smaller documents.',
+                                                    icon: 'question',
+                                                    showCancelButton: true,
+                                                    showDenyButton: true,
+                                                    confirmButtonText: 'Cloudinary',
+                                                    denyButtonText: 'Local storage',
+                                                    cancelButtonText: 'Cancel',
+                                                    confirmButtonColor: '#16a34a',
+                                                    denyButtonColor: '#64748b',
+                                                });
+
+                                                if (result.isDismissed) {
+                                                    return;
+                                                }
+
+                                                const storageInput = form.querySelector('input[name="storage_target"]');
+                                                if (storageInput) {
+                                                    storageInput.value = result.isConfirmed ? 'cloudinary' : 'local';
+                                                }
+
+                                                form.submit();
+                                            }}
                                         >
                                             <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="storage_target" value="auto" />
                                             <select name="type" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500">
                                                 <option value="PDF">PDF</option>
                                                 <option value="Video">Video</option>
@@ -6215,14 +6254,15 @@ function SimulationEventsTable({ events, role }) {
             draft: 'bg-slate-100 text-slate-600',
             archived: 'bg-amber-100 text-amber-700',
             cancelled: 'bg-rose-100 text-rose-700',
-            ended: 'bg-slate-100 text-slate-600',
+            ended: 'bg-rose-100 text-rose-700',
         };
         return map[status] || 'bg-slate-100 text-slate-600';
     };
 
     const eventStatusStyle = (status) => {
         if (status === 'published' || status === 'ongoing') return 'text-emerald-600';
-        if (status === 'completed' || status === 'ended') return 'text-slate-600';
+        if (status === 'completed') return 'text-blue-600';
+        if (status === 'ended') return 'text-rose-600';
         if (status === 'draft') return 'text-blue-600';
         if (status === 'archived') return 'text-slate-500';
         if (status === 'cancelled') return 'text-rose-600';
@@ -6230,7 +6270,8 @@ function SimulationEventsTable({ events, role }) {
     };
     const eventStatusDotStyle = (status) => {
         if (status === 'published' || status === 'ongoing') return 'bg-emerald-500';
-        if (status === 'completed' || status === 'ended') return 'bg-slate-400';
+        if (status === 'completed') return 'bg-blue-500';
+        if (status === 'ended') return 'bg-rose-500';
         if (status === 'draft') return 'bg-blue-500';
         if (status === 'archived') return 'bg-slate-400';
         if (status === 'cancelled') return 'bg-rose-500';
@@ -8742,7 +8783,18 @@ function CertificationModule({
                     <div className="flex flex-wrap gap-3 shrink-0">
                         <button
                             type="button"
-                            onClick={() => { setIssueRow(null); setIssueModalOpen(true); }}
+                            onClick={() => {
+                                if (filteredEligible.length === 0) {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'No eligible participants',
+                                        text: 'There are currently no participants eligible for certification based on your filters.',
+                                    });
+                                    return;
+                                }
+                                setIssueRow(filteredEligible[0]);
+                                setIssueModalOpen(true);
+                            }}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
                         >
                             <Plus className="w-5 h-5" />
@@ -10359,6 +10411,19 @@ function ParticipantSelfAttendance({ participant }) {
             </div>
         </div>
     );
+}
+
+function getRegistrationStatusColor(status) {
+    if (status === 'approved') {
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    }
+    if (status === 'pending') {
+        return 'bg-amber-50 text-amber-700 border border-amber-200';
+    }
+    if (status === 'rejected') {
+        return 'bg-rose-50 text-rose-700 border border-rose-200';
+    }
+    return 'bg-slate-100 text-slate-600 border border-slate-200';
 }
 
 function EventRegistrationsTable({ event, registrations = [] }) {

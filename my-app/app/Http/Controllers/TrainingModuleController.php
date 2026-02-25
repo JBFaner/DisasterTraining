@@ -384,6 +384,7 @@ class TrainingModuleController extends Controller
             'url' => ['nullable', 'url', 'max:2048'],
             // Allow larger files; actual limit is controlled by PHP upload_max_filesize/post_max_size
             'file' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx,jpg,jpeg,png,gif,mp4,mov,avi'],
+            'storage_target' => ['nullable', 'string', 'in:auto,local,cloudinary'],
         ]);
 
         if (! $request->hasFile('file') && empty($data['url'])) {
@@ -395,6 +396,7 @@ class TrainingModuleController extends Controller
         }
 
         $storedPath = null;
+        $storageTarget = $data['storage_target'] ?? 'auto';
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
@@ -403,10 +405,22 @@ class TrainingModuleController extends Controller
 
             $isVideo = ($mime && str_starts_with($mime, 'video/'))
                 || in_array($extension, ['mp4', 'mov', 'avi'], true);
+            $isImage = ($mime && str_starts_with($mime, 'image/'))
+                || in_array($extension, ['jpg', 'jpeg', 'png', 'gif'], true);
 
-            if ($isVideo) {
+            $shouldUseCloudinary = false;
+
+            if ($storageTarget === 'cloudinary' && ($isVideo || $isImage)) {
+                $shouldUseCloudinary = true;
+            } elseif ($storageTarget === 'local') {
+                $shouldUseCloudinary = false;
+            } else {
+                // auto: preserve previous behaviour (videos -> Cloudinary, others -> local)
+                $shouldUseCloudinary = $isVideo;
+            }
+
+            if ($shouldUseCloudinary && ($isVideo || $isImage)) {
                 try {
-                    // Videos MUST be stored in Cloudinary (no local fallback)
                     $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: null;
                     if (! $cloudinaryUrl) {
                         return redirect()->back()
@@ -440,14 +454,16 @@ class TrainingModuleController extends Controller
                         ],
                     ]);
 
+                    $resourceType = $isVideo ? 'video' : 'image';
+
                     $uploadResult = $cloudinary->uploadApi()->upload($file->getRealPath(), [
-                        'resource_type' => 'video',
+                        'resource_type' => $resourceType,
                         'folder' => 'lesson-materials',
                     ]);
 
                     $storedPath = $uploadResult['secure_url'] ?? $uploadResult['url'] ?? null;
                     if (! $storedPath) {
-                        throw new \Exception('Cloudinary did not return a URL for the uploaded video.');
+                        throw new \Exception('Cloudinary did not return a URL for the uploaded file.');
                     }
                 } catch (\Throwable $e) {
                     return redirect()->back()
@@ -457,7 +473,7 @@ class TrainingModuleController extends Controller
                         ->withInput();
                 }
             } else {
-                // Images / documents continue to use local storage
+                // Local storage
                 $relativePath = $file->store('lesson-materials', 'public');
                 $storedPath = Storage::url($relativePath);
             }

@@ -69,7 +69,10 @@ class ResourceSeeder extends Seeder
         ];
 
         foreach ($resources as $resource) {
-            Resource::create($resource);
+            Resource::firstOrCreate(
+                ['serial_number' => $resource['serial_number']],
+                $resource
+            );
         }
     }
 }
