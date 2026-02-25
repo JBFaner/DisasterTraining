@@ -5863,14 +5863,15 @@ function SimulationEventsTable({ events, role }) {
             draft: 'bg-slate-100 text-slate-600',
             archived: 'bg-amber-100 text-amber-700',
             cancelled: 'bg-rose-100 text-rose-700',
-            ended: 'bg-slate-100 text-slate-600',
+            ended: 'bg-rose-100 text-rose-700',
         };
         return map[status] || 'bg-slate-100 text-slate-600';
     };
 
     const eventStatusStyle = (status) => {
         if (status === 'published' || status === 'ongoing') return 'text-emerald-600';
-        if (status === 'completed' || status === 'ended') return 'text-slate-600';
+        if (status === 'completed') return 'text-slate-600';
+        if (status === 'ended') return 'text-rose-600';
         if (status === 'draft') return 'text-blue-600';
         if (status === 'archived') return 'text-slate-500';
         if (status === 'cancelled') return 'text-rose-600';
@@ -5878,7 +5879,8 @@ function SimulationEventsTable({ events, role }) {
     };
     const eventStatusDotStyle = (status) => {
         if (status === 'published' || status === 'ongoing') return 'bg-emerald-500';
-        if (status === 'completed' || status === 'ended') return 'bg-slate-400';
+        if (status === 'completed') return 'bg-slate-400';
+        if (status === 'ended') return 'bg-rose-500';
         if (status === 'draft') return 'bg-blue-500';
         if (status === 'archived') return 'bg-slate-400';
         if (status === 'cancelled') return 'bg-rose-500';
@@ -8390,7 +8392,18 @@ function CertificationModule({
                     <div className="flex flex-wrap gap-3 shrink-0">
                         <button
                             type="button"
-                            onClick={() => { setIssueRow(null); setIssueModalOpen(true); }}
+                            onClick={() => {
+                                if (filteredEligible.length === 0) {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'No eligible participants',
+                                        text: 'There are currently no participants eligible for certification based on your filters.',
+                                    });
+                                    return;
+                                }
+                                setIssueRow(filteredEligible[0]);
+                                setIssueModalOpen(true);
+                            }}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
                         >
                             <Plus className="w-5 h-5" />
