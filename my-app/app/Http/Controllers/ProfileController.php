@@ -16,7 +16,10 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        return view('profile', [
+        // Render within the main React-powered admin shell so the sidebar
+        // and top header remain consistent with other modules.
+        return view('app', [
+            'section' => 'profile',
             'user' => $user,
         ]);
     }

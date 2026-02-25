@@ -142,12 +142,122 @@ class DashboardController extends Controller
             'attendance_rate' => $attendanceRate,
         ];
 
+        $dashboardCharts = null;
+
+        if ($user->role !== 'PARTICIPANT') {
+            // Disaster distribution (by SimulationEvent.disaster_type)
+            $disasterCounts = $events
+                ->filter(function ($event) {
+                    return ! empty($event->disaster_type);
+                })
+                ->groupBy('disaster_type')
+                ->map->count()
+                ->sortDesc();
+
+            $disasterDistribution = [
+                'labels' => $disasterCounts->keys()->values()->all(),
+                'data' => $disasterCounts->values()->all(),
+            ];
+
+            // Drills conducted per month (current year, by event_date)
+            $year = $today->year;
+            $drillsPerMonth = array_fill(1, 12, 0);
+            foreach ($events as $event) {
+                if (! $event->event_date) {
+                    continue;
+                }
+
+                $date = $event->event_date instanceof Carbon
+                    ? $event->event_date
+                    : Carbon::parse($event->event_date);
+
+                if ((int) $date->year !== $year) {
+                    continue;
+                }
+
+                $month = (int) $date->month;
+                if ($month >= 1 && $month <= 12) {
+                    $drillsPerMonth[$month]++;
+                }
+            }
+
+            $monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            $drillsPerMonthChart = [
+                'labels' => $monthLabels,
+                'data' => array_values($drillsPerMonth),
+            ];
+
+            // Performance trend: average score per month (current year, from submitted participant evaluations)
+            $performanceTrend = [
+                'labels' => $monthLabels,
+                'data' => array_fill(0, 12, null),
+            ];
+
+            $perMonth = ParticipantEvaluation::whereNotNull('submitted_at')
+                ->whereYear('submitted_at', $year)
+                ->selectRaw('MONTH(submitted_at) as month, AVG(average_score) as avg_score')
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get();
+
+            foreach ($perMonth as $row) {
+                $monthIndex = (int) $row->month - 1;
+                if ($monthIndex >= 0 && $monthIndex < 12) {
+                    $performanceTrend['data'][$monthIndex] = round((float) $row->avg_score, 1);
+                }
+            }
+
+            // Evaluation status overview donut – align with participant view semantics
+            // Consider all drills that have an Evaluation record (not only completed),
+            // so in‑progress events also appear on the dashboard.
+            $evaluationEventIds = Evaluation::pluck('simulation_event_id');
+
+            $presentAttendances = Attendance::whereIn('simulation_event_id', $evaluationEventIds)
+                ->where('status', 'present')
+                ->get();
+
+            $evaluations = ParticipantEvaluation::whereHas('evaluation', function ($q) use ($evaluationEventIds) {
+                $q->whereIn('simulation_event_id', $evaluationEventIds);
+            })
+            ->get()
+            ->keyBy('attendance_id');
+
+            $evaluatedTotal = 0;
+            $notEvaluatedTotal = 0;
+
+            foreach ($presentAttendances as $attendance) {
+                $pe = $evaluations->get($attendance->id);
+
+                if ($pe && $pe->status === 'submitted') {
+                    $evaluatedTotal++;
+                } else {
+                    $notEvaluatedTotal++;
+                }
+            }
+
+            $evaluationStatusChart = [
+                'labels' => ['Evaluated', 'Not evaluated'],
+                'data' => [
+                    $evaluatedTotal,
+                    $notEvaluatedTotal,
+                ],
+            ];
+
+            $dashboardCharts = [
+                'disaster_distribution' => $disasterDistribution,
+                'drills_per_month' => $drillsPerMonthChart,
+                'performance_trend' => $performanceTrend,
+                'evaluation_status' => $evaluationStatusChart,
+            ];
+        }
+
         return view('app', [
             'section' => 'dashboard',
             'modules' => $modules,
             'events' => $events,
             'participants' => $participants,
             'dashboard_stats' => $dashboardStats,
+            'dashboard_charts' => $dashboardCharts,
         ]);
     }
 
