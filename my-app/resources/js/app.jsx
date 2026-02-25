@@ -3776,8 +3776,47 @@ function TrainingModuleDetail({ module }) {
                                             action={`/training-modules/${module.id}/lessons/${lesson.id}/materials`}
                                             encType="multipart/form-data"
                                             className="space-y-2"
+                                            onSubmit={async (e) => {
+                                                const form = e.currentTarget;
+                                                const fileInput = form.querySelector('input[name="file"]');
+                                                const urlInput = form.querySelector('input[name="url"]');
+                                                const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                                                const hasUrl = urlInput && urlInput.value.trim() !== '';
+
+                                                // If no file is attached, let the backend handle validation (no storage choice needed)
+                                                if (!hasFile) {
+                                                    return;
+                                                }
+
+                                                e.preventDefault();
+
+                                                const result = await Swal.fire({
+                                                    title: 'Where do you want to store this file?',
+                                                    text: 'Use Cloudinary for large videos/images to reduce load on the server, or local storage for smaller documents.',
+                                                    icon: 'question',
+                                                    showCancelButton: true,
+                                                    showDenyButton: true,
+                                                    confirmButtonText: 'Cloudinary',
+                                                    denyButtonText: 'Local storage',
+                                                    cancelButtonText: 'Cancel',
+                                                    confirmButtonColor: '#16a34a',
+                                                    denyButtonColor: '#64748b',
+                                                });
+
+                                                if (result.isDismissed) {
+                                                    return;
+                                                }
+
+                                                const storageInput = form.querySelector('input[name="storage_target"]');
+                                                if (storageInput) {
+                                                    storageInput.value = result.isConfirmed ? 'cloudinary' : 'local';
+                                                }
+
+                                                form.submit();
+                                            }}
                                         >
                                             <input type="hidden" name="_token" value={csrf} />
+                                            <input type="hidden" name="storage_target" value="auto" />
                                             <select name="type" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500">
                                                 <option value="PDF">PDF</option>
                                                 <option value="Video">Video</option>
