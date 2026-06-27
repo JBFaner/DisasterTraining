@@ -1,5 +1,14 @@
 import React from 'react';
-import { Search, Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, UserCircle } from 'lucide-react';
+import { Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, UserCircle } from 'lucide-react';
+import {
+    AdminPageShell,
+    AdminPageHeader,
+    AdminFilterBar,
+    AdminPrimaryButton,
+    AdminSearchInput,
+    adminSelectClass,
+    AdminContentCard,
+} from '../components/admin/AdminLayout';
 
 export function AdminUsersPage({ users = [], currentUser = null }) {
     const [search, setSearch] = React.useState('');
@@ -144,72 +153,53 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
 
 
     return (
-        <div className="space-y-6 w-full overflow-x-hidden">
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <UserCircle className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">User Management</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Manage LGU Admin, Trainer, and Staff accounts.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <a
-                            href="/admin/users/create"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Add User
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={UserCircle}
+                title="User Management"
+                description="Manage LGU Admin, Trainer, and Staff accounts."
+                actions={
+                    <AdminPrimaryButton href="/admin/users/create">
+                        <Plus className="w-4 h-4" />
+                        Add User
+                    </AdminPrimaryButton>
+                }
+            />
 
-            {/* Search & filters */}
-            <div className="flex flex-col md:flex-row md:items-center gap-3">
-                <div className="relative flex-1 min-w-[220px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search by name or email..."
+            <AdminFilterBar>
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <AdminSearchInput
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
+                        placeholder="Search by name or email..."
                     />
+                    <div className="flex items-center gap-2">
+                        <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className={adminSelectClass}
+                        >
+                            <option value="all">All Roles</option>
+                            <option value="LGU_ADMIN">LGU Admin</option>
+                            <option value="LGU_TRAINER">Trainer</option>
+                            <option value="STAFF">Staff</option>
+                        </select>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className={adminSelectClass}
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="disabled">Disabled</option>
+                            <option value="pending_verification">Pending Verification</option>
+                        </select>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-slate-400" />
-                    <select
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                        <option value="all">All Roles</option>
-                        <option value="LGU_ADMIN">LGU Admin</option>
-                        <option value="LGU_TRAINER">Trainer</option>
-                        <option value="STAFF">Staff</option>
-                    </select>
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="disabled">Disabled</option>
-                        <option value="pending_verification">Pending Verification</option>
-                    </select>
-                </div>
-            </div>
+            </AdminFilterBar>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden w-full">
+            <AdminContentCard className="w-full">
                 <div className="overflow-x-auto w-full">
                     <table className="w-full min-w-[900px] text-sm">
                         <thead>
@@ -293,8 +283,8 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+            </AdminContentCard>
+        </AdminPageShell>
     );
 }
 

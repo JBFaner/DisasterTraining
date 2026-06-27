@@ -13,6 +13,7 @@ class LessonCompletion extends Model
         'user_id',
         'training_module_id',
         'training_lesson_id',
+        'training_content_id',
         'completed_at',
     ];
 
@@ -29,6 +30,11 @@ class LessonCompletion extends Model
     public function lesson()
     {
         return $this->belongsTo(TrainingLesson::class, 'training_lesson_id');
+    }
+
+    public function content()
+    {
+        return $this->belongsTo(TrainingContent::class, 'training_content_id');
     }
 }
 

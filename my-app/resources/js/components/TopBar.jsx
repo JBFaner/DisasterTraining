@@ -152,10 +152,16 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                             <PanelLeft className="w-4 h-4 drop-shadow-sm" />
                         </button>
 
-                        {/* Module Name */}
-                        <h1 className="text-lg font-bold text-slate-900 truncate">
-                            {moduleName || 'Dashboard'}
-                        </h1>
+                        {/* Module Name — hidden on index pages that provide their own title */}
+                        {moduleName ? (
+                            <h1 className="text-lg font-bold text-slate-900 truncate">
+                                {moduleName}
+                            </h1>
+                        ) : (
+                            <span className="text-sm font-medium text-slate-400 truncate hidden sm:inline">
+                                LGU Disaster Training
+                            </span>
+                        )}
                     </div>
 
                     {/* Right Section: Time, Notifications, Profile - Centered */}

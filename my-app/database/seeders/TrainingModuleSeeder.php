@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -13,6 +14,7 @@ class TrainingModuleSeeder extends Seeder
         $owner = User::whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER'])->first();
         if (! $owner) {
             $this->command?->warn('No admin/trainer user found; skipping TrainingModuleSeeder.');
+
             return;
         }
 
@@ -25,11 +27,26 @@ class TrainingModuleSeeder extends Seeder
                     'Execute basic evacuation procedures.',
                     'Coordinate with local fire responders.',
                 ],
+                'estimated_duration_minutes' => 60,
                 'difficulty' => 'Beginner',
                 'category' => 'Fire Safety',
                 'status' => 'published',
-                'visibility' => 'public',
+                'visibility' => 'all',
                 'owner_id' => $owner->id,
+                'contents' => [
+                    [
+                        'title' => 'Understanding Fire Behavior',
+                        'content_type' => 'text',
+                        'body' => 'Learn how fires start, spread, and behave in residential and community settings.',
+                        'sort_order' => 1,
+                    ],
+                    [
+                        'title' => 'Evacuation Procedures',
+                        'content_type' => 'text',
+                        'body' => 'Step-by-step guide for safe evacuation during fire emergencies.',
+                        'sort_order' => 2,
+                    ],
+                ],
             ],
             [
                 'title' => 'Flood Preparedness and Early Warning',
@@ -39,11 +56,20 @@ class TrainingModuleSeeder extends Seeder
                     'Map flood-prone areas in the community.',
                     'Design an early warning notification flow.',
                 ],
+                'estimated_duration_minutes' => 90,
                 'difficulty' => 'Intermediate',
                 'category' => 'Flood',
                 'status' => 'published',
-                'visibility' => 'public',
+                'visibility' => 'all',
                 'owner_id' => $owner->id,
+                'contents' => [
+                    [
+                        'title' => 'Reading Flood Advisories',
+                        'content_type' => 'text',
+                        'body' => 'How to interpret PAGASA and local flood warning levels.',
+                        'sort_order' => 1,
+                    ],
+                ],
             ],
             [
                 'title' => 'Earthquake Drill and Evacuation',
@@ -53,20 +79,40 @@ class TrainingModuleSeeder extends Seeder
                     'Identify safe evacuation routes and assembly points.',
                     'Coordinate with barangay disaster volunteers.',
                 ],
+                'estimated_duration_minutes' => 45,
                 'difficulty' => 'Intermediate',
                 'category' => 'Earthquake',
                 'status' => 'published',
-                'visibility' => 'public',
+                'visibility' => 'all',
                 'owner_id' => $owner->id,
+                'contents' => [
+                    [
+                        'title' => 'Drop, Cover, and Hold',
+                        'content_type' => 'text',
+                        'body' => 'Practice the correct drop-cover-hold technique during seismic events.',
+                        'sort_order' => 1,
+                    ],
+                ],
             ],
         ];
 
-        foreach ($modules as $module) {
-            TrainingModule::firstOrCreate(
-                ['title' => $module['title']],
-                $module
+        foreach ($modules as $moduleData) {
+            $contents = $moduleData['contents'] ?? [];
+            unset($moduleData['contents']);
+
+            $module = TrainingModule::firstOrCreate(
+                ['title' => $moduleData['title']],
+                $moduleData
             );
+
+            if ($module->contents()->count() === 0) {
+                foreach ($contents as $content) {
+                    TrainingContent::create([
+                        'training_module_id' => $module->id,
+                        ...$content,
+                    ]);
+                }
+            }
         }
     }
 }
-

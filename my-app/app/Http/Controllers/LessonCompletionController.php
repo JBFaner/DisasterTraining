@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\LessonCompletion;
-use App\Models\TrainingLesson;
+use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class LessonCompletionController extends Controller
 {
-    public function toggle(Request $request, TrainingModule $trainingModule, TrainingLesson $lesson)
+    public function toggle(Request $request, TrainingModule $trainingModule, TrainingContent $content)
     {
         $user = Auth::user();
 
@@ -18,8 +18,8 @@ class LessonCompletionController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($lesson->training_module_id !== $trainingModule->id) {
-            return response()->json(['message' => 'Invalid lesson for module'], 422);
+        if ($content->training_module_id !== $trainingModule->id) {
+            return response()->json(['message' => 'Invalid content for module'], 422);
         }
 
         $request->validate([
@@ -30,7 +30,7 @@ class LessonCompletionController extends Controller
             $completion = LessonCompletion::firstOrNew([
                 'user_id' => $user->id,
                 'training_module_id' => $trainingModule->id,
-                'training_lesson_id' => $lesson->id,
+                'training_content_id' => $content->id,
             ]);
 
             if (! $completion->exists) {
@@ -40,14 +40,12 @@ class LessonCompletionController extends Controller
         } else {
             LessonCompletion::where('user_id', $user->id)
                 ->where('training_module_id', $trainingModule->id)
-                ->where('training_lesson_id', $lesson->id)
+                ->where('training_content_id', $content->id)
                 ->delete();
         }
 
         return response()->json([
-            'message' => 'Lesson completion updated',
+            'message' => 'Content completion updated',
         ]);
     }
 }
-
-

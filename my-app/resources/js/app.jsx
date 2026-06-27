@@ -15,6 +15,17 @@ import { PermissionsPage } from './pages/PermissionsPage';
 import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
+import { TrainingModuleDetail } from './pages/TrainingModuleDetail';
+import {
+    AdminPageShell,
+    AdminPageHeader,
+    AdminFilterBar,
+    AdminPrimaryButton,
+    AdminSecondaryButton,
+    AdminSearchInput,
+    AdminViewToggle,
+    adminSelectClass,
+} from './components/admin/AdminLayout';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
@@ -59,6 +70,7 @@ import {
     Target,
     LayoutGrid,
     List,
+    UserCircle,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
@@ -734,7 +746,9 @@ if (rootElement) {
                                                 sectionAttr.startsWith('evaluation') ? 'evaluation' :
                                                     sectionAttr.startsWith('barangay_profile') ? 'barangay_profile' :
                                                         sectionAttr.startsWith('after_action_review') ? 'after_action_review' :
-                                                            sectionAttr;
+                                                            sectionAttr === 'drill_history_reports' ? 'simulation' :
+                                                                sectionAttr === 'audit_logs' ? 'audit_logs' :
+                                                                    sectionAttr;
 
     // Breadcrumb configuration
     const getBreadcrumbs = () => {
@@ -743,7 +757,15 @@ if (rootElement) {
         }
 
         if (sectionAttr === 'after_action_review') {
-            return [{ label: 'After-Action Review', href: '/after-action-review' }];
+            return [];
+        }
+
+        if (sectionAttr === 'drill_history_reports') {
+            return [];
+        }
+
+        if (sectionAttr === 'audit_logs') {
+            return [];
         }
 
         if (sectionAttr === 'profile') {
@@ -751,77 +773,77 @@ if (rootElement) {
         }
 
         if (sectionAttr === 'training') {
-            return [{ label: 'Training Module Management', href: '/training-modules' }];
+            return [];
         }
         if (sectionAttr === 'training_create') {
             return [
-                { label: 'Training Module Management', href: '/training-modules' },
+                { label: 'Training Modules', href: '/training-modules' },
                 { label: 'Create', href: null }
             ];
         }
         if (sectionAttr === 'training_edit') {
             return [
-                { label: 'Training Module Management', href: '/training-modules' },
+                { label: 'Training Modules', href: '/training-modules' },
                 { label: 'Edit', href: null }
             ];
         }
         if (sectionAttr === 'training_detail') {
             return [
-                { label: 'Training Module Management', href: '/training-modules' },
+                { label: 'Training Modules', href: '/training-modules' },
                 { label: currentModule?.title || 'Details', href: null }
             ];
         }
 
         if (sectionAttr === 'scenario') {
-            return [{ label: 'Scenario-based Exercise Design', href: '/scenarios' }];
+            return [];
         }
         if (sectionAttr === 'scenario_create') {
             return [
-                { label: 'Scenario-based Exercise Design', href: '/scenarios' },
+                { label: 'Scenarios', href: '/scenarios' },
                 { label: 'Create', href: null }
             ];
         }
         if (sectionAttr === 'scenario_edit') {
             return [
-                { label: 'Scenario-based Exercise Design', href: '/scenarios' },
+                { label: 'Scenarios', href: '/scenarios' },
                 { label: 'Edit', href: null }
             ];
         }
         if (sectionAttr === 'scenario_detail') {
             return [
-                { label: 'Scenario-based Exercise Design', href: '/scenarios' },
+                { label: 'Scenarios', href: '/scenarios' },
                 { label: currentScenario?.title || 'Details', href: null }
             ];
         }
 
         if (sectionAttr === 'simulation') {
-            return [{ label: 'Simulation Event Planning', href: '/simulation-events' }];
+            return [];
         }
         if (sectionAttr === 'simulation_create') {
             return [
-                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/simulation-events' },
                 { label: 'Create', href: null }
             ];
         }
         if (sectionAttr === 'simulation_edit') {
             return [
-                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/simulation-events' },
                 { label: 'Edit', href: null }
             ];
         }
         if (sectionAttr === 'simulation_detail') {
             return [
-                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/simulation-events' },
                 { label: currentEvent?.title || 'Details', href: null }
             ];
         }
 
         if (sectionAttr === 'participants') {
-            return [{ label: 'Participant Registration & Attendance', href: '/participants' }];
+            return [];
         }
         if (sectionAttr === 'participant_detail') {
             return [
-                { label: 'Participant Registration & Attendance', href: '/participants' },
+                { label: 'Participants', href: '/participants' },
                 { label: currentParticipant?.name || 'Details', href: null }
             ];
         }
@@ -832,25 +854,25 @@ if (rootElement) {
         }
         if (sectionAttr === 'event_registrations') {
             return [
-                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/simulation-events' },
                 { label: currentEvent?.title || 'Event', href: null },
                 { label: 'Registrations', href: null }
             ];
         }
         if (sectionAttr === 'event_attendance') {
             return [
-                { label: 'Simulation Event Planning', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/simulation-events' },
                 { label: currentEvent?.title || 'Event', href: null },
                 { label: 'Attendance', href: null }
             ];
         }
 
         if (sectionAttr === 'resources') {
-            return [{ label: 'Resource & Equipment Inventory', href: '/resources' }];
+            return [];
         }
 
         if (sectionAttr === 'evaluation_dashboard') {
-            return [{ label: 'Evaluation & Scoring System', href: '/evaluations' }];
+            return [];
         }
 
         if (sectionAttr === 'evaluation_results_participant') {
@@ -863,31 +885,31 @@ if (rootElement) {
 
         if (sectionAttr === 'evaluation_participants') {
             return [
-                { label: 'Evaluation & Scoring System', href: '/evaluations' },
+                { label: 'Evaluations', href: '/evaluations' },
                 { label: 'Participants', href: null }
             ];
         }
 
         if (sectionAttr === 'evaluation_form') {
             return [
-                { label: 'Evaluation & Scoring System', href: '/evaluations' },
+                { label: 'Evaluations', href: '/evaluations' },
                 { label: 'Evaluate Participant', href: null }
             ];
         }
 
         if (sectionAttr === 'evaluation_summary') {
             return [
-                { label: 'Evaluation & Scoring System', href: '/evaluations' },
+                { label: 'Evaluations', href: '/evaluations' },
                 { label: 'Summary', href: null }
             ];
         }
 
         if (sectionAttr === 'certification') {
-            return [{ label: 'Certification Issuance', href: '/certification' }];
+            return [];
         }
 
         if (sectionAttr === 'barangay_profile') {
-            return [{ label: 'Barangay Profile', href: '/barangay-profile' }];
+            return [];
         }
         if (sectionAttr === 'barangay_profile_create') {
             return [
@@ -910,7 +932,7 @@ if (rootElement) {
 
         // Users administration (Users, Permissions, Roles)
         if (sectionAttr === 'admin_users_index') {
-            return [{ label: 'Users', href: '/admin/users' }];
+            return [];
         }
 
         if (sectionAttr === 'admin_users_create') {
@@ -958,7 +980,7 @@ if (rootElement) {
         }
 
         if (sectionAttr === 'user_monitoring') {
-            return [{ label: 'User Monitoring', href: '/admin/user-monitoring' }];
+            return [];
         }
 
         return [{ label: 'Dashboard', href: '/dashboard' }];
@@ -968,9 +990,26 @@ if (rootElement) {
 
     // Generate page title from breadcrumbs
     const getPageTitle = () => {
-        // Explicit title for Users & Roles admin module (Users, Permissions, Roles)
+        const indexSections = new Set([
+            'training',
+            'scenario',
+            'simulation',
+            'participants',
+            'resources',
+            'evaluation_dashboard',
+            'certification',
+            'barangay_profile',
+            'admin_users_index',
+            'audit_logs',
+            'after_action_review',
+            'drill_history_reports',
+            'user_monitoring',
+        ]);
+        if (indexSections.has(sectionAttr)) {
+            return '';
+        }
+
         if (
-            sectionAttr === 'admin_users_index' ||
             sectionAttr === 'admin_users_create' ||
             sectionAttr === 'admin_users_edit' ||
             sectionAttr === 'admin_users_show' ||
@@ -979,26 +1018,37 @@ if (rootElement) {
             sectionAttr === 'admin_roles' ||
             sectionAttr === 'admin_roles_edit'
         ) {
-            return 'Users & Roles';
+            if (sectionAttr === 'admin_permissions') return 'Permissions';
+            if (sectionAttr === 'admin_permissions_edit') return 'Edit Permission';
+            if (sectionAttr === 'admin_roles') return 'Roles';
+            if (sectionAttr === 'admin_roles_edit') return 'Edit Role';
+            if (sectionAttr === 'admin_users_create') return 'Create User';
+            if (sectionAttr === 'admin_users_show') return 'User Details';
+            if (sectionAttr === 'admin_users_edit') return 'Edit User';
         }
-        if (sectionAttr === 'user_monitoring') {
-            return 'User Monitoring';
-        }
+
         if (
-            sectionAttr === 'barangay_profile' ||
             sectionAttr === 'barangay_profile_create' ||
             sectionAttr === 'barangay_profile_show' ||
             sectionAttr === 'barangay_profile_edit'
         ) {
-            return 'Barangay Profile';
-        }
-
-        if (sectionAttr === 'after_action_review') {
-            return 'After-Action Review';
+            if (sectionAttr === 'barangay_profile_create') return 'Create Barangay Profile';
+            if (sectionAttr === 'barangay_profile_edit') return 'Edit Barangay Profile';
+            return barangayProfile?.barangay_name || 'Barangay Profile';
         }
 
         if (sectionAttr === 'profile') {
             return 'My Profile';
+        }
+
+        if (sectionAttr === 'training_create') {
+            return 'Create Training Module';
+        }
+        if (sectionAttr === 'training_edit') {
+            return 'Edit Training Module';
+        }
+        if (sectionAttr === 'training_detail') {
+            return currentModule?.title || 'Training Module';
         }
 
         if (breadcrumbs.length === 1) {
@@ -1046,7 +1096,9 @@ if (rootElement) {
                             role === 'PARTICIPANT' ? (
                                 <ParticipantTrainingModulesList modules={modules || []} modulesPagination={modulesPagination} />
                             ) : (
-                                <TrainingModulesTable modules={modules || []} modulesPagination={modulesPagination} />
+                                <div className="-mt-1">
+                                    <TrainingModulesTable modules={modules || []} modulesPagination={modulesPagination} />
+                                </div>
                             )
                         )}
 
@@ -2086,7 +2138,50 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [openManageId]);
 
-    // Filter modules
+    // Server-side filter sync
+    const buildModulesUrl = (page = modulesPagination?.current_page || 1) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', page);
+        return url;
+    };
+
+    const fetchModulesWithFilters = async (page = 1, overrides = {}) => {
+        const url = buildModulesUrl(page);
+        const search = overrides.search ?? searchQuery;
+        const status = overrides.status ?? filterStatus;
+        const difficulty = overrides.difficulty ?? filterDifficulty;
+        const category = overrides.category ?? filterDisasterType;
+
+        url.searchParams.delete('search');
+        url.searchParams.delete('status');
+        url.searchParams.delete('difficulty');
+        url.searchParams.delete('category');
+
+        if (search.trim()) url.searchParams.set('search', search.trim());
+        if (status) url.searchParams.set('status', status);
+        if (difficulty) url.searchParams.set('difficulty', difficulty);
+        if (category) url.searchParams.set('category', category);
+
+        setIsPageLoading(true);
+        try {
+            const res = await fetch(url.toString(), {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) throw new Error(`Failed to load page ${page}`);
+            const data = await res.json();
+            setModulesData(data.modules || []);
+            setPagination(data.pagination || null);
+            setCurrentPage(page);
+            window.history.pushState({}, '', url);
+        } catch (error) {
+            console.error('Error loading training modules page', error);
+        } finally {
+            setIsPageLoading(false);
+        }
+    };
+
+    // Filter modules (client-side refinement on current page data)
     const filteredModules = (modulesData || []).filter((module) => {
         const matchesSearch = !searchQuery ||
             module.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -2115,41 +2210,11 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType, effectivePagination]);
 
     const handlePageChange = async (page) => {
-        if (!effectivePagination) {
-            setCurrentPage(page);
+        if (effectivePagination) {
+            await fetchModulesWithFilters(page);
             return;
         }
-
-        const clamped = Math.max(1, Math.min(page, effectivePagination.last_page || 1));
-        if (clamped === effectivePagination.current_page) return;
-
-        setIsPageLoading(true);
-        try {
-            const url = new URL(window.location.href);
-            url.searchParams.set('page', clamped);
-
-            const res = await fetch(url.toString(), {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (!res.ok) {
-                throw new Error(`Failed to load page ${clamped}`);
-            }
-
-            const data = await res.json();
-            setModulesData(data.modules || []);
-            setPagination(data.pagination || null);
-            setCurrentPage(clamped);
-            window.history.pushState({}, '', url);
-        } catch (error) {
-            console.error('Error loading training modules page', error);
-        } finally {
-            setIsPageLoading(false);
-        }
+        setCurrentPage(page);
     };
 
     const formatCreatedDate = (dateString) => {
@@ -2174,49 +2239,29 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     };
 
     return (
-        <div>
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250 mb-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <BookOpen className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Training Modules</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Create and manage training modules, lessons, and materials for disaster preparedness.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <a
-                            href="/training-modules/create"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Create Training Module
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={BookOpen}
+                title="Training Modules"
+                description="Create and manage disaster training modules."
+                actions={
+                    <AdminPrimaryButton href="/training-modules/create">
+                        <Plus className="w-4 h-4" />
+                        Create Training Module
+                    </AdminPrimaryButton>
+                }
+            />
 
-            {/* Search and Filter Bar - Evaluations style */}
-            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4 mb-6">
-                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
-                        <input
-                            type="text"
-                            placeholder="Search modules..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
-                        />
-                    </div>
-                    <div className="flex gap-2">
+            <AdminFilterBar>
+                <form onSubmit={(e) => { e.preventDefault(); fetchModulesWithFilters(1); }} className="flex flex-col md:flex-row gap-3">
+                    <AdminSearchInput
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search modules..."
+                    />
+                    <div className="flex flex-wrap gap-2">
                         <select
-                            className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
+                            className={adminSelectClass}
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
@@ -2229,35 +2274,23 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         <button
                             type="button"
                             onClick={() => setShowFilters(!showFilters)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors"
                         >
                             <Filter className="w-4 h-4" />
                             Filter
                         </button>
-                        <div className="flex rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('grid')}
-                                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                                title="Grid view"
-                            >
-                                <LayoutGrid className="w-4 h-4" />
-                                Grid
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('list')}
-                                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                                title="List view"
-                            >
-                                <List className="w-4 h-4" />
-                                List
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-medium text-sm transition-colors"
+                        >
+                            <Search className="w-4 h-4" />
+                            Search
+                        </button>
+                        <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />
                     </div>
                 </form>
                 {showFilters && (
-                    <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="mt-3 pt-3 border-t border-slate-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">Difficulty</label>
@@ -2297,12 +2330,12 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         </button>
                     </div>
                 )}
-            </div>
+            </AdminFilterBar>
 
             {/* Card grid or empty state */}
             {filteredModules.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                         {(modules || []).length === 0 ? (
                             <>
                                 <div className="text-7xl mb-4 opacity-90" aria-hidden="true">📦</div>
@@ -2339,8 +2372,12 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                     <ul className="divide-y divide-slate-200">
                         {paginatedModules.map((module) => (
                             <li key={module.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors">
-                                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                                    <BookOpen className="w-5 h-5 text-slate-600" />
+                                <div className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-slate-100">
+                                    {module.thumbnail_url ? (
+                                        <img src={module.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center"><BookOpen className="w-5 h-5 text-slate-600" /></div>
+                                    )}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <h3 className="font-semibold text-slate-900 truncate">{module.title || 'Untitled Module'}</h3>
@@ -2376,10 +2413,15 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                             style={{ animationDelay: `${index * 0.06}s` }}
                         >
                             <div className="p-4">
+                                {module.thumbnail_url && (
+                                    <img src={module.thumbnail_url} alt="" className="w-full h-32 object-cover rounded-xl mb-3 border border-slate-200" />
+                                )}
                                 <div className="flex items-start gap-3 mb-2">
+                                    {!module.thumbnail_url && (
                                     <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                                         <BookOpen className="w-5 h-5 text-slate-600" />
                                     </div>
+                                    )}
                                     <div className="min-w-0 flex-1">
                                         <h3 className="font-semibold text-slate-900 truncate" title={module.title}>
                                             {module.title || 'Untitled Module'}
@@ -2572,7 +2614,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
             })()}
 
             {totalPages > 1 && (
-                <div className="mt-6">
+                <div className="mt-4">
                     <Pagination
                         currentPage={effectiveCurrentPage}
                         totalPages={totalPages}
@@ -2585,7 +2627,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                     )}
                 </div>
             )}
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -2693,22 +2735,22 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
 }
 
 function ParticipantTrainingLessonView({ module }) {
-    const lessons = module.lessons || [];
-    const sortedLessons = React.useMemo(
+    const items = module.contents || module.lessons || [];
+    const sortedItems = React.useMemo(
         () =>
-            [...lessons].sort(
-                (a, b) => (a.order || 0) - (b.order || 0),
+            [...items].sort(
+                (a, b) => (a.sort_order || a.order || 0) - (b.sort_order || b.order || 0),
             ),
-        [lessons],
+        [items],
     );
 
-    const initialSelectedId = sortedLessons[0]?.id || null;
+    const initialSelectedId = sortedItems[0]?.id || null;
     const initialCompleted = React.useMemo(
         () =>
-            (sortedLessons || [])
+            (sortedItems || [])
                 .filter((l) => l.is_completed)
                 .map((l) => l.id),
-        [sortedLessons],
+        [sortedItems],
     );
 
     const [selectedLessonId, setSelectedLessonId] =
@@ -2717,14 +2759,14 @@ function ParticipantTrainingLessonView({ module }) {
         React.useState(initialCompleted);
 
     React.useEffect(() => {
-        if (!selectedLessonId && sortedLessons[0]) {
-            setSelectedLessonId(sortedLessons[0].id);
+        if (!selectedLessonId && sortedItems[0]) {
+            setSelectedLessonId(sortedItems[0].id);
         }
-    }, [selectedLessonId, sortedLessons]);
+    }, [selectedLessonId, sortedItems]);
 
     const selectedLesson =
-        sortedLessons.find((l) => l.id === selectedLessonId) ||
-        sortedLessons[0] ||
+        sortedItems.find((l) => l.id === selectedLessonId) ||
+        sortedItems[0] ||
         null;
 
     const handleLessonSelect = (lessonId) => {
@@ -2746,7 +2788,7 @@ function ParticipantTrainingLessonView({ module }) {
                     ?.content || '';
 
             const response = await fetch(
-                `/training-modules/${module.id}/lessons/${lessonId}/completion`,
+                `/training-modules/${module.id}/contents/${lessonId}/completion`,
                 {
                     method: 'POST',
                     headers: {
@@ -2772,7 +2814,7 @@ function ParticipantTrainingLessonView({ module }) {
         }
     };
 
-    const totalLessons = sortedLessons.length;
+    const totalLessons = sortedItems.length;
     const completedCount = completedLessonIds.length;
     const progressPercent =
         totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
@@ -2945,13 +2987,13 @@ function ParticipantTrainingLessonView({ module }) {
                         Lessons
                     </h3>
                     <div className="rounded-xl bg-white border border-slate-200 shadow-sm">
-                        {sortedLessons.length === 0 ? (
+                        {sortedItems.length === 0 ? (
                             <div className="px-4 py-6 text-sm text-slate-500 text-center">
-                                No lessons are available yet for this module.
+                                No learning content is available yet for this module.
                             </div>
                         ) : (
                             <ul className="divide-y divide-slate-100">
-                                {sortedLessons.map((lesson, index) => {
+                                {sortedItems.map((lesson, index) => {
                                     const isSelected =
                                         lesson.id === selectedLessonId;
                                     const isCompleted = completedLessonIds.includes(
@@ -2978,9 +3020,9 @@ function ParticipantTrainingLessonView({ module }) {
                                                             {lesson.title}
                                                         </span>
                                                     </div>
-                                                    {lesson.description && (
+                                                    {(lesson.body || lesson.description) && (
                                                         <p className="mt-1 text-xs text-slate-600 line-clamp-2">
-                                                            {lesson.description}
+                                                            {lesson.body || lesson.description}
                                                         </p>
                                                     )}
                                                 </div>
@@ -3009,33 +3051,40 @@ function ParticipantTrainingLessonView({ module }) {
                     </div>
                 </div>
 
-                {/* Lesson content */}
+                {/* Content viewer */}
                 <div className="lg:col-span-2 space-y-4">
                     {selectedLesson ? (
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
                             <div className="mb-3">
                                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                                    Lesson
+                                    Learning content
                                 </div>
                                 <h3 className="text-lg font-semibold text-slate-800">
                                     {selectedLesson.title}
                                 </h3>
-                                {selectedLesson.description && (
+                                {(selectedLesson.body || selectedLesson.description) && (
                                     <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">
-                                        {selectedLesson.description}
+                                        {selectedLesson.body || selectedLesson.description}
                                     </p>
                                 )}
                             </div>
 
                             <div className="space-y-4">
-                                {(!selectedLesson.materials ||
-                                    selectedLesson.materials.length === 0) && (
-                                        <p className="text-sm text-slate-500">
-                                            No learning materials have been added to
-                                            this lesson yet.
-                                        </p>
-                                    )}
-
+                                {selectedLesson.content_type === 'text' && !selectedLesson.body && !selectedLesson.description && (
+                                    <p className="text-sm text-slate-500">No text content available.</p>
+                                )}
+                                {selectedLesson.content_type && selectedLesson.content_type !== 'text' && (
+                                    <div className="border border-slate-200 rounded-lg p-3 space-y-2">
+                                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                                            {selectedLesson.content_type}
+                                        </div>
+                                        {renderMaterial({
+                                            type: selectedLesson.content_type,
+                                            path: selectedLesson.display_url || selectedLesson.file_path || selectedLesson.external_url,
+                                            label: selectedLesson.title,
+                                        })}
+                                    </div>
+                                )}
                                 {selectedLesson.materials &&
                                     selectedLesson.materials.map((mat) => (
                                         <div
@@ -3052,7 +3101,7 @@ function ParticipantTrainingLessonView({ module }) {
                         </div>
                     ) : (
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm text-sm text-slate-500">
-                            Select a lesson from the list to view its content.
+                            Select content from the list to view.
                         </div>
                     )}
                 </div>
@@ -3263,6 +3312,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                     <form
                         method="POST"
                         action="/training-modules"
+                        encType="multipart/form-data"
                         className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
                     >
                         <input type="hidden" name="_token" value={csrf} />
@@ -3383,17 +3433,18 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                             </div>
                             <div>
                                 <label className={labelClass} htmlFor="category">
-                                    Disaster type
+                                    Disaster category <span className="text-red-500">*</span>
                                 </label>
                                 {useCategorySelect ? (
                                     <select
                                         id="category"
                                         name="category"
+                                        required
                                         value={category}
                                         onChange={(e) => setCategory(e.target.value)}
                                         className={inputClass}
                                     >
-                                        <option value="">Select disaster type</option>
+                                        <option value="">Select disaster category</option>
                                         {categoryOptions.map((hazard, index) => (
                                             <option key={index} value={hazard}>{hazard}</option>
                                         ))}
@@ -3403,6 +3454,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                                         id="category"
                                         name="category"
                                         type="text"
+                                        required
                                         value={category}
                                         onChange={(e) => setCategory(e.target.value)}
                                         placeholder="e.g. Earthquake, Fire"
@@ -3410,6 +3462,32 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                                     />
                                 )}
                             </div>
+                            <div>
+                                <label className={labelClass} htmlFor="estimated_duration_minutes">
+                                    Estimated duration (minutes)
+                                </label>
+                                <input
+                                    id="estimated_duration_minutes"
+                                    name="estimated_duration_minutes"
+                                    type="number"
+                                    min="1"
+                                    placeholder="e.g. 60"
+                                    className={inputClass}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className={labelClass} htmlFor="thumbnail">
+                                Thumbnail / cover image
+                            </label>
+                            <input
+                                id="thumbnail"
+                                name="thumbnail"
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                className="w-full rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-white"
+                            />
                         </div>
 
                         <div>
@@ -3515,6 +3593,9 @@ function TrainingModuleEditForm({ module }) {
     const [visibility, setVisibility] = React.useState(
         module.visibility || 'all',
     );
+    const [estimatedDuration, setEstimatedDuration] = React.useState(
+        module.estimated_duration_minutes || '',
+    );
 
     // Parse existing learning_objectives from module (already cast to array by model)
     const initialObjectives =
@@ -3594,6 +3675,7 @@ function TrainingModuleEditForm({ module }) {
                     <form
                         method="POST"
                         action={`/training-modules/${module.id}`}
+                        encType="multipart/form-data"
                         className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
                     >
                         <input type="hidden" name="_token" value={csrf} />
@@ -3735,12 +3817,13 @@ function TrainingModuleEditForm({ module }) {
                                     className={labelClass}
                                     htmlFor="category"
                                 >
-                                    Disaster type
+                                    Disaster category <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     id="category"
                                     name="category"
                                     type="text"
+                                    required
                                     value={category}
                                     onChange={(e) =>
                                         setCategory(e.target.value)
@@ -3749,6 +3832,43 @@ function TrainingModuleEditForm({ module }) {
                                     className={inputClass}
                                 />
                             </div>
+                            <div>
+                                <label className={labelClass} htmlFor="estimated_duration_minutes">
+                                    Estimated duration (minutes)
+                                </label>
+                                <input
+                                    id="estimated_duration_minutes"
+                                    name="estimated_duration_minutes"
+                                    type="number"
+                                    min="1"
+                                    value={estimatedDuration}
+                                    onChange={(e) => setEstimatedDuration(e.target.value)}
+                                    className={inputClass}
+                                />
+                            </div>
+                        </div>
+
+                        {module.thumbnail_url && (
+                            <div>
+                                <label className={labelClass}>Current thumbnail</label>
+                                <img src={module.thumbnail_url} alt="" className="h-24 rounded-xl border border-slate-200 object-cover" />
+                                <label className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
+                                    <input type="checkbox" name="remove_thumbnail" value="1" /> Remove thumbnail
+                                </label>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className={labelClass} htmlFor="thumbnail">
+                                {module.thumbnail_url ? 'Replace thumbnail' : 'Thumbnail / cover image'}
+                            </label>
+                            <input
+                                id="thumbnail"
+                                name="thumbnail"
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                className="w-full rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm"
+                            />
                         </div>
 
                         <div>
@@ -3869,553 +3989,6 @@ function TrainingModuleEditForm({ module }) {
     );
 }
 
-function TrainingModuleDetail({ module }) {
-    const csrf =
-        document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-
-    const lessons = module.lessons || [];
-    const [selectedLesson, setSelectedLesson] = React.useState(null);
-    const [isEditMode, setIsEditMode] = React.useState(false);
-    const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
-    const rootEl = document.getElementById('app');
-    const flashStatus = rootEl?.getAttribute('data-status') || '';
-    const flashErrors = React.useMemo(() => {
-        const raw = rootEl?.getAttribute('data-errors');
-        if (!raw) return [];
-        try {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (_) {
-            return [];
-        }
-    }, [rootEl]);
-    const [editFormData, setEditFormData] = React.useState({
-        title: '',
-        description: '',
-    });
-
-    const handleLessonClick = (lesson) => {
-        setSelectedLesson(lesson);
-        setIsEditMode(false);
-        setEditFormData({
-            title: lesson.title || '',
-            description: lesson.description || '',
-        });
-    };
-
-    const handleEditClick = () => {
-        setIsEditMode(true);
-    };
-
-    const handleSaveChanges = async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        form.submit();
-    };
-
-    const handleCloseModal = () => {
-        setSelectedLesson(null);
-        setIsEditMode(false);
-        setEditFormData({
-            title: '',
-            description: '',
-        });
-    };
-
-    return (
-        <div className="py-2 space-y-6">
-            {/* Back + breadcrumb */}
-            <div className="flex items-center justify-between mb-1">
-                <a
-                    href="/training-modules"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200"
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back to Training Modules
-                </a>
-                <div className="text-[0.7rem] text-slate-500">
-                    <a href="/training-modules" className="hover:text-slate-700 hover:underline underline-offset-2">
-                        Training Modules
-                    </a>
-                    <span className="mx-1">/</span>
-                    <span className="font-semibold text-slate-700">{module.title}</span>
-                </div>
-            </div>
-
-            {flashStatus && (
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
-                    {flashStatus}
-                </div>
-            )}
-
-            {flashErrors && flashErrors.length > 0 && (
-                <div className="rounded-xl bg-rose-600 text-white px-4 py-3 text-sm font-medium shadow-lg animate-validation-shake" style={{ boxShadow: '0 4px 14px rgba(220, 38, 38, 0.4)' }}>
-                    <ul className="list-disc list-inside space-y-0.5">
-                        {flashErrors.map((error, idx) => (
-                            <li key={idx}>{error}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            {/* Module header card */}
-            <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-md hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                            Training module
-                        </div>
-                        <h2 className="text-xl font-semibold text-slate-800">
-                            {module.title}
-                        </h2>
-                        {module.description && (
-                            <div className="mt-1 relative">
-                                <p className={`text-sm text-slate-600 whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-4' : ''}`}>
-                                    {module.description}
-                                </p>
-                                <div className="flex justify-end mt-1">
-                                    <button
-                                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                                        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2 transition-colors duration-200"
-                                    >
-                                        {isDescriptionExpanded ? <>See less <ChevronUp className="w-3 h-3" /></> : <>See more <ChevronDown className="w-3 h-3" /></>}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <a
-                        href={`/training-modules/${module.id}/edit`}
-                        className="inline-flex items-center justify-center rounded-xl border border-slate-300 p-2.5 text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200 shrink-0"
-                        title="Edit module settings"
-                    >
-                        <Pencil className="w-4 h-4 drop-shadow-sm" />
-                    </a>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                    <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
-                        Difficulty: {module.difficulty}
-                    </span>
-                    {module.category && (
-                        <span className="inline-flex items-center rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 font-medium">
-                            {module.category}
-                        </span>
-                    )}
-                    <span className="inline-flex items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 font-medium">
-                        {module.status}
-                    </span>
-                </div>
-                <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap gap-4">
-                    <span><span className="font-semibold text-slate-600">Created by:</span> {module.owner?.name ?? '—'}</span>
-                    <span><span className="font-semibold text-slate-600">Created:</span> {module.created_at ? formatDateTime(module.created_at) : '—'}</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* Add Lesson - sidebar */}
-                <div className="lg:order-2 space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-800">Add Lesson</h3>
-                    <form
-                        method="POST"
-                        action={`/training-modules/${module.id}/lessons`}
-                        className="space-y-3 rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-200 hover:shadow-lg"
-                    >
-                        <input type="hidden" name="_token" value={csrf} />
-                        <div>
-                            <label htmlFor="lesson_title" className="block text-[0.7rem] font-semibold text-slate-600 mb-1">
-                                Lesson title <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="lesson_title"
-                                name="title"
-                                type="text"
-                                required
-                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200"
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="lesson_description" className="block text-[0.7rem] font-semibold text-slate-600 mb-1">
-                                Description / key points
-                            </label>
-                            <textarea
-                                id="lesson_description"
-                                name="description"
-                                rows={3}
-                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200"
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-4 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Add lesson
-                        </button>
-                    </form>
-                </div>
-
-                {/* Lessons - card grid */}
-                <div className="lg:col-span-2 lg:order-1 space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-800">Lessons</h3>
-                    {lessons.length === 0 ? (
-                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                                <div className="text-6xl mb-3 opacity-90" aria-hidden="true">📖</div>
-                                <h3 className="text-lg font-semibold text-slate-800 mb-1">No lessons yet.</h3>
-                                <p className="text-slate-600 text-sm">
-                                    Add your first lesson using the form on the right.
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {lessons.map((lesson, index) => (
-                                <div
-                                    key={lesson.id}
-                                    className="lesson-card-enter rounded-2xl bg-white border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out overflow-hidden"
-                                    style={{ animationDelay: `${index * 0.05}s` }}
-                                >
-                                    <div
-                                        className="p-5 cursor-pointer"
-                                        onClick={() => handleLessonClick(lesson)}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                                                <FileText className="w-5 h-5 text-slate-600 drop-shadow-sm" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-medium text-slate-400">#{index + 1}</span>
-                                                    <h4 className="font-semibold text-slate-900 truncate">{lesson.title}</h4>
-                                                </div>
-                                                {lesson.description && (
-                                                    <p className="mt-1 text-xs text-slate-600 line-clamp-2">{lesson.description}</p>
-                                                )}
-                                                <div className="mt-2">
-                                                    {(!lesson.materials || lesson.materials.length === 0) ? (
-                                                        <span className="text-[0.7rem] text-slate-400">No materials</span>
-                                                    ) : (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {lesson.materials.slice(0, 3).map((mat) => (
-                                                                <a
-                                                                    key={mat.id}
-                                                                    href={mat.path}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                    className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[0.65rem] font-medium text-slate-600 hover:bg-slate-200 transition-colors"
-                                                                >
-                                                                    {mat.type}
-                                                                </a>
-                                                            ))}
-                                                            {lesson.materials.length > 3 && (
-                                                                <span className="text-[0.65rem] text-slate-400">+{lesson.materials.length - 3}</span>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="px-5 pb-5 pt-4 flex flex-wrap items-center gap-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLessonClick(lesson)}
-                                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 hover:shadow-sm transition-all duration-200"
-                                        >
-                                            <Eye className="w-3.5 h-3.5" />
-                                            View
-                                        </button>
-                                        <form method="POST" action={`/training-modules/${module.id}/lessons/${lesson.id}`} onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const result = await Swal.fire({
-                                                title: 'Warning!',
-                                                text: 'Remove this lesson from the module?',
-                                                icon: 'warning',
-                                                showCancelButton: true,
-                                                confirmButtonText: 'Yes, remove lesson',
-                                                cancelButtonText: 'Cancel',
-                                                confirmButtonColor: '#dc2626',
-                                                cancelButtonColor: '#64748b',
-                                            });
-                                            if (result.isConfirmed) e.target.submit();
-                                        }} className="inline-block">
-                                            <input type="hidden" name="_token" value={csrf} />
-                                            <input type="hidden" name="_method" value="DELETE" />
-                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:shadow-sm transition-all duration-200">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                Remove
-                                            </button>
-                                        </form>
-                                    </div>
-                                    <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-2" onClick={(e) => e.stopPropagation()}>
-                                        <div className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide">Add material</div>
-                                        <form
-                                            method="POST"
-                                            action={`/training-modules/${module.id}/lessons/${lesson.id}/materials`}
-                                            encType="multipart/form-data"
-                                            className="space-y-2"
-                                            onSubmit={async (e) => {
-                                                const form = e.currentTarget;
-                                                const fileInput = form.querySelector('input[name="file"]');
-                                                const urlInput = form.querySelector('input[name="url"]');
-                                                const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
-                                                const hasUrl = urlInput && urlInput.value.trim() !== '';
-
-                                                // If no file is attached, let the backend handle validation (no storage choice needed)
-                                                if (!hasFile) {
-                                                    return;
-                                                }
-
-                                                e.preventDefault();
-
-                                                const result = await Swal.fire({
-                                                    title: 'Where do you want to store this file?',
-                                                    text: 'Use Cloudinary for large videos/images to reduce load on the server, or local storage for smaller documents.',
-                                                    icon: 'question',
-                                                    showCancelButton: true,
-                                                    showDenyButton: true,
-                                                    confirmButtonText: 'Cloudinary',
-                                                    denyButtonText: 'Local storage',
-                                                    cancelButtonText: 'Cancel',
-                                                    confirmButtonColor: '#16a34a',
-                                                    denyButtonColor: '#64748b',
-                                                });
-
-                                                if (result.isDismissed) {
-                                                    return;
-                                                }
-
-                                                const storageInput = form.querySelector('input[name="storage_target"]');
-                                                if (storageInput) {
-                                                    storageInput.value = result.isConfirmed ? 'cloudinary' : 'local';
-                                                }
-
-                                                form.submit();
-                                            }}
-                                        >
-                                            <input type="hidden" name="_token" value={csrf} />
-                                            <input type="hidden" name="storage_target" value="auto" />
-                                            <select name="type" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                                <option value="PDF">PDF</option>
-                                                <option value="Video">Video</option>
-                                                <option value="Image">Image</option>
-                                                <option value="PPT">PPT</option>
-                                                <option value="Link">Link</option>
-                                            </select>
-                                            <input name="label" type="text" placeholder="Label (optional)" className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                                            <input
-                                                name="url"
-                                                type="url"
-                                                placeholder="https://... (optional link)"
-                                                className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-[0.7rem] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            />
-                                            <input
-                                                name="file"
-                                                type="file"
-                                                accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi"
-                                                className="w-full rounded-lg border border-dashed border-slate-300 px-2.5 py-2 text-[0.7rem] file:mr-3 file:rounded-md file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-[0.7rem] file:font-medium file:text-white hover:file:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            />
-                                            <p className="text-[0.65rem] text-slate-500">
-                                                You can <span className="font-semibold">upload a file</span> (PDF, image, video, PPT, etc.) or provide a link. If both are provided, the uploaded file will be used.
-                                            </p>
-                                            <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[0.7rem] font-medium px-2.5 py-1.5 transition-all duration-200">
-                                                <Plus className="w-3 h-3" />
-                                                Add material
-                                            </button>
-                                        </form>
-                                        {lesson.materials && lesson.materials.length > 0 && (
-                                            <ul className="space-y-1 mt-2">
-                                                {lesson.materials.map((mat) => (
-                                                    <li key={mat.id} className="flex items-center justify-between gap-2 text-[0.75rem]">
-                                                        <a href={mat.path} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 hover:underline truncate min-w-0">
-                                                            <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase text-slate-600">{mat.type}</span>
-                                                            <span className="truncate">{mat.label || mat.path}</span>
-                                                        </a>
-                                                        <form method="POST" action={`/training-modules/${module.id}/lessons/${lesson.id}/materials/${mat.id}`} onSubmit={async (e) => {
-                                                            e.preventDefault();
-                                                            const result = await Swal.fire({
-                                                                title: 'Warning!',
-                                                                text: 'Remove this learning material from the lesson?',
-                                                                icon: 'warning',
-                                                                showCancelButton: true,
-                                                                confirmButtonText: 'Yes, remove it',
-                                                                cancelButtonText: 'Cancel',
-                                                                confirmButtonColor: '#dc2626',
-                                                                cancelButtonColor: '#64748b',
-                                                            });
-                                                            if (result.isConfirmed) e.target.submit();
-                                                        }} className="shrink-0">
-                                                            <input type="hidden" name="_token" value={csrf} />
-                                                            <input type="hidden" name="_method" value="DELETE" />
-                                                            <button type="submit" className="text-[0.7rem] font-medium text-rose-600 hover:text-rose-800">Remove</button>
-                                                        </form>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Lesson View/Edit Modal */}
-            <Dialog.Root open={selectedLesson !== null} onOpenChange={(open) => !open && handleCloseModal()}>
-                <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[90vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col">
-                        <Dialog.Title className="sr-only">Lesson Details</Dialog.Title>
-                        {selectedLesson && (
-                            <>
-                                {/* Header */}
-                                <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                                    <div>
-                                        <h2 className="text-xl font-semibold text-slate-800">
-                                            {isEditMode ? 'Edit Lesson' : selectedLesson.title}
-                                        </h2>
-                                        {!isEditMode && selectedLesson.description && (
-                                            <p className="mt-1 text-sm text-slate-600 line-clamp-2">
-                                                {selectedLesson.description}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {!isEditMode && (
-                                            <button
-                                                onClick={handleEditClick}
-                                                className="inline-flex items-center justify-center rounded-md border border-emerald-500/60 bg-emerald-50 p-2 text-emerald-800 hover:bg-emerald-100 transition-colors"
-                                                title="Edit"
-                                            >
-                                                <Pencil className="w-4 h-4 drop-shadow-sm" />
-                                            </button>
-                                        )}
-                                        <Dialog.Close asChild>
-                                            <button className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 text-slate-600">
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </Dialog.Close>
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="flex-1 overflow-y-auto p-6">
-                                    {isEditMode ? (
-                                        <form
-                                            method="POST"
-                                            action={`/training-modules/${module.id}/lessons/${selectedLesson.id}`}
-                                            onSubmit={handleSaveChanges}
-                                            className="space-y-4"
-                                        >
-                                            <input type="hidden" name="_token" value={csrf} />
-                                            <input type="hidden" name="_method" value="PUT" />
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_lesson_title">
-                                                    Lesson Title
-                                                </label>
-                                                <input
-                                                    id="edit_lesson_title"
-                                                    name="title"
-                                                    type="text"
-                                                    required
-                                                    value={editFormData.title}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_lesson_description">
-                                                    Description
-                                                </label>
-                                                <textarea
-                                                    id="edit_lesson_description"
-                                                    name="description"
-                                                    rows={6}
-                                                    value={editFormData.description}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                                />
-                                            </div>
-                                            <div className="flex justify-end gap-2 pt-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsEditMode(false)}
-                                                    className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    type="submit"
-                                                    className="inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5"
-                                                >
-                                                    Save Changes
-                                                </button>
-                                            </div>
-                                        </form>
-                                    ) : (
-                                        <div className="space-y-6">
-                                            {/* Lesson Info */}
-                                            <div>
-                                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                                                    Lesson Details
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div>
-                                                        <span className="text-xs font-semibold text-slate-600">Title:</span>
-                                                        <p className="text-sm text-slate-800 mt-1">{selectedLesson.title}</p>
-                                                    </div>
-                                                    {selectedLesson.description && (
-                                                        <div>
-                                                            <span className="text-xs font-semibold text-slate-600">Description:</span>
-                                                            <p className="text-sm text-slate-800 mt-1 whitespace-pre-line">{selectedLesson.description}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Materials */}
-                                            <div>
-                                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                                                    Learning Materials
-                                                </div>
-                                                {(!selectedLesson.materials || selectedLesson.materials.length === 0) ? (
-                                                    <p className="text-sm text-slate-500">No materials linked to this lesson.</p>
-                                                ) : (
-                                                    <ul className="space-y-2">
-                                                        {selectedLesson.materials.map((mat) => (
-                                                            <li
-                                                                key={mat.id}
-                                                                className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50"
-                                                            >
-                                                                <a
-                                                                    href={mat.path}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="flex items-center gap-2 text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2 flex-1"
-                                                                >
-                                                                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-600">
-                                                                        {mat.type}
-                                                                    </span>
-                                                                    <span className="text-sm">{mat.label || mat.path}</span>
-                                                                </a>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </Dialog.Content>
-                </Dialog.Portal>
-            </Dialog.Root>
-        </div>
-    );
-}
 
 function ScenariosTable({ scenarios = [], role }) {
     const csrf =
@@ -4511,49 +4084,29 @@ function ScenariosTable({ scenarios = [], role }) {
     };
 
     return (
-        <div>
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250 mb-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <Activity className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Scenarios</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Design scenario-based exercises and disaster response simulations.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <a
-                            href="/scenarios/create"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Create Scenario
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={Activity}
+                title="Scenarios"
+                description="Design scenario-based exercises and disaster response simulations."
+                actions={
+                    <AdminPrimaryButton href="/scenarios/create">
+                        <Plus className="w-4 h-4" />
+                        Create Scenario
+                    </AdminPrimaryButton>
+                }
+            />
 
-            {/* Search and Filter Bar - same as training modules */}
-            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4 mb-6">
-                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
-                        <input
-                            type="text"
-                            placeholder="Search scenarios..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
-                        />
-                    </div>
-                    <div className="flex gap-2">
+            <AdminFilterBar>
+                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-3">
+                    <AdminSearchInput
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search scenarios..."
+                    />
+                    <div className="flex flex-wrap gap-2">
                         <select
-                            className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
+                            className={adminSelectClass}
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
@@ -4565,19 +4118,16 @@ function ScenariosTable({ scenarios = [], role }) {
                         <button
                             type="button"
                             onClick={() => setShowFilters(!showFilters)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm"
                         >
                             <Filter className="w-4 h-4" />
                             Filter
                         </button>
-                        <div className="flex rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
-                            <button type="button" onClick={() => setViewMode('grid')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="Grid view"><LayoutGrid className="w-4 h-4" /> Grid</button>
-                            <button type="button" onClick={() => setViewMode('list')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="List view"><List className="w-4 h-4" /> List</button>
-                        </div>
+                        <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />
                     </div>
                 </form>
                 {showFilters && (
-                    <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="mt-3 pt-3 border-t border-slate-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">Difficulty</label>
@@ -4617,12 +4167,12 @@ function ScenariosTable({ scenarios = [], role }) {
                         </button>
                     </div>
                 )}
-            </div>
+            </AdminFilterBar>
 
             {/* Card grid or empty state */}
             {filteredScenarios.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                         {(scenarios || []).length === 0 ? (
                             <>
                                 <div className="text-7xl mb-4 opacity-90" aria-hidden="true">🎯</div>
@@ -4854,7 +4404,7 @@ function ScenariosTable({ scenarios = [], role }) {
             })()}
 
             {totalPages > 1 && (
-                <div className="mt-6">
+                <div className="mt-4">
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
@@ -4864,7 +4414,7 @@ function ScenariosTable({ scenarios = [], role }) {
                     />
                 </div>
             )}
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -6298,24 +5848,15 @@ function SimulationEventsTable({ events, role }) {
     };
 
     return (
-        <div className="space-y-6">
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <CalendarClock className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Simulation Event Planning</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Plan and manage disaster simulation events, schedules, and participant registration.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 shrink-0">
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
-                            <span className="text-sm font-medium text-slate-700">Auto-Approve</span>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={CalendarClock}
+                title="Simulation Events"
+                description="Plan and manage disaster simulation events, schedules, and registration."
+                actions={
+                    <>
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
+                            <span className="text-xs font-medium text-slate-700">Auto-Approve</span>
                             <button
                                 type="button"
                                 onClick={handleToggleAutoApproval}
@@ -6328,36 +5869,20 @@ function SimulationEventsTable({ events, role }) {
                             </button>
                             <span className="text-xs text-slate-500">{autoApprovalEnabled ? 'On' : 'Off'}</span>
                         </div>
-                        <a
-                            href="/simulation-events/create"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
+                        <AdminPrimaryButton href="/simulation-events/create">
+                            <Plus className="w-4 h-4" />
                             Create Event
-                        </a>
-                    </div>
-                </div>
-            </div>
+                        </AdminPrimaryButton>
+                    </>
+                }
+            />
 
-            {/* Search and filters - Evaluations style */}
-            <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4">
-                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
-                        <input
-                            type="text"
-                            placeholder="Search events..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
-                        />
-                    </div>
-                    <div className="flex gap-2">
-                        <select
-                            className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
+            {/* Search and filters */}
+            <AdminFilterBar>
+                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-3">
+                    <AdminSearchInput value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search events..." />
+                    <div className="flex flex-wrap gap-2">
+                        <select className={adminSelectClass} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                             <option value="">All Status</option>
                             <option value="draft">Draft</option>
                             <option value="published">Published</option>
@@ -6367,22 +5892,14 @@ function SimulationEventsTable({ events, role }) {
                             <option value="cancelled">Cancelled</option>
                             <option value="archived">Archived</option>
                         </select>
-                        <button
-                            type="button"
-                            onClick={() => setShowFilters(!showFilters)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
-                        >
-                            <Filter className="w-4 h-4" />
-                            Filter
+                        <button type="button" onClick={() => setShowFilters(!showFilters)} className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm">
+                            <Filter className="w-4 h-4" /> Filter
                         </button>
-                        <div className="flex rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
-                            <button type="button" onClick={() => setViewMode('grid')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="Grid view"><LayoutGrid className="w-4 h-4" /> Grid</button>
-                            <button type="button" onClick={() => setViewMode('list')} className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`} title="List view"><List className="w-4 h-4" /> List</button>
-                        </div>
+                        <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />
                     </div>
                 </form>
                 {showFilters && (
-                    <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="mt-3 pt-3 border-t border-slate-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {disasterTypes.length > 0 && (
                                 <div>
@@ -6424,11 +5941,11 @@ function SimulationEventsTable({ events, role }) {
                         </button>
                     </div>
                 )}
-            </div>
+            </AdminFilterBar>
 
             {/* Content: empty state or list/grid */}
             {filteredEvents.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-12 text-center">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
                     {(events || []).length === 0 ? (
                         <>
                             <div className="text-5xl mb-4 opacity-80">📅</div>
@@ -6816,7 +6333,7 @@ function SimulationEventsTable({ events, role }) {
                     )}
                 </>
             )}
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -8753,23 +8270,14 @@ function CertificationModule({
     };
 
     return (
-        <div className="space-y-8">
-            {/* Hero Header - Premium */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <GraduationCap className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Certification Issuance</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Manage templates, issue certificates, and track issuance history.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <button
+        <AdminPageShell className="space-y-4">
+            <AdminPageHeader
+                icon={GraduationCap}
+                title="Certification"
+                description="Manage templates, issue certificates, and track issuance history."
+                actions={
+                    <>
+                        <AdminPrimaryButton
                             type="button"
                             onClick={() => {
                                 if (filteredEligible.length === 0) {
@@ -8783,25 +8291,20 @@ function CertificationModule({
                                 setIssueRow(filteredEligible[0]);
                                 setIssueModalOpen(true);
                             }}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
                         >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 h-4" />
                             Issue Certificate
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setEditingTemplate(null); setTemplateEditorOpen(true); }}
-                            className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 bg-white hover:bg-slate-50 hover:border-slate-400 hover:-translate-y-0.5 text-slate-700 rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
+                        </AdminPrimaryButton>
+                        <AdminSecondaryButton type="button" onClick={() => { setEditingTemplate(null); setTemplateEditorOpen(true); }}>
+                            <Plus className="w-4 h-4" />
                             Add Template
-                        </button>
-                    </div>
-                </div>
-            </div>
+                        </AdminSecondaryButton>
+                    </>
+                }
+            />
 
-            {/* Premium KPI Cards - always on top */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Issued</p>
                     <p className="text-[32px] font-bold text-slate-900 mt-1">{stats.total_certified}</p>
@@ -9199,7 +8702,7 @@ function CertificationModule({
                     onSaved={() => { setTemplateEditorOpen(false); setEditingTemplate(null); window.location.href = '/certification'; }}
                 />
             )}
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -9236,27 +8739,16 @@ function ParticipantRegistrationAttendanceModule({ events = [], participants = [
     }
 
     return (
-        <div className="space-y-6">
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <Users className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Participant Registration & Management</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Manage participant list, event registrations, and attendance.
-                        </p>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={Users}
+                title="Participants"
+                description="Manage participant list, event registrations, and attendance."
+            />
 
-            {/* Summary Cards - Certification style (below header, above tabs) */}
+            {/* Summary Cards */}
             {activeTab === 'participants' && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Participants</p>
                         <p className="text-[32px] font-bold text-slate-900 mt-1">{totalParticipants}</p>
@@ -9308,7 +8800,7 @@ function ParticipantRegistrationAttendanceModule({ events = [], participants = [
             ) : (
                 <AttendanceEventsTable events={events} />
             )}
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -10964,26 +10456,15 @@ function EvaluationDashboard({ events }) {
     };
 
     return (
-        <div className="space-y-6">
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <ClipboardList className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Evaluation &amp; Scoring System</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Evaluate participants, track scores, and view evaluation summaries by event.
-                        </p>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={ClipboardList}
+                title="Evaluations"
+                description="Evaluate participants, track scores, and view summaries by event."
+            />
 
-            {/* Evaluation Overview Stats - Certification-style premium KPI cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Evaluation overview stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Events</p>
                     <p className="text-[32px] font-bold text-slate-900 mt-1">{totalEvents}</p>
@@ -11108,7 +10589,7 @@ function EvaluationDashboard({ events }) {
                     </div>
                 )}
             </div>
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -12662,45 +12143,26 @@ function BarangayProfileList({ profiles = [] }) {
     };
 
     return (
-        <div className="space-y-6 w-full">
-            {/* Page header */}
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250 mb-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <Settings className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Barangay Profile</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Manage barangay information and disaster hazards for your area.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <a
-                            href="/barangay-profile/create"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Create profile
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={Settings}
+                title="Barangay Profile"
+                description="Manage barangay information and disaster hazards for your area."
+                actions={
+                    <AdminPrimaryButton href="/barangay-profile/create">
+                        <Plus className="w-4 h-4" />
+                        Create Profile
+                    </AdminPrimaryButton>
+                }
+            />
 
-            {/* Search */}
-            <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                    type="text"
-                    placeholder="Search by name, municipality, or province..."
+            <AdminFilterBar>
+                <AdminSearchInput
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
+                    placeholder="Search by name, municipality, or province..."
                 />
-            </div>
+            </AdminFilterBar>
 
             {/* Table */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
@@ -12801,7 +12263,7 @@ function BarangayProfileList({ profiles = [] }) {
                     </table>
                 </div>
             </div>
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -12883,54 +12345,28 @@ function DrillHistoryReportsPage({ drills }) {
     const expandedDrill = safeDrills.find((event) => event.id === expandedId) || null;
 
     return (
-        <div className="space-y-6 w-full">
-            {/* Header */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-                            Drill History Reports
-                        </h1>
-                        <p className="mt-1 text-sm text-slate-600 max-w-xl">
-                            View past simulation events, performance results, and generate formal reports.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-                            <span className="text-xs text-slate-600 mr-1">Date range</span>
-                            <input
-                                type="date"
-                                value={dateFrom}
-                                onChange={(e) => setDateFrom(e.target.value)}
-                                className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={ClipboardList}
+                title="Drill History Reports"
+                description="View past simulation events, performance results, and generate formal reports."
+                actions={
+                    <>
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
+                            <span className="text-xs text-slate-600">Date range</span>
+                            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs" />
                             <span className="text-xs text-slate-400">→</span>
-                            <input
-                                type="date"
-                                value={dateTo}
-                                onChange={(e) => setDateTo(e.target.value)}
-                                className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
+                            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs" />
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => handleExport('pdf')}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
-                        >
-                            <Printer className="w-4 h-4" />
-                            Export (PDF)
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleExport('csv')}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-sm"
-                        >
-                            <Download className="w-4 h-4" />
-                            Export (CSV)
-                        </button>
-                    </div>
-                </div>
-            </div>
+                        <AdminPrimaryButton type="button" onClick={() => handleExport('pdf')}>
+                            <Printer className="w-4 h-4" /> Export PDF
+                        </AdminPrimaryButton>
+                        <AdminSecondaryButton type="button" onClick={() => handleExport('csv')}>
+                            <Download className="w-4 h-4" /> Export CSV
+                        </AdminSecondaryButton>
+                    </>
+                }
+            />
 
             {/* Stats cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -13166,7 +12602,7 @@ function DrillHistoryReportsPage({ drills }) {
                     </div>
                 </div>
             )}
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -13191,35 +12627,18 @@ function AfterActionReviewPage() {
     };
 
     return (
-        <div className="space-y-6 w-full">
-            {/* Hero header */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-6 md:p-8 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
-                            <FileText className="w-9 h-9 text-emerald-600" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-                                After-Action Review (AAR)
-                            </h1>
-                            <p className="mt-1 text-sm text-slate-600 max-w-xl">
-                                Standard layout for post-drill reports: executive summary, objectives vs results, performance scores, timeline, issues, and recommendations.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 shrink-0">
-                        <button
-                            type="button"
-                            onClick={handleGeneratePdf}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
-                        >
-                            <Printer className="w-5 h-5" />
-                            Generate Official AAR Report (PDF)
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={FileText}
+                title="After-Action Review"
+                description="Post-drill reports: executive summary, objectives vs results, scores, timeline, issues, and recommendations."
+                actions={
+                    <AdminPrimaryButton type="button" onClick={handleGeneratePdf}>
+                        <Printer className="w-4 h-4" />
+                        Generate AAR Report (PDF)
+                    </AdminPrimaryButton>
+                }
+            />
 
             {/* Report Identity (Header Section) */}
             <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6">
@@ -13368,7 +12787,7 @@ function AfterActionReviewPage() {
                     </div>
                 )}
             </div>
-        </div>
+        </AdminPageShell>
     );
 }
 
@@ -13383,44 +12802,30 @@ function ProfilePage({ user }) {
         .join('');
 
     return (
-        <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-            <section className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 border border-slate-200/80 shadow-xl p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
-                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg font-semibold">
-                                {initials || 'U'}
-                            </span>
-                        </div>
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-                                My Profile
-                            </h1>
-                            <p className="mt-1 text-sm text-slate-600 max-w-xl">
-                                Manage your account information, contact details, and security settings from a single place.
-                            </p>
-                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    Signed in as <span className="font-semibold text-slate-800">{safeUser.email || '—'}</span>
-                                </span>
-                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
-                                    Role:{' '}
-                                    <span className="font-semibold text-slate-800 text-[0.7rem] uppercase tracking-wide">
-                                        {safeUser.role || 'User'}
-                                    </span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex flex-col items-start md:items-end gap-3">
-                        <a href="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">
-                            <span className="text-base">←</span>
-                            Back to dashboard
-                        </a>
-                    </div>
-                </div>
-            </section>
+        <AdminPageShell className="max-w-6xl mx-auto">
+            <AdminPageHeader
+                icon={UserCircle}
+                title="My Profile"
+                description="Manage your account information, contact details, and security settings."
+                actions={
+                    <a href="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">
+                        <span className="text-base">←</span>
+                        Back to dashboard
+                    </a>
+                }
+            />
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-2 sm:ml-7">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Signed in as <span className="font-semibold text-slate-800">{safeUser.email || '—'}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
+                    Role:{' '}
+                    <span className="font-semibold text-slate-800 text-[0.7rem] uppercase tracking-wide">
+                        {safeUser.role || 'User'}
+                    </span>
+                </span>
+            </div>
 
             <section className="grid gap-6 lg:grid-cols-[240px,minmax(0,1fr)] items-start">
                 <aside className="bg-white rounded-2xl shadow-md border border-slate-200 p-4 space-y-4">
@@ -13721,7 +13126,7 @@ function ProfilePage({ user }) {
                     </section>
                 </div>
             </section>
-        </main>
+        </AdminPageShell>
     );
 }
 

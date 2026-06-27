@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Circle, Clock, Mail, Shield, RefreshCw, Search, Filter, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Circle, Clock, Mail, Shield, RefreshCw, Filter, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+    AdminPageShell,
+    AdminPageHeader,
+    AdminFilterBar,
+    AdminPrimaryButton,
+    AdminSearchInput,
+    adminSelectClass,
+    AdminContentCard,
+} from '../components/admin/AdminLayout';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -210,33 +219,18 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
     const offlineCount = users.filter(u => !u.is_online).length;
 
     return (
-        <div className="space-y-6 w-full overflow-x-hidden">
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <Activity className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">User Monitoring</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Monitor real-time online/offline status of all users.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <button
-                            onClick={handleManualRefresh}
-                            disabled={isRefreshing}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                        >
-                            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                            {isRefreshing ? 'Refreshing...' : 'Refresh'}
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={Activity}
+                title="User Monitoring"
+                description="Monitor real-time online/offline status of all users."
+                actions={
+                    <AdminPrimaryButton onClick={handleManualRefresh} disabled={isRefreshing}>
+                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </AdminPrimaryButton>
+                }
+            />
 
             {/* Stats cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -275,25 +269,19 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-md">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <AdminFilterBar>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <AdminSearchInput
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by name or email..."
+                    />
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search by name or email..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
-                        />
-                    </div>
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         <select
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white appearance-none"
+                            className={`w-full pl-10 ${adminSelectClass}`}
                         >
                             <option value="all">All Roles</option>
                             {uniqueRoles.filter(r => r !== 'all').map(role => (
@@ -304,11 +292,11 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                         </select>
                     </div>
                     <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white appearance-none"
+                            className={`w-full pl-10 ${adminSelectClass}`}
                         >
                             <option value="all">All Status</option>
                             <option value="online">Online Only</option>
@@ -316,16 +304,16 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                         </select>
                     </div>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* Users list */}
             <div className="space-y-6">
                 {Object.keys(groupedUsers).length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-md">
+                    <AdminContentCard className="p-12 text-center">
                         <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                         <p className="text-slate-600 font-medium">No users found</p>
                         <p className="text-sm text-slate-500 mt-1">Try adjusting your filters</p>
-                    </div>
+                    </AdminContentCard>
                 ) : (
                     Object.entries(groupedUsers).map(([role, roleUsers]) => {
                         const totalPages = Math.max(1, Math.ceil(roleUsers.length / ITEMS_PER_PAGE));
@@ -337,7 +325,7 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                         const endItem = Math.min(startIndex + paginatedRoleUsers.length, roleUsers.length);
 
                         return (
-                            <div key={role} className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden transition-shadow hover:shadow-lg">
+                            <AdminContentCard key={role} className="transition-shadow hover:shadow-md">
                                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -446,11 +434,11 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
                                         </div>
                                     </div>
                                 )}
-                            </div>
+                            </AdminContentCard>
                         );
                     })
                 )}
             </div>
-        </div>
+        </AdminPageShell>
     );
 }

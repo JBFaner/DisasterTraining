@@ -140,24 +140,24 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/training-modules/{trainingModule}', [TrainingModuleController::class, 'show'])
         ->name('training.modules.show');
 
-    // Lesson completion (participants)
-    Route::post('/training-modules/{trainingModule}/lessons/{lesson}/completion', [LessonCompletionController::class, 'toggle'])
+    Route::post('/training-modules/{trainingModule}/contents/{content}/completion', [LessonCompletionController::class, 'toggle'])
+        ->name('training.contents.completion.toggle');
+
+    Route::post('/training-modules/{trainingModule}/contents', [TrainingModuleController::class, 'storeContent'])
+        ->name('training.modules.contents.store');
+
+    Route::put('/training-modules/{trainingModule}/contents/{content}', [TrainingModuleController::class, 'updateContent'])
+        ->name('training.modules.contents.update');
+
+    Route::delete('/training-modules/{trainingModule}/contents/{content}', [TrainingModuleController::class, 'destroyContent'])
+        ->name('training.modules.contents.destroy');
+
+    Route::post('/training-modules/{trainingModule}/contents/reorder', [TrainingModuleController::class, 'reorderContents'])
+        ->name('training.modules.contents.reorder');
+
+    // Legacy lesson completion route (redirects participants using old URLs)
+    Route::post('/training-modules/{trainingModule}/lessons/{content}/completion', [LessonCompletionController::class, 'toggle'])
         ->name('training.lessons.completion.toggle');
-
-    Route::post('/training-modules/{trainingModule}/lessons', [TrainingModuleController::class, 'storeLesson'])
-        ->name('training.modules.lessons.store');
-
-    Route::put('/training-modules/{trainingModule}/lessons/{lesson}', [TrainingModuleController::class, 'updateLesson'])
-        ->name('training.modules.lessons.update');
-
-    Route::delete('/training-modules/{trainingModule}/lessons/{lesson}', [TrainingModuleController::class, 'destroyLesson'])
-        ->name('training.modules.lessons.destroy');
-
-    Route::post('/training-modules/{trainingModule}/lessons/{lesson}/materials', [TrainingModuleController::class, 'storeMaterial'])
-        ->name('training.modules.materials.store');
-
-    Route::delete('/training-modules/{trainingModule}/lessons/{lesson}/materials/{material}', [TrainingModuleController::class, 'destroyMaterial'])
-        ->name('training.modules.materials.destroy');
 
     Route::get('/training-modules/{trainingModule}/edit', [TrainingModuleController::class, 'edit'])
         ->name('training.modules.edit');

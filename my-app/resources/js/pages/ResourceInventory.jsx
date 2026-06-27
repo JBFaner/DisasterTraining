@@ -20,6 +20,15 @@ import {
     Box,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import {
+    AdminPageShell,
+    AdminPageHeader,
+    AdminFilterBar,
+    AdminPrimaryButton,
+    AdminSecondaryButton,
+    adminInputClass,
+    adminSelectClass,
+} from '../components/admin/AdminLayout';
 
 // Pagination Component
 function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems }) {
@@ -877,39 +886,24 @@ export function ResourceInventory() {
     ];
 
     return (
-        <div className="space-y-6 training-module-card-enter">
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <Box className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Resource & Equipment Inventory</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Manage materials, equipment, and tools for disaster training.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <button
-                            onClick={handleExportReport}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-300 bg-white text-slate-700 rounded-xl font-medium hover:border-emerald-400 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-all duration-250"
-                        >
+        <AdminPageShell className="training-module-card-enter">
+            <AdminPageHeader
+                icon={Box}
+                title="Resource & Equipment Inventory"
+                description="Manage materials, equipment, and tools for disaster training."
+                actions={
+                    <>
+                        <AdminSecondaryButton onClick={handleExportReport}>
                             <Download className="w-4 h-4" />
                             Export
-                        </button>
-                        <button
-                            onClick={handleAddResource}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
+                        </AdminSecondaryButton>
+                        <AdminPrimaryButton onClick={handleAddResource}>
+                            <Plus className="w-4 h-4" />
                             Add New Resource
-                        </button>
-                    </div>
-                </div>
-            </div>
+                        </AdminPrimaryButton>
+                    </>
+                }
+            />
 
             {/* Summary Cards - Certification style (premium KPI cards) */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -980,18 +974,17 @@ export function ResourceInventory() {
 
             {/* Tab Content */}
             {activeTab === 'resources' && (
-                <div className="space-y-6">
-                    {/* Search bar - Evaluations style (icon, input, dropdown, Filter button) */}
-                    <div className="rounded-xl bg-white border border-slate-200 shadow-md p-4">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 drop-shadow-sm" />
+                <div className="space-y-4">
+                    <AdminFilterBar>
+                        <div className="flex flex-col md:flex-row gap-3">
+                            <div className="flex-1 relative min-w-0">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                 <input
                                     type="text"
                                     placeholder="Search by resource name or ID..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
+                                    className={adminInputClass}
                                 />
                                 {searchSuggestions.length > 0 && (
                                     <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
@@ -1011,7 +1004,7 @@ export function ResourceInventory() {
                             </div>
                             <div className="flex gap-2 flex-wrap">
                                 <select
-                                    className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
+                                    className={adminSelectClass}
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
                                 >
@@ -1020,14 +1013,10 @@ export function ResourceInventory() {
                                         <option key={status} value={status}>{status}</option>
                                     ))}
                                 </select>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowFilters(!showFilters)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg shadow-sm font-medium text-sm transition-all duration-200"
-                                >
+                                <AdminPrimaryButton type="button" onClick={() => setShowFilters(!showFilters)}>
                                     <Filter className="w-4 h-4" />
                                     Filter
-                                </button>
+                                </AdminPrimaryButton>
                             </div>
                         </div>
                         <div className="relative mt-2" ref={filterRef}>
@@ -1099,7 +1088,7 @@ export function ResourceInventory() {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </AdminFilterBar>
 
                     {/* Resources Table - Soft rows (card list) */}
                     <div className="space-y-3">
@@ -1857,6 +1846,6 @@ export function ResourceInventory() {
                     </div>
                 </div>
             )}
-        </div>
+        </AdminPageShell>
     );
 }

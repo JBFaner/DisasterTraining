@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TrainingModule;
-use App\Models\TrainingLesson;
-use App\Models\LessonMaterial;
+use App\Http\Requests\ReorderTrainingContentsRequest;
+use App\Http\Requests\StoreTrainingContentRequest;
+use App\Http\Requests\StoreTrainingModuleRequest;
+use App\Http\Requests\UpdateTrainingContentRequest;
+use App\Http\Requests\UpdateTrainingModuleRequest;
 use App\Models\LessonCompletion;
+use App\Models\TrainingContent;
+use App\Models\TrainingModule;
 use App\Services\AuditLogger;
 use App\Services\GeminiService;
 use Cloudinary\Cloudinary;
@@ -18,19 +22,39 @@ class TrainingModuleController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-
         $perPage = 9;
 
         $query = TrainingModule::with('owner')
             ->orderByDesc('updated_at');
 
-        // Participants should only see published modules (visibility can be used later if needed)
         if ($user && $user->role === 'PARTICIPANT') {
             $query->where('status', 'published');
         }
 
-        $paginator = $query->paginate($perPage)->withQueryString();
+        if ($request->filled('search')) {
+            $search = $request->string('search')->trim();
+            if ($search !== '') {
+                $query->where(function ($builder) use ($search) {
+                    $builder->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('category', 'like', "%{$search}%");
+                });
+            }
+        }
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('difficulty')) {
+            $query->where('difficulty', $request->string('difficulty'));
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->string('category'));
+        }
+
+        $paginator = $query->paginate($perPage)->withQueryString();
         $modules = $paginator->items();
 
         $modulesPagination = [
@@ -53,6 +77,12 @@ class TrainingModuleController extends Controller
             'section' => 'training',
             'modules' => $modules,
             'modulesPagination' => $modulesPagination,
+            'trainingFilters' => [
+                'search' => $request->string('search')->toString(),
+                'status' => $request->string('status')->toString(),
+                'difficulty' => $request->string('difficulty')->toString(),
+                'category' => $request->string('category')->toString(),
+            ],
         ]);
     }
 
@@ -61,7 +91,6 @@ class TrainingModuleController extends Controller
         $user = Auth::user();
         $barangayProfile = null;
 
-        // If the user is assigned to a barangay, use that barangay's profile (with disaster hazards) for the disaster type dropdown
         if ($user && $user->barangay_id) {
             $barangayProfile = \App\Models\BarangayProfile::find($user->barangay_id);
         }
@@ -76,31 +105,24 @@ class TrainingModuleController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreTrainingModuleRequest $request)
     {
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'learning_objectives' => ['required', 'array', 'min:1'],
-            'learning_objectives.*' => ['required', 'string', 'max:500'],
-            'difficulty' => ['required', 'string'],
-            'category' => ['nullable', 'string', 'max:255'],
-            'visibility' => ['required', 'string'],
-        ]);
-
+        $data = $request->validated();
         $data['owner_id'] = Auth::id();
-        // Automatically set status to draft
         $data['status'] = 'draft';
+        $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
-        // Filter out empty objectives and convert to JSON
-        if (isset($data['learning_objectives'])) {
-            $data['learning_objectives'] = array_values(array_filter($data['learning_objectives']));
-            if (empty($data['learning_objectives'])) {
-                return redirect()->back()
-                    ->withErrors(['learning_objectives' => 'At least one learning objective is required.'])
-                    ->withInput();
-            }
+        if (empty($data['learning_objectives'])) {
+            return redirect()->back()
+                ->withErrors(['learning_objectives' => 'At least one learning objective is required.'])
+                ->withInput();
         }
+
+        if ($request->hasFile('thumbnail')) {
+            $data['thumbnail_path'] = $request->file('thumbnail')->store('training-module-thumbnails', 'public');
+        }
+
+        unset($data['thumbnail']);
 
         $module = TrainingModule::create($data);
 
@@ -112,7 +134,7 @@ class TrainingModuleController extends Controller
             'new_values' => $module->toArray(),
         ]);
 
-        return redirect()->route('training.modules')
+        return redirect()->route('training.modules.show', $module)
             ->with('status', 'Training module created successfully.');
     }
 
@@ -120,20 +142,21 @@ class TrainingModuleController extends Controller
     {
         $this->authorizeOwner($trainingModule);
 
-        // Validation: Check if module has required fields
         $errors = [];
         if (empty($trainingModule->title)) {
             $errors[] = 'Title is required';
         }
+        if (empty($trainingModule->category)) {
+            $errors[] = 'Disaster category is required';
+        }
         if (empty($trainingModule->difficulty)) {
             $errors[] = 'Difficulty is required';
         }
-        if ($trainingModule->lessons()->count() === 0) {
-            $errors[] = 'At least one lesson is required';
+        if ($trainingModule->contents()->count() === 0) {
+            $errors[] = 'At least one learning content item is required';
         }
 
         if (! empty($errors)) {
-            // If this is an AJAX/fetch request, return JSON so the frontend can show a popup
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -190,31 +213,34 @@ class TrainingModuleController extends Controller
             abort(403);
         }
 
-        // Participants can view only published modules (read-only)
         if ($user->role === 'PARTICIPANT') {
-            if (
-                $trainingModule->status !== 'published'
-            ) {
+            if ($trainingModule->status !== 'published') {
                 abort(403);
             }
         } else {
-            // Admin / owner access for management views
             $this->authorizeOwner($trainingModule);
         }
 
-        $trainingModule->load(['lessons.materials', 'owner']);
+        $trainingModule->load(['contents', 'owner']);
 
-        // Attach completion info for participants
         if ($user->role === 'PARTICIPANT') {
-            $completedLessonIds = LessonCompletion::where('user_id', $user->id)
+            $completedContentIds = LessonCompletion::where('user_id', $user->id)
                 ->where('training_module_id', $trainingModule->id)
-                ->pluck('training_lesson_id')
+                ->whereNotNull('training_content_id')
+                ->pluck('training_content_id')
                 ->all();
 
-            // Mark lessons with a computed property for the frontend
-            $trainingModule->lessons->transform(function ($lesson) use ($completedLessonIds) {
-                $lesson->is_completed = in_array($lesson->id, $completedLessonIds, true);
-                return $lesson;
+            if (empty($completedContentIds)) {
+                $completedContentIds = LessonCompletion::where('user_id', $user->id)
+                    ->where('training_module_id', $trainingModule->id)
+                    ->pluck('training_lesson_id')
+                    ->all();
+            }
+
+            $trainingModule->contents->transform(function ($content) use ($completedContentIds) {
+                $content->is_completed = in_array($content->id, $completedContentIds, true);
+
+                return $content;
             });
         }
 
@@ -224,30 +250,32 @@ class TrainingModuleController extends Controller
         ]);
     }
 
-    public function update(Request $request, TrainingModule $trainingModule)
+    public function update(UpdateTrainingModuleRequest $request, TrainingModule $trainingModule)
     {
         $this->authorizeOwner($trainingModule);
 
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'learning_objectives' => ['required', 'array', 'min:1'],
-            'learning_objectives.*' => ['required', 'string', 'max:500'],
-            'difficulty' => ['required', 'string'],
-            'category' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'string'],
-            'visibility' => ['required', 'string'],
-        ]);
+        $data = $request->validated();
+        $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
-        // Filter out empty objectives and convert to JSON
-        if (isset($data['learning_objectives'])) {
-            $data['learning_objectives'] = array_values(array_filter($data['learning_objectives']));
-            if (empty($data['learning_objectives'])) {
-                return redirect()->back()
-                    ->withErrors(['learning_objectives' => 'At least one learning objective is required.'])
-                    ->withInput();
-            }
+        if (empty($data['learning_objectives'])) {
+            return redirect()->back()
+                ->withErrors(['learning_objectives' => 'At least one learning objective is required.'])
+                ->withInput();
         }
+
+        if ($request->boolean('remove_thumbnail') && $trainingModule->thumbnail_path) {
+            $this->deleteLocalFile($trainingModule->thumbnail_path);
+            $data['thumbnail_path'] = null;
+        }
+
+        if ($request->hasFile('thumbnail')) {
+            if ($trainingModule->thumbnail_path) {
+                $this->deleteLocalFile($trainingModule->thumbnail_path);
+            }
+            $data['thumbnail_path'] = $request->file('thumbnail')->store('training-module-thumbnails', 'public');
+        }
+
+        unset($data['thumbnail'], $data['remove_thumbnail']);
 
         $old = $trainingModule->getOriginal();
         $trainingModule->update($data);
@@ -261,7 +289,7 @@ class TrainingModuleController extends Controller
             'new_values' => $trainingModule->toArray(),
         ]);
 
-        return redirect()->route('training.modules')
+        return redirect()->route('training.modules.show', $trainingModule)
             ->with('status', 'Training module updated successfully.');
     }
 
@@ -292,8 +320,12 @@ class TrainingModuleController extends Controller
     {
         $this->authorizeOwner($trainingModule);
 
-        // TODO: check if module is linked to active simulations before delete.
         $snapshot = $trainingModule->toArray();
+
+        if ($trainingModule->thumbnail_path) {
+            $this->deleteLocalFile($trainingModule->thumbnail_path);
+        }
+
         $trainingModule->delete();
 
         AuditLogger::log([
@@ -308,222 +340,120 @@ class TrainingModuleController extends Controller
             ->with('status', 'Training module deleted permanently.');
     }
 
-    public function storeLesson(Request $request, TrainingModule $trainingModule)
+    public function storeContent(StoreTrainingContentRequest $request, TrainingModule $trainingModule)
     {
         $this->authorizeOwner($trainingModule);
 
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'is_required' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validated();
+        $sortOrder = ($trainingModule->contents()->max('sort_order') ?? 0) + 1;
 
-        $order = ($trainingModule->lessons()->max('order') ?? 0) + 1;
-
-        TrainingLesson::create([
+        $payload = [
             'training_module_id' => $trainingModule->id,
             'title' => $data['title'],
-            'description' => $data['description'] ?? null,
-            'is_required' => $request->boolean('is_required'),
-            'order' => $order,
-        ]);
-
-        return redirect()->route('training.modules.show', $trainingModule)
-            ->with('status', 'Lesson added to module.');
-    }
-
-    public function updateLesson(Request $request, TrainingModule $trainingModule, TrainingLesson $lesson)
-    {
-        $this->authorizeOwner($trainingModule);
-
-        if ($lesson->training_module_id !== $trainingModule->id) {
-            abort(404);
-        }
-
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'is_required' => ['nullable', 'boolean'],
-        ]);
-
-        $lesson->update([
-            'title' => $data['title'],
-            'description' => $data['description'] ?? null,
-            'is_required' => $request->boolean('is_required'),
-        ]);
-
-        return redirect()->route('training.modules.show', $trainingModule)
-            ->with('status', 'Lesson updated successfully.');
-    }
-
-    public function destroyLesson(TrainingModule $trainingModule, TrainingLesson $lesson)
-    {
-        $this->authorizeOwner($trainingModule);
-
-        if ($lesson->training_module_id !== $trainingModule->id) {
-            abort(404);
-        }
-
-        $lesson->delete();
-
-        return redirect()->route('training.modules.show', $trainingModule)
-            ->with('status', 'Lesson removed from module.');
-    }
-
-    public function storeMaterial(Request $request, TrainingModule $trainingModule, TrainingLesson $lesson)
-    {
-        $this->authorizeOwner($trainingModule);
-
-        if ($lesson->training_module_id !== $trainingModule->id) {
-            abort(404);
-        }
-
-        $data = $request->validate([
-            'type' => ['required', 'string', 'max:50'],
-            'label' => ['nullable', 'string', 'max:255'],
-            'url' => ['nullable', 'url', 'max:2048'],
-            // Allow larger files; actual limit is controlled by PHP upload_max_filesize/post_max_size
-            'file' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx,jpg,jpeg,png,gif,mp4,mov,avi'],
-            'storage_target' => ['nullable', 'string', 'in:auto,local,cloudinary'],
-        ]);
-
-        if (! $request->hasFile('file') && empty($data['url'])) {
-            return redirect()->back()
-                ->withErrors([
-                    'file' => 'Please either upload a file or provide a valid link.',
-                ])
-                ->withInput();
-        }
-
-        $storedPath = null;
-        $storageTarget = $data['storage_target'] ?? 'auto';
+            'content_type' => $data['content_type'],
+            'body' => $data['body'] ?? null,
+            'external_url' => $data['external_url'] ?? null,
+            'sort_order' => $sortOrder,
+        ];
 
         if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            $mime = $file->getMimeType();
-            $extension = strtolower($file->getClientOriginalExtension());
-
-            $isVideo = ($mime && str_starts_with($mime, 'video/'))
-                || in_array($extension, ['mp4', 'mov', 'avi'], true);
-            $isImage = ($mime && str_starts_with($mime, 'image/'))
-                || in_array($extension, ['jpg', 'jpeg', 'png', 'gif'], true);
-
-            $shouldUseCloudinary = false;
-
-            if ($storageTarget === 'cloudinary' && ($isVideo || $isImage)) {
-                $shouldUseCloudinary = true;
-            } elseif ($storageTarget === 'local') {
-                $shouldUseCloudinary = false;
-            } else {
-                // auto: preserve previous behaviour (videos -> Cloudinary, others -> local)
-                $shouldUseCloudinary = $isVideo;
+            try {
+                $payload['file_path'] = $this->storeContentFile(
+                    $request->file('file'),
+                    $data['content_type'],
+                    $data['storage_target'] ?? 'auto',
+                );
+            } catch (\Throwable $e) {
+                return redirect()->back()
+                    ->withErrors(['file' => $e->getMessage()])
+                    ->withInput();
             }
-
-            if ($shouldUseCloudinary && ($isVideo || $isImage)) {
-                try {
-                    $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: null;
-                    if (! $cloudinaryUrl) {
-                        return redirect()->back()
-                            ->withErrors([
-                                'file' => 'Cloudinary is not configured. Please set CLOUDINARY_URL in .env and restart the server.',
-                            ])
-                            ->withInput();
-                    }
-
-                    $parsed = parse_url($cloudinaryUrl);
-                    $cloudName = $parsed['host'] ?? null;
-                    $apiKey = $parsed['user'] ?? null;
-                    $apiSecret = $parsed['pass'] ?? null;
-
-                    if (! $cloudName || ! $apiKey || ! $apiSecret) {
-                        return redirect()->back()
-                            ->withErrors([
-                                'file' => 'Cloudinary is misconfigured. CLOUDINARY_URL must look like cloudinary://API_KEY:API_SECRET@CLOUD_NAME',
-                            ])
-                            ->withInput();
-                    }
-
-                    $cloudinary = new Cloudinary([
-                        'cloud' => [
-                            'cloud_name' => $cloudName,
-                            'api_key' => $apiKey,
-                            'api_secret' => $apiSecret,
-                        ],
-                        'url' => [
-                            'secure' => true,
-                        ],
-                    ]);
-
-                    $resourceType = $isVideo ? 'video' : 'image';
-
-                    $uploadResult = $cloudinary->uploadApi()->upload($file->getRealPath(), [
-                        'resource_type' => $resourceType,
-                        'folder' => 'lesson-materials',
-                    ]);
-
-                    $storedPath = $uploadResult['secure_url'] ?? $uploadResult['url'] ?? null;
-                    if (! $storedPath) {
-                        throw new \Exception('Cloudinary did not return a URL for the uploaded file.');
-                    }
-                } catch (\Throwable $e) {
-                    return redirect()->back()
-                        ->withErrors([
-                            'file' => 'Cloudinary upload failed. Please confirm CLOUDINARY_URL is correct and restart the server. Error: '.$e->getMessage(),
-                        ])
-                        ->withInput();
-                }
-            } else {
-                // Local storage
-                $relativePath = $file->store('lesson-materials', 'public');
-                $storedPath = Storage::url($relativePath);
-            }
-        } else {
-            // Fallback to external URL
-            $storedPath = $data['url'];
         }
 
-        LessonMaterial::create([
-            'training_lesson_id' => $lesson->id,
-            'type' => $data['type'],
-            'label' => $data['label'] ?? null,
-            'path' => $storedPath,
-        ]);
+        TrainingContent::create($payload);
 
         return redirect()->route('training.modules.show', $trainingModule)
-            ->with('status', 'Learning material added to lesson.');
+            ->with('status', 'Learning content added to module.');
     }
 
-    public function destroyMaterial(TrainingModule $trainingModule, TrainingLesson $lesson, LessonMaterial $material)
-    {
+    public function updateContent(
+        UpdateTrainingContentRequest $request,
+        TrainingModule $trainingModule,
+        TrainingContent $content,
+    ) {
+        $this->authorizeOwner($trainingModule);
+        $this->assertContentBelongsToModule($trainingModule, $content);
+
+        $data = $request->validated();
+
+        $payload = [
+            'title' => $data['title'],
+            'content_type' => $data['content_type'],
+            'body' => $data['body'] ?? null,
+            'external_url' => $data['external_url'] ?? null,
+        ];
+
+        if ($request->hasFile('file')) {
+            $this->deleteStoredContentFile($content->file_path);
+            $payload['file_path'] = $this->storeContentFile(
+                $request->file('file'),
+                $data['content_type'],
+                $data['storage_target'] ?? 'auto',
+            );
+        } elseif ($data['content_type'] === TrainingContent::TYPE_YOUTUBE) {
+            $payload['file_path'] = null;
+        }
+
+        $content->update($payload);
+
+        return redirect()->route('training.modules.show', $trainingModule)
+            ->with('status', 'Learning content updated successfully.');
+    }
+
+    public function destroyContent(
+        TrainingModule $trainingModule,
+        TrainingContent $content,
+    ) {
+        $this->authorizeOwner($trainingModule);
+        $this->assertContentBelongsToModule($trainingModule, $content);
+
+        $this->deleteStoredContentFile($content->file_path);
+        $content->delete();
+
+        return redirect()->route('training.modules.show', $trainingModule)
+            ->with('status', 'Learning content removed from module.');
+    }
+
+    public function reorderContents(
+        ReorderTrainingContentsRequest $request,
+        TrainingModule $trainingModule,
+    ) {
         $this->authorizeOwner($trainingModule);
 
-        if ($lesson->training_module_id !== $trainingModule->id || $material->training_lesson_id !== $lesson->id) {
-            abort(404);
-        }
+        $order = $request->validated()['order'];
+        $moduleContentIds = $trainingModule->contents()->pluck('id')->all();
 
-        // Best-effort cleanup of locally stored files
-        if ($material->path) {
-            $publicBase = rtrim(Storage::url(''), '/');
-            $path = $material->path;
-
-            if (str_starts_with($path, $publicBase)) {
-                $relative = ltrim(substr($path, strlen($publicBase)), '/');
-                Storage::disk('public')->delete($relative);
-            } elseif (str_starts_with($path, '/storage/')) {
-                $relative = ltrim(substr($path, strlen('/storage/')), '/');
-                Storage::disk('public')->delete($relative);
+        foreach ($order as $index => $contentId) {
+            if (! in_array($contentId, $moduleContentIds, true)) {
+                continue;
             }
+
+            TrainingContent::where('id', $contentId)
+                ->where('training_module_id', $trainingModule->id)
+                ->update(['sort_order' => $index + 1]);
         }
 
-        $material->delete();
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Content order updated.',
+            ]);
+        }
 
         return redirect()->route('training.modules.show', $trainingModule)
-            ->with('status', 'Learning material removed from lesson.');
+            ->with('status', 'Content order updated.');
     }
 
-    /**
-     * Generate training module description and learning objectives using AI
-     */
     public function generateAiModule(Request $request)
     {
         $user = Auth::user();
@@ -557,6 +487,120 @@ class TrainingModuleController extends Controller
         }
     }
 
+    protected function normalizeObjectives(array $objectives): array
+    {
+        return array_values(array_filter(array_map('trim', $objectives)));
+    }
+
+    protected function storeContentFile($file, string $contentType, string $storageTarget = 'auto'): string
+    {
+        $mime = $file->getMimeType();
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        $isVideo = ($mime && str_starts_with($mime, 'video/'))
+            || in_array($extension, ['mp4', 'mov', 'avi'], true);
+        $isImage = ($mime && str_starts_with($mime, 'image/'))
+            || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
+
+        $shouldUseCloudinary = false;
+
+        if ($storageTarget === 'cloudinary' && ($isVideo || $isImage)) {
+            $shouldUseCloudinary = true;
+        } elseif ($storageTarget === 'local') {
+            $shouldUseCloudinary = false;
+        } else {
+            $shouldUseCloudinary = $isVideo;
+        }
+
+        if ($shouldUseCloudinary && ($isVideo || $isImage)) {
+            $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: null;
+            if (! $cloudinaryUrl) {
+                throw new \RuntimeException('Cloudinary is not configured. Set CLOUDINARY_URL in .env or choose local storage.');
+            }
+
+            $parsed = parse_url($cloudinaryUrl);
+            $cloudName = $parsed['host'] ?? null;
+            $apiKey = $parsed['user'] ?? null;
+            $apiSecret = $parsed['pass'] ?? null;
+
+            if (! $cloudName || ! $apiKey || ! $apiSecret) {
+                throw new \RuntimeException('Cloudinary is misconfigured.');
+            }
+
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => $cloudName,
+                    'api_key' => $apiKey,
+                    'api_secret' => $apiSecret,
+                ],
+                'url' => [
+                    'secure' => true,
+                ],
+            ]);
+
+            $resourceType = $isVideo ? 'video' : 'image';
+            $uploadResult = $cloudinary->uploadApi()->upload($file->getRealPath(), [
+                'resource_type' => $resourceType,
+                'folder' => 'training-contents',
+            ]);
+
+            $storedPath = $uploadResult['secure_url'] ?? $uploadResult['url'] ?? null;
+            if (! $storedPath) {
+                throw new \RuntimeException('Cloudinary did not return a URL for the uploaded file.');
+            }
+
+            return $storedPath;
+        }
+
+        $folder = match ($contentType) {
+            TrainingContent::TYPE_PDF => 'training-contents/pdf',
+            TrainingContent::TYPE_VIDEO => 'training-contents/video',
+            TrainingContent::TYPE_IMAGE => 'training-contents/images',
+            default => 'training-contents',
+        };
+
+        $relativePath = $file->store($folder, 'public');
+
+        return Storage::url($relativePath);
+    }
+
+    protected function deleteStoredContentFile(?string $path): void
+    {
+        if (! $path) {
+            return;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return;
+        }
+
+        $this->deleteLocalFile(str_replace('/storage/', '', $path));
+    }
+
+    protected function deleteLocalFile(?string $path): void
+    {
+        if (! $path) {
+            return;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return;
+        }
+
+        $relative = str_starts_with($path, '/storage/')
+            ? ltrim(substr($path, strlen('/storage/')), '/')
+            : $path;
+
+        Storage::disk('public')->delete($relative);
+    }
+
+    protected function assertContentBelongsToModule(TrainingModule $module, TrainingContent $content): void
+    {
+        if ($content->training_module_id !== $module->id) {
+            abort(404);
+        }
+    }
+
     protected function authorizeOwner(TrainingModule $module): void
     {
         $user = Auth::user();
@@ -570,5 +614,3 @@ class TrainingModuleController extends Controller
         }
     }
 }
-
-

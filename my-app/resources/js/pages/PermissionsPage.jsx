@@ -1,6 +1,16 @@
 import React from 'react';
-import { Search, Plus, ShieldCheck, Pencil, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ShieldCheck, Pencil, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import Swal from 'sweetalert2';
+import {
+    AdminPageShell,
+    AdminPageHeader,
+    AdminFilterBar,
+    AdminPrimaryButton,
+    AdminSecondaryButton,
+    AdminSearchInput,
+    adminCompactInputClass,
+    AdminContentCard,
+} from '../components/admin/AdminLayout';
 
 export function PermissionsPage({ permissions = [] }) {
     const [search, setSearch] = React.useState('');
@@ -290,47 +300,29 @@ export function PermissionsPage({ permissions = [] }) {
     };
 
     return (
-        <div className="space-y-6 w-full overflow-x-hidden">
-            {/* Hero Header - Certification style */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 border border-slate-200/80 shadow-xl p-8 md:p-10 transition-all duration-250">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-emerald-100 rounded-xl shadow-md">
-                                <ShieldCheck className="w-9 h-9 text-emerald-600" />
-                            </div>
-                            <h1 className="text-[30px] font-bold text-slate-900 tracking-tight">Permission Management</h1>
-                        </div>
-                        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-                            Manage system permissions and access controls.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 shrink-0">
-                        <button
-                            onClick={handleAddPermission}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 text-white rounded-xl font-semibold text-sm transition-all duration-250"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Add Permission
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={ShieldCheck}
+                title="Permission Management"
+                description="Manage system permissions and access controls."
+                actions={
+                    <AdminPrimaryButton onClick={handleAddPermission}>
+                        <Plus className="w-4 h-4" />
+                        Add Permission
+                    </AdminPrimaryButton>
+                }
+            />
 
-            {/* Search */}
-            <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                    type="text"
-                    placeholder="Search permissions..."
+            <AdminFilterBar>
+                <AdminSearchInput
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
+                    placeholder="Search permissions..."
+                    className="max-w-sm"
                 />
-            </div>
+            </AdminFilterBar>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
+            <AdminContentCard>
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[600px] text-sm">
                         <thead>
@@ -420,7 +412,7 @@ export function PermissionsPage({ permissions = [] }) {
                         </div>
                     </div>
                 )}
-            </div>
+            </AdminContentCard>
 
             {/* Add Permission Modal */}
             {showAddModal && (
@@ -452,25 +444,17 @@ export function PermissionsPage({ permissions = [] }) {
                                     value={permissionName}
                                     onChange={(e) => setPermissionName(e.target.value)}
                                     placeholder="e.g., users.create, resources.edit"
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
+                                    className={`${adminCompactInputClass} font-mono`}
                                     required
                                     autoComplete="off"
                                 />
                                 <p className="mt-1.5 text-xs text-slate-500">Use lowercase with dots (e.g., users.create, resources.edit)</p>
                             </div>
                             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                                <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
-                                >
+                                <AdminSecondaryButton type="button" onClick={handleCloseModal}>
                                     Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
+                                </AdminSecondaryButton>
+                                <AdminPrimaryButton type="submit" disabled={isSubmitting}>
                                     {isSubmitting ? (
                                         <>
                                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -482,12 +466,12 @@ export function PermissionsPage({ permissions = [] }) {
                                             Create Permission
                                         </>
                                     )}
-                                </button>
+                                </AdminPrimaryButton>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
-        </div>
+        </AdminPageShell>
     );
 }
