@@ -17,10 +17,13 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\EvaluationController;
+use App\Http\Controllers\EvaluationResultController;
 use App\Http\Controllers\AfterActionReviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\UserMonitoringController;
 use App\Http\Controllers\CentralizedLoginController;
+use App\Http\Controllers\AiScenarioConfigController;
+use App\Http\Controllers\AiScenarioAttemptController;
 use App\Http\Middleware\CheckSessionInactivity;
 
 Route::get('/', function () {
@@ -172,6 +175,21 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::delete('/training-modules/{trainingModule}', [TrainingModuleController::class, 'destroy'])
         ->name('training.modules.destroy');
 
+    // AI Scenario-Based Training (Gemini)
+    Route::get('/admin/ai-scenario-config', [AiScenarioConfigController::class, 'index'])
+        ->name('ai-scenario-config.index');
+    Route::post('/admin/ai-scenario-config', [AiScenarioConfigController::class, 'store'])
+        ->name('ai-scenario-config.store');
+    Route::post('/admin/ai-scenario-config/{config}/generate', [AiScenarioConfigController::class, 'generate'])
+        ->name('ai-scenario-config.generate');
+
+    Route::post('/training-modules/{trainingModule}/ai-scenario-training/start', [AiScenarioAttemptController::class, 'start'])
+        ->name('ai-scenario-training.start');
+    Route::get('/ai-scenario-attempts/{attempt}', [AiScenarioAttemptController::class, 'show'])
+        ->name('ai-scenario-attempts.show');
+    Route::post('/ai-scenario-attempts/{attempt}/submit', [AiScenarioAttemptController::class, 'submit'])
+        ->name('ai-scenario-attempts.submit');
+
     // Scenarios
     Route::get('/scenarios', [ScenarioController::class, 'index'])->name('scenarios.index');
     Route::get('/scenarios/create', [ScenarioController::class, 'create'])->name('scenarios.create');
@@ -276,8 +294,12 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::get('/profile/phone/confirm/{token}', [ProfileController::class, 'confirmPhoneChange'])->name('profile.phone.confirm');
     Route::post('/profile/password', [ProfileController::class, 'changePassword'])->name('profile.password.change');
 
-    // Evaluation & Scoring System
-    Route::get('/evaluations', [EvaluationController::class, 'index'])->name('evaluations.index');
+    // Evaluation & Scoring System (AI scenario results)
+    Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('evaluations.index');
+    Route::get('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'show'])->name('evaluation-results.show');
+    Route::delete('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'destroy'])->name('evaluation-results.destroy');
+
+    // Simulation event manual evaluation (legacy)
     Route::get('/simulation-events/{simulationEvent}/evaluation', [EvaluationController::class, 'show'])->name('evaluations.show');
     Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [EvaluationController::class, 'summary'])->name('evaluations.summary');
     Route::get('/simulation-events/{simulationEvent}/evaluation/export/{format?}', [EvaluationController::class, 'export'])->name('evaluations.export');

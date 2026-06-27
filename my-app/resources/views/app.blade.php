@@ -178,6 +178,36 @@
             @isset($dashboard_charts)
                 data-dashboard-charts='@json($dashboard_charts)'
             @endisset
+            @isset($ai_scenario_modules)
+                data-ai-scenario-modules='@json($ai_scenario_modules)'
+            @endisset
+            @isset($ai_scenario_configs)
+                data-ai-scenario-configs='@json($ai_scenario_configs)'
+            @endisset
+            @isset($ai_scenario_attempt)
+                data-ai-scenario-attempt='@json($ai_scenario_attempt)'
+            @endisset
+            @isset($evaluation_results)
+                data-evaluation-results='@json($evaluation_results)'
+            @endisset
+            @isset($evaluation_results_pagination)
+                data-evaluation-results-pagination='@json($evaluation_results_pagination)'
+            @endisset
+            @isset($evaluation_analytics)
+                data-evaluation-analytics='@json($evaluation_analytics)'
+            @endisset
+            @isset($evaluation_modules)
+                data-evaluation-modules='@json($evaluation_modules)'
+            @endisset
+            @isset($evaluation_filters)
+                data-evaluation-filters='@json($evaluation_filters)'
+            @endisset
+            @isset($evaluation_passing_score)
+                data-evaluation-passing-score="{{ $evaluation_passing_score }}"
+            @endisset
+            @isset($evaluation_result)
+                data-evaluation-result='@json($evaluation_result)'
+            @endisset
             @if (session('status'))
                 data-status="{{ session('status') }}"
             @endif

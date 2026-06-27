@@ -46,6 +46,41 @@ class TrainingModule extends Model
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    public function aiScenarioConfig()
+    {
+        return $this->hasOne(AiScenarioConfig::class);
+    }
+
+    public function aiScenarioAttempts()
+    {
+        return $this->hasMany(AiScenarioAttempt::class);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function contentIds(): array
+    {
+        return $this->contents()->pluck('id')->all();
+    }
+
+    public function participantHasCompletedAllContents(int $userId): bool
+    {
+        $contentIds = $this->contentIds();
+
+        if (empty($contentIds)) {
+            return false;
+        }
+
+        $completedCount = LessonCompletion::query()
+            ->where('user_id', $userId)
+            ->where('training_module_id', $this->id)
+            ->whereIn('training_content_id', $contentIds)
+            ->count();
+
+        return $completedCount >= count($contentIds);
+    }
+
     public function getThumbnailUrlAttribute(): ?string
     {
         if (! $this->thumbnail_path) {

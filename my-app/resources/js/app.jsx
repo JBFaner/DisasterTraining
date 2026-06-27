@@ -16,6 +16,10 @@ import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
 import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import { TrainingModuleDetail } from './pages/TrainingModuleDetail';
+import { AiScenarioConfigPage } from './pages/AiScenarioConfigPage';
+import { AiScenarioTrainingPage, AiScenarioTrainingUnlock } from './pages/AiScenarioTrainingPage';
+import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
+import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
 import {
     AdminPageShell,
     AdminPageHeader,
@@ -71,6 +75,7 @@ import {
     LayoutGrid,
     List,
     UserCircle,
+    Sparkles,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
@@ -516,6 +521,16 @@ if (rootElement) {
     const participantEvaluationJson = rootElement.getAttribute('data-participant-evaluation');
     const barangayProfileJson = rootElement.getAttribute('data-barangay-profile');
     const barangayProfilesJson = rootElement.getAttribute('data-barangay-profiles');
+    const aiScenarioModulesJson = rootElement.getAttribute('data-ai-scenario-modules');
+    const aiScenarioConfigsJson = rootElement.getAttribute('data-ai-scenario-configs');
+    const aiScenarioAttemptJson = rootElement.getAttribute('data-ai-scenario-attempt');
+    const evaluationResultsJson = rootElement.getAttribute('data-evaluation-results');
+    const evaluationResultsPaginationJson = rootElement.getAttribute('data-evaluation-results-pagination');
+    const evaluationAnalyticsJson = rootElement.getAttribute('data-evaluation-analytics');
+    const evaluationModulesJson = rootElement.getAttribute('data-evaluation-modules');
+    const evaluationFiltersJson = rootElement.getAttribute('data-evaluation-filters');
+    const evaluationPassingScoreAttr = rootElement.getAttribute('data-evaluation-passing-score');
+    const evaluationResultJson = rootElement.getAttribute('data-evaluation-result');
     const scoresJson = rootElement.getAttribute('data-scores');
     const criterionAveragesJson = rootElement.getAttribute('data-criterion-averages');
 
@@ -642,6 +657,16 @@ if (rootElement) {
 
     let barangayProfile = null;
     let barangayProfiles = [];
+    let aiScenarioModules = [];
+    let aiScenarioConfigs = [];
+    let aiScenarioAttempt = null;
+    let evaluationResults = [];
+    let evaluationResultsPagination = null;
+    let evaluationAnalytics = null;
+    let evaluationModules = [];
+    let evaluationFilters = {};
+    let evaluationPassingScore = 75;
+    let evaluationResult = null;
     if (barangayProfileJson) {
         try {
             barangayProfile = JSON.parse(barangayProfileJson);
@@ -654,6 +679,72 @@ if (rootElement) {
             barangayProfiles = JSON.parse(barangayProfilesJson);
         } catch (e) {
             console.error('Failed to parse barangay profiles JSON', e);
+        }
+    }
+    if (aiScenarioModulesJson) {
+        try {
+            aiScenarioModules = JSON.parse(aiScenarioModulesJson);
+        } catch (e) {
+            console.error('Failed to parse AI scenario modules JSON', e);
+        }
+    }
+    if (aiScenarioConfigsJson) {
+        try {
+            aiScenarioConfigs = JSON.parse(aiScenarioConfigsJson);
+        } catch (e) {
+            console.error('Failed to parse AI scenario configs JSON', e);
+        }
+    }
+    if (aiScenarioAttemptJson) {
+        try {
+            aiScenarioAttempt = JSON.parse(aiScenarioAttemptJson);
+        } catch (e) {
+            console.error('Failed to parse AI scenario attempt JSON', e);
+        }
+    }
+    if (evaluationResultsJson) {
+        try {
+            evaluationResults = JSON.parse(evaluationResultsJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation results JSON', e);
+        }
+    }
+    if (evaluationResultsPaginationJson) {
+        try {
+            evaluationResultsPagination = JSON.parse(evaluationResultsPaginationJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation results pagination JSON', e);
+        }
+    }
+    if (evaluationAnalyticsJson) {
+        try {
+            evaluationAnalytics = JSON.parse(evaluationAnalyticsJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation analytics JSON', e);
+        }
+    }
+    if (evaluationModulesJson) {
+        try {
+            evaluationModules = JSON.parse(evaluationModulesJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation modules JSON', e);
+        }
+    }
+    if (evaluationFiltersJson) {
+        try {
+            evaluationFilters = JSON.parse(evaluationFiltersJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation filters JSON', e);
+        }
+    }
+    if (evaluationPassingScoreAttr) {
+        evaluationPassingScore = parseFloat(evaluationPassingScoreAttr) || 75;
+    }
+    if (evaluationResultJson) {
+        try {
+            evaluationResult = JSON.parse(evaluationResultJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation result JSON', e);
         }
     }
 
@@ -734,6 +825,8 @@ if (rootElement) {
 
     const navSection =
         sectionAttr.startsWith('training') ? 'training' :
+            sectionAttr === 'ai_scenario_config' ? 'ai_scenario_config' :
+                sectionAttr.startsWith('ai_scenario') ? 'training' :
             sectionAttr.startsWith('scenario') ? 'scenario' :
                 sectionAttr.startsWith('simulation') ? 'simulation' :
                     sectionAttr.startsWith('participant') ? 'participants' :
@@ -741,6 +834,7 @@ if (rootElement) {
                             sectionAttr.startsWith('event_attendance') ? 'participants' :
                                 sectionAttr.startsWith('my_attendance') ? 'participants' :
                                     sectionAttr.startsWith('evaluation_results_participant') ? 'evaluation' :
+                                        sectionAttr === 'evaluation_result_detail' ? 'evaluation' :
                                         sectionAttr.startsWith('certification_participant') ? 'certification' :
                                             sectionAttr.startsWith('resources') ? 'resources' :
                                                 sectionAttr.startsWith('evaluation') ? 'evaluation' :
@@ -774,6 +868,16 @@ if (rootElement) {
 
         if (sectionAttr === 'training') {
             return [];
+        }
+        if (sectionAttr === 'ai_scenario_config') {
+            return [];
+        }
+        if (sectionAttr === 'ai_scenario_attempt') {
+            return [
+                { label: 'Training Modules', href: '/training-modules' },
+                { label: currentModule?.title || 'Module', href: currentModule ? `/training-modules/${currentModule.id}` : null },
+                { label: 'AI Scenario Training', href: null },
+            ];
         }
         if (sectionAttr === 'training_create') {
             return [
@@ -876,7 +980,14 @@ if (rootElement) {
         }
 
         if (sectionAttr === 'evaluation_results_participant') {
-            return [{ label: 'My Evaluation Results', href: '/evaluations' }];
+            return [];
+        }
+
+        if (sectionAttr === 'evaluation_result_detail') {
+            return [
+                { label: 'Evaluations', href: '/evaluations' },
+                { label: 'Evaluation Report', href: null },
+            ];
         }
 
         if (sectionAttr === 'certification_participant') {
@@ -997,6 +1108,7 @@ if (rootElement) {
             'participants',
             'resources',
             'evaluation_dashboard',
+            'evaluation_results_participant',
             'certification',
             'barangay_profile',
             'admin_users_index',
@@ -1004,6 +1116,7 @@ if (rootElement) {
             'after_action_review',
             'drill_history_reports',
             'user_monitoring',
+            'ai_scenario_config',
         ]);
         if (indexSections.has(sectionAttr)) {
             return '';
@@ -1049,6 +1162,14 @@ if (rootElement) {
         }
         if (sectionAttr === 'training_detail') {
             return currentModule?.title || 'Training Module';
+        }
+
+        if (sectionAttr === 'ai_scenario_attempt') {
+            return 'AI Scenario Training';
+        }
+
+        if (sectionAttr === 'evaluation_result_detail') {
+            return 'Evaluation Report';
         }
 
         if (breadcrumbs.length === 1) {
@@ -1122,6 +1243,14 @@ if (rootElement) {
                                     <p className="text-slate-600">Loading module details...</p>
                                 </div>
                             )
+                        )}
+
+                        {sectionAttr === 'ai_scenario_config' && (
+                            <AiScenarioConfigPage modules={aiScenarioModules} configs={aiScenarioConfigs} />
+                        )}
+
+                        {sectionAttr === 'ai_scenario_attempt' && aiScenarioAttempt && (
+                            <AiScenarioTrainingPage attempt={aiScenarioAttempt} module={currentModule} />
                         )}
 
                         {sectionAttr === 'scenario' && (
@@ -1466,7 +1595,22 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'evaluation_dashboard' && (
-                            <EvaluationDashboard events={events} />
+                            <EvaluationResultsIndex
+                                results={evaluationResults}
+                                pagination={evaluationResultsPagination}
+                                analytics={evaluationAnalytics}
+                                modules={evaluationModules}
+                                filters={evaluationFilters}
+                                passingScore={evaluationPassingScore}
+                                role={role}
+                            />
+                        )}
+
+                        {sectionAttr === 'evaluation_result_detail' && evaluationResult && (
+                            <EvaluationResultDetail
+                                result={evaluationResult}
+                                passingScore={evaluationPassingScore}
+                            />
                         )}
 
                         {sectionAttr === 'evaluation_participants' && (
@@ -1506,7 +1650,14 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'evaluation_results_participant' && (
-                            <ParticipantEvaluationResults participantEvaluations={participantEvaluations || []} />
+                            <EvaluationResultsIndex
+                                results={evaluationResults}
+                                pagination={evaluationResultsPagination}
+                                modules={evaluationModules}
+                                filters={evaluationFilters}
+                                passingScore={evaluationPassingScore}
+                                role="PARTICIPANT"
+                            />
                         )}
 
                         {sectionAttr === 'barangay_profile' && (
@@ -2011,9 +2162,9 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                                 <BookOpen className="w-10 h-10 text-emerald-600" />
                                 <span className="text-sm font-medium text-slate-700">+ Module</span>
                             </a>
-                            <a href="/scenarios/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
-                                <Target className="w-10 h-10 text-emerald-600" />
-                                <span className="text-sm font-medium text-slate-700">+ Scenario</span>
+                            <a href="/admin/ai-scenario-config" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                                <Sparkles className="w-10 h-10 text-emerald-600" />
+                                <span className="text-sm font-medium text-slate-700">AI Scenario</span>
                             </a>
                             <a href="/simulation-events/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                                 <CalendarClock className="w-10 h-10 text-emerald-600" />
@@ -2979,6 +3130,10 @@ function ParticipantTrainingLessonView({ module }) {
                     </div>
                 )}
             </div>
+
+            {module?.ai_training ? (
+                <AiScenarioTrainingUnlock module={module} aiTraining={module.ai_training} />
+            ) : null}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 {/* Lesson list */}

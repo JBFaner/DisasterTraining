@@ -242,6 +242,9 @@ class TrainingModuleController extends Controller
 
                 return $content;
             });
+
+            $trainingService = app(\App\Services\AiScenarioTrainingService::class);
+            $trainingModule->ai_training = $trainingService->buildParticipantMeta($trainingModule, $user);
         }
 
         return view('app', [

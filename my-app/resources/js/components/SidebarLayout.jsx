@@ -23,6 +23,7 @@ import {
     Settings,
     FileText,
     History,
+    Sparkles,
 } from 'lucide-react';
 import { TopBar } from './TopBar';
 
@@ -514,10 +515,18 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         onNavigate={onNavigate}
                     />
                     <NavItem
-                        icon={Activity}
-                        label="Scenario-based Exercise Design"
-                        href="/scenarios"
-                        active={currentSection === 'scenario'}
+                        icon={Sparkles}
+                        label="AI Scenario Training"
+                        href="/admin/ai-scenario-config"
+                        active={currentSection === 'ai_scenario_config'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={ClipboardList}
+                        label="Evaluation & Scoring System"
+                        href="/evaluations"
+                        active={currentSection === 'evaluation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />
@@ -542,14 +551,6 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         label="Participant Registration & Attendance"
                         href="/participants"
                         active={currentSection === 'participants'}
-                        isCollapsed={isCollapsed}
-                        onNavigate={onNavigate}
-                    />
-                    <NavItem
-                        icon={ClipboardList}
-                        label="Evaluation & Scoring System"
-                        href="/evaluations"
-                        active={currentSection === 'evaluation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

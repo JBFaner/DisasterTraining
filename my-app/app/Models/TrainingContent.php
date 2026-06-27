@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class TrainingContent extends Model
 {
@@ -52,7 +53,19 @@ class TrainingContent extends Model
             return $this->external_url;
         }
 
-        return $this->file_path ?: $this->external_url;
+        if (! $this->file_path) {
+            return $this->external_url;
+        }
+
+        if (str_starts_with($this->file_path, 'http://') || str_starts_with($this->file_path, 'https://')) {
+            return $this->file_path;
+        }
+
+        if (str_starts_with($this->file_path, '/storage/')) {
+            return $this->file_path;
+        }
+
+        return Storage::url($this->file_path);
     }
 
     public function isYouTube(): bool

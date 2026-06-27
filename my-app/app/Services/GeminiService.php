@@ -7,87 +7,119 @@ use Illuminate\Support\Facades\Log;
 
 class GeminiService
 {
-    private $apiKey;
-    private $modelName;
-    private $apiVersions = ['v1beta', 'v1'];
-    private $currentApiVersion = 'v1beta';
-    private $baseUrl = 'https://generativelanguage.googleapis.com';
-    private $availableModels = [
+    /** Models that support generateContent on v1beta (avoid deprecated gemini-pro / 1.5). */
+    private const PREFERRED_MODELS = [
         'gemini-2.5-flash',
-        'gemini-2.5-pro',
         'gemini-2.0-flash',
-        'gemini-flash-latest',
-        'gemini-pro-latest',
-        'gemini-1.5-pro',
-        'gemini-1.5-flash',
-        'gemini-pro',
+        'gemini-2.0-flash-lite',
+        'gemini-2.5-pro',
     ];
+
+    private string $apiKey;
+
+    private string $modelName;
+
+    private string $currentApiVersion;
+
+    private string $baseUrl = 'https://generativelanguage.googleapis.com';
+
+    /** @var list<string> */
+    private array $availableModels = [];
 
     public function __construct()
     {
-        $this->apiKey = config('services.gemini.api_key');
-        $this->modelName = $this->findAvailableModel();
+        $this->apiKey = (string) config('services.gemini.api_key');
+        $this->currentApiVersion = (string) config('services.gemini.api_version', 'v1beta');
+        $configuredModel = (string) config('services.gemini.model', 'gemini-2.0-flash');
+        $this->modelName = $configuredModel !== '' ? $configuredModel : 'gemini-2.0-flash';
+        $this->resolveAvailableModels();
     }
 
     /**
-     * Find an available model by listing models from the API
+     * @return list<string>
+     */
+    public function getModelsToTry(): array
+    {
+        $ordered = array_values(array_unique(array_filter([
+            $this->modelName,
+            ...$this->availableModels,
+            ...self::PREFERRED_MODELS,
+        ])));
+
+        return $ordered;
+    }
+
+    private function resolveAvailableModels(): void
+    {
+        if ($this->apiKey === '') {
+            return;
+        }
+
+        $version = $this->currentApiVersion ?: 'v1beta';
+        $url = $this->baseUrl.'/'.$version.'/models?key='.$this->apiKey;
+
+        try {
+            $response = Http::timeout(15)->get($url);
+
+            if ($response->status() === 403) {
+                $message = $response->json('error.message') ?? $response->body();
+                if (stripos($message, 'leaked') !== false) {
+                    Log::error('Gemini API key reported as leaked — create a new key at https://aistudio.google.com/apikey');
+                }
+
+                return;
+            }
+
+            if (! $response->successful()) {
+                Log::warning('Failed to list Gemini models', [
+                    'version' => $version,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return;
+            }
+
+            $listed = [];
+            foreach ($response->json('models') ?? [] as $model) {
+                $name = $model['name'] ?? '';
+                if (str_starts_with($name, 'models/')) {
+                    $name = substr($name, 7);
+                }
+                $methods = $model['supportedGenerationMethods'] ?? [];
+                if (in_array('generateContent', $methods, true)) {
+                    $listed[] = $name;
+                }
+            }
+
+            if ($listed !== []) {
+                $this->availableModels = $listed;
+                if (in_array($this->modelName, $listed, true)) {
+                    return;
+                }
+                foreach (self::PREFERRED_MODELS as $preferred) {
+                    if (in_array($preferred, $listed, true)) {
+                        $this->modelName = $preferred;
+                        Log::info("Gemini: configured model unavailable, using {$preferred}");
+
+                        return;
+                    }
+                }
+                $this->modelName = $listed[0];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Could not list Gemini models', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * @deprecated Use resolveAvailableModels — kept for TestGeminiApi compatibility
      */
     private function findAvailableModel(): string
     {
-        if (!$this->apiKey) {
-            return 'gemini-2.5-flash'; // Default fallback
-        }
+        $this->resolveAvailableModels();
 
-        // Try to list models first (try both API versions)
-        foreach ($this->apiVersions as $version) {
-            try {
-                $url = $this->baseUrl . '/' . $version . '/models?key=' . $this->apiKey;
-                $response = Http::timeout(10)->get($url);
-                
-                if ($response->successful()) {
-                    $this->currentApiVersion = $version;
-                    $data = $response->json();
-                    
-                    if (isset($data['models']) && is_array($data['models'])) {
-                        // Update available models list with what's actually available
-                        $this->availableModels = [];
-                        
-                        foreach ($data['models'] as $model) {
-                            $modelName = $model['name'] ?? '';
-                            // Remove 'models/' prefix
-                            if (strpos($modelName, 'models/') === 0) {
-                                $modelName = substr($modelName, 7);
-                            }
-                            
-                            // Check if model supports generateContent
-                            $supportedMethods = $model['supportedGenerationMethods'] ?? [];
-                            if (in_array('generateContent', $supportedMethods)) {
-                                $this->availableModels[] = $modelName;
-                                Log::info("Found available Gemini model: {$modelName} (supports generateContent)");
-                            }
-                        }
-                        
-                        // Use the first available model
-                        if (!empty($this->availableModels)) {
-                            $selectedModel = $this->availableModels[0];
-                            Log::info("Using Gemini model: {$selectedModel} with API version: {$version}");
-                            return $selectedModel;
-                        }
-                    }
-                } else {
-                    Log::warning("Failed to list models with {$version}", [
-                        'status' => $response->status(),
-                        'body' => $response->body()
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::warning("Could not list Gemini models with {$version}", ['error' => $e->getMessage()]);
-            }
-        }
-
-        // Default fallback if listing fails (use newer model)
-        Log::warning("Could not determine available models, using default: gemini-2.5-flash");
-        return 'gemini-2.5-flash';
+        return $this->modelName;
     }
 
     /**
@@ -95,131 +127,21 @@ class GeminiService
      */
     public function generateScenarioFromPrompt(string $userPrompt, string $disasterType = null, string $difficulty = 'Medium'): array
     {
-        if (!$this->apiKey) {
+        if ($this->apiKey === '') {
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
         }
 
         $prompt = $this->buildScenarioPromptFromUserInput($userPrompt, $disasterType, $difficulty);
 
         try {
-            // Refresh available models if we haven't found any yet
-            if (empty($this->availableModels)) {
-                $this->modelName = $this->findAvailableModel();
-            }
-            
-            // Try the primary model first, then fallback to others if needed
-            $modelsToTry = [$this->modelName];
-            foreach ($this->availableModels as $model) {
-                if ($model !== $this->modelName && !in_array($model, $modelsToTry)) {
-                    $modelsToTry[] = $model;
-                }
-            }
-            
-            // If we still don't have models, add defaults (newer models first)
-            if (empty($modelsToTry) || (count($modelsToTry) === 1 && empty($this->availableModels))) {
-                $modelsToTry = array_merge($modelsToTry, [
-                    'gemini-2.5-flash',
-                    'gemini-2.5-pro',
-                    'gemini-2.0-flash',
-                    'gemini-flash-latest',
-                    'gemini-pro-latest',
-                ]);
-            }
+            $generatedText = $this->generateContentText($prompt);
 
-            $lastError = null;
-            $response = null;
-            $successfulModel = null;
-
-            // Try each model with each API version
-            foreach ($this->apiVersions as $apiVersion) {
-                foreach ($modelsToTry as $model) {
-                    try {
-                        $url = $this->baseUrl . '/' . $apiVersion . '/models/' . $model . ':generateContent?key=' . $this->apiKey;
-                        
-                        $response = Http::timeout(60)
-                            ->post($url, [
-                                'contents' => [
-                                    [
-                                        'parts' => [
-                                            ['text' => $prompt]
-                                        ]
-                                    ]
-                                ]
-                            ]);
-
-                        if ($response->successful()) {
-                            // Success! Update model name and API version for future use
-                            if ($model !== $this->modelName || $apiVersion !== $this->currentApiVersion) {
-                                $this->modelName = $model;
-                                $this->currentApiVersion = $apiVersion;
-                                Log::info("Using Gemini model: {$model} with API version: {$apiVersion}");
-                            }
-                            $successfulModel = $model;
-                            break 2; // Exit both loops
-                        }
-
-                        $errorBody = $response->json();
-                        $errorMessage = $errorBody['error']['message'] ?? $response->body();
-                        $lastError = $errorMessage;
-
-                        // If it's a 404 (model not found), try next model/version
-                        if ($response->status() === 404 && strpos($errorMessage, 'not found') !== false) {
-                            Log::warning("Model {$model} not found with {$apiVersion}, trying next");
-                            continue; // Try next model
-                        }
-
-                        // For other errors, try next model/version
-                        Log::warning("Gemini API error with {$model} ({$apiVersion}): {$errorMessage}");
-                        continue;
-
-                    } catch (\Exception $e) {
-                        // If it's a 404, continue to next model/version
-                        if (strpos($e->getMessage(), 'not found') !== false || strpos($e->getMessage(), '404') !== false) {
-                            $lastError = $e->getMessage();
-                            continue;
-                        }
-                        // For other exceptions, log and continue
-                        Log::warning("Exception with {$model} ({$apiVersion}): " . $e->getMessage());
-                        $lastError = $e->getMessage();
-                        continue;
-                    }
-                }
-            }
-
-            // Check if we got a successful response
-            if (!$response || !$response->successful() || !$successfulModel) {
-                // Try to get available models for better error message
-                $availableModels = $this->listAvailableModels();
-                $modelNames = array_map(function($m) {
-                    return ($m['name'] ?? 'unknown') . ' (v' . ($m['api_version'] ?? '?') . ')';
-                }, $availableModels);
-                
-                $errorMsg = 'All Gemini models failed. Last error: ' . ($lastError ?? 'Unknown error');
-                if (!empty($modelNames)) {
-                    $errorMsg .= "\n\nAvailable models: " . implode(', ', array_slice($modelNames, 0, 5));
-                } else {
-                    $errorMsg .= "\n\nCould not retrieve list of available models. Please check your API key and ensure the Generative Language API is enabled.";
-                }
-                
-                throw new \Exception($errorMsg);
-            }
-
-            $data = $response->json();
-            
-            // Extract text from Gemini response
-            $generatedText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            
-            if (empty($generatedText)) {
-                throw new \Exception('Empty response from Gemini API');
-            }
-            
             return $this->parseScenarioFromText($generatedText, $disasterType);
-
         } catch (\Exception $e) {
             Log::error('Gemini scenario generation failed', [
                 'error' => $e->getMessage(),
                 'prompt' => $userPrompt,
-                'disaster_type' => $disasterType
+                'disaster_type' => $disasterType,
             ]);
             throw $e;
         }
@@ -230,34 +152,28 @@ class GeminiService
      */
     public function listAvailableModels(): array
     {
-        if (!$this->apiKey) {
+        if ($this->apiKey === '') {
+            return [];
+        }
+
+        $version = $this->currentApiVersion ?: 'v1beta';
+        $url = $this->baseUrl.'/'.$version.'/models?key='.$this->apiKey;
+        $response = Http::timeout(15)->get($url);
+
+        if (! $response->successful()) {
+            Log::warning('Failed to list Gemini models', [
+                'version' => $version,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             return [];
         }
 
         $allModels = [];
-        
-        foreach ($this->apiVersions as $version) {
-            try {
-                $url = $this->baseUrl . '/' . $version . '/models?key=' . $this->apiKey;
-                $response = Http::timeout(10)->get($url);
-                
-                if ($response->successful()) {
-                    $data = $response->json();
-                    if (isset($data['models'])) {
-                        foreach ($data['models'] as $model) {
-                            $model['api_version'] = $version;
-                            $allModels[] = $model;
-                        }
-                    }
-                } else {
-                    Log::warning("Failed to list models with {$version}", [
-                        'status' => $response->status(),
-                        'body' => $response->body()
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::error("Exception listing models with {$version}", ['error' => $e->getMessage()]);
-            }
+        foreach ($response->json('models') ?? [] as $model) {
+            $model['api_version'] = $version;
+            $allModels[] = $model;
         }
 
         return $allModels;
@@ -276,46 +192,14 @@ class GeminiService
      */
     public function generateTrainingModuleFromTitle(string $title, ?string $difficulty = 'Beginner', ?string $disasterType = null): array
     {
-        if (!$this->apiKey) {
+        if ($this->apiKey === '') {
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
         }
 
         $prompt = $this->buildTrainingModulePromptFromTitle($title, $difficulty, $disasterType);
 
         try {
-            // Ensure we have at least one model to try
-            if (empty($this->availableModels)) {
-                $this->modelName = $this->findAvailableModel();
-            }
-
-            $model = $this->modelName;
-            $apiVersion = $this->currentApiVersion ?? 'v1beta';
-
-            $url = $this->baseUrl . '/' . $apiVersion . '/models/' . $model . ':generateContent?key=' . $this->apiKey;
-
-            $response = Http::timeout(60)
-                ->post($url, [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt],
-                            ],
-                        ],
-                    ],
-                ]);
-
-            if (! $response->successful()) {
-                $errorBody = $response->json();
-                $errorMessage = $errorBody['error']['message'] ?? $response->body();
-                throw new \Exception($errorMessage ?: 'Gemini API request failed');
-            }
-
-            $data = $response->json();
-            $generatedText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-
-            if (empty($generatedText)) {
-                throw new \Exception('Empty response from Gemini API');
-            }
+            $generatedText = $this->generateContentText($prompt);
 
             return $this->parseTrainingModuleFromText($generatedText);
         } catch (\Exception $e) {
@@ -498,5 +382,248 @@ Important:
             'description' => $description,
             'learning_objectives' => $objectives,
         ];
+    }
+
+    /**
+     * Generate a scenario + multiple-choice quiz from a training module context.
+     *
+     * @return array{scenario_title: string, scenario: string, questions: array<int, array<string, mixed>>}
+     */
+    public function generateTrainingScenarioQuiz(
+        \App\Models\TrainingModule $module,
+        string $difficulty = 'medium',
+        int $questionCount = 10,
+        string $language = 'en',
+    ): array {
+        if (! $this->apiKey) {
+            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
+        }
+
+        $questionCount = in_array($questionCount, [10, 15, 20], true) ? $questionCount : 10;
+        $difficulty = in_array($difficulty, ['easy', 'medium', 'hard'], true) ? $difficulty : 'medium';
+        $language = in_array($language, ['en', 'fil'], true) ? $language : 'en';
+
+        $module->loadMissing('contents');
+        $prompt = $this->buildTrainingScenarioQuizPrompt($module, $difficulty, $questionCount, $language);
+        $generatedText = $this->generateContentText($prompt);
+
+        return $this->parseTrainingScenarioQuizFromText($generatedText, $questionCount);
+    }
+
+    public function generateContentText(string $prompt): string
+    {
+        if ($this->apiKey === '') {
+            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
+        }
+
+        if ($this->availableModels === []) {
+            $this->resolveAvailableModels();
+        }
+
+        $apiVersion = $this->currentApiVersion ?: 'v1beta';
+        $modelsToTry = $this->getModelsToTry();
+        $lastError = null;
+        $leakedKey = false;
+
+        foreach ($modelsToTry as $model) {
+            $url = $this->baseUrl.'/'.$apiVersion.'/models/'.$model.':generateContent?key='.$this->apiKey;
+
+            try {
+                $response = Http::timeout(120)->post($url, [
+                    'contents' => [
+                        ['parts' => [['text' => $prompt]]],
+                    ],
+                ]);
+
+                if ($response->successful()) {
+                    $text = $response->json('candidates.0.content.parts.0.text') ?? '';
+                    if ($text !== '') {
+                        $this->modelName = $model;
+                        Log::info("Gemini generateContent OK: {$apiVersion}/{$model}");
+
+                        return $text;
+                    }
+                    $lastError = 'Empty response from Gemini API';
+                    continue;
+                }
+
+                $lastError = $response->json('error.message') ?? $response->body();
+
+                if ($response->status() === 403 && stripos((string) $lastError, 'leaked') !== false) {
+                    $leakedKey = true;
+                    break;
+                }
+
+                if ($response->status() === 404) {
+                    Log::warning("Gemini model not found: {$apiVersion}/{$model}");
+                    continue;
+                }
+
+                if ($response->status() === 429) {
+                    Log::warning("Gemini quota exceeded for {$model}, trying next model");
+                    continue;
+                }
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+            }
+        }
+
+        if ($leakedKey) {
+            throw new \Exception(
+                'Your Gemini API key was reported as leaked and disabled by Google. '.
+                'Create a new key at https://aistudio.google.com/apikey, update GEMINI_API_KEY in .env, then run: php artisan config:clear'
+            );
+        }
+
+        $hint = $this->availableModels !== []
+            ? ' Available models: '.implode(', ', array_slice($this->availableModels, 0, 8)).'.'
+            : ' Enable the Generative Language API and verify billing/quota in Google AI Studio.';
+
+        throw new \Exception('Gemini API failed: '.($lastError ?? 'Unknown error').$hint);
+    }
+
+    private function buildTrainingScenarioQuizPrompt(
+        \App\Models\TrainingModule $module,
+        string $difficulty,
+        int $questionCount,
+        string $language = 'en',
+    ): string {
+        $objectives = is_array($module->learning_objectives)
+            ? implode('; ', array_filter($module->learning_objectives))
+            : '';
+
+        $lessonLines = $module->contents
+            ->sortBy('sort_order')
+            ->map(function ($content, $index) {
+                $summary = $content->body
+                    ? mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags($content->body)) ?? ''), 0, 300)
+                    : strtoupper($content->content_type).' content';
+
+                return ($index + 1).'. '.$content->title.' — '.$summary;
+            })
+            ->implode("\n");
+
+        $difficultyLabel = ucfirst($difficulty);
+        $languageLabel = $language === 'fil' ? 'Filipino' : 'English';
+
+        return <<<PROMPT
+You are a disaster preparedness training expert for Local Government Units (LGUs) in the Philippines.
+
+Using ONLY the training module information below, create one realistic disaster scenario and exactly {$questionCount} multiple-choice assessment questions.
+
+Write ALL output in {$languageLabel}.
+
+Training Module Title: {$module->title}
+Module Description: {$module->description}
+Learning Objectives: {$objectives}
+Module Difficulty Level: {$module->difficulty}
+Assessment Difficulty: {$difficultyLabel}
+Lesson Titles and Content Summaries:
+{$lessonLines}
+
+Requirements:
+- The scenario must be practical for LGU personnel or community disaster preparedness participants.
+- Base the scenario entirely on the training module topic and lessons.
+- Difficulty "{$difficultyLabel}" should affect scenario complexity and question rigor.
+- Generate exactly {$questionCount} multiple-choice questions numbered 1 through {$questionCount}.
+- Each question must have exactly four choices labeled A, B, C, and D.
+- Each question must have one correct answer (A, B, C, or D) and a brief explanation.
+- Questions must measure understanding, decision-making, and proper emergency response.
+- Each question must include a "competency" field: one of "knowledge", "decision_making", "emergency_response", or "safety_awareness". Distribute competencies evenly across all questions.
+- Include 3-5 concise learning objectives derived from the scenario and questions.
+
+Return ONLY valid JSON (no markdown, no code fences):
+{
+  "scenario_title": "Short descriptive title",
+  "scenario": "2-4 paragraph realistic disaster scenario narrative",
+  "learning_objectives": ["Objective 1", "Objective 2"],
+  "questions": [
+    {
+      "number": 1,
+      "competency": "knowledge",
+      "question": "Question text",
+      "choices": {
+        "A": "Choice A",
+        "B": "Choice B",
+        "C": "Choice C",
+        "D": "Choice D"
+      },
+      "correct_answer": "B",
+      "explanation": "Brief explanation"
+    }
+  ]
+}
+PROMPT;
+    }
+
+    /**
+     * @return array{scenario_title: string, scenario: string, questions: array<int, array<string, mixed>>}
+     */
+    private function parseTrainingScenarioQuizFromText(string $text, int $expectedCount): array
+    {
+        $cleanText = preg_replace('/```json\s*/i', '', $text);
+        $cleanText = preg_replace('/```\s*/', '', $cleanText ?? '');
+        $cleanText = trim($cleanText ?? '');
+
+        if (! preg_match('/\{[\s\S]*\}/', $cleanText, $matches)) {
+            throw new \Exception('Could not extract JSON from AI response.');
+        }
+
+        $json = json_decode($matches[0], true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('Invalid JSON in AI response: '.json_last_error_msg());
+        }
+
+        $questions = $json['questions'] ?? [];
+        if (! is_array($questions) || count($questions) < 1) {
+            throw new \Exception('AI response did not include questions.');
+        }
+
+        $normalized = [];
+        foreach ($questions as $index => $question) {
+            $number = (int) ($question['number'] ?? ($index + 1));
+            $choices = $question['choices'] ?? [];
+            $correct = strtoupper((string) ($question['correct_answer'] ?? 'A'));
+
+            if (! in_array($correct, ['A', 'B', 'C', 'D'], true)) {
+                $correct = 'A';
+            }
+
+            $normalized[] = [
+                'number' => $number,
+                'competency' => $this->normalizeQuizCompetency($question['competency'] ?? null, $index, $expectedCount),
+                'question' => (string) ($question['question'] ?? ''),
+                'choices' => [
+                    'A' => (string) ($choices['A'] ?? ''),
+                    'B' => (string) ($choices['B'] ?? ''),
+                    'C' => (string) ($choices['C'] ?? ''),
+                    'D' => (string) ($choices['D'] ?? ''),
+                ],
+                'correct_answer' => $correct,
+                'explanation' => (string) ($question['explanation'] ?? ''),
+            ];
+        }
+
+        usort($normalized, fn ($a, $b) => $a['number'] <=> $b['number']);
+        $normalized = array_slice($normalized, 0, $expectedCount);
+
+        return [
+            'scenario_title' => (string) ($json['scenario_title'] ?? 'AI Generated Scenario'),
+            'scenario' => (string) ($json['scenario'] ?? ''),
+            'learning_objectives' => $json['learning_objectives'] ?? [],
+            'questions' => array_values($normalized),
+        ];
+    }
+
+    private function normalizeQuizCompetency(?string $value, int $index, int $total): string
+    {
+        $valid = ['knowledge', 'decision_making', 'emergency_response', 'safety_awareness'];
+        $normalized = strtolower(trim(str_replace([' ', '-'], '_', (string) $value)));
+
+        if (in_array($normalized, $valid, true)) {
+            return $normalized;
+        }
+
+        return $valid[$index % count($valid)];
     }
 }

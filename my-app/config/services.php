@@ -51,6 +51,9 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
+        // Use v1beta + a current model (gemini-pro and 1.5 models are deprecated)
+        'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
+        'api_version' => env('GEMINI_API_VERSION', 'v1beta'),
     ],
 
     'centralized_login' => [
