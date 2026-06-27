@@ -483,10 +483,8 @@ if (rootElement) {
     let participantEvaluations = null;
     let currentUser = null;
     let currentUserData = null;
-    let canViewSecurity = false;
     let recentLogins = [];
     let recentActions = [];
-    let maskedUsbKeyHash = null;
     let currentAttendance = null;
     let currentParticipantEvaluation = null;
     let currentScores = null;
@@ -649,10 +647,8 @@ if (rootElement) {
 
     // Parse user details page data
     const viewingUserJson = rootElement.getAttribute('data-viewing-user');
-    const canViewSecurityAttr = rootElement.getAttribute('data-can-view-security');
     const recentLoginsJson = rootElement.getAttribute('data-recent-logins');
     const recentActionsJson = rootElement.getAttribute('data-recent-actions');
-    const maskedUsbKeyHashAttr = rootElement.getAttribute('data-masked-usb-key-hash');
 
     if (viewingUserJson) {
         try {
@@ -662,9 +658,6 @@ if (rootElement) {
         }
     }
 
-    if (canViewSecurityAttr) {
-        canViewSecurity = canViewSecurityAttr === 'true';
-    }
 
     if (recentLoginsJson) {
         try {
@@ -682,9 +675,6 @@ if (rootElement) {
         }
     }
 
-    if (maskedUsbKeyHashAttr) {
-        maskedUsbKeyHash = maskedUsbKeyHashAttr;
-    }
 
     const role =
         roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
@@ -1178,10 +1168,8 @@ if (rootElement) {
                             <UserDetailsPage
                                 user={currentUserData}
                                 currentUser={currentUser}
-                                canViewSecurity={canViewSecurity}
                                 recentLogins={recentLogins}
                                 recentActions={recentActions}
-                                maskedUsbKeyHash={maskedUsbKeyHash}
                             />
                         )}
 

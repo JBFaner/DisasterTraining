@@ -64,7 +64,6 @@ class User extends Authenticatable
             'registered_at' => 'datetime',
             'last_login' => 'datetime',
             'last_activity' => 'datetime',
-            'usb_key_enabled' => 'boolean',
         ];
     }
 

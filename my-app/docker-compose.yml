@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mariadb:12.1.2
+    container_name: disaster_training_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: disaster_training
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  adminer:
+    image: adminer
+    container_name: disaster_training_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: disaster_training_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  mysql_data:

@@ -1,21 +1,20 @@
 @echo off
-REM Kill any existing PHP processes
+REM Kill any existing PHP processes from a prior dev session
 taskkill /F /IM php.exe 2>nul >nul
 
-REM Wait a moment
-timeout /t 2 /nobreak
+timeout /t 2 /nobreak >nul
 
-REM Start the dev server
-cd /d "C:\Users\Rem\Documents\New folder\DisasterTraining\my-app"
+cd /d "%~dp0my-app"
 echo.
 echo ========================================
-echo Starting Laravel Development Server
+echo Starting DisasterTraining Dev Environment
 echo ========================================
 echo.
-echo Server will be available at: http://127.0.0.1:8000
+echo Laravel:  http://127.0.0.1:8000
+echo Vite HMR: http://127.0.0.1:5177
 echo.
-echo Press Ctrl+C to stop the server
+echo Press Ctrl+C to stop all services
 echo.
-php artisan serve --host=127.0.0.1 --port=8000
+composer run dev
 
 pause

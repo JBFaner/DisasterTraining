@@ -110,9 +110,7 @@ class AuthController extends Controller
 
         $loginAttempts->clearAttempts($email, $ip);
 
-        // Admin / Trainer login flow - redirect to method selection
-        // For admins and trainers, enforce that the account is active and the email has been verified.
-        // Check if user account is active (not disabled)
+        // Admin / Trainer login flow - send email OTP after password verification
         if ($user->status !== 'active' || ! $user->email_verified_at) {
             $statusMessage = match($user->status) {
                 'disabled' => 'Your account has been disabled. Please contact an administrator.',
@@ -136,21 +134,15 @@ class AuthController extends Controller
                 ->onlyInput('email');
         }
 
-        // Store user ID in session for method selection
-        $request->session()->put('admin_login_pending', [
-            'user_id' => $user->id,
-            'expires_at' => now()->addMinutes(15)->getTimestamp(),
-        ]);
-
         AuditLogger::log([
             'user' => $user,
             'action' => 'Password verified',
             'module' => 'Auth',
             'status' => 'success',
-            'description' => 'Admin/trainer password verified, awaiting verification method selection.',
+            'description' => 'Admin/trainer password verified, sending email OTP.',
         ]);
 
-        return redirect()->route('admin.login.method');
+        return $this->sendAdminLoginOtp($request, $user);
     }
 
     public function showRegister()
@@ -582,142 +574,39 @@ class AuthController extends Controller
     }
 
     /**
-     * Show the admin login method selection page.
+     * Legacy route for the removed verification-method step.
+     * Handles cached pages and in-progress sessions from the old login flow.
      */
-    public function showAdminLoginMethod(Request $request)
+    public function legacyAdminLoginMethod(Request $request)
     {
-        $pendingData = $request->session()->get('admin_login_pending');
-
-        if (! $pendingData || empty($pendingData['user_id'])) {
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
+        $otpData = $request->session()->get('admin_login_otp');
+        if ($otpData && ! empty($otpData['user_id'])) {
+            return redirect()->route('admin.login.verify');
         }
 
-        $user = User::find($pendingData['user_id']);
-        if (! $user) {
-            $request->session()->forget('admin_login_pending');
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Unable to verify session. Please log in again.']);
-        }
+        $pending = $request->session()->get('admin_login_pending');
+        if ($pending && ! empty($pending['user_id'])) {
+            $expiresAt = $pending['expires_at'] ?? 0;
+            if (now()->getTimestamp() > $expiresAt) {
+                $request->session()->forget('admin_login_pending');
 
-        // Check if session expired
-        if (now()->getTimestamp() > ($pendingData['expires_at'] ?? 0)) {
-            $request->session()->forget('admin_login_pending');
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
-        }
-
-        return view('auth.admin-login-method', [
-            'user' => $user,
-            'hasUsbKey' => $user->usb_key_enabled && !empty($user->usb_key_hash),
-        ]);
-    }
-
-    /**
-     * Handle admin login method selection.
-     */
-    public function selectAdminLoginMethod(Request $request)
-    {
-        $pendingData = $request->session()->get('admin_login_pending');
-
-        if (! $pendingData || empty($pendingData['user_id'])) {
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
-        }
-
-        $user = User::find($pendingData['user_id']);
-        if (! $user) {
-            $request->session()->forget('admin_login_pending');
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Unable to verify session. Please log in again.']);
-        }
-
-        // Check if session expired
-        if (now()->getTimestamp() > ($pendingData['expires_at'] ?? 0)) {
-            $request->session()->forget('admin_login_pending');
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
-        }
-
-        $request->validate([
-            'verification_method' => ['required', 'in:otp,usb'],
-        ], [
-            'verification_method.required' => 'Please select a verification method.',
-            'verification_method.in' => 'Invalid verification method selected.',
-        ]);
-
-        $method = $request->input('verification_method');
-
-        if ($method === 'usb') {
-            // Check if USB key is enabled
-            if (! $user->usb_key_enabled || empty($user->usb_key_hash)) {
-                return back()
-                    ->withErrors(['verification_method' => 'USB key verification is not enabled for your account.']);
+                return redirect()->route('admin.login')
+                    ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
             }
 
-            // Verify user role is allowed for USB key verification
-            if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
-                return back()
-                    ->withErrors(['verification_method' => 'USB key verification is not available for your account type.']);
+            $user = User::find($pending['user_id']);
+            if (! $user) {
+                $request->session()->forget('admin_login_pending');
+
+                return redirect()->route('admin.login')
+                    ->withErrors(['email' => 'Unable to continue login. Please log in again.']);
             }
 
-            // Store user ID for USB verification
-            $request->session()->forget('admin_login_pending');
-            $request->session()->put('pending_usb_admin_id', $user->id);
-
-            AuditLogger::log([
-                'user' => $user,
-                'action' => 'USB verification selected',
-                'module' => 'Auth',
-                'status' => 'success',
-                'description' => 'Admin/trainer selected USB key verification method.',
-            ]);
-
-            return redirect()->route('admin.usb.check');
+            return $this->sendAdminLoginOtp($request, $user);
         }
 
-        // OTP method selected - generate and send OTP
-        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = now()->addMinutes(10)->getTimestamp();
-
-        // Store OTP session data
-        $request->session()->put('admin_login_otp', [
-            'user_id' => $user->id,
-            'otp' => $otp,
-            'expires_at' => $expiresAt,
-            'remember' => false,
-        ]);
-        $request->session()->forget('admin_login_pending');
-
-        try {
-            Mail::to($user->email)->send(new AdminLoginOtpEmail($otp, $user->name));
-        } catch (\Exception $e) {
-            \Log::error('Failed to send admin login OTP: ' . $e->getMessage());
-
-            AuditLogger::log([
-                'user' => $user,
-                'action' => 'OTP send failed',
-                'module' => 'Auth',
-                'status' => 'failed',
-                'description' => 'Failed to send admin login OTP.',
-                'failure_reason' => $e->getMessage(),
-            ]);
-
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Unable to send verification code. Please try again later or contact support.']);
-        }
-
-        AuditLogger::log([
-            'user' => $user,
-            'action' => 'OTP requested',
-            'module' => 'Auth',
-            'status' => 'success',
-            'description' => 'Admin/trainer selected OTP verification method.',
-        ]);
-
-        return redirect()
-            ->route('admin.login.verify')
-            ->with('status', 'We have sent a verification code to your email. Please enter it to continue.');
+        return redirect()->route('admin.login')
+            ->with('status', 'Please sign in with your email and password to continue.');
     }
 
     /**
@@ -732,7 +621,16 @@ class AuthController extends Controller
                 ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
         }
 
-        return view('auth.admin-login-verify');
+        $devOtp = null;
+        $loginEmail = null;
+        if (app()->environment('local') && config('app.debug')) {
+            $devOtp = $otpData['otp'] ?? null;
+        }
+
+        $user = User::find($otpData['user_id']);
+        $loginEmail = $user?->email;
+
+        return view('auth.admin-login-verify', compact('devOtp', 'loginEmail'));
     }
 
     /**
@@ -863,8 +761,64 @@ class AuthController extends Controller
         $user->last_login = now();
         $user->save();
 
-        // OTP verified - redirect to dashboard (USB check is now handled in method selection)
+        // OTP verified - redirect to dashboard
         return redirect()->intended('/dashboard');
+    }
+
+    /**
+     * Generate and email the admin login OTP, then redirect to the verification form.
+     */
+    private function sendAdminLoginOtp(Request $request, User $user)
+    {
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(10)->getTimestamp();
+
+        $request->session()->put('admin_login_otp', [
+            'user_id' => $user->id,
+            'otp' => $otp,
+            'expires_at' => $expiresAt,
+            'remember' => false,
+        ]);
+        $request->session()->forget('admin_login_pending');
+
+        try {
+            Mail::to($user->email)->send(new AdminLoginOtpEmail($otp, $user->name));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send admin login OTP: '.$e->getMessage());
+
+            if (app()->environment('local') && config('app.debug')) {
+                \Log::info("Admin login OTP for {$user->email}: {$otp}");
+
+                return redirect()
+                    ->route('admin.login.verify')
+                    ->with('mail_delivery_failed', true)
+                    ->with('status', 'Email delivery failed in local development. Use the verification code shown below.');
+            }
+
+            AuditLogger::log([
+                'user' => $user,
+                'action' => 'OTP send failed',
+                'module' => 'Auth',
+                'status' => 'failed',
+                'description' => 'Failed to send admin login OTP.',
+                'failure_reason' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('admin.login')
+                ->withErrors(['email' => 'Unable to send verification code. Please try again later or contact support.']);
+        }
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'OTP requested',
+            'module' => 'Auth',
+            'status' => 'success',
+            'description' => 'Admin/trainer email OTP sent after password verification.',
+        ]);
+
+        return redirect()
+            ->route('admin.login.verify')
+            ->with('status', 'We have sent a verification code to your email. Please enter it to continue.');
     }
 }
 

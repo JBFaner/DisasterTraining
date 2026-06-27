@@ -41,7 +41,6 @@ class CheckSuperAdmin extends Command
                 ['Email Verified', $user->email_verified_at ? "✅ YES ({$user->email_verified_at})" : "❌ NO"],
                 ['Registered At', $user->registered_at ? $user->registered_at->format('Y-m-d H:i:s') : 'N/A'],
                 ['Last Login', $user->last_login ? $user->last_login->format('Y-m-d H:i:s') : 'Never'],
-                ['USB Key Enabled', $user->usb_key_enabled ? 'Yes' : 'No'],
             ]
         );
         

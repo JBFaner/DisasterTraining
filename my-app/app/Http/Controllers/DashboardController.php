@@ -11,6 +11,7 @@ use App\Models\Attendance;
 use App\Models\ParticipantEvaluation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -193,10 +194,14 @@ class DashboardController extends Controller
                 'data' => array_fill(0, 12, null),
             ];
 
+            $monthSql = DB::connection()->getDriverName() === 'sqlite'
+                ? "CAST(strftime('%m', submitted_at) AS INTEGER)"
+                : 'MONTH(submitted_at)';
+
             $perMonth = ParticipantEvaluation::whereNotNull('submitted_at')
                 ->whereYear('submitted_at', $year)
-                ->selectRaw("CAST(strftime('%m', submitted_at) AS INTEGER) as month, AVG(average_score) as avg_score")
-                ->groupBy('month')
+                ->selectRaw("{$monthSql} as month, AVG(average_score) as avg_score")
+                ->groupByRaw($monthSql)
                 ->orderBy('month')
                 ->get();
 

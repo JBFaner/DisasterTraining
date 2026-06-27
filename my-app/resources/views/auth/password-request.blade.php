@@ -6,6 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>Reset Password - LGU Disaster Preparedness Training</title>
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/auth.jsx'])
     </head>
     <body>

@@ -58,6 +58,25 @@
                     </div>
                 @endif
 
+                @if ($devOtp)
+                    <div class="mb-4 rounded-lg {{ session('mail_delivery_failed') ? 'bg-orange-50 border-orange-500' : 'bg-amber-50 border-amber-500' }} border-l-4 px-4 py-3 text-sm text-amber-900">
+                        <p class="font-semibold mb-1">
+                            @if (session('mail_delivery_failed'))
+                                Email could not be delivered
+                            @else
+                                Local development
+                            @endif
+                        </p>
+                        @if (session('mail_delivery_failed'))
+                            <p class="mb-2 text-orange-900">
+                                Gmail rejected SMTP login for <strong>alertaraqc@gmail.com</strong>.
+                                The code below is for <strong>{{ $loginEmail ?? 'your login email' }}</strong>.
+                            </p>
+                        @endif
+                        <p class="mb-1">Your verification code: <span class="font-mono text-lg tracking-widest">{{ $devOtp }}</span></p>
+                    </div>
+                @endif
+
                 @if ($errors->any())
                     <div class="mb-4 rounded-lg bg-red-50 border-l-4 border-red-500 px-4 py-3 text-sm text-red-700">
                         {{ $errors->first() }}

@@ -1,4 +1,4 @@
 #!/bin/bash
-cd "C:\Users\Rem\Documents\New folder\DisasterTraining\my-app"
-echo "Starting PHP built-in server..."
-php -S 127.0.0.1:8000 -t public
+cd "$(dirname "$0")/my-app"
+echo "Starting DisasterTraining dev environment (Laravel + queue + Vite)..."
+composer run dev

@@ -1,7 +1,7 @@
 import React from 'react';
-import { ArrowLeft, User, Mail, Shield, Key, Calendar, Clock, Lock, Activity, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, Calendar, Clock, Activity } from 'lucide-react';
 
-export function UserDetailsPage({ user, currentUser, canViewSecurity, recentLogins, recentActions, maskedUsbKeyHash }) {
+export function UserDetailsPage({ user, currentUser, recentLogins, recentActions }) {
     if (!user) {
         return (
             <div className="p-6">
@@ -134,19 +134,6 @@ export function UserDetailsPage({ user, currentUser, canViewSecurity, recentLogi
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                                USB Key Status
-                            </label>
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                                user.usb_key_enabled 
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                    : 'bg-slate-50 text-slate-600 border-slate-200'
-                            }`}>
-                                <Key className="w-3 h-3" />
-                                {user.usb_key_enabled ? 'Enabled' : 'Disabled'}
-                            </span>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
                                 Created Date
                             </label>
                             <p className="text-sm text-slate-900 font-medium flex items-center gap-2">
@@ -177,49 +164,6 @@ export function UserDetailsPage({ user, currentUser, canViewSecurity, recentLogi
                     </div>
                 </div>
             </div>
-
-            {/* Security Section - Only visible if canViewSecurity is true */}
-            {canViewSecurity && (
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                            <Lock className="w-5 h-5" />
-                            Security Information
-                        </h2>
-                    </div>
-                    <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {user.usb_key_enabled && maskedUsbKeyHash && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                                        USB Key ID
-                                    </label>
-                                    <p className="text-sm text-slate-900 font-mono flex items-center gap-2">
-                                        <Key className="w-4 h-4 text-slate-400" />
-                                        {maskedUsbKeyHash}
-                                    </p>
-                                    <p className="text-xs text-slate-500 mt-1">Masked for security</p>
-                                </div>
-                            )}
-                            {user.usb_key_enabled && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                                        USB Key Status
-                                    </label>
-                                    <p className="text-sm text-slate-900 font-medium">
-                                        {user.usb_key_enabled ? 'Active' : 'Inactive'}
-                                    </p>
-                                </div>
-                            )}
-                            {!user.usb_key_enabled && (
-                                <div className="md:col-span-2">
-                                    <p className="text-sm text-slate-600">USB key is not enabled for this account.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Activity Overview Section */}
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

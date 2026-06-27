@@ -155,7 +155,7 @@
                         <div class="space-y-2">
                             <h3 class="text-sm font-semibold text-slate-900">Account Security</h3>
                             <p class="text-sm text-slate-600">
-                                Keep your username, password, and any verification tools (OTP, USB keys) private.
+                                Keep your username, password, and any verification tools (such as OTP) private.
                                 Inform your LGU administrator immediately if you suspect unauthorized access or
                                 account misuse.
                             </p>

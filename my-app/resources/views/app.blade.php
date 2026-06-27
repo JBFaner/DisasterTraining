@@ -11,6 +11,7 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
+        @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.jsx'])
     </head>
     <body class="bg-slate-100 text-slate-900">
@@ -112,8 +113,6 @@
             @isset($user)
                 @if(isset($currentUser))
                     data-viewing-user='@json($user)'
-                    data-can-view-security="{{ $canViewSecurity ? 'true' : 'false' }}"
-                    data-masked-usb-key-hash="{{ $maskedUsbKeyHash ?? '' }}"
                 @endif
             @endisset
             @isset($recent_logins)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, Key, KeyRound, UserCircle } from 'lucide-react';
+import { Search, Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, UserCircle } from 'lucide-react';
 
 export function AdminUsersPage({ users = [], currentUser = null }) {
     const [search, setSearch] = React.useState('');
@@ -89,12 +89,12 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         
         if (isCurrentlyActive) {
             // Disabling
-            if (!confirm(`Are you sure you want to disable ${user.name} (${user.email})?\n\nThis will:\n- Prevent the user from logging in\n- Automatically disable the USB key\n- Invalidate their current session if logged in\n\nThe account can be re-enabled later.`)) {
+            if (!confirm(`Are you sure you want to disable ${user.name} (${user.email})?\n\nThis will prevent the user from logging in and invalidate their current session if logged in.\n\nThe account can be re-enabled later.`)) {
                 return;
             }
         } else {
             // Enabling
-            if (!confirm(`Are you sure you want to enable ${user.name} (${user.email})?\n\nThis will:\n- Allow the user to log in\n- Automatically re-enable the USB key (if one exists)\n\nThe existing USB key file will remain valid.`)) {
+            if (!confirm(`Are you sure you want to enable ${user.name} (${user.email})?\n\nThis will allow the user to log in again.`)) {
                 return;
             }
         }
@@ -126,7 +126,6 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                             return {
                                 ...u,
                                 status: action === 'disable' ? 'disabled' : 'active',
-                                usb_key_enabled: action === 'disable' ? false : (u.usb_key_hash ? true : u.usb_key_enabled),
                             };
                         }
                         return u;
@@ -143,102 +142,6 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         }
     };
 
-
-    const handleGenerateUsbKey = async (user) => {
-        if (!confirm(`Generate a new USB key for ${user.name}? This will revoke any existing USB key.`)) {
-            return;
-        }
-
-        setLoadingUserId(user.id);
-        const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content;
-
-        try {
-            const response = await fetch(`/admin/users/${user.id}/generate-usb-key`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrf,
-                    'Accept': 'text/plain',
-                },
-            });
-
-            if (response.ok) {
-                // Update the user's USB key status in state immediately
-                setUsersState(prevUsers => 
-                    prevUsers.map(u => 
-                        u.id === user.id 
-                            ? { ...u, usb_key_enabled: true }
-                            : u
-                    )
-                );
-
-                // Trigger file download
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `disaster-training-usb-key-${user.id}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            } else {
-                const errorText = await response.text();
-                let errorMessage = 'Failed to generate USB key. Please try again.';
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    errorMessage = errorJson.error || errorMessage;
-                } catch (e) {
-                    // Not JSON, use default message
-                }
-                alert(errorMessage);
-            }
-        } catch (error) {
-            console.error('Error generating USB key:', error);
-            alert('An error occurred while generating the USB key. Please try again.');
-        } finally {
-            setLoadingUserId(null);
-        }
-    };
-
-    const handleRevokeUsbKey = async (user) => {
-        if (!confirm(`Revoke USB key for ${user.name}? They will need to generate a new key to use USB authentication.`)) {
-            return;
-        }
-
-        setLoadingUserId(user.id);
-        const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content;
-
-        try {
-            const response = await fetch(`/admin/users/${user.id}/revoke-usb-key`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrf,
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                // Update the user's USB key status in state immediately
-                setUsersState(prevUsers => 
-                    prevUsers.map(u => 
-                        u.id === user.id 
-                            ? { ...u, usb_key_enabled: false }
-                            : u
-                    )
-                );
-            } else {
-                const errorData = await response.json().catch(() => ({ error: 'Failed to revoke USB key. Please try again.' }));
-                alert(errorData.error || 'Failed to revoke USB key. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error revoking USB key:', error);
-            alert('An error occurred while revoking the USB key. Please try again.');
-        } finally {
-            setLoadingUserId(null);
-        }
-    };
 
     return (
         <div className="space-y-6 w-full overflow-x-hidden">
@@ -319,14 +222,13 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Status</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Created</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Last Login</th>
-                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">USB Key</th>
                                 <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {filteredUsers.length === 0 && (
                                 <tr>
-                                    <td colSpan={10} className="px-5 py-12 text-center">
+                                    <td colSpan={9} className="px-5 py-12 text-center">
                                         <p className="text-slate-500 font-medium">No users match your search or filters.</p>
                                         <p className="text-slate-400 text-xs mt-1">Try adjusting the search or filter criteria.</p>
                                     </td>
@@ -363,21 +265,6 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                         {user.last_login ? new Date(user.last_login).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit', hour: 'numeric', minute: '2-digit' }) : 'Never'}
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap">
-                                        {['LGU_ADMIN', 'LGU_TRAINER'].includes(user.role) ? (
-                                            user.usb_key_enabled ? (
-                                                <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                                    <KeyRound className="w-3 h-3" /> Enabled
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 rounded-lg bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                                    <Key className="w-3 h-3" /> Disabled
-                                                </span>
-                                            )
-                                        ) : (
-                                            <span className="text-xs text-slate-400">N/A</span>
-                                        )}
-                                    </td>
-                                    <td className="px-5 py-4 whitespace-nowrap">
                                         <div className="flex items-center justify-end gap-2">
                                             {currentUser?.role === 'LGU_ADMIN' && (
                                                 <a href={`/admin/users/${user.id}`} className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors" title="View">
@@ -398,17 +285,6 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                                 <button type="button" onClick={() => handleToggleStatus(user)} disabled={loadingUserId === user.id} className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title={user.status === 'active' ? 'Disable' : 'Enable'}>
                                                     {loadingUserId === user.id ? <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" /> : user.status === 'active' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                                                 </button>
-                                            )}
-                                            {canManageUser(user) && ['LGU_ADMIN', 'LGU_TRAINER'].includes(user.role) && (
-                                                user.usb_key_enabled ? (
-                                                    <button type="button" onClick={() => handleRevokeUsbKey(user)} disabled={loadingUserId === user.id} className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Revoke USB key">
-                                                        {loadingUserId === user.id ? <div className="w-4 h-4 border-2 border-rose-700 border-t-transparent rounded-full animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                                                    </button>
-                                                ) : (
-                                                    <button type="button" onClick={() => handleGenerateUsbKey(user)} disabled={loadingUserId === user.id} className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Generate USB key">
-                                                        {loadingUserId === user.id ? <div className="w-4 h-4 border-2 border-teal-700 border-t-transparent rounded-full animate-spin" /> : <Key className="w-4 h-4" />}
-                                                    </button>
-                                                )
                                             )}
                                         </div>
                                     </td>

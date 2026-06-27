@@ -140,8 +140,6 @@ class AdminUserController extends Controller
             'currentUser' => $currentUser,
             'barangay_profiles' => $barangayProfiles,
             'roles' => $roles,
-            'canViewSecurity' => false,
-            'maskedUsbKeyHash' => '',
         ]);
     }
 
@@ -157,13 +155,10 @@ class AdminUserController extends Controller
         }
 
         // Check if current user can view this user
-        // Admin has full access - can view all users with full security details
         $canView = false;
-        $canViewSecurity = false;
 
         if ($currentUser->role === 'LGU_ADMIN') {
             $canView = true;
-            $canViewSecurity = true;
         }
 
         if (! $canView) {
@@ -189,25 +184,12 @@ class AdminUserController extends Controller
             ->limit(10)
             ->get();
 
-        // Mask USB key hash for display (show first 8 and last 4 characters)
-        $maskedUsbKeyHash = null;
-        if ($user->usb_key_hash && $canViewSecurity) {
-            $hash = $user->usb_key_hash;
-            if (strlen($hash) > 12) {
-                $maskedUsbKeyHash = substr($hash, 0, 8) . '...' . substr($hash, -4);
-            } else {
-                $maskedUsbKeyHash = str_repeat('*', strlen($hash));
-            }
-        }
-
         return view('app', [
             'section' => 'admin_users_show',
             'user' => $user,
             'currentUser' => $currentUser,
-            'canViewSecurity' => $canViewSecurity,
             'recent_logins' => $recentLogins,
             'recent_actions' => $recentActions,
-            'maskedUsbKeyHash' => $maskedUsbKeyHash,
         ]);
     }
 
@@ -256,15 +238,10 @@ class AdminUserController extends Controller
             return redirect()->back()->with('status', 'User account is already disabled.');
         }
 
-        $old = $user->only(['status', 'usb_key_enabled']);
+        $old = $user->only(['status']);
         
         // Disable account
         $user->status = 'disabled';
-        
-        // Disable USB key if it exists (keep the hash, just disable it)
-        if (!empty($user->usb_key_hash)) {
-            $user->usb_key_enabled = false;
-        }
         
         $user->save();
 
@@ -277,24 +254,23 @@ class AdminUserController extends Controller
             'action' => 'Account disabled',
             'module' => 'Users & Roles',
             'status' => 'success',
-            'description' => 'Staff account disabled from Users & Roles. USB key automatically disabled. Session invalidated.',
+            'description' => 'Staff account disabled from Users & Roles. Session invalidated.',
             'old_values' => $old,
-            'new_values' => $user->only(['status', 'usb_key_enabled']),
+            'new_values' => $user->only(['status']),
         ]);
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'User account disabled. USB key has been automatically disabled.',
+                'message' => 'User account disabled.',
                 'user' => [
                     'id' => $user->id,
                     'status' => $user->status,
-                    'usb_key_enabled' => $user->usb_key_enabled,
                 ],
             ]);
         }
 
-        return redirect()->back()->with('status', 'User account disabled. USB key has been automatically disabled.');
+        return redirect()->back()->with('status', 'User account disabled.');
     }
 
     /**
@@ -334,15 +310,10 @@ class AdminUserController extends Controller
             return redirect()->back()->with('status', 'User account is already active.');
         }
 
-        $old = $user->only(['status', 'usb_key_enabled']);
+        $old = $user->only(['status']);
         
         // Enable account
         $user->status = 'active';
-        
-        // Re-enable USB key if it exists (keep the existing hash)
-        if (!empty($user->usb_key_hash)) {
-            $user->usb_key_enabled = true;
-        }
         
         $user->save();
 
@@ -351,24 +322,23 @@ class AdminUserController extends Controller
             'action' => 'Account enabled',
             'module' => 'Users & Roles',
             'status' => 'success',
-            'description' => 'Staff account re-enabled from Users & Roles. USB key automatically re-enabled.',
+            'description' => 'Staff account re-enabled from Users & Roles.',
             'old_values' => $old,
-            'new_values' => $user->only(['status', 'usb_key_enabled']),
+            'new_values' => $user->only(['status']),
         ]);
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'User account enabled. USB key has been automatically re-enabled.',
+                'message' => 'User account enabled.',
                 'user' => [
                     'id' => $user->id,
                     'status' => $user->status,
-                    'usb_key_enabled' => $user->usb_key_enabled,
                 ],
             ]);
         }
 
-        return redirect()->back()->with('status', 'User account enabled. USB key has been automatically re-enabled.');
+        return redirect()->back()->with('status', 'User account enabled.');
     }
 
 
@@ -635,128 +605,6 @@ class AdminUserController extends Controller
 
         return redirect()->route('participant.login')
             ->with('status', 'Your account email has been verified. You can now log in.');
-    }
-
-    /**
-     * Generate USB key for a user (admin managing other users).
-     */
-    public function generateUsbKey(User $user, Request $request)
-    {
-        $currentUser = Auth::user();
-
-        if (! $this->hasUserManagementAccess($currentUser)) {
-            abort(403);
-        }
-
-        // Check if current user can manage this user
-        if (! $this->canManageUser($currentUser, $user)) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'You do not have permission to manage this user.'], 403);
-            }
-            abort(403, 'You do not have permission to manage this user.');
-        }
-
-        // Only allow for admin/trainer roles
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'USB key can only be generated for Admin or Trainer accounts.'], 400);
-            }
-            return redirect()->back()
-                ->withErrors(['error' => 'USB key can only be generated for Admin or Trainer accounts.']);
-        }
-
-        $old = $user->only(['usb_key_enabled', 'usb_key_hash']);
-
-        // Generate new key (this automatically revokes any existing key)
-        $rawSecret = bin2hex(random_bytes(32));
-        $user->usb_key_hash = hash('sha256', $rawSecret);
-        $user->usb_key_enabled = true;
-        $user->save();
-
-        $content = <<<TXT
-DISASTER-TRAINING-USB-KEY
-user: {$user->email}
-key: {$rawSecret}
-TXT;
-
-        AuditLogger::log([
-            'user' => $currentUser,
-            'action' => 'Generated USB key for user',
-            'module' => 'Users & Roles',
-            'status' => 'success',
-            'description' => "USB key generated for {$user->name} ({$user->email}).",
-            'old_values' => $old,
-            'new_values' => $user->only(['usb_key_enabled', 'usb_key_hash']),
-        ]);
-
-        $filename = 'disaster-training-usb-key-' . $user->id . '.txt';
-
-        // Return file download (works for both regular and AJAX requests)
-        return response($content)
-            ->header('Content-Type', 'text/plain')
-            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
-    }
-
-    /**
-     * Revoke USB key for a user (admin managing other users).
-     */
-    public function revokeUsbKey(User $user, Request $request)
-    {
-        $currentUser = Auth::user();
-
-        if (! $this->hasUserManagementAccess($currentUser)) {
-            abort(403);
-        }
-
-        // Check if current user can manage this user
-        if (! $this->canManageUser($currentUser, $user)) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'You do not have permission to manage this user.'], 403);
-            }
-            abort(403, 'You do not have permission to manage this user.');
-        }
-
-        // Only allow for admin/trainer roles
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'USB key can only be revoked for Admin or Trainer accounts.'], 400);
-            }
-            return redirect()->back()
-                ->withErrors(['error' => 'USB key can only be revoked for Admin or Trainer accounts.']);
-        }
-
-        if (! $user->usb_key_enabled || empty($user->usb_key_hash)) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'User does not have an active USB key.'], 400);
-            }
-            return redirect()->back()
-                ->with('status', 'User does not have an active USB key.');
-        }
-
-        $old = $user->only(['usb_key_enabled', 'usb_key_hash']);
-
-        $user->usb_key_enabled = false;
-        $user->usb_key_hash = null;
-        $user->save();
-
-        AuditLogger::log([
-            'user' => $currentUser,
-            'action' => 'Revoked USB key for user',
-            'module' => 'Users & Roles',
-            'status' => 'success',
-            'description' => "USB key revoked for {$user->name} ({$user->email}).",
-            'old_values' => $old,
-            'new_values' => $user->only(['usb_key_enabled', 'usb_key_hash']),
-        ]);
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'USB key has been revoked. The user will need to generate a new key to use USB authentication.',
-            ]);
-        }
-
-        return redirect()->back()->with('status', 'USB key has been revoked. The user will need to generate a new key to use USB authentication.');
     }
 
     /**

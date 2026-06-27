@@ -56,7 +56,7 @@
                     <p>
                         Access to the system is role‑based. Only authorized users can view or update sensitive
                         information needed for their duties. System activity is logged, and administrative accounts
-                        may require additional verification methods such as one‑time passwords or USB keys.
+                        may require additional verification methods such as one‑time passwords.
                     </p>
                 </div>
                 <div class="space-y-2">
