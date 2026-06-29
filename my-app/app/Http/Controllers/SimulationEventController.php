@@ -175,7 +175,7 @@ class SimulationEventController extends Controller
 
         $redirectTo = $request->input('return_to');
 
-        return ($redirectTo ? redirect($redirectTo) : redirect()->route('simulation.events.index'))
+        return ($redirectTo ? redirect($redirectTo) : redirect()->route('admin.simulation-events.index'))
             ->with('status', 'Simulation event created successfully.');
     }
 
@@ -185,7 +185,7 @@ class SimulationEventController extends Controller
 
         // Prevent editing of published, cancelled, or archived events
         if (in_array($simulationEvent->status, ['published', 'cancelled', 'archived'], true)) {
-            return redirect()->route('simulation.events.index')
+            return redirect()->route('admin.simulation-events.index')
                 ->with('status', 'This event cannot be edited. Unpublish or restore it first.');
         }
 
@@ -249,7 +249,7 @@ class SimulationEventController extends Controller
 
         // Prevent updating published, cancelled, or archived events
         if (in_array($simulationEvent->status, ['published', 'cancelled', 'archived'], true)) {
-            return redirect()->route('simulation.events.index')
+            return redirect()->route('admin.simulation-events.index')
                 ->with('status', 'This event cannot be edited. Unpublish or restore it first.');
         }
 
@@ -369,7 +369,7 @@ class SimulationEventController extends Controller
 
         $redirectTo = $request->input('return_to');
 
-        return ($redirectTo ? redirect($redirectTo) : redirect()->route('simulation.events.index'))
+        return ($redirectTo ? redirect($redirectTo) : redirect()->route('admin.simulation-events.index'))
             ->with('status', 'Simulation event updated successfully.');
     }
 
@@ -388,7 +388,7 @@ class SimulationEventController extends Controller
             'old_values' => $snapshot,
         ]);
 
-        return redirect()->route('simulation.events.index')
+        return redirect()->route('admin.simulation-events.index')
             ->with('status', 'Simulation event deleted permanently.');
     }
 
@@ -416,7 +416,7 @@ class SimulationEventController extends Controller
             'new_values' => $simulationEvent->toArray(),
         ]);
 
-        return redirect()->route('simulation.events.index')
+        return redirect()->route('admin.simulation-events.index')
             ->with('status', 'Simulation event published and resources assigned successfully.');
     }
 
@@ -425,7 +425,7 @@ class SimulationEventController extends Controller
         $this->authorizeEventAccess();
 
         if ($simulationEvent->status !== 'published') {
-            return redirect()->route('simulation.events.index')
+            return redirect()->route('admin.simulation-events.index')
                 ->with('status', 'Only published events can be unpublished.');
         }
 
@@ -445,7 +445,7 @@ class SimulationEventController extends Controller
             'new_values' => $simulationEvent->toArray(),
         ]);
 
-        return redirect()->route('simulation.events.index')
+        return redirect()->route('admin.simulation-events.index')
             ->with('status', 'Simulation event unpublished and set to draft.');
     }
 
@@ -472,7 +472,7 @@ class SimulationEventController extends Controller
             'new_values' => $simulationEvent->toArray(),
         ]);
 
-        return redirect()->route('simulation.events.index')
+        return redirect()->route('admin.simulation-events.index')
             ->with('status', 'Simulation event cancelled. Participants will be notified.');
     }
 
@@ -496,7 +496,7 @@ class SimulationEventController extends Controller
             'new_values' => $simulationEvent->toArray(),
         ]);
 
-        return redirect()->route('simulation.events.index')
+        return redirect()->route('admin.simulation-events.index')
             ->with('status', 'Simulation event archived.');
     }
 
@@ -508,7 +508,7 @@ class SimulationEventController extends Controller
 
         // Check event status is published
         if ($simulationEvent->status !== 'published') {
-            return redirect()->route('simulation.events.index')
+            return redirect()->route('admin.simulation-events.index')
                 ->with('status', 'Only published events can be started.');
         }
 
@@ -546,7 +546,7 @@ class SimulationEventController extends Controller
                     'updated_by' => portal_id(),
                 ]);
 
-                return redirect()->route('simulation.events.index')
+                return redirect()->route('admin.simulation-events.index')
                     ->with('status', 'Event has already ended and cannot be started.');
             }
         } catch (\Throwable $e) {

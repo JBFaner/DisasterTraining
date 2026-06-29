@@ -84,30 +84,15 @@
                     </div>
                 @endif
 
-                <form method="POST" action="/admin/login/verify" class="space-y-5">
+                <form method="POST" action="/admin/login/verify" class="space-y-5" id="admin-otp-form">
                     @csrf
 
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2" for="otp">
-                            Verification Code
-                        </label>
-                        <input
-                            id="otp"
-                            name="otp"
-                            type="text"
-                            inputmode="numeric"
-                            pattern="[0-9]*"
-                            maxlength="6"
-                            autocomplete="one-time-code"
-                            required
-                            placeholder="Enter 6-digit code"
-                            class="w-full px-3 py-3 rounded-lg border border-slate-300 text-center tracking-[0.35em] text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                            value="{{ old('otp', '') }}"
-                        >
-                        @error('otp')
-                            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    <x-otp-input
+                        name="otp"
+                        label="Verification Code"
+                        :error="$errors->first('otp')"
+                        :clear-on-error="$errors->has('otp')"
+                    />
 
                     <button
                         type="submit"
@@ -139,6 +124,7 @@
                 </div>
             </div>
         </div>
+
+        @stack('scripts')
     </body>
 </html>
-

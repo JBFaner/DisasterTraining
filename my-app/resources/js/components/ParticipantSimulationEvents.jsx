@@ -263,14 +263,14 @@ export function ParticipantSimulationEventsList({ events }) {
                                         </button>
                                     )}
                                     <a
-                                        href={`/simulation-events/${event.id}`}
+                                        href={`/participant/simulation-events/${event.id}`}
                                         className="w-full py-2 rounded-md bg-white text-slate-800 text-sm font-medium text-center hover:bg-slate-100 transition-colors"
                                     >
                                         Details
                                     </a>
                                     {isUpcoming && event.self_registration_enabled && (!isRegistered || isCancelled || isRejected) && (
                                         <a
-                                            href={`/simulation-events/${event.id}`}
+                                            href={`/participant/simulation-events/${event.id}`}
                                             className="w-full py-2 rounded-md bg-emerald-600 text-white text-sm font-medium text-center hover:bg-emerald-700 transition-colors"
                                         >
                                             Register
@@ -361,10 +361,10 @@ export function ParticipantSimulationEventDetail({ event, role }) {
 
     const quickActions = role !== 'PARTICIPANT'
         ? [
-            { label: 'Manage Participants', href: `/simulation-events/${event.id}/registrations`, Icon: Users },
-            { label: 'View Attendance', href: `/simulation-events/${event.id}/attendance`, Icon: CheckCircle2 },
-            { label: 'View Evaluation', href: `/simulation-events/${event.id}/evaluation`, Icon: ClipboardList },
-            { label: 'View Reports', href: `/simulation-events/${event.id}/evaluation/summary`, Icon: BarChart3 },
+            { label: 'Manage Participants', href: `/admin/simulation-events/${event.id}/registrations`, Icon: Users },
+            { label: 'View Attendance', href: `/admin/simulation-events/${event.id}/attendance`, Icon: CheckCircle2 },
+            { label: 'View Evaluation', href: `/admin/simulation-events/${event.id}/evaluation`, Icon: ClipboardList },
+            { label: 'View Reports', href: `/admin/simulation-events/${event.id}/evaluation/summary`, Icon: BarChart3 },
         ]
         : [];
 
@@ -457,14 +457,14 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                     <div className="flex flex-wrap gap-2 shrink-0">
                         {role !== 'PARTICIPANT' && event.status === 'draft' && (
                             <a
-                                href={`/simulation-events/${event.id}/edit`}
+                                href={`/admin/simulation-events/${event.id}/edit`}
                                 className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all"
                             >
                                 Edit
                             </a>
                         )}
                         {role !== 'PARTICIPANT' && canStartEvent && (
-                            <form method="POST" action={`/simulation-events/${event.id}/start`} onSubmit={handleStartEventSubmit}>
+                            <form method="POST" action={`/admin/simulation-events/${event.id}/start`} onSubmit={handleStartEventSubmit}>
                                 <input type="hidden" name="_token" value={csrf} />
                                 <button
                                     type="submit"
@@ -477,7 +477,7 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                         {role === 'PARTICIPANT' && (
                             <>
                                 {canRegister && (
-                                    <form method="POST" action={`/simulation-events/${event.id}/register`} onSubmit={handleRegisterSubmit}>
+                                    <form method="POST" action={`/participant/simulation-events/${event.id}/register`} onSubmit={handleRegisterSubmit}>
                                         <input type="hidden" name="_token" value={csrf} />
                                         <button
                                             type="submit"
@@ -488,7 +488,7 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                                     </form>
                                 )}
                                 {canCancelRegistration && (
-                                    <form method="POST" action={`/simulation-events/${event.id}/cancel-registration`} onSubmit={handleCancelRegistrationSubmit}>
+                                    <form method="POST" action={`/participant/simulation-events/${event.id}/cancel-registration`} onSubmit={handleCancelRegistrationSubmit}>
                                         <input type="hidden" name="_token" value={csrf} />
                                         <button
                                             type="submit"
@@ -616,14 +616,14 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                             </div>
                             <div className="mt-3 flex gap-2">
                             <a
-                                href={`/training-modules/${trainingModule.id}`}
+                                href={`/participant/training-modules/${trainingModule.id}`}
                                 className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 transition-colors"
                             >
                                 View module
                             </a>
                                 {lessons.length > 0 && (
                                     <a
-                                        href={`/training-modules/${trainingModule.id}#lesson-${lessons[0]?.id}`}
+                                        href={`/participant/training-modules/${trainingModule.id}#lesson-${lessons[0]?.id}`}
                                         className="inline-flex items-center rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2 transition-colors"
                                     >
                                         Start first lesson
@@ -639,7 +639,7 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                             <div className="space-y-2">
                                 {event.status === 'draft' && (
                                     <a
-                                        href={`/simulation-events/${event.id}/edit`}
+                                        href={`/admin/simulation-events/${event.id}/edit`}
                                         className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 transition-colors"
                                     >
                                         <span>Edit event</span>
@@ -664,7 +664,7 @@ export function ParticipantSimulationEventDetail({ event, role }) {
 
             <div>
                 <a
-                    href="/simulation-events"
+                    href="/participant/simulation-events"
                     className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
                 >
                     ← Back to Simulation Events

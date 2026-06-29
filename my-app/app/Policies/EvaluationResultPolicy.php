@@ -25,4 +25,10 @@ class EvaluationResultPolicy
     {
         return $user->role === 'LGU_ADMIN';
     }
+
+    public function reset(User $user, EvaluationResult $evaluationResult): bool
+    {
+        return $user->role === 'LGU_ADMIN'
+            && $evaluationResult->status === EvaluationResult::STATUS_NEEDS_IMPROVEMENT;
+    }
 }

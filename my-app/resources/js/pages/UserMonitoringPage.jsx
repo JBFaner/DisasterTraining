@@ -24,7 +24,7 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
     useEffect(() => {
         const refreshStatuses = async () => {
             try {
-                const response = await fetch('/api/user-monitoring/status', {
+                const response = await fetch('/admin/api/user-monitoring/status', {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                     },
@@ -70,7 +70,7 @@ export function UserMonitoringPage({ users: initialUsers = [] }) {
     const handleManualRefresh = async () => {
         setIsRefreshing(true);
         try {
-            const response = await fetch('/api/user-monitoring/status', {
+            const response = await fetch('/admin/api/user-monitoring/status', {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                 },

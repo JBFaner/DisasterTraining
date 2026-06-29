@@ -46,7 +46,7 @@
 </head>
 <body class="certificate-paper-{{ $paperSize ?? 'a4' }} certificate-orientation-landscape">
     <div class="toolbar">
-        <a href="{{ route('certification') }}">← Back to Certification</a>
+        <a href="{{ route('admin.certification.index') }}">← Back to Certification</a>
     </div>
     @if(isset($subtitle))
     <p style="color:#64748b; font-size:14px; margin-bottom:12px;">{{ $subtitle }}</p>

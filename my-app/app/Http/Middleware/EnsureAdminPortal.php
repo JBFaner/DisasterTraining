@@ -13,11 +13,16 @@ class EnsureAdminPortal
     public function handle(Request $request, Closure $next): Response
     {
         if (! Auth::guard(PortalAuth::ADMIN_GUARD)->check()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
             return redirect()->route('admin.login');
         }
 
-        session([PortalAuth::SESSION_PORTAL_KEY => PortalAuth::ADMIN_GUARD]);
-        Auth::shouldUse(PortalAuth::ADMIN_GUARD);
+        $guard = PortalAuth::ADMIN_GUARD;
+        session([PortalAuth::SESSION_PORTAL_KEY => $guard]);
+        Auth::shouldUse($guard);
         $request->setUserResolver(fn () => PortalAuth::adminUser());
 
         return $next($request);

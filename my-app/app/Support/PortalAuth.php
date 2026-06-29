@@ -39,19 +39,15 @@ class PortalAuth
         return Auth::guard(self::PARTICIPANT_GUARD)->user();
     }
 
+    /**
+     * Return the authenticated user for the portal session handling this request.
+     * Never falls back to the other portal's guard.
+     */
     public static function user(): ?User
     {
-        $activePortal = session(self::SESSION_PORTAL_KEY);
+        $guard = PortalSession::currentGuard();
 
-        if ($activePortal === self::PARTICIPANT_GUARD) {
-            return self::participantUser() ?? self::adminUser();
-        }
-
-        if ($activePortal === self::ADMIN_GUARD) {
-            return self::adminUser() ?? self::participantUser();
-        }
-
-        return self::adminUser() ?? self::participantUser();
+        return Auth::guard($guard)->user();
     }
 
     public static function id(): ?int
@@ -61,7 +57,7 @@ class PortalAuth
 
     public static function check(): bool
     {
-        return self::adminUser() !== null || self::participantUser() !== null;
+        return Auth::guard(PortalSession::currentGuard())->check();
     }
 
     public static function login(User $user, bool $remember = false): void
@@ -69,6 +65,7 @@ class PortalAuth
         $guard = self::guardForRole($user->role);
 
         Auth::guard($guard)->login($user, $remember);
+        Auth::shouldUse($guard);
         session([self::SESSION_PORTAL_KEY => $guard]);
     }
 
@@ -92,45 +89,20 @@ class PortalAuth
 
     public static function syncDefaultGuard(): void
     {
-        $activePortal = session(self::SESSION_PORTAL_KEY);
+        $guard = PortalSession::currentGuard();
 
-        if ($activePortal === self::PARTICIPANT_GUARD && Auth::guard(self::PARTICIPANT_GUARD)->check()) {
-            Auth::shouldUse(self::PARTICIPANT_GUARD);
-
-            return;
-        }
-
-        if ($activePortal === self::ADMIN_GUARD && Auth::guard(self::ADMIN_GUARD)->check()) {
-            Auth::shouldUse(self::ADMIN_GUARD);
-
-            return;
-        }
-
-        if (Auth::guard(self::ADMIN_GUARD)->check()) {
-            Auth::shouldUse(self::ADMIN_GUARD);
-            session([self::SESSION_PORTAL_KEY => self::ADMIN_GUARD]);
-
-            return;
-        }
-
-        if (Auth::guard(self::PARTICIPANT_GUARD)->check()) {
-            Auth::shouldUse(self::PARTICIPANT_GUARD);
-            session([self::SESSION_PORTAL_KEY => self::PARTICIPANT_GUARD]);
+        if (Auth::guard($guard)->check()) {
+            Auth::shouldUse($guard);
+            session([self::SESSION_PORTAL_KEY => $guard]);
         }
     }
 
     public static function activeGuard(): ?string
     {
-        if (session(self::SESSION_PORTAL_KEY)) {
-            return session(self::SESSION_PORTAL_KEY);
-        }
+        $guard = PortalSession::currentGuard();
 
-        if (Auth::guard(self::ADMIN_GUARD)->check()) {
-            return self::ADMIN_GUARD;
-        }
-
-        if (Auth::guard(self::PARTICIPANT_GUARD)->check()) {
-            return self::PARTICIPANT_GUARD;
+        if (Auth::guard($guard)->check()) {
+            return $guard;
         }
 
         return null;

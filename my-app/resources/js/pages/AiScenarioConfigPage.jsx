@@ -497,6 +497,9 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                 <th className="py-2 pr-4">Difficulty</th>
                                 <th className="py-2 pr-4">Questions</th>
                                 <th className="py-2 pr-4">Language</th>
+                                <th className="py-2 pr-4">Passing</th>
+                                <th className="py-2 pr-4">Attempts</th>
+                                <th className="py-2 pr-4">Fail Policy</th>
                                 <th className="py-2 pr-4">Status</th>
                                 <th className="py-2">Generated</th>
                             </tr>
@@ -504,7 +507,7 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                         <tbody className="divide-y divide-slate-100">
                             {localConfigs.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="py-4 text-slate-500 text-center">No configurations yet.</td>
+                                    <td colSpan={9} className="py-4 text-slate-500 text-center">No configurations yet.</td>
                                 </tr>
                             ) : (
                                 localConfigs.map((c) => (
@@ -515,6 +518,13 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                         <td className="py-2 pr-4 capitalize">{c.difficulty}</td>
                                         <td className="py-2 pr-4">{c.number_of_questions}</td>
                                         <td className="py-2 pr-4 capitalize">{c.generated_language || 'en'}</td>
+                                        <td className="py-2 pr-4">{c.passing_score ?? 75}%</td>
+                                        <td className="py-2 pr-4">{c.max_attempts ?? 3}</td>
+                                        <td className="py-2 pr-4 text-xs text-slate-600">
+                                            {c.fail_retake_policy === 'quiz_retake_only'
+                                                ? 'Quiz Retake Only'
+                                                : 'Lesson Review'}
+                                        </td>
                                         <td className="py-2 pr-4">
                                             {c.is_enabled && (c.title_en || c.generated_scenario) ? (
                                                 <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-medium">

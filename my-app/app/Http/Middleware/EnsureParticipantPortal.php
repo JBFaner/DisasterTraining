@@ -13,11 +13,16 @@ class EnsureParticipantPortal
     public function handle(Request $request, Closure $next): Response
     {
         if (! Auth::guard(PortalAuth::PARTICIPANT_GUARD)->check()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
             return redirect()->route('participant.login');
         }
 
-        session([PortalAuth::SESSION_PORTAL_KEY => PortalAuth::PARTICIPANT_GUARD]);
-        Auth::shouldUse(PortalAuth::PARTICIPANT_GUARD);
+        $guard = PortalAuth::PARTICIPANT_GUARD;
+        session([PortalAuth::SESSION_PORTAL_KEY => $guard]);
+        Auth::shouldUse($guard);
         $request->setUserResolver(fn () => PortalAuth::participantUser());
 
         return $next($request);

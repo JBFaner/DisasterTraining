@@ -137,7 +137,7 @@ class EvaluationController extends Controller
 
         // Ensure event is in a relevant status
         if (!in_array($simulationEvent->status, ['published', 'ongoing', 'completed'])) {
-            return redirect()->route('evaluations.index')
+            return redirect()->route('admin.evaluations.index')
                 ->with('status', 'Evaluation can only be viewed for published, ongoing, or completed events.');
         }
 
@@ -214,7 +214,7 @@ class EvaluationController extends Controller
         $evaluation = Evaluation::where('simulation_event_id', $simulationEvent->id)->firstOrFail();
 
         if ($evaluation->isLocked()) {
-            return redirect()->route('evaluations.show', $simulationEvent)
+            return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
                 ->with('status', 'Evaluation is locked and cannot be modified.');
         }
 
@@ -228,13 +228,13 @@ class EvaluationController extends Controller
             ->first();
 
         if (!$attendance) {
-            return redirect()->route('evaluations.show', $simulationEvent)
+            return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
                 ->with('status', 'Cannot evaluate: Participant must be marked as present first.');
         }
 
         $scenario = $simulationEvent->scenario;
         if (!$scenario || !$scenario->criteria) {
-            return redirect()->route('evaluations.show', $simulationEvent)
+            return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
                 ->with('status', 'Cannot evaluate: Scenario must have criteria defined.');
         }
 
@@ -294,7 +294,7 @@ class EvaluationController extends Controller
             ->first();
 
         if (!$attendance) {
-            return redirect()->route('evaluations.show', $simulationEvent)
+            return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
                 ->with('status', 'Cannot evaluate: Participant must be marked as present first.');
         }
 
@@ -416,11 +416,11 @@ class EvaluationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'redirect' => route('evaluations.show', $simulationEvent),
+                'redirect' => route('admin.simulation-events.evaluation.show', $simulationEvent),
             ]);
         }
 
-        return redirect()->route('evaluations.show', $simulationEvent)
+        return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
             ->with('status', $message);
     }
 

@@ -30,9 +30,10 @@ if (participantLoginRoot) {
         }
     }
     if (sessionError) errorsObj.email = sessionError;
+    const csrfToken = participantLoginRoot.getAttribute('data-csrf-token') || '';
     const failedAttempts = parseInt(participantLoginRoot.getAttribute('data-failed-attempts') || '0', 10);
     const root = ReactDOM.createRoot(participantLoginRoot);
-    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts, status }));
+    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts, status, csrfToken }));
 }
 
 // Participant Register
@@ -106,9 +107,10 @@ if (adminLoginRoot) {
         }
     }
     if (sessionError) errorsObj.email = sessionError;
+    const csrfToken = adminLoginRoot.getAttribute('data-csrf-token') || '';
     const failedAttempts = parseInt(adminLoginRoot.getAttribute('data-failed-attempts') || '0', 10);
     const root = ReactDOM.createRoot(adminLoginRoot);
-    root.render(React.createElement(AdminLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts }));
+    root.render(React.createElement(AdminLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts, csrfToken }));
 }
 
 // Password Request

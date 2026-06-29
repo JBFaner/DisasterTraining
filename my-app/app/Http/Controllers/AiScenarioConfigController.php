@@ -77,7 +77,7 @@ class AiScenarioConfigController extends Controller
         }
 
         return redirect()
-            ->route('ai-scenario-config.index')
+            ->route('admin.ai-scenario-config.index')
             ->with('status', 'AI scenario configuration saved.');
     }
 
@@ -107,7 +107,7 @@ class AiScenarioConfigController extends Controller
             }
 
             return redirect()
-                ->route('ai-scenario-config.index')
+                ->route('admin.ai-scenario-config.index')
                 ->with('status', 'AI scenario and quiz generated successfully.');
         } catch (\Throwable $e) {
             if ($request->expectsJson()) {

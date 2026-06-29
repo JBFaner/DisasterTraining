@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\PortalAuth;
+use App\Support\PortalSession;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,18 +23,12 @@ class CheckSessionInactivity
         if ($lastActivity && $timeoutMinutes > 0) {
             $limit = now()->subMinutes($timeoutMinutes)->timestamp;
             if ($lastActivity < $limit) {
-                $activeGuard = PortalAuth::activeGuard();
+                $activeGuard = PortalSession::currentGuard();
 
-                if ($activeGuard) {
-                    PortalAuth::logoutGuard($activeGuard);
-                } else {
-                    PortalAuth::logoutAll();
-                }
+                PortalAuth::logoutGuard($activeGuard);
 
-                if (! PortalAuth::check()) {
-                    $request->session()->invalidate();
-                    $request->session()->regenerateToken();
-                }
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
 
                 if ($request->expectsJson()) {
                     return response()->json(['message' => 'Session expired due to inactivity.'], 401);

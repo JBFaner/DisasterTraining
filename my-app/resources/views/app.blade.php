@@ -203,6 +203,9 @@
             @isset($evaluation_filters)
                 data-evaluation-filters='@json($evaluation_filters)'
             @endisset
+            @isset($evaluation_attempt_numbers)
+                data-evaluation-attempt-numbers='@json($evaluation_attempt_numbers)'
+            @endisset
             @isset($evaluation_passing_score)
                 data-evaluation-passing-score="{{ $evaluation_passing_score }}"
             @endisset

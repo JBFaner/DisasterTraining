@@ -70,7 +70,7 @@ class BarangayProfileController extends Controller
 
         BarangayProfile::create($data);
 
-        return redirect()->route('barangay.profile')
+        return redirect()->route('admin.barangay-profile.index')
             ->with('status', 'Barangay profile created successfully.');
     }
 
@@ -125,7 +125,7 @@ class BarangayProfileController extends Controller
 
         $barangayProfile->update($data);
 
-        return redirect()->route('barangay.profile')
+        return redirect()->route('admin.barangay-profile.index')
             ->with('status', 'Barangay profile updated successfully.');
     }
 
@@ -138,7 +138,7 @@ class BarangayProfileController extends Controller
 
         $barangayProfile->delete();
 
-        return redirect()->route('barangay.profile')
+        return redirect()->route('admin.barangay-profile.index')
             ->with('status', 'Barangay profile deleted.');
     }
 

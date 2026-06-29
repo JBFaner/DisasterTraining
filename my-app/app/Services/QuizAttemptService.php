@@ -24,6 +24,7 @@ class QuizAttemptService
         private readonly AiScenarioTrainingService $trainingService,
         private readonly LessonProgressionService $lessonProgressionService,
         private readonly TrainingRetakePolicyService $retakePolicyService,
+        private readonly TrainingResetService $trainingResetService,
     ) {}
 
     /**
@@ -46,19 +47,21 @@ class QuizAttemptService
             return $base;
         }
 
-        $attempts = $this->getCompletedAttempts($user->id, $module->id);
-        $inProgress = $this->getInProgressAttempt($user->id, $module->id);
+        $trainingCycle = $this->trainingResetService->currentCycleNumber($user->id, $module->id);
+        $attempts = $this->getCompletedAttempts($user->id, $module->id, $trainingCycle);
+        $inProgress = $this->getInProgressAttempt($user->id, $module->id, $trainingCycle);
         $passedAttempt = $attempts->firstWhere('passed', true);
         $maxAttempts = (int) ($config->max_attempts ?? 3);
         $attemptsUsed = $attempts->count();
         $attemptsRemaining = max(0, $maxAttempts - $attemptsUsed);
+        $adminRetrainingApproved = $this->trainingResetService->hasAdminRetrainingApproved($user, $module);
         $isLocked = $passedAttempt !== null || ($attemptsUsed >= $maxAttempts && ! $inProgress);
 
         if ($inProgress) {
             $inProgress = $this->syncAttemptTimer($inProgress);
             if ($inProgress->status === self::STATUS_EXPIRED) {
                 $inProgress = null;
-                $attempts = $this->getCompletedAttempts($user->id, $module->id);
+                $attempts = $this->getCompletedAttempts($user->id, $module->id, $trainingCycle);
                 $attemptsUsed = $attempts->count();
                 $attemptsRemaining = max(0, $maxAttempts - $attemptsUsed);
                 $isLocked = $passedAttempt !== null || $attemptsUsed >= $maxAttempts;
@@ -82,7 +85,8 @@ class QuizAttemptService
             'lesson_progress' => $this->lessonProgressionService->buildLessonProgressMeta($module, $user->id),
         ]);
 
-        $lessonReviewRequired = $this->retakePolicyService->lessonReviewRequired($module, $user, $metaBeforeStatus);
+        $lessonReviewRequired = ! $adminRetrainingApproved
+            && $this->retakePolicyService->lessonReviewRequired($module, $user, $metaBeforeStatus);
         $status = $this->resolveDashboardStatus(
             $inProgress,
             $latestCompleted,
@@ -90,9 +94,12 @@ class QuizAttemptService
             $attemptsRemaining,
             $passedAttempt,
             $lessonReviewRequired,
+            $adminRetrainingApproved,
         );
 
         return array_merge($metaBeforeStatus, [
+            'training_cycle' => $trainingCycle,
+            'admin_retraining_approved' => $adminRetrainingApproved,
             'quiz_status' => $status,
             'training_status' => $this->resolveTrainingStatus(
                 $inProgress,
@@ -102,6 +109,7 @@ class QuizAttemptService
                 $passedAttempt,
                 $lessonReviewRequired,
                 $base['all_lessons_completed'],
+                $adminRetrainingApproved,
             ),
             'lesson_review_required' => $lessonReviewRequired,
         ]);
@@ -123,7 +131,8 @@ class QuizAttemptService
             ]);
         }
 
-        $inProgress = $this->getInProgressAttempt($user->id, $module->id);
+        $trainingCycle = $this->trainingResetService->currentCycleNumber($user->id, $module->id);
+        $inProgress = $this->getInProgressAttempt($user->id, $module->id, $trainingCycle);
 
         if ($inProgress) {
             if (! $config->allow_resume_attempt) {
@@ -146,13 +155,18 @@ class QuizAttemptService
 
     public function createAttempt(User $user, TrainingModule $module, AiScenarioConfig $config): AiScenarioAttempt
     {
-        if ($this->getInProgressAttempt($user->id, $module->id)) {
+        $trainingCycle = $this->trainingResetService->currentCycleNumber($user->id, $module->id);
+
+        if ($this->getInProgressAttempt($user->id, $module->id, $trainingCycle)) {
             throw ValidationException::withMessages([
                 'ai_scenario' => 'You already have an active attempt in progress.',
             ]);
         }
 
-        $attemptNumber = $this->getCompletedAttempts($user->id, $module->id)->count() + 1;
+        $attemptNumber = (int) AiScenarioAttempt::query()
+            ->where('user_id', $user->id)
+            ->where('training_module_id', $module->id)
+            ->max('attempt_number') + 1;
         $timeLimit = (int) ($config->time_limit_minutes ?? 60);
         $questions = $config->generated_questions ?? [];
         $questionOrder = $this->buildQuestionOrder($questions, (bool) $config->shuffle_questions);
@@ -166,6 +180,7 @@ class QuizAttemptService
             $module,
             $config,
             $attemptNumber,
+            $trainingCycle,
             $timeLimit,
             $orderedQuestions,
             $questionOrder,
@@ -178,6 +193,7 @@ class QuizAttemptService
                 'training_module_id' => $module->id,
                 'ai_scenario_config_id' => $config->id,
                 'attempt_number' => $attemptNumber,
+                'training_cycle' => $trainingCycle,
                 'status' => self::STATUS_IN_PROGRESS,
                 'current_question' => $firstQuestionNumber,
                 'scenario_title' => $config->scenario_title,
@@ -376,12 +392,15 @@ class QuizAttemptService
         return $attempt->fresh();
     }
 
-    public function getInProgressAttempt(int $userId, int $moduleId): ?AiScenarioAttempt
+    public function getInProgressAttempt(int $userId, int $moduleId, ?int $trainingCycle = null): ?AiScenarioAttempt
     {
+        $trainingCycle ??= $this->trainingResetService->currentCycleNumber($userId, $moduleId);
+
         return AiScenarioAttempt::query()
             ->with('quizAnswers')
             ->where('user_id', $userId)
             ->where('training_module_id', $moduleId)
+            ->where('training_cycle', $trainingCycle)
             ->where('status', self::STATUS_IN_PROGRESS)
             ->latest('id')
             ->first();
@@ -390,11 +409,14 @@ class QuizAttemptService
     /**
      * @return \Illuminate\Support\Collection<int, AiScenarioAttempt>
      */
-    public function getCompletedAttempts(int $userId, int $moduleId)
+    public function getCompletedAttempts(int $userId, int $moduleId, ?int $trainingCycle = null)
     {
+        $trainingCycle ??= $this->trainingResetService->currentCycleNumber($userId, $moduleId);
+
         return AiScenarioAttempt::query()
             ->where('user_id', $userId)
             ->where('training_module_id', $moduleId)
+            ->where('training_cycle', $trainingCycle)
             ->whereIn('status', [self::STATUS_COMPLETED, self::STATUS_EXPIRED])
             ->orderBy('attempt_number')
             ->get();
@@ -613,6 +635,7 @@ class QuizAttemptService
         int $attemptsRemaining,
         ?AiScenarioAttempt $passedAttempt,
         bool $lessonReviewRequired = false,
+        bool $adminRetrainingApproved = false,
     ): string {
         if ($inProgress) {
             return 'in_progress';
@@ -620,6 +643,10 @@ class QuizAttemptService
 
         if ($passedAttempt) {
             return 'passed';
+        }
+
+        if ($adminRetrainingApproved) {
+            return 'locked';
         }
 
         if ($lessonReviewRequired) {
@@ -645,6 +672,7 @@ class QuizAttemptService
         ?AiScenarioAttempt $passedAttempt,
         bool $lessonReviewRequired,
         bool $allLessonsCompleted,
+        bool $adminRetrainingApproved = false,
     ): string {
         if ($passedAttempt) {
             return 'passed';
@@ -652,6 +680,10 @@ class QuizAttemptService
 
         if ($inProgress) {
             return 'in_progress';
+        }
+
+        if ($adminRetrainingApproved) {
+            return 'retraining_required';
         }
 
         if ($lessonReviewRequired) {

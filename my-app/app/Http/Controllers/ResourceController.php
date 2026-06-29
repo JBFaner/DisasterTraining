@@ -142,7 +142,7 @@ class ResourceController extends Controller
             ], 201);
         }
 
-        return redirect()->route('resources.index')->with('success', 'Resource created successfully');
+        return redirect()->route('admin.resources.index')->with('success', 'Resource created successfully');
     }
 
     /**
@@ -206,7 +206,7 @@ class ResourceController extends Controller
             ]);
         }
 
-        return redirect()->route('resources.show', $resource)->with('success', 'Resource updated successfully');
+        return redirect()->route('admin.resources.show', $resource)->with('success', 'Resource updated successfully');
     }
 
     /**
@@ -535,7 +535,7 @@ class ResourceController extends Controller
             ]);
         }
 
-        return redirect()->route('resources.index')->with('success', 'Resource deleted successfully');
+        return redirect()->route('admin.resources.index')->with('success', 'Resource deleted successfully');
     }
 
     /**

@@ -102,7 +102,7 @@ export function AuditLogs() {
                 if (value) params.append(key, value);
             });
 
-            const response = await fetch(`/api/audit-logs?${params.toString()}`);
+            const response = await fetch(`/admin/api/audit-logs?${params.toString()}`);
             const data = await response.json();
             setLogs(data.data || []);
             setMeta(data.meta || { current_page: 1, last_page: 1, total: 0 });
@@ -138,7 +138,7 @@ export function AuditLogs() {
 
     const handleExport = (format) => {
         const params = new URLSearchParams({ format });
-        window.location.href = `/api/audit-logs/export?${params.toString()}`;
+        window.location.href = `/admin/api/audit-logs/export?${params.toString()}`;
     };
 
     const getDisplayStatus = (log) => {

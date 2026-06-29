@@ -152,7 +152,7 @@ class ParticipantController extends Controller
             'new_values' => $user->only(['status', 'phone']),
         ]);
 
-        return redirect()->route('participants.show', $user)
+        return redirect()->route('admin.participants.show', $user)
             ->with('status', 'Participant updated successfully.');
     }
 
@@ -180,7 +180,7 @@ class ParticipantController extends Controller
             'new_values' => ['status' => 'inactive'],
         ]);
 
-        return redirect()->route('participants.index')
+        return redirect()->route('admin.participants.index')
             ->with('status', 'Participant deactivated.');
     }
 
@@ -208,7 +208,7 @@ class ParticipantController extends Controller
             'new_values' => ['status' => 'active'],
         ]);
 
-        return redirect()->route('participants.index')
+        return redirect()->route('admin.participants.index')
             ->with('status', 'Participant reactivated.');
     }
 

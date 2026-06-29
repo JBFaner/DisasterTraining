@@ -11,6 +11,7 @@
     <body>
         <div
             id="participant-login-root"
+            data-csrf-token="{{ csrf_token() }}"
             data-errors='@json($errors->getMessages() ?: [])'
             data-old-email="{{ old('email', '') }}"
             data-lockout-retry-after="{{ session('lockout_retry_after', 0) }}"

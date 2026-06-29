@@ -54,13 +54,13 @@ class AiScenarioAttemptController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'redirect' => route('ai-scenario-attempts.show', $attempt),
+                'redirect' => route('participant.ai-scenario-attempts.show', $attempt),
                 'attempt_id' => $attempt->id,
                 'resumed' => $attempt->wasRecentlyCreated === false,
             ]);
         }
 
-        return redirect()->route('ai-scenario-attempts.show', $attempt);
+        return redirect()->route('participant.ai-scenario-attempts.show', $attempt);
     }
 
     public function show(AiScenarioAttempt $attempt)
@@ -143,7 +143,7 @@ class AiScenarioAttemptController extends Controller
                 ]);
             }
 
-            return redirect()->route('ai-scenario-attempts.show', $attempt);
+            return redirect()->route('participant.ai-scenario-attempts.show', $attempt);
         }
 
         $answers = $request->validated('answers');
@@ -178,20 +178,20 @@ class AiScenarioAttemptController extends Controller
             return response()->json([
                 'message' => 'Assessment submitted.',
                 'redirect' => $evaluationResult
-                    ? route('evaluation-results.show', $evaluationResult)
-                    : route('ai-scenario-attempts.show', $attempt),
+                    ? route('admin.evaluation-results.show', $evaluationResult)
+                    : route('participant.ai-scenario-attempts.show', $attempt),
                 'evaluation_result_id' => $evaluationResult?->id,
             ]);
         }
 
         if ($evaluationResult) {
             return redirect()
-                ->route('evaluation-results.show', $evaluationResult)
+                ->route('admin.evaluation-results.show', $evaluationResult)
                 ->with('status', 'Your evaluation report is ready.');
         }
 
         return redirect()
-            ->route('ai-scenario-attempts.show', $attempt)
+            ->route('participant.ai-scenario-attempts.show', $attempt)
             ->with('status', 'Your assessment has been submitted.');
     }
 

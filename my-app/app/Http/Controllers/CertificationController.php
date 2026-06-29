@@ -230,7 +230,7 @@ class CertificationController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'A certificate for this participant and event already exists.'], 422);
             }
-            return redirect()->route('certification')->with('status', 'Certificate already issued for this participant and event.');
+            return redirect()->route('admin.certification.index')->with('status', 'Certificate already issued for this participant and event.');
         }
 
         $templateId = $data['certificate_template_id'] ?? null;
@@ -283,7 +283,7 @@ class CertificationController extends Controller
                 'certificate' => $cert->load(['user', 'simulationEvent']),
             ]);
         }
-        return redirect()->route('certification')->with('status', 'Certificate issued successfully.');
+        return redirect()->route('admin.certification.index')->with('status', 'Certificate issued successfully.');
     }
 
     private function generateCertificateNumber(): string
@@ -307,7 +307,7 @@ class CertificationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Certificate revoked.']);
         }
-        return redirect()->route('certification')->with('status', 'Certificate revoked.');
+        return redirect()->route('admin.certification.index')->with('status', 'Certificate revoked.');
     }
 
     /**
@@ -348,7 +348,7 @@ class CertificationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Template created.']);
         }
-        return redirect()->route('certification')->with('status', 'Template created.');
+        return redirect()->route('admin.certification.index')->with('status', 'Template created.');
     }
 
     public function updateTemplate(Request $request, CertificateTemplate $template)
@@ -387,7 +387,7 @@ class CertificationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Template updated.']);
         }
-        return redirect()->route('certification')->with('status', 'Template updated.');
+        return redirect()->route('admin.certification.index')->with('status', 'Template updated.');
     }
 
     /**
@@ -424,7 +424,7 @@ class CertificationController extends Controller
         // Use <img> instead of CSS background-image so the background prints / saves in PDF.
         // Add cache-busting query parameter based on updated_at timestamp to prevent stale images
         $updatedAt = $template->updated_at ? $template->updated_at->timestamp : time();
-        $url = route('certification.templates.background', ['template' => $template->id]) . '?v=' . $updatedAt;
+        $url = route('admin.certification.templates.background', ['template' => $template->id]) . '?v=' . $updatedAt;
         $opacity = $template->background_opacity !== null
             ? (float) $template->background_opacity
             : 0.35;
@@ -449,7 +449,7 @@ class CertificationController extends Controller
         // Add cache-busting based on file modification time
         $filePath = Storage::disk('public')->path($backgroundPath);
         $fileTime = file_exists($filePath) ? filemtime($filePath) : time();
-        $url = route('certificates.background', ['certificate' => $certificateId]) . '?v=' . $fileTime;
+        $url = route('admin.certificates.background', ['certificate' => $certificateId]) . '?v=' . $fileTime;
         $opacity = max(0.1, min(0.8, $opacity)); // clamp between 0.1 and 0.8
         $safeUrl = e($url);
         return '<div class="certificate-outer" style="position:relative; max-width:800px; margin:0 auto; width:100%;">'
@@ -601,12 +601,21 @@ class CertificationController extends Controller
             $orientation = 'landscape';
         }
         $autoPrint = request()->query('print') === '1' || request()->query('print') === 'true';
+        $certificationBackRoute = ($user && $user->role === 'PARTICIPANT')
+            ? 'participant.certification.index'
+            : 'admin.certification.index';
+        $certificateViewRoute = ($user && $user->role === 'PARTICIPANT')
+            ? 'participant.certificates.view'
+            : 'admin.certificates.view';
+
         return view('certificate.view', [
             'content' => $html,
             'certificate' => $certificate,
             'paperSize' => $paperSize,
             'orientation' => $orientation,
             'autoPrint' => $autoPrint,
+            'certificationBackRoute' => $certificationBackRoute,
+            'certificateViewRoute' => $certificateViewRoute,
         ]);
     }
 

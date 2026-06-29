@@ -227,7 +227,7 @@ class CentralizedLoginController extends Controller
             ]);
         }
 
-        PortalAuth::logoutAll();
+        PortalAuth::logoutGuard(PortalAuth::ADMIN_GUARD);
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

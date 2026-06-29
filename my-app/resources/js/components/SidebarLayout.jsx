@@ -438,7 +438,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={BookOpen}
                         label="Training Modules"
-                        href="/training-modules"
+                        href="/participant/training-modules"
                         active={currentSection === 'training'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -449,7 +449,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={CalendarClock}
                         label="Simulation Events"
-                        href="/simulation-events"
+                        href="/participant/simulation-events"
                         active={currentSection === 'simulation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -460,7 +460,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={ClipboardCheck}
                         label="My Attendance"
-                        href="/my-attendance"
+                        href="/participant/my-attendance"
                         active={currentSection === 'participants'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -471,7 +471,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={ClipboardList}
                         label="Evaluation Results"
-                        href="/evaluations"
+                        href="/participant/evaluations"
                         active={currentSection === 'evaluation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -482,7 +482,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={Award}
                         label="My Certificates"
-                        href="/certification"
+                        href="/participant/certification"
                         active={currentSection === 'certification'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -510,7 +510,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={BookOpen}
                         label="Training Module Management"
-                        href="/training-modules"
+                        href="/admin/training-modules"
                         active={currentSection === 'training'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -526,7 +526,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={ClipboardList}
                         label="Evaluation & Scoring System"
-                        href="/evaluations"
+                        href="/admin/evaluations"
                         active={currentSection === 'evaluation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -534,7 +534,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={CalendarClock}
                         label="Simulation Event Planning"
-                        href="/simulation-events"
+                        href="/admin/simulation-events"
                         active={currentSection === 'simulation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -542,7 +542,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={Box}
                         label="Resource & Equipment Inventory"
-                        href="/resources"
+                        href="/admin/resources"
                         active={currentSection === 'resources'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -550,7 +550,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={Users}
                         label="Participant Registration & Attendance"
-                        href="/participants"
+                        href="/admin/participants"
                         active={currentSection === 'participants'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -558,7 +558,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={Award}
                         label="Certification Issuance"
-                        href="/certification"
+                        href="/admin/certification"
                         active={currentSection === 'certification'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -571,7 +571,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={FileText}
                         label="After-Action Review"
-                        href="/after-action-review"
+                        href="/admin/after-action-review"
                         active={currentSection === 'after_action_review'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -579,7 +579,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={History}
                         label="Drill History Reports"
-                        href="/drill-history-reports"
+                        href="/admin/drill-history-reports"
                         active={currentSection === 'drill_history_reports'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -592,7 +592,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={Settings}
                         label="Barangay Profile"
-                        href="/barangay-profile"
+                        href="/admin/barangay-profile"
                         active={currentSection === 'barangay_profile'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -634,7 +634,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={ClipboardCheck}
                         label="Audit Logs"
-                        href="/audit-logs"
+                        href="/admin/audit-logs"
                         active={currentSection === 'audit_logs'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}

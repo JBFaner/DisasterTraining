@@ -288,7 +288,7 @@ export function AiScenarioTrainingPage({ attempt, module }) {
         setSubmitting(true);
         try {
             const res = await csrfFetch(
-                `/ai-scenario-attempts/${attempt.id}/submit`,
+                `/participant/ai-scenario-attempts/${attempt.id}/submit`,
                 {
                     method: 'POST',
                     body: { answers, display_language: displayLanguage },
@@ -306,7 +306,7 @@ export function AiScenarioTrainingPage({ attempt, module }) {
             }
 
             if (!res.ok) throw new Error(data.message || 'Submit failed');
-            window.location.href = data.redirect || `/evaluations/results/${data.evaluation_result_id}`;
+            window.location.href = data.redirect || `/participant/evaluations/results/${data.evaluation_result_id}`;
         } catch (err) {
             if (autoSubmit) autoSubmittedRef.current = false;
             Swal.fire({ icon: 'error', title: 'Error', text: err.message });
@@ -355,7 +355,7 @@ export function AiScenarioTrainingPage({ attempt, module }) {
 
         try {
             const res = await csrfFetch(
-                `/ai-scenario-attempts/${attempt.id}/answers`,
+                `/participant/ai-scenario-attempts/${attempt.id}/answers`,
                 {
                     method: 'POST',
                     body: {
@@ -390,7 +390,7 @@ export function AiScenarioTrainingPage({ attempt, module }) {
 
         try {
             await csrfFetch(
-                `/ai-scenario-attempts/${attempt.id}/progress`,
+                `/participant/ai-scenario-attempts/${attempt.id}/progress`,
                 {
                     method: 'POST',
                     body: { current_question: Number(questionNumber) },
@@ -416,7 +416,7 @@ export function AiScenarioTrainingPage({ attempt, module }) {
         <AdminPageShell>
             <div className="flex items-center justify-between mb-1 gap-3">
                 <a
-                    href={`/training-modules/${module?.id || ''}`}
+                    href={`/participant/training-modules/${module?.id || ''}`}
                     className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900"
                 >
                     <ChevronLeft className="w-4 h-4" /> Back to {moduleTitle}
@@ -622,7 +622,7 @@ export function AiScenarioTrainingPage({ attempt, module }) {
                     </AdminContentCard>
 
                     <div className="flex flex-wrap gap-2">
-                        <AdminSecondaryButton href={`/training-modules/${module?.id}`}>
+                        <AdminSecondaryButton href={`/participant/training-modules/${module?.id}`}>
                             Back to Module
                         </AdminSecondaryButton>
                     </div>
@@ -654,8 +654,9 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
     const attemptsRemaining = meta.attempts_remaining ?? maxAttempts;
     const isLocked = meta.is_locked ?? false;
     const lessonReviewRequired = Boolean(meta.lesson_review_required);
+    const adminRetrainingApproved = Boolean(meta.admin_retraining_approved);
     const lessonProgress = meta.lesson_progress || [];
-    const canStartQuiz = meta.is_unlocked && !isLocked && !inProgress && !lessonReviewRequired;
+    const canStartQuiz = meta.is_unlocked && !isLocked && !inProgress && !lessonReviewRequired && !adminRetrainingApproved;
 
     const handleStart = async () => {
         if (!canStartQuiz) return;
@@ -663,13 +664,13 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
         setStarting(true);
         try {
             const res = await csrfFetch(
-                `/training-modules/${module.id}/ai-scenario-training/start`,
+                `/participant/training-modules/${module.id}/ai-scenario-training/start`,
                 { method: 'POST' },
                 { keepAlive: true },
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Unable to start');
-            window.location.href = data.redirect || `/ai-scenario-attempts/${data.attempt_id}`;
+            window.location.href = data.redirect || `/participant/ai-scenario-attempts/${data.attempt_id}`;
         } catch (err) {
             Swal.fire({ icon: 'error', title: 'Cannot start', text: err.message });
             setStarting(false);
@@ -683,6 +684,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
         failed: 'Failed',
         locked: 'Quiz Locked',
         lesson_review_required: 'Lesson Review Required',
+        retraining_required: 'Re-training Required',
     }[quizStatus] || {
         not_started: 'Not Started',
         in_progress: 'In Progress',
@@ -690,6 +692,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
         failed: 'Failed',
         locked: 'Locked',
         lesson_review_required: 'Lesson Review Required',
+        retraining_required: 'Re-training Required',
     }[trainingStatus] || 'Not Started';
 
     const statusColor = {
@@ -699,6 +702,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
         failed: 'text-rose-700',
         locked: 'text-slate-500',
         lesson_review_required: 'text-amber-800',
+        retraining_required: 'text-sky-800',
     }[quizStatus] || {
         not_started: 'text-slate-600',
         in_progress: 'text-amber-700',
@@ -706,6 +710,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
         failed: 'text-rose-700',
         locked: 'text-slate-500',
         lesson_review_required: 'text-amber-800',
+        retraining_required: 'text-sky-800',
     }[trainingStatus] || 'text-slate-600';
 
     const lessonStatusBadge = (status) => {
@@ -734,7 +739,39 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                 Complete all lessons to unlock a Gemini-generated disaster scenario and assessment quiz.
             </p>
 
-            {(lessonReviewRequired || trainingStatus === 'lesson_review_required') && (
+            {(adminRetrainingApproved || trainingStatus === 'retraining_required') && (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-sky-700 shrink-0" />
+                        <p className="text-sm font-semibold text-sky-900">Re-training Required</p>
+                    </div>
+                    <p className="text-xs text-sky-900">
+                        Your administrator has approved a new training attempt.
+                        Please complete all lessons again before taking the AI Scenario Assessment.
+                    </p>
+                    {lessonProgress.length > 0 && (
+                        <div className="pt-2 border-t border-sky-200 space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Progress</p>
+                            {lessonProgress.map((lesson) => (
+                                <div key={lesson.id} className="flex items-center justify-between gap-2 text-xs">
+                                    <span className="text-sky-900 truncate">Lesson {lesson.sequence_number}: {lesson.title}</span>
+                                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold shrink-0 ${lessonStatusBadge(lesson.status)}`}>
+                                        {lessonStatusLabel(lesson.status)}
+                                    </span>
+                                </div>
+                            ))}
+                            <div className="flex items-center justify-between gap-2 text-xs pt-1">
+                                <span className="text-sky-900 font-medium">AI Scenario</span>
+                                <span className="inline-flex items-center rounded-full px-2 py-0.5 font-semibold bg-slate-200 text-slate-600">
+                                    Locked
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {(lessonReviewRequired || trainingStatus === 'lesson_review_required') && !adminRetrainingApproved && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 space-y-3">
                     <div className="flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
@@ -770,7 +807,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                 </div>
             )}
 
-            {!meta.all_lessons_completed && !lessonReviewRequired && (
+            {!meta.all_lessons_completed && !lessonReviewRequired && !adminRetrainingApproved && (
                 <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
                     <Lock className="w-4 h-4 shrink-0" />
                     Complete all lessons to unlock this training.
@@ -783,7 +820,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                 </div>
             )}
 
-            {(meta.is_unlocked || lessonReviewRequired || meta.attempts_used > 0 || meta.passed) && (
+            {(meta.is_unlocked || lessonReviewRequired || adminRetrainingApproved || meta.attempts_used > 0 || meta.passed) && (
                 <div className="space-y-3">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-xs space-y-1.5">
                         <div className="flex justify-between">
@@ -801,6 +838,9 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                                     <span className="font-medium text-slate-800">{attemptsUsed} of {maxAttempts}</span>
                                 </div>
                                 <p className="text-emerald-700 font-medium pt-1">Quiz Locked</p>
+                                <a href="/participant/certification" className="inline-block text-xs text-emerald-700 hover:underline pt-1">
+                                    View your certificate
+                                </a>
                             </>
                         )}
                         {quizStatus === 'locked' && !meta.passed && (
@@ -824,6 +864,24 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                                 </div>
                             </>
                         )}
+                        {quizStatus === 'in_progress' && (
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Attempts Remaining</span>
+                                <span className="font-medium text-slate-800">{attemptsRemaining}</span>
+                            </div>
+                        )}
+                        {(trainingStatus === 'retraining_required' || adminRetrainingApproved) && (
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Attempts Remaining</span>
+                                <span className="font-medium text-slate-800">{attemptsRemaining}</span>
+                            </div>
+                        )}
+                        {quizStatus === 'lesson_review_required' && (
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Attempts Remaining</span>
+                                <span className="font-medium text-slate-800">{attemptsRemaining}</span>
+                            </div>
+                        )}
                         {quizStatus === 'not_started' && (
                             <div className="flex justify-between">
                                 <span className="text-slate-500">Attempts Remaining</span>
@@ -841,7 +899,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                                 <p>Attempt: {inProgress.attempt_number} of {maxAttempts}</p>
                             </div>
                             <a
-                                href={`/ai-scenario-attempts/${inProgress.id}`}
+                                href={`/participant/ai-scenario-attempts/${inProgress.id}`}
                                 className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm"
                             >
                                 Continue Attempt
@@ -863,7 +921,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
 
                     {isLocked && latest?.id && (
                         <a
-                            href={`/ai-scenario-attempts/${latest.id}`}
+                            href={`/participant/ai-scenario-attempts/${latest.id}`}
                             className="inline-block text-xs text-emerald-700 hover:underline"
                         >
                             View last results

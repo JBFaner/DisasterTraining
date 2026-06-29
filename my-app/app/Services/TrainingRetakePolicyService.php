@@ -73,10 +73,15 @@ class TrainingRetakePolicyService
     {
         $config = $attempt->config;
         $maxAttempts = (int) ($config?->max_attempts ?? 3);
+        $cycle = app(TrainingResetService::class)->currentCycleNumber(
+            (int) $attempt->user_id,
+            (int) $attempt->training_module_id,
+        );
 
         $attemptsUsed = AiScenarioAttempt::query()
             ->where('user_id', $attempt->user_id)
             ->where('training_module_id', $attempt->training_module_id)
+            ->where('training_cycle', $cycle)
             ->whereIn('status', [
                 AiScenarioAttempt::STATUS_COMPLETED,
                 AiScenarioAttempt::STATUS_EXPIRED,

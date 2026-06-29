@@ -218,7 +218,12 @@ PROMPT;
         $contents = $module?->contents?->sortBy('sort_order') ?? collect();
 
         if (! $passed) {
-            $recommendations[] = 'Retake AI Scenario Training';
+            $config = $attempt->config ?? $module?->aiScenarioConfig;
+            if ($config?->requiresLessonReviewOnFail()) {
+                $recommendations[] = 'Complete all lessons again before retaking the AI Scenario Assessment';
+            } else {
+                $recommendations[] = 'Retake AI Scenario Training';
+            }
         }
 
         foreach ($this->weakestCompetencies($competencyScores) as $competency) {

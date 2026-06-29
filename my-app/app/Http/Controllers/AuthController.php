@@ -18,6 +18,8 @@ class AuthController extends Controller
 {
     public function showLogin(Request $request)
     {
+        $request->session()->regenerateToken();
+
         $email = $request->old('email', '');
         $failedAttempts = 0;
         
@@ -158,6 +160,8 @@ class AuthController extends Controller
 
     public function showParticipantLogin(Request $request)
     {
+        $request->session()->regenerateToken();
+
         $email = $request->old('email', '');
         $failedAttempts = 0;
         

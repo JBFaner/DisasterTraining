@@ -153,7 +153,7 @@ export function TrainingModuleDetail({ module }) {
             formData.append('_token', csrf);
             order.forEach((id, index) => formData.append(`order[${index}]`, id));
 
-            await fetch(`/training-modules/${module.id}/contents/reorder`, {
+            await fetch(`/admin/training-modules/${module.id}/contents/reorder`, {
                 method: 'POST',
                 body: formData,
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -177,7 +177,7 @@ export function TrainingModuleDetail({ module }) {
     return (
         <div className="py-2 space-y-6">
             <div className="flex items-center justify-between mb-1">
-                <a href="/training-modules" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
+                <a href="/admin/training-modules" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
                     <ChevronLeft className="w-4 h-4" /> Back to Training Modules
                 </a>
             </div>
@@ -215,7 +215,7 @@ export function TrainingModuleDetail({ module }) {
                                     </div>
                                 )}
                             </div>
-                            <a href={`/training-modules/${module.id}/edit`} className="rounded-xl border border-slate-300 p-2.5 hover:bg-slate-50">
+                            <a href={`/admin/training-modules/${module.id}/edit`} className="rounded-xl border border-slate-300 p-2.5 hover:bg-slate-50">
                                 <Pencil className="w-4 h-4" />
                             </a>
                         </div>
@@ -283,7 +283,7 @@ export function TrainingModuleDetail({ module }) {
                                         <button type="button" onClick={() => handleContentClick(content)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200">
                                             <Eye className="w-3.5 h-3.5" /> View
                                         </button>
-                                        <form method="POST" action={`/training-modules/${module.id}/contents/${content.id}`} onSubmit={async (e) => {
+                                        <form method="POST" action={`/admin/training-modules/${module.id}/contents/${content.id}`} onSubmit={async (e) => {
                                             e.preventDefault();
                                             const ok = await Swal.fire({ title: 'Delete content?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
                                             if (ok.isConfirmed) e.target.submit();
@@ -305,7 +305,7 @@ export function TrainingModuleDetail({ module }) {
                     <h3 className="text-sm font-semibold text-slate-800">Add Learning Content</h3>
                     <form
                         method="POST"
-                        action={`/training-modules/${module.id}/contents`}
+                        action={`/admin/training-modules/${module.id}/contents`}
                         encType="multipart/form-data"
                         className="space-y-3 rounded-2xl bg-white border border-slate-200 shadow-md p-5"
                         onSubmit={async (e) => {
@@ -389,7 +389,7 @@ export function TrainingModuleDetail({ module }) {
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-6">
                                     {isEditMode ? (
-                                        <form method="POST" action={`/training-modules/${module.id}/contents/${selectedContent.id}`} encType="multipart/form-data" className="space-y-4">
+                                        <form method="POST" action={`/admin/training-modules/${module.id}/contents/${selectedContent.id}`} encType="multipart/form-data" className="space-y-4">
                                             <input type="hidden" name="_token" value={csrf} />
                                             <input type="hidden" name="_method" value="PUT" />
                                             <input name="title" type="text" required value={editFormData.title} onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />

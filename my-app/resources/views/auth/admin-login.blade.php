@@ -12,6 +12,7 @@
     <body>
         <div
             id="admin-login-root"
+            data-csrf-token="{{ csrf_token() }}"
             data-errors='@json($errors->all() ?: [])'
             data-old-email="{{ old('email', '') }}"
             data-lockout-retry-after="{{ session('lockout_retry_after', 0) }}"

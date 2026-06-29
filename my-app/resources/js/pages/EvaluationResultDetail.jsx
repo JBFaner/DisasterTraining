@@ -1,5 +1,6 @@
 import React from 'react';
-import { ClipboardList, Printer, Star, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { ClipboardList, Printer, Star, CheckCircle2, XCircle, ArrowLeft, RotateCcw } from 'lucide-react';
 import {
     resolveQuestionsForLocale,
     resolveScenarioTitle,
@@ -65,6 +66,8 @@ function CircularProgress({ percentage, passingScore = 75 }) {
 }
 
 export function EvaluationResultDetail({ result, passingScore = 75 }) {
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+
     React.useEffect(() => {
         if (new URLSearchParams(window.location.search).get('print') === '1') {
             window.print();
@@ -80,6 +83,59 @@ export function EvaluationResultDetail({ result, passingScore = 75 }) {
     }
 
     const passed = result.status === 'passed';
+    const canReset = Boolean(result.can_reset);
+
+    const handleReset = async () => {
+        const participantName = result.participant?.name || 'Participant';
+        const moduleTitle = result.training_module?.title || 'Training Module';
+
+        const confirm = await Swal.fire({
+            title: 'Reset Training Attempt',
+            html: `
+                <div class="text-left text-sm text-slate-700 space-y-3">
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1">
+                        <p><span class="text-slate-500">Participant:</span> <strong>${participantName}</strong></p>
+                        <p><span class="text-slate-500">Training Module:</span> <strong>${moduleTitle}</strong></p>
+                    </div>
+                    <p class="text-xs text-rose-600 font-medium">This action cannot be undone. Evaluation history will be preserved.</p>
+                </div>
+            `,
+            input: 'textarea',
+            inputLabel: 'Reason (optional)',
+            inputPlaceholder: 'e.g. Scheduled re-training',
+            showCancelButton: true,
+            confirmButtonText: 'Confirm Reset',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#059669',
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        const res = await fetch(`/admin/evaluations/results/${result.id}/reset`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrf,
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason: confirm.value?.trim() || null }),
+        });
+
+        if (res.ok) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Reset Complete',
+                text: 'Training progress has been reset.',
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            window.location.href = '/admin/evaluations';
+        } else {
+            const data = await res.json().catch(() => ({}));
+            Swal.fire('Error', data.message || 'Could not reset training progress.', 'error');
+        }
+    };
+
     const [displayLanguage, setDisplayLanguage] = React.useState(result.display_language || result.generated_language || 'en');
     const rawQuestions = result.generated_questions || [];
     const questions = React.useMemo(
@@ -97,10 +153,15 @@ export function EvaluationResultDetail({ result, passingScore = 75 }) {
     return (
         <AdminPageShell className="print:space-y-2">
             <div className="flex items-center justify-between print:hidden mb-1">
-                <a href="/evaluations" className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900">
+                <a href="/admin/evaluations" className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900">
                     <ArrowLeft className="w-4 h-4" /> Back to Evaluations
                 </a>
                 <div className="flex items-center gap-2">
+                    {canReset && (
+                        <AdminSecondaryButton type="button" onClick={handleReset} className="text-amber-800 border-amber-200 hover:bg-amber-50">
+                            <RotateCcw className="w-4 h-4" /> Reset for Re-attempt
+                        </AdminSecondaryButton>
+                    )}
                     <AiScenarioLanguageSwitcher value={displayLanguage} onChange={setDisplayLanguage} />
                     <AdminSecondaryButton type="button" onClick={() => window.print()}>
                         <Printer className="w-4 h-4" /> Print Evaluation
@@ -123,8 +184,15 @@ export function EvaluationResultDetail({ result, passingScore = 75 }) {
                     <div><span className="text-slate-500">Training Module</span><p className="font-medium text-slate-900">{result.training_module?.title}</p></div>
                     <div><span className="text-slate-500">Scenario</span><p className="font-medium text-slate-900">{result.scenario_title}</p></div>
                     <div><span className="text-slate-500">Difficulty</span><p className="font-medium text-slate-900 capitalize">{result.difficulty}</p></div>
-                    <div><span className="text-slate-500">Attempt Number</span><p className="font-medium text-slate-900">{result.attempt_number ? `#${result.attempt_number}` : '—'}</p></div>
-                    <div><span className="text-slate-500">Duration</span><p className="font-medium text-slate-900">{result.duration_seconds != null ? `${Math.floor(result.duration_seconds / 60)}:${String(result.duration_seconds % 60).padStart(2, '0')}` : '—'}</p></div>
+                    <div><span className="text-slate-500">Attempt Number</span><p className="font-medium text-slate-900">{(() => {
+                        const attemptNum = result.attempt_number ?? result.ai_scenario_attempt?.attempt_number;
+                        return attemptNum ? `#${attemptNum}` : '—';
+                    })()}</p></div>
+                    <div><span className="text-slate-500">Duration</span><p className="font-medium text-slate-900">{(() => {
+                        const seconds = result.duration_seconds ?? result.ai_scenario_attempt?.duration_seconds;
+                        if (seconds == null) return '—';
+                        return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+                    })()}</p></div>
                     <div><span className="text-slate-500">Date Completed</span><p className="font-medium text-slate-900">{result.completed_at ? new Date(result.completed_at).toLocaleString() : '—'}</p></div>
                 </div>
             </AdminContentCard>

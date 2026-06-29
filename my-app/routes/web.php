@@ -2,10 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Support\PortalAuth;
+use App\Support\PortalSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\TrainingModuleController;
+use App\Http\Controllers\Admin\TrainingModuleController as AdminTrainingModuleController;
+use App\Http\Controllers\Participant\TrainingModuleController as ParticipantTrainingModuleController;
+use App\Http\Controllers\LegacyTrainingModuleRedirectController;
+use App\Http\Controllers\LegacyPortalRedirectController;
 use App\Http\Controllers\ScenarioController;
 use App\Http\Controllers\SimulationEventController;
 use App\Http\Controllers\ParticipantController;
@@ -100,10 +104,12 @@ Route::get('/dashboard', function (Request $request) {
     \Log::info('Dashboard hit', [
         'auth' => portal_check(),
         'user_id' => portal_id(),
+        'portal' => PortalSession::currentPortal(),
         'admin_authenticated' => Auth::guard(PortalAuth::ADMIN_GUARD)->check(),
         'participant_authenticated' => Auth::guard(PortalAuth::PARTICIPANT_GUARD)->check(),
-        'active_portal' => PortalAuth::activeGuard(),
+        'active_guard' => PortalAuth::activeGuard(),
         'session_id' => $request->session()->getId(),
+        'session_cookie' => config('session.cookie'),
         'has_token' => $request->has('token'),
         'token_len' => $request->has('token') ? strlen($request->query('token')) : 0,
     ]);
@@ -119,12 +125,18 @@ Route::get('/dashboard', function (Request $request) {
 
     // If not authenticated and no token, redirect to the appropriate login page
     if (! portal_check()) {
-        \Log::warning('Dashboard unauthenticated redirect to participant.login', [
+        \Log::warning('Dashboard unauthenticated redirect', [
             'session_id' => $request->session()->getId(),
+            'portal' => PortalSession::currentPortal(),
+            'session_cookie' => config('session.cookie'),
             'has_token' => $request->has('token'),
         ]);
 
-        return redirect()->route('participant.login');
+        $loginRoute = PortalSession::currentPortal() === PortalSession::PARTICIPANT
+            ? 'participant.login'
+            : 'admin.login';
+
+        return redirect()->route($loginRoute);
     }
 
     PortalAuth::syncDefaultGuard();
@@ -134,176 +146,255 @@ Route::get('/dashboard', function (Request $request) {
 })->name('dashboard');
 
 // Protected app routes (session inactivity checked on every request)
-Route::middleware(['auth:admin,participant', SyncPortalGuard::class, CheckSessionInactivity::class])->group(function () {
+Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity::class])->group(function () {
     Route::post('/session/activity', [SessionController::class, 'activity'])->name('session.activity');
     Route::get('/session/config', [SessionController::class, 'config'])->name('session.config');
 
-    Route::get('/training-modules', [TrainingModuleController::class, 'index'])
-        ->name('training.modules');
+    // Admin portal routes
+    Route::middleware('portal.admin')->prefix('admin')->group(function () {
+        Route::get('/training-modules', [AdminTrainingModuleController::class, 'index'])
+            ->name('admin.training-modules.index');
+        Route::get('/training-modules/create', [AdminTrainingModuleController::class, 'create'])
+            ->name('admin.training-modules.create');
+        Route::post('/training-modules/generate-ai', [AdminTrainingModuleController::class, 'generateAiModule'])
+            ->name('admin.training-modules.generate-ai');
+        Route::post('/training-modules', [AdminTrainingModuleController::class, 'store'])
+            ->name('admin.training-modules.store');
+        Route::get('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'show'])
+            ->name('admin.training-modules.show');
+        Route::get('/training-modules/{trainingModule}/edit', [AdminTrainingModuleController::class, 'edit'])
+            ->name('admin.training-modules.edit');
+        Route::put('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'update'])
+            ->name('admin.training-modules.update');
+        Route::post('/training-modules/{trainingModule}/archive', [AdminTrainingModuleController::class, 'archive'])
+            ->name('admin.training-modules.archive');
+        Route::post('/training-modules/{trainingModule}/publish', [AdminTrainingModuleController::class, 'publish'])
+            ->name('admin.training-modules.publish');
+        Route::delete('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'destroy'])
+            ->name('admin.training-modules.destroy');
+        Route::post('/training-modules/{trainingModule}/contents', [AdminTrainingModuleController::class, 'storeContent'])
+            ->name('admin.training-modules.contents.store');
+        Route::put('/training-modules/{trainingModule}/contents/{content}', [AdminTrainingModuleController::class, 'updateContent'])
+            ->name('admin.training-modules.contents.update');
+        Route::delete('/training-modules/{trainingModule}/contents/{content}', [AdminTrainingModuleController::class, 'destroyContent'])
+            ->name('admin.training-modules.contents.destroy');
+        Route::post('/training-modules/{trainingModule}/contents/reorder', [AdminTrainingModuleController::class, 'reorderContents'])
+            ->name('admin.training-modules.contents.reorder');
 
-    Route::get('/training-modules/create', [TrainingModuleController::class, 'create'])
-        ->name('training.modules.create');
+        Route::get('/ai-scenario-config', [AiScenarioConfigController::class, 'index'])
+            ->name('admin.ai-scenario-config.index');
+        Route::post('/ai-scenario-config', [AiScenarioConfigController::class, 'store'])
+            ->name('admin.ai-scenario-config.store');
+        Route::post('/ai-scenario-config/{config}/generate', [AiScenarioConfigController::class, 'generate'])
+            ->name('admin.ai-scenario-config.generate');
 
-    Route::post('/training-modules/generate-ai', [TrainingModuleController::class, 'generateAiModule'])
-        ->name('training.modules.generate-ai');
+        // Scenarios
+        Route::get('/scenarios', [ScenarioController::class, 'index'])->name('admin.scenarios.index');
+        Route::get('/scenarios/create', [ScenarioController::class, 'create'])->name('admin.scenarios.create');
+        Route::post('/scenarios', [ScenarioController::class, 'store'])->name('admin.scenarios.store');
+        Route::post('/scenarios/generate-ai', [ScenarioController::class, 'generateAiScenario'])->name('admin.scenarios.generate-ai');
+        Route::get('/scenarios/{scenario}', [ScenarioController::class, 'show'])->name('admin.scenarios.show');
+        Route::get('/scenarios/{scenario}/edit', [ScenarioController::class, 'edit'])->name('admin.scenarios.edit');
+        Route::put('/scenarios/{scenario}', [ScenarioController::class, 'update'])->name('admin.scenarios.update');
+        Route::post('/scenarios/{scenario}/publish', [ScenarioController::class, 'publish'])->name('admin.scenarios.publish');
+        Route::post('/scenarios/{scenario}/archive', [ScenarioController::class, 'archive'])->name('admin.scenarios.archive');
+        Route::delete('/scenarios/{scenario}', [ScenarioController::class, 'destroy'])->name('admin.scenarios.destroy');
+        Route::post('/scenarios/{scenario}/injects', [ScenarioController::class, 'storeInject'])->name('admin.scenarios.injects.store');
+        Route::delete('/scenarios/{scenario}/injects/{inject}', [ScenarioController::class, 'destroyInject'])->name('admin.scenarios.injects.destroy');
+        Route::post('/scenarios/{scenario}/expected-actions', [ScenarioController::class, 'storeExpectedAction'])->name('admin.scenarios.expected-actions.store');
+        Route::delete('/scenarios/{scenario}/expected-actions/{expectedAction}', [ScenarioController::class, 'destroyExpectedAction'])->name('admin.scenarios.expected-actions.destroy');
 
-    Route::post('/training-modules', [TrainingModuleController::class, 'store'])
-        ->name('training.modules.store');
+        // Simulation Events (admin management)
+        Route::get('/simulation-events', [SimulationEventController::class, 'index'])->name('admin.simulation-events.index');
+        Route::get('/simulation-events/create', [SimulationEventController::class, 'create'])->name('admin.simulation-events.create');
+        Route::post('/simulation-events', [SimulationEventController::class, 'store'])->name('admin.simulation-events.store');
+        Route::get('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'show'])->name('admin.simulation-events.show');
+        Route::get('/simulation-events/{simulationEvent}/edit', [SimulationEventController::class, 'edit'])->name('admin.simulation-events.edit');
+        Route::put('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'update'])->name('admin.simulation-events.update');
+        Route::post('/simulation-events/{simulationEvent}/publish', [SimulationEventController::class, 'publish'])->name('admin.simulation-events.publish');
+        Route::post('/simulation-events/{simulationEvent}/unpublish', [SimulationEventController::class, 'unpublish'])->name('admin.simulation-events.unpublish');
+        Route::post('/simulation-events/{simulationEvent}/cancel', [SimulationEventController::class, 'cancel'])->name('admin.simulation-events.cancel');
+        Route::post('/simulation-events/{simulationEvent}/archive', [SimulationEventController::class, 'archive'])->name('admin.simulation-events.archive');
+        Route::post('/simulation-events/{simulationEvent}/start', [SimulationEventController::class, 'start'])->name('admin.simulation-events.start');
+        Route::post('/simulation-events/{simulationEvent}/complete', [SimulationEventController::class, 'complete'])->name('admin.simulation-events.complete');
+        Route::delete('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'destroy'])->name('admin.simulation-events.destroy');
+        Route::get('/simulation-events/{simulationEvent}/registrations', [EventRegistrationController::class, 'index'])->name('admin.simulation-events.registrations');
+        Route::get('/simulation-events/{simulationEvent}/attendance', [AttendanceController::class, 'index'])->name('admin.simulation-events.attendance');
+        Route::post('/simulation-events/{simulationEvent}/attendance/lock', [AttendanceController::class, 'lock'])->name('admin.simulation-events.attendance.lock');
+        Route::get('/simulation-events/{simulationEvent}/attendance/export', [AttendanceController::class, 'export'])->name('admin.simulation-events.attendance.export');
+        Route::post('/simulation-events/{simulationEvent}/attendance/mark-present', [AttendanceController::class, 'markPresentByQR'])->name('admin.simulation-events.attendance.mark-present');
 
-    Route::get('/training-modules/{trainingModule}', [TrainingModuleController::class, 'show'])
-        ->name('training.modules.show');
+        // Participants (admin management)
+        Route::get('/participants', [ParticipantController::class, 'index'])->name('admin.participants.index');
+        Route::get('/participants/export/csv', [ParticipantController::class, 'export'])->name('admin.participants.export');
+        Route::get('/participants/{user}', [ParticipantController::class, 'show'])->name('admin.participants.show');
+        Route::put('/participants/{user}', [ParticipantController::class, 'update'])->name('admin.participants.update');
+        Route::post('/participants/{user}/deactivate', [ParticipantController::class, 'deactivate'])->name('admin.participants.deactivate');
+        Route::post('/participants/{user}/reactivate', [ParticipantController::class, 'reactivate'])->name('admin.participants.reactivate');
 
-    Route::post('/training-modules/{trainingModule}/contents/{content}/completion', [LessonCompletionController::class, 'toggle'])
-        ->name('training.contents.completion.toggle');
+        // Event Registrations & Attendance
+        Route::post('/event-registrations/{eventRegistration}/approve', [EventRegistrationController::class, 'approve'])->name('admin.event-registrations.approve');
+        Route::post('/event-registrations/{eventRegistration}/reject', [EventRegistrationController::class, 'reject'])->name('admin.event-registrations.reject');
+        Route::post('/event-registrations/{eventRegistration}/cancel', [EventRegistrationController::class, 'cancel'])->name('admin.event-registrations.cancel');
+        Route::post('/event-registrations/{eventRegistration}/attendance', [AttendanceController::class, 'store'])->name('admin.attendance.store');
+        Route::put('/attendances/{attendance}', [AttendanceController::class, 'update'])->name('admin.attendance.update');
 
-    Route::post('/training-modules/{trainingModule}/contents', [TrainingModuleController::class, 'storeContent'])
-        ->name('training.modules.contents.store');
+        // Settings
+        Route::get('/settings/auto-approval', [SettingController::class, 'getAutoApproval'])->name('admin.settings.auto-approval.get');
+        Route::post('/settings/auto-approval', [SettingController::class, 'toggleAutoApproval'])->name('admin.settings.auto-approval.toggle');
 
-    Route::put('/training-modules/{trainingModule}/contents/{content}', [TrainingModuleController::class, 'updateContent'])
-        ->name('training.modules.contents.update');
+        // Resources & Equipment Inventory
+        Route::get('/resources', [ResourceController::class, 'index'])->name('admin.resources.index');
+        Route::get('/resources/create', [ResourceController::class, 'create'])->name('admin.resources.create');
+        Route::post('/resources', [ResourceController::class, 'store'])->name('admin.resources.store');
+        Route::get('/resources/export/csv', [ResourceController::class, 'export'])->name('admin.resources.export');
+        Route::get('/resources/{resource}', [ResourceController::class, 'show'])->name('admin.resources.show');
+        Route::get('/resources/{resource}/edit', [ResourceController::class, 'edit'])->name('admin.resources.edit');
+        Route::put('/resources/{resource}', [ResourceController::class, 'update'])->name('admin.resources.update');
+        Route::post('/resources/{resource}/assign-to-event', [ResourceController::class, 'assignToEvent'])->name('admin.resources.assign-event');
+        Route::post('/resources/{resource}/mark-in-use', [ResourceController::class, 'markInUse'])->name('admin.resources.mark-inuse');
+        Route::post('/resources/{resource}/mark-unused', [ResourceController::class, 'markUnused'])->name('admin.resources.mark-unused');
+        Route::post('/resources/{resource}/report-damage', [ResourceController::class, 'reportDamage'])->name('admin.resources.report-damage');
+        Route::post('/resources/{resource}/return-from-event', [ResourceController::class, 'returnFromEvent'])->name('admin.resources.return-event');
+        Route::post('/resources/{resource}/schedule-maintenance', [ResourceController::class, 'scheduleMaintenance'])->name('admin.resources.schedule-maintenance');
+        Route::post('/resources/{resource}/complete-maintenance', [ResourceController::class, 'completeMaintenance'])->name('admin.resources.complete-maintenance');
+        Route::get('/resources/{resource}/maintenance-logs', [ResourceController::class, 'maintenanceLogs'])->name('admin.resources.maintenance-logs');
+        Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('admin.resources.destroy');
 
-    Route::delete('/training-modules/{trainingModule}/contents/{content}', [TrainingModuleController::class, 'destroyContent'])
-        ->name('training.modules.contents.destroy');
+        // After-Action Review & Drill History Reports
+        Route::get('/after-action-review', [AfterActionReviewController::class, 'index'])
+            ->name('admin.after-action-review.index');
+        Route::get('/drill-history-reports', [\App\Http\Controllers\DrillHistoryReportsController::class, 'index'])
+            ->name('admin.drill-history-reports.index');
 
-    Route::post('/training-modules/{trainingModule}/contents/reorder', [TrainingModuleController::class, 'reorderContents'])
-        ->name('training.modules.contents.reorder');
+        // Evaluation & Scoring System (AI scenario results)
+        Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('admin.evaluations.index');
+        Route::post('/evaluations/reset-bulk', [EvaluationResultController::class, 'bulkReset'])->name('admin.evaluations.reset-bulk');
+        Route::get('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'show'])->name('admin.evaluation-results.show');
+        Route::post('/evaluations/results/{evaluationResult}/reset', [EvaluationResultController::class, 'reset'])->name('admin.evaluation-results.reset');
+        Route::delete('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'destroy'])->name('admin.evaluation-results.destroy');
 
-    // Legacy lesson completion route (redirects participants using old URLs)
-    Route::post('/training-modules/{trainingModule}/lessons/{content}/completion', [LessonCompletionController::class, 'toggle'])
-        ->name('training.lessons.completion.toggle');
+        // Simulation event manual evaluation
+        Route::get('/simulation-events/{simulationEvent}/evaluation', [EvaluationController::class, 'show'])->name('admin.simulation-events.evaluation.show');
+        Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [EvaluationController::class, 'summary'])->name('admin.simulation-events.evaluation.summary');
+        Route::get('/simulation-events/{simulationEvent}/evaluation/export/{format?}', [EvaluationController::class, 'export'])->name('admin.simulation-events.evaluation.export');
+        Route::get('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'evaluate'])->name('admin.simulation-events.evaluation.evaluate');
+        Route::post('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'storeEvaluation'])->name('admin.simulation-events.evaluation.store');
+        Route::put('/evaluations/{evaluation}/status', [EvaluationController::class, 'updateStatus'])->name('admin.evaluations.update-status');
+        Route::post('/evaluations/{evaluation}/lock', [EvaluationController::class, 'lock'])->name('admin.evaluations.lock');
 
-    Route::get('/training-modules/{trainingModule}/edit', [TrainingModuleController::class, 'edit'])
-        ->name('training.modules.edit');
+        // Barangay Profile
+        Route::get('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'index'])
+            ->name('admin.barangay-profile.index');
+        Route::get('/barangay-profile/create', [App\Http\Controllers\BarangayProfileController::class, 'create'])
+            ->name('admin.barangay-profile.create');
+        Route::post('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'store'])
+            ->name('admin.barangay-profile.store');
+        Route::get('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'show'])
+            ->name('admin.barangay-profile.show');
+        Route::get('/barangay-profile/{barangayProfile}/edit', [App\Http\Controllers\BarangayProfileController::class, 'edit'])
+            ->name('admin.barangay-profile.edit');
+        Route::put('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'update'])
+            ->name('admin.barangay-profile.update');
+        Route::delete('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'destroy'])
+            ->name('admin.barangay-profile.destroy');
 
-    Route::put('/training-modules/{trainingModule}', [TrainingModuleController::class, 'update'])
-        ->name('training.modules.update');
+        // Certification Issuance
+        Route::get('/certification', [App\Http\Controllers\CertificationController::class, 'index'])->name('admin.certification.index');
+        Route::post('/certification/issue', [App\Http\Controllers\CertificationController::class, 'issue'])->name('admin.certification.issue');
+        Route::post('/certificates/{certificate}/revoke', [App\Http\Controllers\CertificationController::class, 'revoke'])->name('admin.certificates.revoke');
+        Route::post('/certification/reissue', [App\Http\Controllers\CertificationController::class, 'reissue'])->name('admin.certification.reissue');
+        Route::post('/certification/templates', [App\Http\Controllers\CertificationController::class, 'storeTemplate'])->name('admin.certification.templates.store');
+        Route::put('/certification/templates/{template}', [App\Http\Controllers\CertificationController::class, 'updateTemplate'])->name('admin.certification.templates.update');
+        Route::post('/certification/templates/{template}/update', [App\Http\Controllers\CertificationController::class, 'updateTemplate'])->name('admin.certification.templates.update.post');
+        Route::delete('/certification/templates/{template}', [App\Http\Controllers\CertificationController::class, 'destroyTemplate'])->name('admin.certification.templates.destroy');
+        Route::post('/certification/templates/{template}/duplicate', [App\Http\Controllers\CertificationController::class, 'duplicateTemplate'])->name('admin.certification.templates.duplicate');
+        Route::get('/certification/preview-participant', [App\Http\Controllers\CertificationController::class, 'previewParticipant'])->name('admin.certification.preview-participant');
+        Route::get('/certification/templates/{template}/preview', [App\Http\Controllers\CertificationController::class, 'previewTemplate'])->name('admin.certification.templates.preview');
+        Route::get('/certification/templates/{template}/background', [App\Http\Controllers\CertificationController::class, 'templateBackground'])->name('admin.certification.templates.background');
+        Route::get('/certificates/{certificate}/view', [App\Http\Controllers\CertificationController::class, 'viewCertificate'])->name('admin.certificates.view');
+        Route::get('/certificates/{certificate}/background', [App\Http\Controllers\CertificationController::class, 'certificateBackground'])->name('admin.certificates.background');
+        Route::post('/certification/settings', [App\Http\Controllers\CertificationController::class, 'updateSettings'])->name('admin.certification.settings');
+        Route::get('/certification/export/{format?}', [App\Http\Controllers\CertificationController::class, 'export'])->name('admin.certification.export');
 
-    Route::post('/training-modules/{trainingModule}/archive', [TrainingModuleController::class, 'archive'])
-        ->name('training.modules.archive');
-    Route::post('/training-modules/{trainingModule}/publish', [TrainingModuleController::class, 'publish'])
-        ->name('training.modules.publish');
-    Route::delete('/training-modules/{trainingModule}', [TrainingModuleController::class, 'destroy'])
-        ->name('training.modules.destroy');
+        // LGU Admin user management
+        Route::get('/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+        Route::get('/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
+        Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
+        Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
+        Route::get('/users/{user}', [AdminUserController::class, 'show'])->name('admin.users.show');
+        Route::post('/users', [AdminUserController::class, 'store'])->name('admin.users.store');
+        Route::post('/users/{user}/disable', [AdminUserController::class, 'disable'])->name('admin.users.disable');
+        Route::post('/users/{user}/enable', [AdminUserController::class, 'enable'])->name('admin.users.enable');
+        Route::post('/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('admin.users.reset-password');
+        Route::post('/users/{user}/manual-verify', [AdminUserController::class, 'manualVerify'])->name('admin.users.manual-verify');
 
-    // AI Scenario-Based Training (Gemini)
-    Route::get('/admin/ai-scenario-config', [AiScenarioConfigController::class, 'index'])
-        ->name('ai-scenario-config.index');
-    Route::post('/admin/ai-scenario-config', [AiScenarioConfigController::class, 'store'])
-        ->name('ai-scenario-config.store');
-    Route::post('/admin/ai-scenario-config/{config}/generate', [AiScenarioConfigController::class, 'generate'])
-        ->name('ai-scenario-config.generate');
+        // Audit logs
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
+        Route::get('/api/audit-logs', [AuditLogController::class, 'history'])->name('admin.audit-logs.history');
+        Route::get('/api/audit-logs/export', [AuditLogController::class, 'export'])->name('admin.audit-logs.export');
 
-    // Participant AI scenario quiz (requires participant guard, not admin portal)
-    Route::middleware('portal.participant')->group(function () {
-        Route::post('/training-modules/{trainingModule}/ai-scenario-training/start', [AiScenarioAttemptController::class, 'start'])
-            ->name('ai-scenario-training.start');
-        Route::get('/training-modules/{trainingModule}/ai-scenario-training/status', [AiScenarioAttemptController::class, 'status'])
-            ->name('ai-scenario-training.status');
-        Route::get('/ai-scenario-attempts/{attempt}', [AiScenarioAttemptController::class, 'show'])
-            ->name('ai-scenario-attempts.show');
-        Route::post('/ai-scenario-attempts/{attempt}/answers', [AiScenarioAttemptController::class, 'saveAnswer'])
-            ->name('ai-scenario-attempts.save-answer');
-        Route::post('/ai-scenario-attempts/{attempt}/progress', [AiScenarioAttemptController::class, 'saveProgress'])
-            ->name('ai-scenario-attempts.save-progress');
-        Route::post('/ai-scenario-attempts/{attempt}/submit', [AiScenarioAttemptController::class, 'submit'])
-            ->name('ai-scenario-attempts.submit');
+        // Roles & Permissions
+        Route::get('/roles', [App\Http\Controllers\RoleController::class, 'index'])->name('admin.roles.index');
+        Route::post('/roles', [App\Http\Controllers\RoleController::class, 'store'])->name('admin.roles.store');
+        Route::get('/roles/{id}/edit', [App\Http\Controllers\RoleController::class, 'edit'])->name('admin.roles.edit');
+        Route::put('/roles/{id}', [App\Http\Controllers\RoleController::class, 'update'])->name('admin.roles.update');
+        Route::delete('/roles/{id}', [App\Http\Controllers\RoleController::class, 'destroy'])->name('admin.roles.destroy');
+        Route::get('/permissions', [App\Http\Controllers\PermissionController::class, 'index'])->name('admin.permissions.index');
+        Route::post('/permissions', [App\Http\Controllers\PermissionController::class, 'store'])->name('admin.permissions.store');
+        Route::get('/permissions/{id}/edit', [App\Http\Controllers\PermissionController::class, 'edit'])->name('admin.permissions.edit');
+        Route::put('/permissions/{id}', [App\Http\Controllers\PermissionController::class, 'update'])->name('admin.permissions.update');
+
+        // User Monitoring
+        Route::get('/user-monitoring', [UserMonitoringController::class, 'index'])->name('admin.user-monitoring.index');
+        Route::get('/api/user-monitoring/status', [UserMonitoringController::class, 'status'])->name('admin.user-monitoring.status');
     });
 
-    // Scenarios
-    Route::get('/scenarios', [ScenarioController::class, 'index'])->name('scenarios.index');
-    Route::get('/scenarios/create', [ScenarioController::class, 'create'])->name('scenarios.create');
-    Route::post('/scenarios', [ScenarioController::class, 'store'])->name('scenarios.store');
-    Route::post('/scenarios/generate-ai', [ScenarioController::class, 'generateAiScenario'])->name('scenarios.generate-ai');
-    Route::get('/scenarios/{scenario}', [ScenarioController::class, 'show'])->name('scenarios.show');
-    Route::get('/scenarios/{scenario}/edit', [ScenarioController::class, 'edit'])->name('scenarios.edit');
-    Route::put('/scenarios/{scenario}', [ScenarioController::class, 'update'])->name('scenarios.update');
-    Route::post('/scenarios/{scenario}/publish', [ScenarioController::class, 'publish'])->name('scenarios.publish');
-    Route::post('/scenarios/{scenario}/archive', [ScenarioController::class, 'archive'])->name('scenarios.archive');
-    Route::delete('/scenarios/{scenario}', [ScenarioController::class, 'destroy'])->name('scenarios.destroy');
+    // Participant portal routes
+    Route::middleware('portal.participant')->prefix('participant')->group(function () {
+        Route::get('/training-modules', [ParticipantTrainingModuleController::class, 'index'])
+            ->name('participant.training-modules.index');
+        Route::get('/training-modules/{trainingModule}', [ParticipantTrainingModuleController::class, 'show'])
+            ->name('participant.training-modules.show');
 
-    // Scenario Injects
-    Route::post('/scenarios/{scenario}/injects', [ScenarioController::class, 'storeInject'])->name('scenarios.injects.store');
-    Route::delete('/scenarios/{scenario}/injects/{inject}', [ScenarioController::class, 'destroyInject'])->name('scenarios.injects.destroy');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/completion', [LessonCompletionController::class, 'toggle'])
+            ->name('participant.training-modules.contents.completion.toggle');
+        Route::post('/training-modules/{trainingModule}/lessons/{content}/completion', [LessonCompletionController::class, 'toggle'])
+            ->name('participant.training-modules.lessons.completion.toggle');
 
-    // Scenario Expected Actions
-    Route::post('/scenarios/{scenario}/expected-actions', [ScenarioController::class, 'storeExpectedAction'])->name('scenarios.expected-actions.store');
-    Route::delete('/scenarios/{scenario}/expected-actions/{expectedAction}', [ScenarioController::class, 'destroyExpectedAction'])->name('scenarios.expected-actions.destroy');
+        Route::post('/training-modules/{trainingModule}/ai-scenario-training/start', [AiScenarioAttemptController::class, 'start'])
+            ->name('participant.ai-scenario-training.start');
+        Route::get('/training-modules/{trainingModule}/ai-scenario-training/status', [AiScenarioAttemptController::class, 'status'])
+            ->name('participant.ai-scenario-training.status');
+        Route::get('/ai-scenario-attempts/{attempt}', [AiScenarioAttemptController::class, 'show'])
+            ->name('participant.ai-scenario-attempts.show');
+        Route::post('/ai-scenario-attempts/{attempt}/answers', [AiScenarioAttemptController::class, 'saveAnswer'])
+            ->name('participant.ai-scenario-attempts.save-answer');
+        Route::post('/ai-scenario-attempts/{attempt}/progress', [AiScenarioAttemptController::class, 'saveProgress'])
+            ->name('participant.ai-scenario-attempts.save-progress');
+        Route::post('/ai-scenario-attempts/{attempt}/submit', [AiScenarioAttemptController::class, 'submit'])
+            ->name('participant.ai-scenario-attempts.submit');
 
-    // Simulation Events
-    Route::get('/simulation-events', [SimulationEventController::class, 'index'])->name('simulation.events.index');
-    Route::get('/simulation-events/create', [SimulationEventController::class, 'create'])->name('simulation.events.create');
-    Route::post('/simulation-events', [SimulationEventController::class, 'store'])->name('simulation.events.store');
-    Route::get('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'show'])->name('simulation.events.show');
-    Route::get('/simulation-events/{simulationEvent}/edit', [SimulationEventController::class, 'edit'])->name('simulation.events.edit');
-    Route::put('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'update'])->name('simulation.events.update');
-    Route::post('/simulation-events/{simulationEvent}/publish', [SimulationEventController::class, 'publish'])->name('simulation.events.publish');
-    Route::post('/simulation-events/{simulationEvent}/unpublish', [SimulationEventController::class, 'unpublish'])->name('simulation.events.unpublish');
-    Route::post('/simulation-events/{simulationEvent}/cancel', [SimulationEventController::class, 'cancel'])->name('simulation.events.cancel');
-    Route::post('/simulation-events/{simulationEvent}/archive', [SimulationEventController::class, 'archive'])->name('simulation.events.archive');
-    Route::post('/simulation-events/{simulationEvent}/start', [SimulationEventController::class, 'start'])->name('simulation.events.start');
-    Route::post('/simulation-events/{simulationEvent}/complete', [SimulationEventController::class, 'complete'])->name('simulation.events.complete');
-    Route::delete('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'destroy'])->name('simulation.events.destroy');
-    
-    // Participant Event Registration
-    Route::post('/simulation-events/{simulationEvent}/register', [SimulationEventController::class, 'register'])->name('simulation.events.register');
-    Route::post('/simulation-events/{simulationEvent}/cancel-registration', [SimulationEventController::class, 'cancelRegistration'])->name('simulation.events.cancel.registration');
+        // Simulation Events (participant browse & register)
+        Route::get('/simulation-events', [SimulationEventController::class, 'index'])->name('participant.simulation-events.index');
+        Route::get('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'show'])->name('participant.simulation-events.show');
+        Route::post('/simulation-events/{simulationEvent}/register', [SimulationEventController::class, 'register'])->name('participant.simulation-events.register');
+        Route::post('/simulation-events/{simulationEvent}/cancel-registration', [SimulationEventController::class, 'cancelRegistration'])->name('participant.simulation-events.cancel-registration');
 
-    // Participants
-    Route::get('/participants', [ParticipantController::class, 'index'])->name('participants.index');
-    Route::get('/participants/{user}', [ParticipantController::class, 'show'])->name('participants.show');
-    Route::put('/participants/{user}', [ParticipantController::class, 'update'])->name('participants.update');
-    Route::post('/participants/{user}/deactivate', [ParticipantController::class, 'deactivate'])->name('participants.deactivate');
-    Route::post('/participants/{user}/reactivate', [ParticipantController::class, 'reactivate'])->name('participants.reactivate');
-    Route::get('/participants/export/csv', [ParticipantController::class, 'export'])->name('participants.export');
+        // Evaluation results (participant view)
+        Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('participant.evaluations.index');
+        Route::get('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'show'])->name('participant.evaluation-results.show');
 
-    // Participant self-service attendance
-    Route::get('/my-attendance', [ParticipantController::class, 'myAttendance'])->name('participants.self.attendance');
+        // Certification (participant view)
+        Route::get('/certification', [App\Http\Controllers\CertificationController::class, 'index'])->name('participant.certification.index');
+        Route::get('/certificates/{certificate}/view', [App\Http\Controllers\CertificationController::class, 'viewCertificate'])->name('participant.certificates.view');
+        Route::get('/certificates/{certificate}/background', [App\Http\Controllers\CertificationController::class, 'certificateBackground'])->name('participant.certificates.background');
 
-    // Event Registrations
-    Route::get('/simulation-events/{simulationEvent}/registrations', [EventRegistrationController::class, 'index'])->name('simulation.events.registrations');
-    Route::post('/event-registrations/{eventRegistration}/approve', [EventRegistrationController::class, 'approve'])->name('event.registrations.approve');
-    Route::post('/event-registrations/{eventRegistration}/reject', [EventRegistrationController::class, 'reject'])->name('event.registrations.reject');
-    Route::post('/event-registrations/{eventRegistration}/cancel', [EventRegistrationController::class, 'cancel'])->name('event.registrations.cancel');
+        // My Attendance
+        Route::get('/my-attendance', [ParticipantController::class, 'myAttendance'])->name('participant.my-attendance.index');
+    });
 
-    // Attendance
-    Route::get('/simulation-events/{simulationEvent}/attendance', [AttendanceController::class, 'index'])->name('simulation.events.attendance');
-    Route::post('/event-registrations/{eventRegistration}/attendance', [AttendanceController::class, 'store'])->name('attendance.store');
-    Route::put('/attendances/{attendance}', [AttendanceController::class, 'update'])->name('attendance.update');
-    Route::post('/simulation-events/{simulationEvent}/attendance/lock', [AttendanceController::class, 'lock'])->name('attendance.lock');
-    Route::get('/simulation-events/{simulationEvent}/attendance/export', [AttendanceController::class, 'export'])->name('attendance.export');
-    Route::post('/simulation-events/{simulationEvent}/attendance/mark-present', [AttendanceController::class, 'markPresentByQR'])->name('attendance.mark.present');
-
-    // Settings
-    Route::get('/settings/auto-approval', [SettingController::class, 'getAutoApproval'])->name('settings.auto.approval.get');
-    Route::post('/settings/auto-approval', [SettingController::class, 'toggleAutoApproval'])->name('settings.auto.approval.toggle');
-
-    // Resources & Equipment Inventory
-    Route::get('/resources', [ResourceController::class, 'index'])->name('resources.index');
-    Route::get('/resources/create', [ResourceController::class, 'create'])->name('resources.create');
-    Route::post('/resources', [ResourceController::class, 'store'])->name('resources.store');
-    Route::get('/resources/{resource}', [ResourceController::class, 'show'])->name('resources.show');
-    Route::get('/resources/{resource}/edit', [ResourceController::class, 'edit'])->name('resources.edit');
-    Route::put('/resources/{resource}', [ResourceController::class, 'update'])->name('resources.update');
-    Route::post('/resources/{resource}/assign-to-event', [ResourceController::class, 'assignToEvent'])->name('resources.assign.event');
-    Route::post('/resources/{resource}/mark-in-use', [ResourceController::class, 'markInUse'])->name('resources.mark.inuse');
-    Route::post('/resources/{resource}/mark-unused', [ResourceController::class, 'markUnused'])->name('resources.mark.unused');
-    Route::post('/resources/{resource}/report-damage', [ResourceController::class, 'reportDamage'])->name('resources.report.damage');
-    Route::post('/resources/{resource}/return-from-event', [ResourceController::class, 'returnFromEvent'])->name('resources.return.event');
-    Route::post('/resources/{resource}/schedule-maintenance', [ResourceController::class, 'scheduleMaintenance'])->name('resources.schedule.maintenance');
-    Route::post('/resources/{resource}/complete-maintenance', [ResourceController::class, 'completeMaintenance'])->name('resources.complete.maintenance');
-    Route::get('/resources/{resource}/maintenance-logs', [ResourceController::class, 'maintenanceLogs'])->name('resources.maintenance.logs');
-    Route::get('/resources/export/csv', [ResourceController::class, 'export'])->name('resources.export');
-    Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('resources.destroy');
-
-    // After-Action Review (AAR)
-    Route::get('/after-action-review', [\App\Http\Controllers\AfterActionReviewController::class, 'index'])
-        ->name('after_action_review.index');
-
-    // Drill History Reports
-    Route::get('/drill-history-reports', [\App\Http\Controllers\DrillHistoryReportsController::class, 'index'])
-        ->name('drill_history_reports.index');
-
-    // Profile
+    // Profile (shared across portals)
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [ProfileController::class, 'updateBasic'])->name('profile.update');
     Route::post('/profile/email', [ProfileController::class, 'requestEmailChange'])->name('profile.email.request');
@@ -313,86 +404,29 @@ Route::middleware(['auth:admin,participant', SyncPortalGuard::class, CheckSessio
     Route::get('/profile/phone/confirm/{token}', [ProfileController::class, 'confirmPhoneChange'])->name('profile.phone.confirm');
     Route::post('/profile/password', [ProfileController::class, 'changePassword'])->name('profile.password.change');
 
-    // Evaluation & Scoring System (AI scenario results)
-    Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('evaluations.index');
-    Route::get('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'show'])->name('evaluation-results.show');
-    Route::delete('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'destroy'])->name('evaluation-results.destroy');
+    // Legacy shared URLs → correct portal prefix (backward compatibility)
+    Route::get('/training-modules', [LegacyTrainingModuleRedirectController::class, 'redirectIndex'])
+        ->name('training.modules');
+    Route::get('/training-modules/create', [LegacyTrainingModuleRedirectController::class, 'redirectCreate'])
+        ->name('training.modules.create');
+    Route::get('/training-modules/{trainingModule}', [LegacyTrainingModuleRedirectController::class, 'redirectShow'])
+        ->name('training.modules.show');
+    Route::get('/training-modules/{trainingModule}/edit', [LegacyTrainingModuleRedirectController::class, 'redirectEdit'])
+        ->name('training.modules.edit');
 
-    // Simulation event manual evaluation (legacy)
-    Route::get('/simulation-events/{simulationEvent}/evaluation', [EvaluationController::class, 'show'])->name('evaluations.show');
-    Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [EvaluationController::class, 'summary'])->name('evaluations.summary');
-    Route::get('/simulation-events/{simulationEvent}/evaluation/export/{format?}', [EvaluationController::class, 'export'])->name('evaluations.export');
-    Route::get('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'evaluate'])->name('evaluations.evaluate');
-    Route::post('/simulation-events/{simulationEvent}/evaluation/{userId}', [EvaluationController::class, 'storeEvaluation'])->name('evaluations.store');
-    Route::put('/evaluations/{evaluation}/status', [EvaluationController::class, 'updateStatus'])->name('evaluations.update.status');
-    Route::post('/evaluations/{evaluation}/lock', [EvaluationController::class, 'lock'])->name('evaluations.lock');
-
-    // Barangay Profile (Admin only)
-    Route::get('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'index'])
-        ->name('barangay.profile');
-    Route::get('/barangay-profile/create', [App\Http\Controllers\BarangayProfileController::class, 'create'])
-        ->name('barangay.profile.create');
-    Route::post('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'store'])
-        ->name('barangay.profile.store');
-    Route::get('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'show'])
-        ->name('barangay.profile.show');
-    Route::get('/barangay-profile/{barangayProfile}/edit', [App\Http\Controllers\BarangayProfileController::class, 'edit'])
-        ->name('barangay.profile.edit');
-    Route::put('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'update'])
-        ->name('barangay.profile.update');
-    Route::delete('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'destroy'])
-        ->name('barangay.profile.destroy');
-
-    // Certification Issuance
-    Route::get('/certification', [App\Http\Controllers\CertificationController::class, 'index'])->name('certification');
-    Route::post('/certification/issue', [App\Http\Controllers\CertificationController::class, 'issue'])->name('certification.issue');
-    Route::post('/certificates/{certificate}/revoke', [App\Http\Controllers\CertificationController::class, 'revoke'])->name('certificates.revoke');
-    Route::post('/certification/reissue', [App\Http\Controllers\CertificationController::class, 'reissue'])->name('certification.reissue');
-    Route::post('/certification/templates', [App\Http\Controllers\CertificationController::class, 'storeTemplate'])->name('certification.templates.store');
-    Route::put('/certification/templates/{template}', [App\Http\Controllers\CertificationController::class, 'updateTemplate'])->name('certification.templates.update');
-    Route::post('/certification/templates/{template}/update', [App\Http\Controllers\CertificationController::class, 'updateTemplate'])->name('certification.templates.update.post');
-    Route::delete('/certification/templates/{template}', [App\Http\Controllers\CertificationController::class, 'destroyTemplate'])->name('certification.templates.destroy');
-    Route::post('/certification/templates/{template}/duplicate', [App\Http\Controllers\CertificationController::class, 'duplicateTemplate'])->name('certification.templates.duplicate');
-    Route::get('/certification/preview-participant', [App\Http\Controllers\CertificationController::class, 'previewParticipant'])->name('certification.preview.participant');
-    Route::get('/certification/templates/{template}/preview', [App\Http\Controllers\CertificationController::class, 'previewTemplate'])->name('certification.templates.preview');
-    Route::get('/certification/templates/{template}/background', [App\Http\Controllers\CertificationController::class, 'templateBackground'])->name('certification.templates.background');
-    Route::get('/certificates/{certificate}/view', [App\Http\Controllers\CertificationController::class, 'viewCertificate'])->name('certificates.view');
-    Route::get('/certificates/{certificate}/background', [App\Http\Controllers\CertificationController::class, 'certificateBackground'])->name('certificates.background');
-    Route::post('/certification/settings', [App\Http\Controllers\CertificationController::class, 'updateSettings'])->name('certification.settings');
-    Route::get('/certification/export/{format?}', [App\Http\Controllers\CertificationController::class, 'export'])->name('certification.export');
-
-    // LGU Admin user management
-    Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
-    Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
-    Route::get('/admin/users/{user}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
-    Route::put('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
-    Route::get('/admin/users/{user}', [AdminUserController::class, 'show'])->name('admin.users.show');
-    Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
-    Route::post('/admin/users/{user}/disable', [AdminUserController::class, 'disable'])->name('admin.users.disable');
-    Route::post('/admin/users/{user}/enable', [AdminUserController::class, 'enable'])->name('admin.users.enable');
-    Route::post('/admin/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('admin.users.reset-password');
-    Route::post('/admin/users/{user}/manual-verify', [AdminUserController::class, 'manualVerify'])->name('admin.users.manual-verify');
-
-    // Audit logs (Admin only SPA entry)
-    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit.logs.index');
-
-    // Audit logs API (must use web auth so React can see the logged-in admin)
-    Route::get('/api/audit-logs', [AuditLogController::class, 'history'])->name('audit.logs.history');
-    Route::get('/api/audit-logs/export', [AuditLogController::class, 'export'])->name('audit.logs.export');
-
-    // Roles & Permissions (Admin only)
-    Route::get('/admin/roles', [App\Http\Controllers\RoleController::class, 'index'])->name('admin.roles.index');
-    Route::post('/admin/roles', [App\Http\Controllers\RoleController::class, 'store'])->name('admin.roles.store');
-    Route::get('/admin/roles/{id}/edit', [App\Http\Controllers\RoleController::class, 'edit'])->name('admin.roles.edit');
-    Route::put('/admin/roles/{id}', [App\Http\Controllers\RoleController::class, 'update'])->name('admin.roles.update');
-    Route::delete('/admin/roles/{id}', [App\Http\Controllers\RoleController::class, 'destroy'])->name('admin.roles.destroy');
-    Route::get('/admin/permissions', [App\Http\Controllers\PermissionController::class, 'index'])->name('admin.permissions.index');
-    Route::post('/admin/permissions', [App\Http\Controllers\PermissionController::class, 'store'])->name('admin.permissions.store');
-    Route::get('/admin/permissions/{id}/edit', [App\Http\Controllers\PermissionController::class, 'edit'])->name('admin.permissions.edit');
-    Route::put('/admin/permissions/{id}', [App\Http\Controllers\PermissionController::class, 'update'])->name('admin.permissions.update');
-
-    // User Monitoring (Admin only)
-    Route::get('/admin/user-monitoring', [UserMonitoringController::class, 'index'])->name('admin.user-monitoring.index');
-    Route::get('/api/user-monitoring/status', [UserMonitoringController::class, 'status'])->name('admin.user-monitoring.status');
+    Route::get('/evaluations', [LegacyPortalRedirectController::class, 'evaluations'])->name('legacy.evaluations');
+    Route::get('/simulation-events', [LegacyPortalRedirectController::class, 'simulationEvents'])->name('legacy.simulation-events');
+    Route::get('/simulation-events/{simulationEvent}', [LegacyPortalRedirectController::class, 'simulationEventShow'])->name('legacy.simulation-events.show');
+    Route::get('/resources', [LegacyPortalRedirectController::class, 'resources'])->name('legacy.resources');
+    Route::get('/resources/{resource}', [LegacyPortalRedirectController::class, 'resources'])->name('legacy.resources.show');
+    Route::get('/participants', [LegacyPortalRedirectController::class, 'participants'])->name('legacy.participants');
+    Route::get('/participants/{user}', [LegacyPortalRedirectController::class, 'participants'])->name('legacy.participants.show');
+    Route::get('/certification', [LegacyPortalRedirectController::class, 'certification'])->name('legacy.certification');
+    Route::get('/after-action-review', [LegacyPortalRedirectController::class, 'afterActionReview'])->name('legacy.after-action-review');
+    Route::get('/drill-history-reports', [LegacyPortalRedirectController::class, 'drillHistoryReports'])->name('legacy.drill-history-reports');
+    Route::get('/barangay-profile', [LegacyPortalRedirectController::class, 'barangayProfile'])->name('legacy.barangay-profile');
+    Route::get('/barangay-profile/{barangayProfile}', [LegacyPortalRedirectController::class, 'barangayProfile'])->name('legacy.barangay-profile.show');
+    Route::get('/audit-logs', [LegacyPortalRedirectController::class, 'auditLogs'])->name('legacy.audit-logs');
+    Route::get('/my-attendance', [LegacyPortalRedirectController::class, 'myAttendance'])->name('legacy.my-attendance');
 });
 

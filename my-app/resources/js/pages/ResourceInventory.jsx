@@ -161,7 +161,7 @@ export function ResourceInventory() {
     const fetchResources = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/resources');
+            const response = await fetch('/api/admin/resources');
             const data = await response.json();
             
             if (!response.ok) {
@@ -205,7 +205,7 @@ export function ResourceInventory() {
 
     const fetchResourceHistory = async (resourceId) => {
         try {
-            const response = await fetch(`/api/resources/${resourceId}/history`);
+            const response = await fetch(`/api/admin/resources/${resourceId}/history`);
             if (!response.ok) throw new Error('Failed to fetch history');
             const data = await response.json();
             setSelectedResourceHistory(data);
@@ -458,7 +458,7 @@ export function ResourceInventory() {
                         Swal.showValidationMessage('Session expired or invalid. Please refresh the page and try again.');
                         return false;
                     }
-                    const response = await fetch('/resources', {
+                    const response = await fetch('/admin/resources', {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: {
@@ -548,7 +548,7 @@ export function ResourceInventory() {
                 }
 
                 try {
-                    const response = await fetch(`/resources/${resource.id}`, {
+                    const response = await fetch(`/admin/resources/${resource.id}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -589,7 +589,7 @@ export function ResourceInventory() {
 
     const handleViewResource = (resource) => {
         // Fetch full resource details including assignments
-        fetch(`/api/resources/${resource.id}/history`)
+        fetch(`/api/admin/resources/${resource.id}/history`)
             .then(res => res.json())
             .then(data => {
                 const resourceData = data.resource || resource;
@@ -707,7 +707,7 @@ export function ResourceInventory() {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    const response = await fetch(`/resources/${resource.id}`, {
+                    const response = await fetch(`/admin/resources/${resource.id}`, {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
@@ -836,7 +836,7 @@ export function ResourceInventory() {
                 }
 
                 try {
-                    const response = await fetch(`/resources/${resource.id}/assign-to-event`, {
+                    const response = await fetch(`/admin/resources/${resource.id}/assign-to-event`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1375,7 +1375,7 @@ export function ResourceInventory() {
                                                                     const remarks = document.getElementById('remarks').value;
                                                                     
                                                                     try {
-                                                                        const response = await fetch(`/resources/${r.id}/return-from-event`, {
+                                                                        const response = await fetch(`/admin/resources/${r.id}/return-from-event`, {
                                                                             method: 'POST',
                                                                             headers: {
                                                                                 'Content-Type': 'application/json',
@@ -1518,7 +1518,7 @@ export function ResourceInventory() {
                                                                         }
 
                                                                         try {
-                                                                            const response = await fetch(`/resources/${r.id}/schedule-maintenance`, {
+                                                                            const response = await fetch(`/admin/resources/${r.id}/schedule-maintenance`, {
                                                                                 method: 'POST',
                                                                                 headers: {
                                                                                     'Content-Type': 'application/json',

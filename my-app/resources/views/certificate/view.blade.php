@@ -57,9 +57,9 @@
 </head>
 <body class="certificate-paper-{{ $paperSize ?? 'a4' }} certificate-orientation-{{ $orientation ?? 'portrait' }}">
     <div class="toolbar">
-        <a href="{{ route('certification') }}">← Back to Certification</a>
-        <button type="button" class="secondary" onclick="window.open('{{ route('certificates.view', ['certificate' => $certificate, 'orientation' => 'portrait', 'print' => 1]) }}', 'print', 'width=800,height=600');">Print / PDF (Portrait)</button>
-        <button type="button" class="secondary" onclick="window.open('{{ route('certificates.view', ['certificate' => $certificate, 'orientation' => 'landscape', 'print' => 1]) }}', 'print', 'width=800,height=600');">Print / PDF (Landscape)</button>
+        <a href="{{ route($certificationBackRoute ?? 'admin.certification.index') }}">← Back to Certification</a>
+        <button type="button" class="secondary" onclick="window.open('{{ route($certificateViewRoute ?? 'admin.certificates.view', ['certificate' => $certificate, 'orientation' => 'portrait', 'print' => 1]) }}', 'print', 'width=800,height=600');">Print / PDF (Portrait)</button>
+        <button type="button" class="secondary" onclick="window.open('{{ route($certificateViewRoute ?? 'admin.certificates.view', ['certificate' => $certificate, 'orientation' => 'landscape', 'print' => 1]) }}', 'print', 'width=800,height=600');">Print / PDF (Landscape)</button>
         <span class="toolbar-tip">In the print dialog: set Margins to <strong>None</strong>, uncheck <strong>Headers and footers</strong>, and turn <strong>on</strong> <strong>Background graphics</strong>—otherwise the PDF will look lighter than the screen. Paper: {{ strtoupper($paperSize ?? 'a4') }}.</span>
     </div>
     @if(!empty($autoPrint))

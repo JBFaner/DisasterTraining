@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, AlertCircle, LogIn, Home, CheckCircle } from 'lucide-react';
 
-export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, failedAttempts = 0, status = '' }) {
+export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, failedAttempts = 0, status = '', csrfToken = '' }) {
     const [email, setEmail] = useState(oldEmail);
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -169,9 +169,7 @@ export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter
                                 <input
                                     type="hidden"
                                     name="_token"
-                                    value={
-                                        document.head.querySelector('meta[name="csrf-token"]')?.content || ''
-                                    }
+                                    value={csrfToken}
                                 />
 
                                 <div>

@@ -19,11 +19,14 @@ class AiScenarioAttempt extends Model
 
     public const STATUS_EXPIRED = 'expired';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $fillable = [
         'user_id',
         'training_module_id',
         'ai_scenario_config_id',
         'attempt_number',
+        'training_cycle',
         'status',
         'current_question',
         'scenario_title',
@@ -69,6 +72,7 @@ class AiScenarioAttempt extends Model
         'number_of_questions' => 'integer',
         'score' => 'integer',
         'attempt_number' => 'integer',
+        'training_cycle' => 'integer',
         'current_question' => 'integer',
         'time_limit_minutes' => 'integer',
         'time_remaining_seconds' => 'integer',

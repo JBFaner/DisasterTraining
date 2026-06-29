@@ -22,30 +22,65 @@ class BackfillEvaluationResults extends Command
             ->orderBy('id')
             ->get();
 
-        if ($attempts->isEmpty()) {
-            $this->info('No completed attempts need backfilling.');
+        $created = 0;
+        $synced = 0;
 
-            return self::SUCCESS;
+        if ($attempts->isNotEmpty()) {
+            $this->info(sprintf('Found %d completed attempt(s) without evaluation records.', $attempts->count()));
+
+            foreach ($attempts as $attempt) {
+                if ($dryRun) {
+                    $this->line("Would backfill attempt #{$attempt->id} (user {$attempt->user_id})");
+                    continue;
+                }
+
+                $scoringService->createFromAttempt($attempt);
+                $created++;
+                $this->line("Created evaluation for attempt #{$attempt->id}");
+            }
+        } else {
+            $this->info('No completed attempts need backfilling.');
         }
 
-        $this->info(sprintf('Found %d completed attempt(s) without evaluation records.', $attempts->count()));
+        $existing = \App\Models\EvaluationResult::query()
+            ->whereNotNull('ai_scenario_attempt_id')
+            ->where(function ($query) {
+                $query->whereNull('attempt_number')->orWhereNull('duration_seconds');
+            })
+            ->with('aiScenarioAttempt')
+            ->get();
 
-        $created = 0;
-        foreach ($attempts as $attempt) {
-            if ($dryRun) {
-                $this->line("Would backfill attempt #{$attempt->id} (user {$attempt->user_id})");
+        foreach ($existing as $evaluation) {
+            $attempt = $evaluation->aiScenarioAttempt;
+            if (! $attempt) {
                 continue;
             }
 
-            $scoringService->createFromAttempt($attempt);
-            $created++;
-            $this->line("Created evaluation for attempt #{$attempt->id}");
+            $durationSeconds = null;
+            if ($attempt->started_at && $attempt->completed_at) {
+                $durationSeconds = max(0, (int) $attempt->started_at->diffInSeconds($attempt->completed_at));
+            }
+
+            if ($dryRun) {
+                $this->line("Would sync meta for evaluation #{$evaluation->id}");
+                continue;
+            }
+
+            $evaluation->update([
+                'attempt_number' => $evaluation->attempt_number ?? $attempt->attempt_number,
+                'duration_seconds' => $evaluation->duration_seconds ?? $durationSeconds,
+            ]);
+            $synced++;
+        }
+
+        if ($synced > 0) {
+            $this->info("Synced attempt metadata for {$synced} evaluation record(s).");
         }
 
         if ($dryRun) {
             $this->info('Dry run complete. Re-run without --dry-run to create records.');
         } else {
-            $this->info("Backfill complete. Created {$created} evaluation record(s).");
+            $this->info("Backfill complete. Created {$created} evaluation record(s). Synced {$synced} attempt metadata record(s).");
         }
 
         return self::SUCCESS;

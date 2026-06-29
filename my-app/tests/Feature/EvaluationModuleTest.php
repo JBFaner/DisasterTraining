@@ -30,7 +30,7 @@ class EvaluationModuleTest extends TestCase
         $completedEvent = SimulationEvent::factory()->create(['status' => 'completed', 'title' => 'Completed Event']);
         $draftEvent = SimulationEvent::factory()->create(['status' => 'draft', 'title' => 'Draft Event']);
 
-        $response = $this->actingAs($this->admin)->get(route('evaluations.index'));
+        $response = $this->actingAs($this->admin)->get(route('admin.evaluations.index'));
 
         $response->assertStatus(200);
         $response->assertSee('Published Event');
@@ -44,7 +44,7 @@ class EvaluationModuleTest extends TestCase
         SimulationEvent::factory()->create(['status' => 'completed', 'title' => 'Searchable Event']);
         SimulationEvent::factory()->create(['status' => 'completed', 'title' => 'Other Event']);
 
-        $response = $this->actingAs($this->admin)->get(route('evaluations.index', ['search' => 'Searchable']));
+        $response = $this->actingAs($this->admin)->get(route('admin.evaluations.index', ['search' => 'Searchable']));
 
         $response->assertStatus(200);
         $response->assertSee('Searchable Event');
@@ -63,7 +63,7 @@ class EvaluationModuleTest extends TestCase
             'created_by' => $this->admin->id
         ]);
 
-        $response = $this->actingAs($this->admin)->get(route('evaluations.index', ['status' => 'in_progress']));
+        $response = $this->actingAs($this->admin)->get(route('admin.evaluations.index', ['status' => 'in_progress']));
 
         $response->assertStatus(200);
         $response->assertSee('Event with Evaluation');
@@ -95,7 +95,7 @@ class EvaluationModuleTest extends TestCase
             'event_registration_id' => EventRegistration::where('user_id', $participant1->id)->first()->id
         ]);
 
-        $response = $this->actingAs($this->admin)->get(route('evaluations.show', $event));
+        $response = $this->actingAs($this->admin)->get(route('admin.simulation-events.evaluation.show', $event));
 
         $response->assertStatus(200);
         $response->assertSee('Present Part');

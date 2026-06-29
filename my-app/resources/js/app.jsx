@@ -21,6 +21,29 @@ import { AiScenarioTrainingPage, AiScenarioTrainingUnlock } from './pages/AiScen
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
 import {
+    trainingModulesIndex,
+    trainingModuleShow,
+    trainingModuleCreate,
+    trainingModuleEdit,
+    trainingModuleStore,
+    trainingModuleGenerateAi,
+    trainingModulePublish,
+    trainingModuleArchive,
+    trainingModuleDestroy,
+    participantLessonCompletion,
+    adminAiScenarioConfig,
+} from './utils/trainingModuleRoutes';
+import {
+    simulationEventsIndex,
+    evaluationsIndex,
+    certificationIndex,
+    participantsIndex,
+    scenariosIndex,
+    barangayProfileIndex,
+    settingsAutoApproval,
+    adminCertificationApi,
+} from './utils/portalRoutes';
+import {
     AdminPageShell,
     AdminPageHeader,
     AdminFilterBar,
@@ -529,6 +552,7 @@ if (rootElement) {
     const evaluationAnalyticsJson = rootElement.getAttribute('data-evaluation-analytics');
     const evaluationModulesJson = rootElement.getAttribute('data-evaluation-modules');
     const evaluationFiltersJson = rootElement.getAttribute('data-evaluation-filters');
+    const evaluationAttemptNumbersJson = rootElement.getAttribute('data-evaluation-attempt-numbers');
     const evaluationPassingScoreAttr = rootElement.getAttribute('data-evaluation-passing-score');
     const evaluationResultJson = rootElement.getAttribute('data-evaluation-result');
     const scoresJson = rootElement.getAttribute('data-scores');
@@ -665,6 +689,7 @@ if (rootElement) {
     let evaluationAnalytics = null;
     let evaluationModules = [];
     let evaluationFilters = {};
+    let evaluationAttemptNumbers = [];
     let evaluationPassingScore = 75;
     let evaluationResult = null;
     if (barangayProfileJson) {
@@ -735,6 +760,13 @@ if (rootElement) {
             evaluationFilters = JSON.parse(evaluationFiltersJson);
         } catch (e) {
             console.error('Failed to parse evaluation filters JSON', e);
+        }
+    }
+    if (evaluationAttemptNumbersJson) {
+        try {
+            evaluationAttemptNumbers = JSON.parse(evaluationAttemptNumbersJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation attempt numbers JSON', e);
         }
     }
     if (evaluationPassingScoreAttr) {
@@ -874,26 +906,26 @@ if (rootElement) {
         }
         if (sectionAttr === 'ai_scenario_attempt') {
             return [
-                { label: 'Training Modules', href: '/training-modules' },
-                { label: currentModule?.title || 'Module', href: currentModule ? `/training-modules/${currentModule.id}` : null },
+                { label: 'Training Modules', href: trainingModulesIndex(role) },
+                { label: currentModule?.title || 'Module', href: currentModule ? trainingModuleShow(role, currentModule.id) : null },
                 { label: 'AI Scenario Training', href: null },
             ];
         }
         if (sectionAttr === 'training_create') {
             return [
-                { label: 'Training Modules', href: '/training-modules' },
+                { label: 'Training Modules', href: trainingModulesIndex(role) },
                 { label: 'Create', href: null }
             ];
         }
         if (sectionAttr === 'training_edit') {
             return [
-                { label: 'Training Modules', href: '/training-modules' },
+                { label: 'Training Modules', href: trainingModulesIndex(role) },
                 { label: 'Edit', href: null }
             ];
         }
         if (sectionAttr === 'training_detail') {
             return [
-                { label: 'Training Modules', href: '/training-modules' },
+                { label: 'Training Modules', href: trainingModulesIndex(role) },
                 { label: currentModule?.title || 'Details', href: null }
             ];
         }
@@ -903,19 +935,19 @@ if (rootElement) {
         }
         if (sectionAttr === 'scenario_create') {
             return [
-                { label: 'Scenarios', href: '/scenarios' },
+                { label: 'Scenarios', href: '/admin/scenarios' },
                 { label: 'Create', href: null }
             ];
         }
         if (sectionAttr === 'scenario_edit') {
             return [
-                { label: 'Scenarios', href: '/scenarios' },
+                { label: 'Scenarios', href: '/admin/scenarios' },
                 { label: 'Edit', href: null }
             ];
         }
         if (sectionAttr === 'scenario_detail') {
             return [
-                { label: 'Scenarios', href: '/scenarios' },
+                { label: 'Scenarios', href: '/admin/scenarios' },
                 { label: currentScenario?.title || 'Details', href: null }
             ];
         }
@@ -925,19 +957,19 @@ if (rootElement) {
         }
         if (sectionAttr === 'simulation_create') {
             return [
-                { label: 'Simulation Events', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/admin/simulation-events' },
                 { label: 'Create', href: null }
             ];
         }
         if (sectionAttr === 'simulation_edit') {
             return [
-                { label: 'Simulation Events', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/admin/simulation-events' },
                 { label: 'Edit', href: null }
             ];
         }
         if (sectionAttr === 'simulation_detail') {
             return [
-                { label: 'Simulation Events', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/admin/simulation-events' },
                 { label: currentEvent?.title || 'Details', href: null }
             ];
         }
@@ -947,25 +979,25 @@ if (rootElement) {
         }
         if (sectionAttr === 'participant_detail') {
             return [
-                { label: 'Participants', href: '/participants' },
+                { label: 'Participants', href: '/admin/participants' },
                 { label: currentParticipant?.name || 'Details', href: null }
             ];
         }
         if (sectionAttr === 'my_attendance') {
             return [
-                { label: 'My Attendance', href: '/my-attendance' },
+                { label: 'My Attendance', href: '/participant/my-attendance' },
             ];
         }
         if (sectionAttr === 'event_registrations') {
             return [
-                { label: 'Simulation Events', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/admin/simulation-events' },
                 { label: currentEvent?.title || 'Event', href: null },
                 { label: 'Registrations', href: null }
             ];
         }
         if (sectionAttr === 'event_attendance') {
             return [
-                { label: 'Simulation Events', href: '/simulation-events' },
+                { label: 'Simulation Events', href: '/admin/simulation-events' },
                 { label: currentEvent?.title || 'Event', href: null },
                 { label: 'Attendance', href: null }
             ];
@@ -985,32 +1017,32 @@ if (rootElement) {
 
         if (sectionAttr === 'evaluation_result_detail') {
             return [
-                { label: 'Evaluations', href: '/evaluations' },
+                { label: 'Evaluations', href: '/admin/evaluations' },
                 { label: 'Evaluation Report', href: null },
             ];
         }
 
         if (sectionAttr === 'certification_participant') {
-            return [{ label: 'My Certificates', href: '/certification' }];
+            return [{ label: 'My Certificates', href: '/participant/certification' }];
         }
 
         if (sectionAttr === 'evaluation_participants') {
             return [
-                { label: 'Evaluations', href: '/evaluations' },
+                { label: 'Evaluations', href: '/admin/evaluations' },
                 { label: 'Participants', href: null }
             ];
         }
 
         if (sectionAttr === 'evaluation_form') {
             return [
-                { label: 'Evaluations', href: '/evaluations' },
+                { label: 'Evaluations', href: '/admin/evaluations' },
                 { label: 'Evaluate Participant', href: null }
             ];
         }
 
         if (sectionAttr === 'evaluation_summary') {
             return [
-                { label: 'Evaluations', href: '/evaluations' },
+                { label: 'Evaluations', href: '/admin/evaluations' },
                 { label: 'Summary', href: null }
             ];
         }
@@ -1024,19 +1056,19 @@ if (rootElement) {
         }
         if (sectionAttr === 'barangay_profile_create') {
             return [
-                { label: 'Barangay Profile', href: '/barangay-profile' },
+                { label: 'Barangay Profile', href: '/admin/barangay-profile' },
                 { label: 'Create', href: null },
             ];
         }
         if (sectionAttr === 'barangay_profile_show') {
             return [
-                { label: 'Barangay Profile', href: '/barangay-profile' },
+                { label: 'Barangay Profile', href: '/admin/barangay-profile' },
                 { label: barangayProfile?.barangay_name || 'View', href: null },
             ];
         }
         if (sectionAttr === 'barangay_profile_edit') {
             return [
-                { label: 'Barangay Profile', href: '/barangay-profile' },
+                { label: 'Barangay Profile', href: '/admin/barangay-profile' },
                 { label: 'Edit', href: null },
             ];
         }
@@ -1600,6 +1632,7 @@ if (rootElement) {
                                 pagination={evaluationResultsPagination}
                                 analytics={evaluationAnalytics}
                                 modules={evaluationModules}
+                                attemptNumbers={evaluationAttemptNumbers}
                                 filters={evaluationFilters}
                                 passingScore={evaluationPassingScore}
                                 role={role}
@@ -1716,10 +1749,10 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
     // Build recent activity items (dynamic feed)
     const activityItems = [];
     completedRecent.forEach((e) => {
-        activityItems.push({ type: 'event_completed', label: `${e.title} completed`, time: e.completed_at || e.updated_at, link: `/simulation-events/${e.id}` });
+        activityItems.push({ type: 'event_completed', label: `${e.title} completed`, time: e.completed_at || e.updated_at, link: `/admin/simulation-events/${e.id}` });
     });
     recentModules.forEach((m) => {
-        activityItems.push({ type: 'module', label: `Module: ${m.title}`, time: m.updated_at, link: `/training-modules/${m.id}` });
+        activityItems.push({ type: 'module', label: `Module: ${m.title}`, time: m.updated_at, link: trainingModuleShow(role, m.id) });
     });
     activityItems.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
     const recentActivity = activityItems.slice(0, 8);
@@ -1963,10 +1996,10 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
 
             {/* Row 1 — Operational KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <KpiCard title="Active Events" value={activeEvents} href="/simulation-events" Icon={Play} trend={activeEvents > 0 ? 'Live' : null} />
-                <KpiCard title="Upcoming" value={upcomingEvents} href="/simulation-events" Icon={CalendarClock} />
-                <KpiCard title="Participants" value={totalParticipants} href={role !== 'PARTICIPANT' ? '/participants' : null} Icon={Users} />
-                <KpiCard title="Certificates" value={certificatesCount} href={role !== 'PARTICIPANT' ? '/certification' : null} Icon={Award} />
+                <KpiCard title="Active Events" value={activeEvents} href={simulationEventsIndex(role)} Icon={Play} trend={activeEvents > 0 ? 'Live' : null} />
+                <KpiCard title="Upcoming" value={upcomingEvents} href={simulationEventsIndex(role)} Icon={CalendarClock} />
+                <KpiCard title="Participants" value={totalParticipants} href={role !== 'PARTICIPANT' ? participantsIndex() : null} Icon={Users} />
+                <KpiCard title="Certificates" value={certificatesCount} href={role !== 'PARTICIPANT' ? certificationIndex(role) : null} Icon={Award} />
             </div>
 
             {/* Row 2 — Top analytics: disaster distribution + evaluation status */}
@@ -2017,21 +2050,21 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                     <ul className="space-y-2">
                         {eventsStartingToday > 0 && (
                             <li>
-                                <a href="/simulation-events" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
+                                <a href="/admin/simulation-events" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
                                     {eventsStartingToday} event{eventsStartingToday !== 1 ? 's' : ''} starting today
                                 </a>
                             </li>
                         )}
                         {pendingEvaluations > 0 && (
                             <li>
-                                <a href="/evaluations" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
+                                <a href="/admin/evaluations" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
                                     {pendingEvaluations} participant{pendingEvaluations !== 1 ? 's' : ''} not evaluated
                                 </a>
                             </li>
                         )}
                         {pendingCertificates > 0 && (
                             <li>
-                                <a href="/certification" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
+                                <a href="/admin/certification" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
                                     {pendingCertificates} pending certificate{pendingCertificates !== 1 ? 's' : ''}
                                 </a>
                             </li>
@@ -2139,7 +2172,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                         <div className="space-y-2">
                             {upcomingEventList.length > 0 ? (
                                 upcomingEventList.slice(0, 5).map((e) => (
-                                    <a key={e.id} href={`/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
+                                    <a key={e.id} href={`/admin/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
                                         <span className="font-medium text-slate-900">{e.title}</span>
                                         <span className="ml-2 text-slate-500">{formatDate(eventDateStr(e))}</span>
                                     </a>
@@ -2158,7 +2191,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {role !== 'PARTICIPANT' && (
                         <>
-                            <a href="/training-modules/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                            <a href="/admin/training-modules/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                                 <BookOpen className="w-10 h-10 text-emerald-600" />
                                 <span className="text-sm font-medium text-slate-700">+ Module</span>
                             </a>
@@ -2166,17 +2199,17 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                                 <Sparkles className="w-10 h-10 text-emerald-600" />
                                 <span className="text-sm font-medium text-slate-700">AI Scenario</span>
                             </a>
-                            <a href="/simulation-events/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                            <a href="/admin/simulation-events/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                                 <CalendarClock className="w-10 h-10 text-emerald-600" />
                                 <span className="text-sm font-medium text-slate-700">+ Event</span>
                             </a>
                         </>
                     )}
-                    <a href="/participants" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                    <a href="/admin/participants" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                         <Users className="w-10 h-10 text-emerald-600" />
                         <span className="text-sm font-medium text-slate-700">Participants</span>
                     </a>
-                    <a href="/evaluations" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                    <a href="/admin/evaluations" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                         <ClipboardList className="w-10 h-10 text-emerald-600" />
                         <span className="text-sm font-medium text-slate-700">Evaluate</span>
                     </a>
@@ -2210,7 +2243,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                     <div className="space-y-2">
                         {upcomingEventList.length > 0 ? (
                             upcomingEventList.slice(0, 5).map((e) => (
-                                <a key={e.id} href={`/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
+                                <a key={e.id} href={`/admin/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
                                     <span className="font-medium text-slate-900">{e.title}</span>
                                     <span className="ml-2 text-slate-500">{formatDate(eventDateStr(e))}</span>
                                 </a>
@@ -2396,7 +2429,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                 title="Training Modules"
                 description="Create and manage disaster training modules."
                 actions={
-                    <AdminPrimaryButton href="/training-modules/create">
+                    <AdminPrimaryButton href="/admin/training-modules/create">
                         <Plus className="w-4 h-4" />
                         Create Training Module
                     </AdminPrimaryButton>
@@ -2495,7 +2528,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                     Create your first disaster simulation module to begin.
                                 </p>
                                 <a
-                                    href="/training-modules/create"
+                                    href="/admin/training-modules/create"
                                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
                                 >
                                     <Plus className="w-4 h-4" />
@@ -2616,12 +2649,12 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         className="py-1 w-44 min-w-[11rem] rounded-xl border border-slate-200 bg-white shadow-xl z-[300] transition-opacity duration-150 ease-out"
                         style={{ position: 'fixed', top: manageFloatingStyles.top, left: manageFloatingStyles.left }}
                     >
-                        <a href={`/training-modules/${openModule.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
-                        <a href={`/training-modules/${openModule.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                        <a href={`/admin/training-modules/${openModule.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                        <a href={`/admin/training-modules/${openModule.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
                         {openModule.status === 'draft' && (
                             <form
                                 method="POST"
-                                action={`/training-modules/${openModule.id}/publish`}
+                                action={`/admin/training-modules/${openModule.id}/publish`}
                                 onSubmit={async (e) => {
                                     e.preventDefault();
                                     const form = e.currentTarget;
@@ -2667,7 +2700,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                             title: 'Module published',
                                             text: 'This training module is now available for use.',
                                         });
-                                        window.location.href = '/training-modules';
+                                        window.location.href = '/admin/training-modules';
                                     } catch (_) {
                                         Swal.fire({
                                             icon: 'error',
@@ -2687,7 +2720,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         )}
                         <form
                             method="POST"
-                            action={`/training-modules/${openModule.id}/archive`}
+                            action={`/admin/training-modules/${openModule.id}/archive`}
                             onSubmit={async (e) => {
                                 e.preventDefault();
                                 const form = e.currentTarget;
@@ -2704,7 +2737,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                         body: new FormData(form),
                                     });
                                     if (!res.ok) throw new Error('Request failed');
-                                    window.location.href = '/training-modules';
+                                    window.location.href = '/admin/training-modules';
                                 } catch (_) {
                                     Swal.fire({
                                         icon: 'error',
@@ -2723,7 +2756,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         </form>
                         <form
                             method="POST"
-                            action={`/training-modules/${openModule.id}`}
+                            action={`/admin/training-modules/${openModule.id}`}
                             onSubmit={async (e) => {
                                 e.preventDefault();
                                 const form = e.currentTarget;
@@ -2741,7 +2774,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                         body: new FormData(form),
                                     });
                                     if (!res.ok) throw new Error('Request failed');
-                                    window.location.href = '/training-modules';
+                                    window.location.href = '/admin/training-modules';
                                 } catch (_) {
                                     Swal.fire({
                                         icon: 'error',
@@ -2842,7 +2875,7 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
                     {publishedModules.map((module) => (
                         <a
                             key={module.id}
-                            href={`/training-modules/${module.id}`}
+                            href={`/participant/training-modules/${module.id}`}
                             className="group rounded-xl bg-white border border-slate-200 shadow-sm p-4 flex flex-col gap-2 hover:border-emerald-400 hover:shadow-md transition-all"
                         >
                             <h3 className="text-sm font-semibold text-slate-800 group-hover:text-emerald-700">
@@ -3020,7 +3053,7 @@ function ParticipantTrainingLessonView({ module }) {
                     ?.content || '';
 
             const response = await fetch(
-                `/training-modules/${module.id}/contents/${lessonId}/completion`,
+                participantLessonCompletion(module.id, lessonId),
                 {
                     method: 'POST',
                     headers: {
@@ -3176,14 +3209,14 @@ function ParticipantTrainingLessonView({ module }) {
             {/* Back + breadcrumb */}
             <div className="flex items-center justify-between mb-1">
                 <a
-                    href="/training-modules"
+                    href="/participant/training-modules"
                     className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900"
                 >
                     ← Back to Training Modules
                 </a>
                 <div className="text-[0.7rem] text-slate-500">
                     <a
-                        href="/training-modules"
+                        href="/participant/training-modules"
                         className="hover:text-slate-700 hover:underline underline-offset-2"
                     >
                         Training Modules
@@ -3537,7 +3570,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
             formData.append('category', category || '');
             formData.append('_token', csrf);
 
-            const response = await fetch('/training-modules/generate-ai', {
+            const response = await fetch('/admin/training-modules/generate-ai', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -3608,7 +3641,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
     return (
         <div className="w-full max-w-full py-2">
             <a
-                href="/training-modules"
+                href="/admin/training-modules"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
                 <ChevronLeft className="w-4 h-4" />
@@ -3634,7 +3667,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                 <div className="lg:col-span-8">
                     <form
                         method="POST"
-                        action="/training-modules"
+                        action="/admin/training-modules"
                         encType="multipart/form-data"
                         className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
                     >
@@ -3826,7 +3859,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
 
                         <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200">
                             <a
-                                href="/training-modules"
+                                href="/participant/training-modules"
                                 className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
                             >
                                 Cancel
@@ -3971,7 +4004,7 @@ function TrainingModuleEditForm({ module }) {
     return (
         <div className="w-full max-w-full py-2">
             <a
-                href="/training-modules"
+                href="/admin/training-modules"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
                 <ChevronLeft className="w-4 h-4" />
@@ -3997,7 +4030,7 @@ function TrainingModuleEditForm({ module }) {
                 <div className="lg:col-span-8">
                     <form
                         method="POST"
-                        action={`/training-modules/${module.id}`}
+                        action={`/admin/training-modules/${module.id}`}
                         encType="multipart/form-data"
                         className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
                     >
@@ -4220,7 +4253,7 @@ function TrainingModuleEditForm({ module }) {
 
                         <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200">
                             <a
-                                href="/training-modules"
+                                href="/participant/training-modules"
                                 className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
                             >
                                 Cancel
@@ -4413,7 +4446,7 @@ function ScenariosTable({ scenarios = [], role }) {
                 title="Scenarios"
                 description="Design scenario-based exercises and disaster response simulations."
                 actions={
-                    <AdminPrimaryButton href="/scenarios/create">
+                    <AdminPrimaryButton href="/admin/scenarios/create">
                         <Plus className="w-4 h-4" />
                         Create Scenario
                     </AdminPrimaryButton>
@@ -4504,7 +4537,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                     Create your first scenario-based exercise to run simulations.
                                 </p>
                                 <a
-                                    href="/scenarios/create"
+                                    href="/admin/scenarios/create"
                                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5"
                                 >
                                     <Plus className="w-4 h-4" />
@@ -4603,14 +4636,14 @@ function ScenariosTable({ scenarios = [], role }) {
                         className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40 transition-opacity duration-150 ease-out"
                         style={{ position: 'fixed', top: floatingStyles.top, left: floatingStyles.left }}
                     >
-                        <a href={`/scenarios/${openScenario.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                        <a href={`/admin/scenarios/${openScenario.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
                         {openScenario.status !== 'published' && (
-                            <a href={`/scenarios/${openScenario.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                            <a href={`/admin/scenarios/${openScenario.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
                         )}
                         {openScenario.status !== 'published' && (
                             <form
                                 method="POST"
-                                action={`/scenarios/${openScenario.id}/publish`}
+                                action={`/admin/scenarios/${openScenario.id}/publish`}
                                 onSubmit={async (e) => {
                                     e.preventDefault();
                                     const form = e.currentTarget;
@@ -4627,7 +4660,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                             body: new FormData(form),
                                         });
                                         if (!res.ok) throw new Error('Request failed');
-                                        window.location.href = '/scenarios';
+                                        window.location.href = '/admin/scenarios';
                                     } catch (_) {
                                         Swal.fire({
                                             icon: 'error',
@@ -4647,7 +4680,7 @@ function ScenariosTable({ scenarios = [], role }) {
                         )}
                         <form
                             method="POST"
-                            action={`/scenarios/${openScenario.id}/archive`}
+                            action={`/admin/scenarios/${openScenario.id}/archive`}
                             onSubmit={async (e) => {
                                 e.preventDefault();
                                 const form = e.currentTarget;
@@ -4664,7 +4697,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                         body: new FormData(form),
                                     });
                                     if (!res.ok) throw new Error('Request failed');
-                                    window.location.href = '/scenarios';
+                                    window.location.href = '/admin/scenarios';
                                 } catch (_) {
                                     Swal.fire({
                                         icon: 'error',
@@ -4684,7 +4717,7 @@ function ScenariosTable({ scenarios = [], role }) {
                         {canDelete && (
                             <form
                                 method="POST"
-                                action={`/scenarios/${openScenario.id}`}
+                                action={`/admin/scenarios/${openScenario.id}`}
                                 onSubmit={async (e) => {
                                     e.preventDefault();
                                     const form = e.currentTarget;
@@ -4702,7 +4735,7 @@ function ScenariosTable({ scenarios = [], role }) {
                                             body: new FormData(form),
                                         });
                                         if (!res.ok) throw new Error('Request failed');
-                                        window.location.href = '/scenarios';
+                                        window.location.href = '/admin/scenarios';
                                     } catch (_) {
                                         Swal.fire({
                                             icon: 'error',
@@ -4863,7 +4896,7 @@ function ScenarioCreateForm({ modules }) {
             formData.append('difficulty', formRef.current?.querySelector('[name="difficulty"]')?.value || 'Medium');
             formData.append('_token', csrf);
 
-            const response = await fetch('/scenarios/generate-ai', {
+            const response = await fetch('/admin/scenarios/generate-ai', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -4947,7 +4980,7 @@ function ScenarioCreateForm({ modules }) {
     return (
         <div className="w-full max-w-full py-2">
             <a
-                href="/scenarios"
+                href="/admin/scenarios"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
                 <ChevronLeft className="w-4 h-4" />
@@ -5063,7 +5096,7 @@ function ScenarioCreateForm({ modules }) {
                     <form
                         ref={formRef}
                         method="POST"
-                        action="/scenarios"
+                        action="/admin/scenarios"
                         className="training-module-card-enter"
                     >
                         <input type="hidden" name="_token" value={csrf} />
@@ -5151,7 +5184,7 @@ function ScenarioCreateForm({ modules }) {
                                 </div>
 
                                 <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-                                    <a href="/scenarios" className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancel</a>
+                                    <a href="/admin/scenarios" className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancel</a>
                                     <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5">Save Scenario</button>
                                 </div>
                             </div>
@@ -5303,7 +5336,7 @@ function ScenarioEditForm({ scenario, modules }) {
             </h2>
             <form
                 method="POST"
-                action={`/scenarios/${scenario.id}`}
+                action={`/admin/scenarios/${scenario.id}`}
                 className="space-y-4 bg-white rounded-xl shadow-sm border border-slate-200 p-6"
             >
                 <input type="hidden" name="_token" value={csrf} />
@@ -5693,7 +5726,7 @@ function ScenarioEditForm({ scenario, modules }) {
 
                 <div className="flex justify-end gap-2 pt-2">
                     <a
-                        href="/scenarios"
+                        href="/admin/scenarios"
                         className="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
                     >
                         Cancel
@@ -5756,14 +5789,14 @@ function ScenarioDetail({ scenario }) {
             {/* Back + breadcrumb */}
             <div className="flex items-center justify-between mb-1">
                 <a
-                    href="/scenarios"
+                    href="/admin/scenarios"
                     className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900"
                 >
                     ← Back to Scenarios
                 </a>
                 <div className="text-[0.7rem] text-slate-500">
                     <a
-                        href="/scenarios"
+                        href="/admin/scenarios"
                         className="hover:text-slate-700 hover:underline underline-offset-2"
                     >
                         Scenarios
@@ -5822,7 +5855,7 @@ function ScenarioDetail({ scenario }) {
                     </div>
                     {scenario.status !== 'published' && (
                         <a
-                            href={`/scenarios/${scenario.id}/edit`}
+                            href={`/admin/scenarios/${scenario.id}/edit`}
                             className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all"
                             title="Edit scenario"
                         >
@@ -6063,7 +6096,7 @@ function SimulationEventsTable({ events, role }) {
 
     // Load initial auto-approval setting
     React.useEffect(() => {
-        fetch('/settings/auto-approval')
+        fetch('/admin/settings/auto-approval')
             .then(res => res.json())
             .then(data => setAutoApprovalEnabled(data.enabled))
             .catch(err => console.error('Failed to load auto-approval setting:', err));
@@ -6072,7 +6105,7 @@ function SimulationEventsTable({ events, role }) {
     const handleToggleAutoApproval = async () => {
         setIsLoadingToggle(true);
         try {
-            const response = await fetch('/settings/auto-approval', {
+            const response = await fetch('/admin/settings/auto-approval', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -6192,7 +6225,7 @@ function SimulationEventsTable({ events, role }) {
                             </button>
                             <span className="text-xs text-slate-500">{autoApprovalEnabled ? 'On' : 'Off'}</span>
                         </div>
-                        <AdminPrimaryButton href="/simulation-events/create">
+                        <AdminPrimaryButton href="/admin/simulation-events/create">
                             <Plus className="w-4 h-4" />
                             Create Event
                         </AdminPrimaryButton>
@@ -6275,7 +6308,7 @@ function SimulationEventsTable({ events, role }) {
                             <h3 className="text-lg font-semibold text-slate-800 mb-1">No simulation events yet</h3>
                             <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">Create your first event to schedule drills and exercises for your team.</p>
                             <a
-                                href="/simulation-events/create"
+                                href="/admin/simulation-events/create"
                                 className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all duration-200"
                             >
                                 <Plus className="w-4 h-4" />
@@ -6357,7 +6390,7 @@ function SimulationEventsTable({ events, role }) {
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <a
-                                                    href={event.status === 'draft' ? `/simulation-events/${event.id}/edit` : `/simulation-events/${event.id}`}
+                                                    href={event.status === 'draft' ? `/admin/simulation-events/${event.id}/edit` : `/admin/simulation-events/${event.id}`}
                                                     className="font-semibold text-slate-800 hover:text-emerald-700 line-clamp-2 transition-colors"
                                                 >
                                                     {event.title}
@@ -6403,14 +6436,14 @@ function SimulationEventsTable({ events, role }) {
                                 className="py-1 rounded-xl border border-slate-200 bg-white shadow-xl z-[300] min-w-40 transition-opacity duration-150 ease-out"
                                 style={{ position: 'fixed', top: floatingStyles.top, left: floatingStyles.left }}
                             >
-                                <a href={`/simulation-events/${openEvent.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
+                                <a href={`/admin/simulation-events/${openEvent.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
                                 {openEvent.status === 'draft' && (
-                                    <a href={`/simulation-events/${openEvent.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
+                                    <a href={`/admin/simulation-events/${openEvent.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
                                 )}
                                 {openEvent.status === 'draft' && (
                                     <form
                                         method="POST"
-                                        action={`/simulation-events/${openEvent.id}/publish`}
+                                        action={`/admin/simulation-events/${openEvent.id}/publish`}
                                         onSubmit={async (e) => {
                                             e.preventDefault();
                                             const form = e.currentTarget;
@@ -6449,7 +6482,7 @@ function SimulationEventsTable({ events, role }) {
                                                 if (!response.ok) {
                                                     throw new Error('Request failed');
                                                 }
-                                                window.location.href = '/simulation-events';
+                                                window.location.href = '/admin/simulation-events';
                                             } catch (err) {
                                                 Swal.fire({
                                                     icon: 'error',
@@ -6506,7 +6539,7 @@ function SimulationEventsTable({ events, role }) {
                                     return (
                                         <form
                                             method="POST"
-                                            action={`/simulation-events/${openEvent.id}/start`}
+                                            action={`/admin/simulation-events/${openEvent.id}/start`}
                                             onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 const form = e.currentTarget;
@@ -6529,7 +6562,7 @@ function SimulationEventsTable({ events, role }) {
                                                     if (!response.ok) {
                                                         throw new Error('Request failed');
                                                     }
-                                                    window.location.href = '/simulation-events';
+                                                    window.location.href = '/admin/simulation-events';
                                                 } catch (err) {
                                                     Swal.fire({
                                                         icon: 'error',
@@ -6552,7 +6585,7 @@ function SimulationEventsTable({ events, role }) {
                                 {(openEvent.status === 'published' || openEvent.status === 'draft') && (
                                     <form
                                         method="POST"
-                                        action={`/simulation-events/${openEvent.id}/cancel`}
+                                        action={`/admin/simulation-events/${openEvent.id}/cancel`}
                                         onSubmit={async (e) => {
                                             e.preventDefault();
                                             const form = e.currentTarget;
@@ -6575,7 +6608,7 @@ function SimulationEventsTable({ events, role }) {
                                                 if (!response.ok) {
                                                     throw new Error('Request failed');
                                                 }
-                                                window.location.href = '/simulation-events';
+                                                window.location.href = '/admin/simulation-events';
                                             } catch (err) {
                                                 Swal.fire({
                                                     icon: 'error',
@@ -6597,7 +6630,7 @@ function SimulationEventsTable({ events, role }) {
                                 {openEvent.status !== 'archived' && openEvent.status !== 'cancelled' && (
                                     <form
                                         method="POST"
-                                        action={`/simulation-events/${openEvent.id}/archive`}
+                                        action={`/admin/simulation-events/${openEvent.id}/archive`}
                                         onSubmit={async (e) => {
                                             e.preventDefault();
                                             const form = e.currentTarget;
@@ -6620,7 +6653,7 @@ function SimulationEventsTable({ events, role }) {
                                                 if (!response.ok) {
                                                     throw new Error('Request failed');
                                                 }
-                                                window.location.href = '/simulation-events';
+                                                window.location.href = '/admin/simulation-events';
                                             } catch (err) {
                                                 Swal.fire({
                                                     icon: 'error',
@@ -7306,7 +7339,7 @@ function SimulationEventCreateForm({ scenarios }) {
     return (
         <div className="w-full max-w-full py-2">
             <a
-                href="/simulation-events"
+                href="/admin/simulation-events"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
                 <ChevronLeft className="w-4 h-4" />
@@ -7333,7 +7366,7 @@ function SimulationEventCreateForm({ scenarios }) {
                         id="simulation-event-create-form"
                         ref={formRef}
                         method="POST"
-                        action="/simulation-events"
+                        action="/admin/simulation-events"
                         className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
                         onSubmit={handleFormSubmit}
                     >
@@ -7543,7 +7576,7 @@ function SimulationEventCreateForm({ scenarios }) {
                             </p>
                             <div className="flex gap-2">
                                 <a
-                                    href="/simulation-events"
+                                    href="/admin/simulation-events"
                                     className="inline-flex items-center rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
                                 >
                                     Cancel
@@ -7751,7 +7784,7 @@ function SimulationEventEditForm({ event, scenarios }) {
     return (
         <div className="w-full max-w-full py-2">
             <a
-                href="/simulation-events"
+                href="/admin/simulation-events"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
                 <ChevronLeft className="w-4 h-4" />
@@ -7780,7 +7813,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                         id="simulation-event-edit-form"
                         ref={formRef}
                         method="POST"
-                        action={`/simulation-events/${event.id}`}
+                        action={`/admin/simulation-events/${event.id}`}
                         className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
                         onSubmit={handleFormSubmit}
                     >
@@ -8130,7 +8163,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                         <div className="pt-4 border-t border-slate-100">
                             <div className="flex justify-end gap-3">
                                 <a
-                                    href="/simulation-events"
+                                    href="/admin/simulation-events"
                                     className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
                                 >
                                     Cancel
@@ -8305,8 +8338,8 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
         const hasFile = fileInput?.files?.length > 0;
         // When uploading a file, use POST (not PUT) so PHP populates $_FILES reliably
         const url = hasFile && isEdit
-            ? `/certification/templates/${template.id}/update`
-            : isEdit ? `/certification/templates/${template.id}` : '/certification/templates';
+            ? `/admin/certification/templates/${template.id}/update`
+            : isEdit ? `/admin/certification/templates/${template.id}` : '/admin/certification/templates';
 
         if (hasFile) {
             // Ensure form has enctype for file uploads
@@ -8487,7 +8520,7 @@ function CertificationModule({
         if (issuedStatusFilter && issuedStatusFilter !== 'active') params.set('issued_status', issuedStatusFilter);
         Object.entries(extra).forEach(([k, v]) => { if (v != null && v !== '') params.set(k, v); });
         const q = params.toString();
-        return q ? `/certification?${q}` : '/certification';
+        return q ? `/admin/certification?${q}` : '/admin/certification';
     };
 
     const handleApplyHistoryFilters = () => {
@@ -8512,7 +8545,7 @@ function CertificationModule({
             _token: csrf,
         };
         try {
-            const res = await fetch('/certification/issue', {
+            const res = await fetch('/admin/certification/issue', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                 body: JSON.stringify(payload),
@@ -8522,7 +8555,7 @@ function CertificationModule({
                 Swal.fire({ icon: 'success', title: 'Certificate Issued', text: data.message });
                 setIssueModalOpen(false);
                 setIssueRow(null);
-                window.location.href = '/certification';
+                window.location.href = '/admin/certification';
             } else {
                 Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to issue certificate.' });
             }
@@ -8547,7 +8580,7 @@ function CertificationModule({
         try {
             const res = await fetch(`/certificates/${certId}/revoke`, { method: 'POST', body: formData });
             const data = await res.json();
-            if (data.success) { Swal.fire({ icon: 'success', text: data.message }); window.location.href = '/certification'; }
+            if (data.success) { Swal.fire({ icon: 'success', text: data.message }); window.location.href = '/admin/certification'; }
         } catch (_) { Swal.fire({ icon: 'error', text: 'Failed to revoke.' }); }
     };
 
@@ -8558,7 +8591,7 @@ function CertificationModule({
         formData.append('require_attendance', requireAttendance ? '1' : '0');
         formData.append('require_supervisor_approval', requireApproval ? '1' : '0');
         try {
-            await fetch('/certification/settings', { method: 'POST', body: formData });
+            await fetch('/admin/certification/settings', { method: 'POST', body: formData });
             Swal.fire({ icon: 'success', text: 'Settings saved.' });
         } catch (_) { Swal.fire({ icon: 'error', text: 'Failed to save.' }); }
     };
@@ -8567,12 +8600,12 @@ function CertificationModule({
         const formData = new FormData();
         formData.append('_token', csrf);
         try {
-            const res = await fetch(`/certification/templates/${template.id}/duplicate`, {
+            const res = await fetch(`/admin/certification/templates/${template.id}/duplicate`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                 body: formData,
             });
-            if (res.ok) { Swal.fire({ icon: 'success', text: 'Template duplicated.' }); window.location.href = '/certification'; }
+            if (res.ok) { Swal.fire({ icon: 'success', text: 'Template duplicated.' }); window.location.href = '/admin/certification'; }
         } catch (_) { Swal.fire({ icon: 'error', text: 'Failed.' }); }
     };
 
@@ -8586,9 +8619,9 @@ function CertificationModule({
         });
         if (!ok.isConfirmed) return;
         try {
-            await fetch(`/certification/templates/${template.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf } });
+            await fetch(`/admin/certification/templates/${template.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf } });
             Swal.fire({ icon: 'success', text: 'Deleted.' });
-            window.location.href = '/certification';
+            window.location.href = '/admin/certification';
         } catch (_) { Swal.fire({ icon: 'error', text: 'Failed.' }); }
     };
 
@@ -8752,10 +8785,10 @@ function CertificationModule({
                     )}
                 </div>
                     <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
-                        <a href={`/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all duration-200">
+                        <a href={`/admin/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all duration-200">
                             <Download className="w-4 h-4" /> Export CSV
                         </a>
-                        <a href="/certification/export/pdf" className="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-all duration-200">
+                        <a href="/admin/certification/export/pdf" className="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-all duration-200">
                             <Download className="w-4 h-4" /> Export PDF
                         </a>
                     </div>
@@ -8805,7 +8838,7 @@ function CertificationModule({
                                             )
                                         ) : (
                                             <>
-                                                <a href={`/simulation-events/${row.event_id}/evaluation/summary`} className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="View Details">
+                                                <a href={`/admin/simulation-events/${row.event_id}/evaluation/summary`} className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="View Details">
                                                     <Eye className="w-4 h-4" />
                                                 </a>
                                                 {row.cert_status === 'eligible' && (
@@ -8813,7 +8846,7 @@ function CertificationModule({
                                                         <Award className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                <a href={`/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="Preview Template">
+                                                <a href={`/admin/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="Preview Template">
                                                     <FileText className="w-4 h-4" />
                                                 </a>
                                             </>
@@ -8852,7 +8885,7 @@ function CertificationModule({
                                             {t.status === 'active' ? 'Active' : (t.status || '—')}
                                         </span>
                                         <div className="flex items-center gap-1.5">
-                                            <a href={`/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all duration-250" title="Preview"> <Eye className="w-4 h-4" /> </a>
+                                            <a href={`/admin/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all duration-250" title="Preview"> <Eye className="w-4 h-4" /> </a>
                                             <button type="button" onClick={() => { setEditingTemplate(t); setTemplateEditorOpen(true); }} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all duration-250" title="Edit"> <Pencil className="w-4 h-4" /> </button>
                                             <button type="button" onClick={() => handleDuplicateTemplate(t)} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:shadow-md transition-all duration-250" title="Duplicate"> <Copy className="w-4 h-4" /> </button>
                                             <button type="button" onClick={() => handleDeleteTemplate(t)} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:shadow-md transition-all duration-250" title="Delete"> <Trash2 className="w-4 h-4" /> </button>
@@ -8902,7 +8935,7 @@ function CertificationModule({
                                                     <button type="button" onClick={() => handleRevoke(c.id)} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:shadow-md transition-all" title="Revoke">
                                                         <XCircle className="w-4 h-4" />
                                                     </button>
-                                                    <a href="/certification" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all" title="Reissue">
+                                                    <a href="/admin/certification" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all" title="Reissue">
                                                         <RotateCcw className="w-4 h-4" />
                                                     </a>
                                                 </div>
@@ -9022,7 +9055,7 @@ function CertificationModule({
                     template={editingTemplate}
                     csrf={csrf}
                     onClose={() => { setTemplateEditorOpen(false); setEditingTemplate(null); }}
-                    onSaved={() => { setTemplateEditorOpen(false); setEditingTemplate(null); window.location.href = '/certification'; }}
+                    onSaved={() => { setTemplateEditorOpen(false); setEditingTemplate(null); window.location.href = '/admin/certification'; }}
                 />
             )}
         </AdminPageShell>
@@ -9232,7 +9265,7 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
                     </div>
                     <div className="flex items-end">
                         <a
-                            href="/participants/export/csv"
+                            href="/admin/participants/export/csv"
                             className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center transition-colors"
                         >
                             📥 Export CSV
@@ -9268,7 +9301,7 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <a
-                                                    href={`/participants/${participant.id}`}
+                                                    href={`/admin/participants/${participant.id}`}
                                                     className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors text-base"
                                                 >
                                                     {participant.name}
@@ -9288,7 +9321,7 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
                                                     {participant.status === 'active' ? '🟢' : '🔴'} {participant.status === 'active' ? 'Active' : 'Inactive'}
                                                 </span>
                                                 <a
-                                                    href={`/participants/${participant.id}`}
+                                                    href={`/admin/participants/${participant.id}`}
                                                     className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-semibold hover:bg-blue-100 transition-colors"
                                                 >
                                                     Events: {participant.event_registrations_count || 0}
@@ -9299,7 +9332,7 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
                                     {/* Actions */}
                                     <div className="flex items-center gap-2 ml-4 shrink-0">
                                         <a
-                                            href={`/participants/${participant.id}`}
+                                            href={`/admin/participants/${participant.id}`}
                                             className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
                                         >
                                             View Profile
@@ -9307,7 +9340,7 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
                                         {participant.status === 'active' ? (
                                             <form
                                                 method="POST"
-                                                action={`/participants/${participant.id}/deactivate`}
+                                                action={`/admin/participants/${participant.id}/deactivate`}
                                                 onSubmit={async (e) => {
                                                     e.preventDefault();
                                                     const result = await Swal.fire({
@@ -9334,7 +9367,7 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
                                         ) : (
                                             <form
                                                 method="POST"
-                                                action={`/participants/${participant.id}/reactivate`}
+                                                action={`/admin/participants/${participant.id}/reactivate`}
                                                 onSubmit={async (e) => {
                                                     e.preventDefault();
                                                     const result = await Swal.fire({
@@ -9513,7 +9546,7 @@ function RegistrationEventsTable({ events = [] }) {
                                                 <span className="text-sm font-medium text-slate-900">{event.registrations_count || 0} Registered</span>
                                             </div>
                                             <a
-                                                href={`/simulation-events/${event.id}/registrations`}
+                                                href={`/admin/simulation-events/${event.id}/registrations`}
                                                 className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
                                             >
                                                 Manage Registrations
@@ -9680,7 +9713,7 @@ function AttendanceEventsTable({ events = [] }) {
                                                 <span className="text-sm font-medium text-slate-900">{event.approved_registrations_count || 0} Approved Participants</span>
                                             </div>
                                             <a
-                                                href={`/simulation-events/${event.id}/attendance`}
+                                                href={`/admin/simulation-events/${event.id}/attendance`}
                                                 className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
                                             >
                                                 Track Attendance
@@ -9738,7 +9771,7 @@ function ParticipantsTable({ participants = [], role }) {
                 </div>
                 <div className="flex gap-2">
                     <a
-                        href="/participants/export/csv"
+                        href="/admin/participants/export/csv"
                         className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-1.5"
                     >
                         Export CSV
@@ -9804,7 +9837,7 @@ function ParticipantsTable({ participants = [], role }) {
                                     </td>
                                     <td className="px-4 py-2 font-medium text-slate-800">
                                         <a
-                                            href={`/participants/${participant.id}`}
+                                            href={`/admin/participants/${participant.id}`}
                                             className="text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2"
                                         >
                                             {participant.name}
@@ -9828,7 +9861,7 @@ function ParticipantsTable({ participants = [], role }) {
                                             {participant.status === 'active' ? (
                                                 <form
                                                     method="POST"
-                                                    action={`/participants/${participant.id}/deactivate`}
+                                                    action={`/admin/participants/${participant.id}/deactivate`}
                                                     onSubmit={async (e) => {
                                                         e.preventDefault();
                                                         const result = await Swal.fire({
@@ -9855,7 +9888,7 @@ function ParticipantsTable({ participants = [], role }) {
                                             ) : (
                                                 <form
                                                     method="POST"
-                                                    action={`/participants/${participant.id}/reactivate`}
+                                                    action={`/admin/participants/${participant.id}/reactivate`}
                                                     onSubmit={async (e) => {
                                                         e.preventDefault();
                                                         const result = await Swal.fire({
@@ -9903,7 +9936,7 @@ function ParticipantDetail({ participant }) {
     return (
         <div>
             <div className="mb-4">
-                <a href="/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800 transition-colors">
+                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800 transition-colors">
                     ← Back to Participants
                 </a>
             </div>
@@ -9934,7 +9967,7 @@ function ParticipantDetail({ participant }) {
                         {participant.status === 'active' ? (
                             <form
                                 method="POST"
-                                action={`/participants/${participant.id}/deactivate`}
+                                action={`/admin/participants/${participant.id}/deactivate`}
                                 onSubmit={async (e) => {
                                     e.preventDefault();
                                     const result = await Swal.fire({
@@ -9961,7 +9994,7 @@ function ParticipantDetail({ participant }) {
                         ) : (
                             <form
                                 method="POST"
-                                action={`/participants/${participant.id}/reactivate`}
+                                action={`/admin/participants/${participant.id}/reactivate`}
                                 onSubmit={async (e) => {
                                     e.preventDefault();
                                     const result = await Swal.fire({
@@ -10242,7 +10275,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
     return (
         <div>
             <div className="mb-4">
-                <a href="/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
                     ← Back to Participants
                 </a>
             </div>
@@ -10399,10 +10432,10 @@ function EventAttendanceTable({ event, registrations = [] }) {
     return (
         <div>
             <div className="mb-4 flex items-center justify-between">
-                <a href="/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">← Back to Participants</a>
+                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">← Back to Participants</a>
                 <div className="flex gap-2">
-                    <a href={`/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">📥 Export CSV</a>
-                    <form method="POST" action={`/simulation-events/${event.id}/attendance/lock`} onSubmit={async (e) => {
+                    <a href={`/admin/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">📥 Export CSV</a>
+                    <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/lock`} onSubmit={async (e) => {
                         e.preventDefault();
                         const result = await Swal.fire({
                             title: 'Warning!', text: 'Lock attendance records? This cannot be undone.', icon: 'warning',
@@ -10440,7 +10473,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                     <h3 className="text-lg font-semibold text-slate-900">📊 Attendance Dashboard</h3>
                     {!event.attendance_locked && (
                         <div className="flex gap-2">
-                            <form method="POST" action={`/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
+                            <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
                                 e.preventDefault();
                                 const result = await Swal.fire({
                                     title: 'Mark All Present?',
@@ -10467,7 +10500,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                     Mark All Present
                                 </button>
                             </form>
-                            <form method="POST" action={`/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
+                            <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
                                 e.preventDefault();
                                 const result = await Swal.fire({
                                     title: 'Mark All Absent?',
@@ -10879,14 +10912,14 @@ function EvaluationDashboard({ events }) {
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <a
-                                            href={`/simulation-events/${event.id}/evaluation`}
+                                            href={`/admin/simulation-events/${event.id}/evaluation`}
                                             className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] text-white rounded-lg font-medium text-sm transition-all duration-200"
                                         >
                                             <ClipboardCheck className="w-4 h-4" />
                                             Evaluate
                                         </a>
                                         <a
-                                            href={`/simulation-events/${event.id}/evaluation/summary`}
+                                            href={`/admin/simulation-events/${event.id}/evaluation/summary`}
                                             className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg font-medium text-sm transition-all duration-200"
                                         >
                                             <Eye className="w-4 h-4" />
@@ -10974,7 +11007,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
         try {
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = `/evaluations/${evaluation.id}/lock`;
+            form.action = `/admin/evaluations/${evaluation.id}/lock`;
 
             const tokenInput = document.createElement('input');
             tokenInput.type = 'hidden';
@@ -11456,7 +11489,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                                     <span className="text-xs text-slate-500">{percentage}%</span>
                                                                 </div>
                                                                 <a
-                                                                    href={`/simulation-events/${event.id}/evaluation/${pe.user_id}`}
+                                                                    href={`/admin/simulation-events/${event.id}/evaluation/${pe.user_id}`}
                                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all"
                                                                 >
                                                                     View Details
@@ -11530,7 +11563,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-lg">🔒 Locked</span>
                                                         ) : (
                                                             <a
-                                                                href={isPresent ? `/simulation-events/${event.id}/evaluation/${p.user_id}` : '#'}
+                                                                href={isPresent ? `/admin/simulation-events/${event.id}/evaluation/${p.user_id}` : '#'}
                                                                 className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${isPresent ? 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)]' : 'bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none'}`}
                                                                 title={isPresent ? 'Evaluate participant' : 'Participant must be marked present first'}
                                                             >
@@ -11798,7 +11831,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
 
             <form
                 method="POST"
-                action={`/simulation-events/${event.id}/evaluation/${user.id}`}
+                action={`/admin/simulation-events/${event.id}/evaluation/${user.id}`}
                 onSubmit={handleSubmit}
                 className="flex flex-col lg:flex-row gap-6"
             >
@@ -11930,7 +11963,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                     <p className="text-xs text-amber-600 text-center">Score all criteria to enable submit</p>
                                 )}
                                 <a
-                                    href={`/simulation-events/${event.id}/evaluation`}
+                                    href={`/admin/simulation-events/${event.id}/evaluation`}
                                     className="block text-center text-sm text-slate-600 hover:text-slate-800"
                                 >
                                     Cancel
@@ -11947,7 +11980,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
 // Evaluation Summary Component
 function EvaluationSummary({ event, evaluation, participantEvaluations, criteria, criterionAverages, totalParticipants, passedCount, failedCount, overallAverage }) {
     const handleExport = (format) => {
-        window.location.href = `/simulation-events/${event.id}/evaluation/export/${format}`;
+        window.location.href = `/admin/simulation-events/${event.id}/evaluation/export/${format}`;
     };
 
     const handlePrint = () => window.print();
@@ -12356,7 +12389,7 @@ function ParticipantCertificatesList({ certificates }) {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h1 className="text-xl font-bold text-slate-900 mb-1">My Certificates</h1>
                 <p className="text-sm text-slate-600">
-                    View certificates issued for completed simulation events where you met the passing criteria.
+                    View certificates issued for completed training modules and simulation events.
                 </p>
             </div>
 
@@ -12386,7 +12419,11 @@ function ParticipantCertificatesList({ certificates }) {
                                             {cert.certificate_number || '—'}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-900">
-                                            {cert.simulation_event?.title || cert.event_title || 'Simulation Event'}
+                                            {cert.training_module?.title
+                                                || cert.simulation_event?.title
+                                                || cert.training_type
+                                                || cert.event_title
+                                                || 'Training Program'}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-600">
                                             {formatIssuedDate(cert.issued_at || cert.completion_date)}
@@ -12442,7 +12479,7 @@ function BarangayProfileList({ profiles = [] }) {
         if (!window.confirm(`Delete "${p.barangay_name}"? This cannot be undone.`)) return;
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/barangay-profile/${p.id}`;
+        form.action = `/admin/barangay-profile/${p.id}`;
         const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content;
         if (csrf) {
             const input = document.createElement('input');
@@ -12472,7 +12509,7 @@ function BarangayProfileList({ profiles = [] }) {
                 title="Barangay Profile"
                 description="Manage barangay information and disaster hazards for your area."
                 actions={
-                    <AdminPrimaryButton href="/barangay-profile/create">
+                    <AdminPrimaryButton href="/admin/barangay-profile/create">
                         <Plus className="w-4 h-4" />
                         Create Profile
                     </AdminPrimaryButton>
@@ -12524,7 +12561,7 @@ function BarangayProfileList({ profiles = [] }) {
                                         </p>
                                         {profiles.length === 0 && (
                                             <a
-                                                href="/barangay-profile/create"
+                                                href="/admin/barangay-profile/create"
                                                 className="inline-flex items-center gap-2 mt-4 rounded-xl px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
                                             >
                                                 <Plus className="w-4 h-4" />
@@ -12556,14 +12593,14 @@ function BarangayProfileList({ profiles = [] }) {
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <a
-                                                    href={`/barangay-profile/${p.id}`}
+                                                    href={`/admin/barangay-profile/${p.id}`}
                                                     className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
                                                     title="View"
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                 </a>
                                                 <a
-                                                    href={`/barangay-profile/${p.id}/edit`}
+                                                    href={`/admin/barangay-profile/${p.id}/edit`}
                                                     className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
                                                     title="Edit"
                                                 >
@@ -13464,7 +13501,7 @@ function BarangayProfileDetail({ profile }) {
                     <p className="text-sm text-slate-600 mt-1">{profile?.barangay_name}</p>
                 </div>
                 <a
-                    href="/barangay-profile"
+                    href="/admin/barangay-profile"
                     className="text-sm text-slate-600 hover:text-slate-900"
                 >
                     ← Back to list
@@ -13575,7 +13612,7 @@ function BarangayProfileForm({ profile }) {
     return (
         <div className="w-full max-w-full py-2">
             <a
-                href="/barangay-profile"
+                href="/admin/barangay-profile"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
             >
                 <ChevronLeft className="w-4 h-4" />
@@ -13598,7 +13635,7 @@ function BarangayProfileForm({ profile }) {
 
             <form
                 method="POST"
-                action={isEditing ? `/barangay-profile/${profile.id}` : '/barangay-profile'}
+                action={isEditing ? `/admin/barangay-profile/${profile.id}` : '/admin/barangay-profile'}
                 onSubmit={handleSubmit}
                 className="training-module-card-enter bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg space-y-6"
             >
@@ -13701,7 +13738,7 @@ function BarangayProfileForm({ profile }) {
                 {/* Actions */}
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                     <a
-                        href="/barangay-profile"
+                        href="/admin/barangay-profile"
                         className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
                     >
                         Cancel
