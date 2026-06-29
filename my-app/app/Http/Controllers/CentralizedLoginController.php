@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Support\PortalAuth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -57,7 +57,7 @@ class CentralizedLoginController extends Controller
         }
 
         // Log the user in
-        Auth::login($user, false); // No remember token
+        PortalAuth::login($user, false);
         $request->session()->regenerate();
         $request->session()->put('last_activity', now()->timestamp);
 
@@ -215,7 +215,7 @@ class CentralizedLoginController extends Controller
      */
     public function logout(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if ($user) {
             AuditLogger::log([
@@ -227,7 +227,7 @@ class CentralizedLoginController extends Controller
             ]);
         }
 
-        Auth::logout();
+        PortalAuth::logoutAll();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

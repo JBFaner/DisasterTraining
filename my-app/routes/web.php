@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Support\PortalAuth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\AuthController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Controllers\AiScenarioConfigController;
 use App\Http\Controllers\AiScenarioAttemptController;
 use App\Http\Middleware\CheckSessionInactivity;
+use App\Http\Middleware\SyncPortalGuard;
 
 Route::get('/', function () {
     return view('welcome');
@@ -62,6 +64,7 @@ Route::post('/participant/register/start', [AuthController::class, 'participantR
 
 Route::get('/participant/register/verify', [AuthController::class, 'showParticipantRegisterVerify'])->name('participant.register.verify');
 Route::post('/participant/register/verify', [AuthController::class, 'participantRegisterVerify'])->name('participant.register.verify.post');
+Route::post('/participant/register/resend', [AuthController::class, 'participantRegisterResend'])->name('participant.register.resend');
 Route::get('/participant/register/verify-email/{token}', [AuthController::class, 'participantRegisterVerifyEmail'])->name('participant.register.verify.email');
 
 // Legacy method-selection route (removed UI; kept for cached pages and old sessions)
@@ -78,6 +81,8 @@ Route::get('/admin/verify-email/{user}', [AdminUserController::class, 'verifyEma
     ->middleware('signed');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/admin/logout', [AuthController::class, 'adminLogout'])->name('admin.logout');
+Route::post('/participant/logout', [AuthController::class, 'participantLogout'])->name('participant.logout');
 
 // Password Reset Routes
 Route::get('/password/reset', [App\Http\Controllers\PasswordResetController::class, 'showRequestForm'])->name('password.request');
@@ -93,38 +98,43 @@ Route::get('/auth/centralized/logout', [CentralizedLoginController::class, 'logo
 // Must be outside auth middleware to allow token-based authentication
 Route::get('/dashboard', function (Request $request) {
     \Log::info('Dashboard hit', [
-        'auth' => Auth::check(),
-        'user_id' => Auth::id(),
+        'auth' => portal_check(),
+        'user_id' => portal_id(),
+        'admin_authenticated' => Auth::guard(PortalAuth::ADMIN_GUARD)->check(),
+        'participant_authenticated' => Auth::guard(PortalAuth::PARTICIPANT_GUARD)->check(),
+        'active_portal' => PortalAuth::activeGuard(),
         'session_id' => $request->session()->getId(),
         'has_token' => $request->has('token'),
         'token_len' => $request->has('token') ? strlen($request->query('token')) : 0,
     ]);
 
     // If token is present and user is not authenticated, handle centralized login
-    if ($request->has('token') && !Auth::check()) {
+    if ($request->has('token') && ! portal_check()) {
         \Log::info('Dashboard handling centralized token', [
             'session_id' => $request->session()->getId(),
         ]);
 
         return app(CentralizedLoginController::class)->handle($request);
     }
-    
-    // If not authenticated and no token, redirect to login
-    if (!Auth::check()) {
-        \Log::warning('Dashboard unauthenticated redirect to admin.login', [
+
+    // If not authenticated and no token, redirect to the appropriate login page
+    if (! portal_check()) {
+        \Log::warning('Dashboard unauthenticated redirect to participant.login', [
             'session_id' => $request->session()->getId(),
             'has_token' => $request->has('token'),
         ]);
 
-        return redirect()->route('admin.login');
+        return redirect()->route('participant.login');
     }
-    
+
+    PortalAuth::syncDefaultGuard();
+
     // Regular authenticated dashboard access – data-driven operations command center
     return app(\App\Http\Controllers\DashboardController::class)->index($request);
 })->name('dashboard');
 
 // Protected app routes (session inactivity checked on every request)
-Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
+Route::middleware(['auth:admin,participant', SyncPortalGuard::class, CheckSessionInactivity::class])->group(function () {
     Route::post('/session/activity', [SessionController::class, 'activity'])->name('session.activity');
     Route::get('/session/config', [SessionController::class, 'config'])->name('session.config');
 
@@ -183,12 +193,21 @@ Route::middleware(['auth', CheckSessionInactivity::class])->group(function () {
     Route::post('/admin/ai-scenario-config/{config}/generate', [AiScenarioConfigController::class, 'generate'])
         ->name('ai-scenario-config.generate');
 
-    Route::post('/training-modules/{trainingModule}/ai-scenario-training/start', [AiScenarioAttemptController::class, 'start'])
-        ->name('ai-scenario-training.start');
-    Route::get('/ai-scenario-attempts/{attempt}', [AiScenarioAttemptController::class, 'show'])
-        ->name('ai-scenario-attempts.show');
-    Route::post('/ai-scenario-attempts/{attempt}/submit', [AiScenarioAttemptController::class, 'submit'])
-        ->name('ai-scenario-attempts.submit');
+    // Participant AI scenario quiz (requires participant guard, not admin portal)
+    Route::middleware('portal.participant')->group(function () {
+        Route::post('/training-modules/{trainingModule}/ai-scenario-training/start', [AiScenarioAttemptController::class, 'start'])
+            ->name('ai-scenario-training.start');
+        Route::get('/training-modules/{trainingModule}/ai-scenario-training/status', [AiScenarioAttemptController::class, 'status'])
+            ->name('ai-scenario-training.status');
+        Route::get('/ai-scenario-attempts/{attempt}', [AiScenarioAttemptController::class, 'show'])
+            ->name('ai-scenario-attempts.show');
+        Route::post('/ai-scenario-attempts/{attempt}/answers', [AiScenarioAttemptController::class, 'saveAnswer'])
+            ->name('ai-scenario-attempts.save-answer');
+        Route::post('/ai-scenario-attempts/{attempt}/progress', [AiScenarioAttemptController::class, 'saveProgress'])
+            ->name('ai-scenario-attempts.save-progress');
+        Route::post('/ai-scenario-attempts/{attempt}/submit', [AiScenarioAttemptController::class, 'submit'])
+            ->name('ai-scenario-attempts.submit');
+    });
 
     // Scenarios
     Route::get('/scenarios', [ScenarioController::class, 'index'])->name('scenarios.index');

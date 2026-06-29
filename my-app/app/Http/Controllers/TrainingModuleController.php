@@ -7,7 +7,6 @@ use App\Http\Requests\StoreTrainingContentRequest;
 use App\Http\Requests\StoreTrainingModuleRequest;
 use App\Http\Requests\UpdateTrainingContentRequest;
 use App\Http\Requests\UpdateTrainingModuleRequest;
-use App\Models\LessonCompletion;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Services\AuditLogger;
@@ -21,7 +20,7 @@ class TrainingModuleController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
         $perPage = 9;
 
         $query = TrainingModule::with('owner')
@@ -88,7 +87,7 @@ class TrainingModuleController extends Controller
 
     public function create()
     {
-        $user = Auth::user();
+        $user = portal_user();
         $barangayProfile = null;
 
         if ($user && $user->barangay_id) {
@@ -108,7 +107,7 @@ class TrainingModuleController extends Controller
     public function store(StoreTrainingModuleRequest $request)
     {
         $data = $request->validated();
-        $data['owner_id'] = Auth::id();
+        $data['owner_id'] = portal_id();
         $data['status'] = 'draft';
         $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
@@ -207,7 +206,7 @@ class TrainingModuleController extends Controller
 
     public function show(TrainingModule $trainingModule)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user) {
             abort(403);
@@ -224,24 +223,7 @@ class TrainingModuleController extends Controller
         $trainingModule->load(['contents', 'owner']);
 
         if ($user->role === 'PARTICIPANT') {
-            $completedContentIds = LessonCompletion::where('user_id', $user->id)
-                ->where('training_module_id', $trainingModule->id)
-                ->whereNotNull('training_content_id')
-                ->pluck('training_content_id')
-                ->all();
-
-            if (empty($completedContentIds)) {
-                $completedContentIds = LessonCompletion::where('user_id', $user->id)
-                    ->where('training_module_id', $trainingModule->id)
-                    ->pluck('training_lesson_id')
-                    ->all();
-            }
-
-            $trainingModule->contents->transform(function ($content) use ($completedContentIds) {
-                $content->is_completed = in_array($content->id, $completedContentIds, true);
-
-                return $content;
-            });
+            $trainingModule->applyParticipantProgression($user->id);
 
             $trainingService = app(\App\Services\AiScenarioTrainingService::class);
             $trainingModule->ai_training = $trainingService->buildParticipantMeta($trainingModule, $user);
@@ -459,7 +441,7 @@ class TrainingModuleController extends Controller
 
     public function generateAiModule(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (! $user) {
             abort(403);
         }
@@ -606,7 +588,7 @@ class TrainingModuleController extends Controller
 
     protected function authorizeOwner(TrainingModule $module): void
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user) {
             abort(403);

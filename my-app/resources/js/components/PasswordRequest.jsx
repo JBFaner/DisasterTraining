@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Mail, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
 
-export function PasswordRequest({ errors = {}, oldEmail = '', status = '' }) {
+export function PasswordRequest({ errors = {}, oldEmail = '', status = '', loginFrom = 'participant' }) {
+    const loginUrl = loginFrom === 'admin' ? '/admin/login' : '/participant/login';
     const [email, setEmail] = useState(oldEmail);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -79,6 +80,12 @@ export function PasswordRequest({ errors = {}, oldEmail = '', status = '' }) {
                                 }
                             />
 
+                            <input
+                                type="hidden"
+                                name="from"
+                                value={loginFrom}
+                            />
+
                             <div>
                                 <label
                                     className="block text-sm font-semibold text-slate-700 mb-2"
@@ -121,14 +128,22 @@ export function PasswordRequest({ errors = {}, oldEmail = '', status = '' }) {
                             </button>
                         </form>
 
-                        <div className="mt-6 text-center">
+                        <div className="mt-6 space-y-3 text-center">
                             <a
-                                href="/admin/login"
+                                href={loginUrl}
                                 className="text-sm text-slate-500 hover:text-teal-600 inline-flex items-center gap-1 transition-all duration-200 ease-out"
                             >
                                 <ArrowLeft className="w-4 h-4" />
                                 Back to Login
                             </a>
+                            {loginFrom !== 'admin' && (
+                                <p className="text-xs text-slate-500">
+                                    No account yet?{' '}
+                                    <a href="/participant/register" className="text-teal-600 hover:text-teal-700 font-medium">
+                                        Register here
+                                    </a>
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

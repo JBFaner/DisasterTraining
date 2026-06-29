@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, AlertCircle, LogIn, Home } from 'lucide-react';
+import { Mail, Lock, AlertCircle, LogIn, Home, CheckCircle } from 'lucide-react';
 
-export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, failedAttempts = 0 }) {
+export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, failedAttempts = 0, status = '' }) {
     const [email, setEmail] = useState(oldEmail);
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,6 +129,13 @@ export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter
                                 </p>
                             </div>
 
+                            {status && (
+                                <div className="mb-6 rounded-lg bg-green-50 border-l-4 border-green-500 px-4 py-3 text-sm text-green-700 flex items-start gap-3">
+                                    <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                    <span>{status}</span>
+                                </div>
+                            )}
+
                             {showResetPrompt && (
                                 <div className="mb-6 rounded-lg bg-blue-50 border-l-4 border-blue-500 px-4 py-3 text-sm text-blue-700 flex items-start gap-3">
                                     <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
@@ -136,7 +143,7 @@ export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter
                                         <p className="font-semibold mb-1">Having trouble logging in?</p>
                                         <p className="mb-2">Why not try resetting your password?</p>
                                         <a
-                                            href="/password/reset"
+                                            href="/password/reset?from=participant"
                                             className="text-blue-600 hover:text-blue-800 underline font-medium"
                                         >
                                             Reset Password →
@@ -216,7 +223,7 @@ export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter
 
                                 <div className="mt-1 text-right">
                                     <a
-                                        href="/password/reset"
+                                        href="/password/reset?from=participant"
                                         className="text-[0.7rem] text-slate-500 hover:text-slate-700 underline-offset-2 hover:underline transition-all duration-200 ease-out"
                                     >
                                         Forgot Password?

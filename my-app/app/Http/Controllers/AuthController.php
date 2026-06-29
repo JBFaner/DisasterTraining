@@ -8,6 +8,7 @@ use App\Mail\AdminLoginOtpEmail;
 use App\Services\SmsService;
 use App\Services\AuditLogger;
 use App\Services\LoginAttemptService;
+use App\Support\PortalAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -255,7 +256,7 @@ class AuthController extends Controller
                 ->onlyInput('email');
         }
 
-        Auth::login($user, false); // No remember token for participants
+        PortalAuth::login($user, false);
         $request->session()->regenerate();
         $request->session()->put('last_activity', now()->timestamp);
 
@@ -350,8 +351,10 @@ class AuthController extends Controller
                 );
             } catch (\Exception $e) {
                 \Log::error("Failed to send verification email: " . $e->getMessage());
-                // Still log for development fallback
-                \Log::info("Email verification code for {$data['email']}: {$verificationCode}");
+
+                return back()
+                    ->withErrors(['email' => 'We could not send the verification email. Please try again later.'])
+                    ->withInput();
             }
         }
 
@@ -392,7 +395,78 @@ class AuthController extends Controller
         return view('auth.participant-register-verify', [
             'verification_method' => $verificationMethod,
             'contact' => $contact,
+            'status' => session('status'),
         ]);
+    }
+
+    /**
+     * Resend the participant registration verification code.
+     */
+    public function participantRegisterResend(Request $request)
+    {
+        $registrationData = $request->session()->get('participant_registration');
+
+        if (! $registrationData) {
+            return redirect()->route('participant.register')
+                ->withErrors(['form' => 'Registration session expired. Please start again.']);
+        }
+
+        $lastResend = (int) $request->session()->get('participant_register_last_resend_at', 0);
+        if (now()->getTimestamp() - $lastResend < 60) {
+            $verificationMethod = $registrationData['verification_method'] ?? 'email';
+            $contact = $verificationMethod === 'email'
+                ? $registrationData['email']
+                : $registrationData['phone'];
+
+            return back()
+                ->withErrors(['otp' => 'Please wait at least 60 seconds before requesting a new code.'])
+                ->with('verification_method', $verificationMethod)
+                ->with('contact', $contact);
+        }
+
+        $verificationMethod = $registrationData['verification_method'] ?? 'email';
+        $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $registrationData['verification_code'] = $verificationCode;
+        $registrationData['expires_at'] = now()->addMinutes(15);
+        $request->session()->put('participant_registration', $registrationData);
+        $request->session()->put('participant_register_last_resend_at', now()->getTimestamp());
+
+        $contact = $verificationMethod === 'email'
+            ? $registrationData['email']
+            : $registrationData['phone'];
+
+        if ($verificationMethod === 'phone') {
+            try {
+                $smsService = new SmsService();
+                $smsService->sendOtp($registrationData['phone'], $verificationCode);
+            } catch (\Exception $e) {
+                \Log::error('Failed to resend SMS OTP: ' . $e->getMessage());
+
+                return back()
+                    ->withErrors(['otp' => 'Unable to resend verification code. Please try again later.'])
+                    ->with('verification_method', $verificationMethod)
+                    ->with('contact', $contact);
+            }
+        } else {
+            try {
+                Mail::to($registrationData['email'])->send(
+                    new ParticipantVerificationEmail($verificationCode, $registrationData['name'])
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to resend verification email: ' . $e->getMessage());
+
+                return back()
+                    ->withErrors(['otp' => 'Unable to resend verification email. Please try again later.'])
+                    ->with('verification_method', $verificationMethod)
+                    ->with('contact', $contact);
+            }
+        }
+
+        return back()
+            ->with('status', 'A new verification code has been sent.')
+            ->with('verification_method', $verificationMethod)
+            ->with('contact', $contact);
     }
 
     /**
@@ -466,7 +540,7 @@ class AuthController extends Controller
         // Clear session
         $request->session()->forget('participant_registration');
 
-        Auth::login($user);
+        PortalAuth::login($user);
         $request->session()->put('last_activity', now()->timestamp);
 
         return redirect('/dashboard')
@@ -526,7 +600,7 @@ class AuthController extends Controller
         // Clear session
         $request->session()->forget('participant_registration');
 
-        Auth::login($user);
+        PortalAuth::login($user);
         $request->session()->put('last_activity', now()->timestamp);
 
         return redirect('/dashboard')
@@ -542,16 +616,43 @@ class AuthController extends Controller
         return $id;
     }
 
+    public function adminLogout(Request $request)
+    {
+        $request->merge(['guard' => PortalAuth::ADMIN_GUARD]);
+
+        return $this->logout($request);
+    }
+
+    public function participantLogout(Request $request)
+    {
+        $request->merge(['guard' => PortalAuth::PARTICIPANT_GUARD]);
+
+        return $this->logout($request);
+    }
+
     public function logout(Request $request)
     {
-        // Capture role before logging out
-        $user = Auth::user();
-        $role = $user->role ?? null;
+        $requestedGuard = $request->input('guard');
+        $activeGuard = PortalAuth::activeGuard();
 
-        Auth::logout();
+        $guard = in_array($requestedGuard, PortalAuth::guards(), true)
+            ? $requestedGuard
+            : $activeGuard;
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $user = $guard === PortalAuth::PARTICIPANT_GUARD
+            ? PortalAuth::participantUser()
+            : PortalAuth::adminUser();
+
+        if (! $user && $guard === null) {
+            $user = portal_user();
+            $guard = PortalAuth::activeGuard();
+        }
+
+        if ($guard) {
+            PortalAuth::logoutGuard($guard);
+        } else {
+            PortalAuth::logoutAll();
+        }
 
         if ($user) {
             AuditLogger::log([
@@ -563,14 +664,24 @@ class AuthController extends Controller
             ]);
         }
 
-        // Redirect based on last role; show message if session expired due to inactivity
         $inactivity = $request->input('reason') === 'inactivity';
-        if ($role === 'PARTICIPANT') {
-            $r = redirect()->route('participant.login');
-            return $inactivity ? $r->with('error', 'Session expired due to inactivity.') : $r;
+        $resolvedGuard = $guard ?? ($user?->role === 'PARTICIPANT'
+            ? PortalAuth::PARTICIPANT_GUARD
+            : PortalAuth::ADMIN_GUARD);
+
+        if ($resolvedGuard === PortalAuth::PARTICIPANT_GUARD) {
+            $redirect = redirect()->route('participant.login');
+
+            return $inactivity
+                ? $redirect->with('error', 'Session expired due to inactivity.')
+                : $redirect;
         }
-        $r = redirect()->route('admin.login');
-        return $inactivity ? $r->with('error', 'Session expired due to inactivity.') : $r;
+
+        $redirect = redirect()->route('admin.login');
+
+        return $inactivity
+            ? $redirect->with('error', 'Session expired due to inactivity.')
+            : $redirect;
     }
 
     /**
@@ -581,7 +692,7 @@ class AuthController extends Controller
     {
         $otpData = $request->session()->get('admin_login_otp');
         if ($otpData && ! empty($otpData['user_id'])) {
-            return redirect()->route('admin.login.verify');
+            return redirect('/admin/login/verify');
         }
 
         $pending = $request->session()->get('admin_login_pending');
@@ -739,7 +850,7 @@ class AuthController extends Controller
         // Clear OTP data and complete login (no remember token for admin)
         $request->session()->forget('admin_login_otp');
 
-        Auth::login($user, false);
+        PortalAuth::login($user, false);
         $request->session()->regenerate();
         $request->session()->put('last_activity', now()->timestamp);
 
@@ -789,8 +900,7 @@ class AuthController extends Controller
             if (app()->environment('local') && config('app.debug')) {
                 \Log::info("Admin login OTP for {$user->email}: {$otp}");
 
-                return redirect()
-                    ->route('admin.login.verify')
+                return redirect('/admin/login/verify')
                     ->with('mail_delivery_failed', true)
                     ->with('status', 'Email delivery failed in local development. Use the verification code shown below.');
             }
@@ -816,8 +926,7 @@ class AuthController extends Controller
             'description' => 'Admin/trainer email OTP sent after password verification.',
         ]);
 
-        return redirect()
-            ->route('admin.login.verify')
+        return redirect('/admin/login/verify')
             ->with('status', 'We have sent a verification code to your email. Please enter it to continue.');
     }
 }

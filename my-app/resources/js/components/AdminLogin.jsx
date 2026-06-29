@@ -78,7 +78,7 @@ export function AdminLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, 
                                     <p className="font-semibold mb-1">Having trouble logging in?</p>
                                     <p className="mb-2">Why not try resetting your password?</p>
                                     <a
-                                        href="/password/reset"
+                                        href="/password/reset?from=admin"
                                         className="text-blue-600 hover:text-blue-800 underline font-medium"
                                     >
                                         Reset Password →

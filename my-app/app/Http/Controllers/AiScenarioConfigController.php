@@ -50,7 +50,15 @@ class AiScenarioConfigController extends Controller
                 'number_of_questions' => $data['number_of_questions'],
                 'generation_language' => $data['generation_language'] ?? 'en',
                 'is_enabled' => $request->boolean('is_enabled'),
-                'created_by' => Auth::id(),
+                'time_limit_minutes' => $data['time_limit_minutes'] ?? 60,
+                'max_attempts' => $data['max_attempts'] ?? 3,
+                'passing_score' => $data['passing_score'] ?? 75,
+                'fail_retake_policy' => $data['fail_retake_policy'] ?? AiScenarioConfig::FAIL_POLICY_REQUIRE_LESSON_REVIEW,
+                'auto_submit_on_expire' => $request->boolean('auto_submit_on_expire', true),
+                'allow_resume_attempt' => $request->boolean('allow_resume_attempt', true),
+                'shuffle_questions' => $request->boolean('shuffle_questions', true),
+                'shuffle_answer_choices' => $request->boolean('shuffle_answer_choices', true),
+                'created_by' => portal_id(),
             ],
         );
 
@@ -114,7 +122,7 @@ class AiScenarioConfigController extends Controller
 
     protected function authorizeAdmin(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403);
         }

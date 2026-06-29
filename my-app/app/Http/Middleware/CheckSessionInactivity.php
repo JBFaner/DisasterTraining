@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PortalAuth;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,7 +12,7 @@ class CheckSessionInactivity
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! Auth::check()) {
+        if (! PortalAuth::check()) {
             return $next($request);
         }
 
@@ -21,19 +22,39 @@ class CheckSessionInactivity
         if ($lastActivity && $timeoutMinutes > 0) {
             $limit = now()->subMinutes($timeoutMinutes)->timestamp;
             if ($lastActivity < $limit) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+                $activeGuard = PortalAuth::activeGuard();
+
+                if ($activeGuard) {
+                    PortalAuth::logoutGuard($activeGuard);
+                } else {
+                    PortalAuth::logoutAll();
+                }
+
+                if (! PortalAuth::check()) {
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                }
+
                 if ($request->expectsJson()) {
                     return response()->json(['message' => 'Session expired due to inactivity.'], 401);
                 }
 
+                $loginRoute = $activeGuard === PortalAuth::PARTICIPANT_GUARD
+                    ? 'participant.login'
+                    : 'admin.login';
+
                 return redirect()
-                    ->route('participant.login')
+                    ->route($loginRoute)
                     ->with('error', 'Session expired due to inactivity.');
             }
         }
 
-        return $next($request);
+        $response = $next($request);
+
+        if (PortalAuth::check()) {
+            $request->session()->put('last_activity', now()->timestamp);
+        }
+
+        return $response;
     }
 }

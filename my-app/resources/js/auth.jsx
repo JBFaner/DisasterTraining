@@ -15,6 +15,7 @@ if (participantLoginRoot) {
     const oldEmail = participantLoginRoot.getAttribute('data-old-email') || '';
     const lockoutRetryAfter = parseInt(participantLoginRoot.getAttribute('data-lockout-retry-after') || '0', 10);
     const sessionError = participantLoginRoot.getAttribute('data-session-error') || '';
+    const status = participantLoginRoot.getAttribute('data-status') || '';
     let errors = {};
     try {
         errors = JSON.parse(errorsJson);
@@ -31,7 +32,7 @@ if (participantLoginRoot) {
     if (sessionError) errorsObj.email = sessionError;
     const failedAttempts = parseInt(participantLoginRoot.getAttribute('data-failed-attempts') || '0', 10);
     const root = ReactDOM.createRoot(participantLoginRoot);
-    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts }));
+    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts, status }));
 }
 
 // Participant Register
@@ -65,6 +66,7 @@ const participantRegisterVerifyRoot = document.getElementById('participant-regis
 if (participantRegisterVerifyRoot) {
     const verificationMethod = participantRegisterVerifyRoot.getAttribute('data-verification-method') || 'email';
     const contact = participantRegisterVerifyRoot.getAttribute('data-contact') || '';
+    const status = participantRegisterVerifyRoot.getAttribute('data-status') || '';
     const errorsJson = participantRegisterVerifyRoot.getAttribute('data-errors') || '{}';
     let errors = {};
     
@@ -78,7 +80,8 @@ if (participantRegisterVerifyRoot) {
     root.render(React.createElement(ParticipantRegisterVerify, { 
         verificationMethod, 
         contact, 
-        errors 
+        errors,
+        status,
     }));
 }
 
@@ -114,6 +117,7 @@ if (passwordRequestRoot) {
     const errorsJson = passwordRequestRoot.getAttribute('data-errors') || '{}';
     const oldEmail = passwordRequestRoot.getAttribute('data-old-email') || '';
     const status = passwordRequestRoot.getAttribute('data-status') || '';
+    const loginFrom = passwordRequestRoot.getAttribute('data-login-from') || 'participant';
     let errors = {};
     try {
         errors = JSON.parse(errorsJson);
@@ -126,7 +130,7 @@ if (passwordRequestRoot) {
         }
     }
     const root = ReactDOM.createRoot(passwordRequestRoot);
-    root.render(React.createElement(PasswordRequest, { errors: errorsObj, oldEmail, status }));
+    root.render(React.createElement(PasswordRequest, { errors: errorsObj, oldEmail, status, loginFrom }));
 }
 
 // Password Reset
@@ -135,6 +139,7 @@ if (passwordResetRoot) {
     const errorsJson = passwordResetRoot.getAttribute('data-errors') || '{}';
     const token = passwordResetRoot.getAttribute('data-token') || '';
     const email = passwordResetRoot.getAttribute('data-email') || '';
+    const loginFrom = passwordResetRoot.getAttribute('data-login-from') || 'participant';
     let errors = {};
     try {
         errors = JSON.parse(errorsJson);
@@ -147,5 +152,5 @@ if (passwordResetRoot) {
         }
     }
     const root = ReactDOM.createRoot(passwordResetRoot);
-    root.render(React.createElement(PasswordReset, { errors: errorsObj, token, email }));
+    root.render(React.createElement(PasswordReset, { errors: errorsObj, token, email, loginFrom }));
 }

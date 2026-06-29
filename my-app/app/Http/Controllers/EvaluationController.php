@@ -19,7 +19,7 @@ class EvaluationController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Participants: show their own evaluation results (read-only)
         if ($user && $user->role === 'PARTICIPANT') {
@@ -147,7 +147,7 @@ class EvaluationController extends Controller
             [
                 'status' => 'not_started',
                 'pass_threshold' => 70.00,
-                'created_by' => Auth::id(),
+                'created_by' => portal_id(),
             ]
         );
 
@@ -248,7 +248,7 @@ class EvaluationController extends Controller
             [
                 'attendance_id' => $attendance->id,
                 'status' => 'draft',
-                'evaluated_by' => Auth::id(),
+                'evaluated_by' => portal_id(),
             ]
         );
 
@@ -340,7 +340,7 @@ class EvaluationController extends Controller
                     'attendance_id' => $attendance->id,
                     'status' => $data['status'],
                     'overall_feedback' => $data['overall_feedback'] ?? null,
-                    'evaluated_by' => Auth::id(),
+                    'evaluated_by' => portal_id(),
                     'submitted_at' => $data['status'] === 'submitted' ? now() : null,
                 ]
             );
@@ -383,7 +383,7 @@ class EvaluationController extends Controller
                 $evaluation->update([
                     'status' => 'in_progress',
                     'started_at' => now(),
-                    'updated_by' => Auth::id(),
+                    'updated_by' => portal_id(),
                 ]);
             }
 
@@ -401,7 +401,7 @@ class EvaluationController extends Controller
                     $evaluation->update([
                         'status' => 'completed',
                         'completed_at' => now(),
-                        'updated_by' => Auth::id(),
+                        'updated_by' => portal_id(),
                     ]);
                 }
             }
@@ -441,7 +441,7 @@ class EvaluationController extends Controller
 
         $updateData = [
             'status' => $data['status'],
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ];
 
         if ($data['status'] === 'completed' && !$evaluation->completed_at) {
@@ -467,7 +467,7 @@ class EvaluationController extends Controller
         $evaluation->update([
             'status' => 'locked',
             'locked_at' => now(),
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         return back()->with('status', 'Evaluation locked successfully. Scores are now read-only.');
@@ -602,7 +602,7 @@ class EvaluationController extends Controller
 
     protected function authorizeEvaluationAccess(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (!$user) {
             abort(403);
         }

@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>Admin OTP Verification</title>
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
         @vite(['resources/css/app.css'])
@@ -83,7 +84,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.login.verify.post') }}" class="space-y-5">
+                <form method="POST" action="/admin/login/verify" class="space-y-5">
                     @csrf
 
                     <div>
@@ -123,7 +124,7 @@
                     <p class="text-xs text-slate-500">
                         If you didn’t receive the code, check your spam folder or resend a new code.
                     </p>
-                    <form method="POST" action="{{ route('admin.login.resend-otp') }}" class="inline">
+                    <form method="POST" action="/admin/login/resend-otp" class="inline">
                         @csrf
                         <button
                             type="submit"

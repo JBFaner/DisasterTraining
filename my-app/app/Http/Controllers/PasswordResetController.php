@@ -17,9 +17,11 @@ class PasswordResetController extends Controller
     /**
      * Show the password reset request form
      */
-    public function showRequestForm()
+    public function showRequestForm(Request $request)
     {
-        return view('auth.password-request');
+        return view('auth.password-request', [
+            'loginFrom' => $request->query('from', 'participant'),
+        ]);
     }
 
     /**
@@ -30,7 +32,7 @@ class PasswordResetController extends Controller
         $request->validate([
             'email' => ['required', 'email', 'exists:users,email'],
         ], [
-            'email.exists' => 'We could not find a user with that email address.',
+            'email.exists' => 'No account exists with this email. If you have not finished registration yet, please register first. Otherwise, double-check the email you used.',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -38,7 +40,7 @@ class PasswordResetController extends Controller
         if (!$user) {
             return back()
                 ->withInput($request->only('email'))
-                ->withErrors(['email' => 'We could not find a user with that email address.']);
+                ->withErrors(['email' => 'No account exists with this email. If you have not finished registration yet, please register first. Otherwise, double-check the email you used.']);
         }
 
         // Generate reset token
@@ -56,7 +58,8 @@ class PasswordResetController extends Controller
 
         // Send reset email
         try {
-            $resetUrl = url("/password/reset/{$token}?email=" . urlencode($request->email));
+            $from = $request->input('from', 'participant');
+            $resetUrl = url("/password/reset/{$token}?email=" . urlencode($request->email) . '&from=' . urlencode($from));
             
             Mail::send('emails.password-reset', [
                 'user' => $user,
@@ -118,6 +121,7 @@ class PasswordResetController extends Controller
         return view('auth.password-reset', [
             'token' => $token,
             'email' => $email,
+            'loginFrom' => $request->query('from', 'participant'),
         ]);
     }
 
@@ -195,7 +199,9 @@ class PasswordResetController extends Controller
         $loginAttempts = app(\App\Services\LoginAttemptService::class);
         $loginAttempts->clearAttempts($user->email, $request->ip());
 
-        return redirect()->route('admin.login')
+        $loginRoute = $user->role === 'PARTICIPANT' ? 'participant.login' : 'admin.login';
+
+        return redirect()->route($loginRoute)
             ->with('status', 'Your password has been reset successfully! You can now log in with your new password.');
     }
 

@@ -16,7 +16,7 @@ class AuditLogger
     public static function log(array $attributes): AuditLog
     {
         /** @var User|null $user */
-        $user = $attributes['user'] ?? auth()->user();
+        $user = $attributes['user'] ?? portal_user();
         unset($attributes['user']);
 
         $request = request();

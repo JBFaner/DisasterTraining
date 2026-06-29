@@ -49,7 +49,7 @@ class EventRegistrationController extends Controller
         $eventRegistration->update([
             'status' => 'approved',
             'approved_at' => now(),
-            'approved_by' => Auth::id(),
+            'approved_by' => portal_id(),
         ]);
 
         // TODO: Send approval confirmation notification
@@ -76,7 +76,7 @@ class EventRegistrationController extends Controller
             'status' => 'rejected',
             'rejection_reason' => $data['rejection_reason'],
             'rejected_at' => now(),
-            'approved_by' => Auth::id(),
+            'approved_by' => portal_id(),
         ]);
 
         // TODO: Send rejection notice with reason
@@ -103,7 +103,7 @@ class EventRegistrationController extends Controller
      */
     private function authorizeRegistrationAccess()
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (!$user || !in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403, 'Unauthorized access.');
         }

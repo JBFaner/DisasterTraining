@@ -14,7 +14,7 @@ class UserMonitoringController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Only Admin can access
         if ($user->role !== 'LGU_ADMIN') {
@@ -74,7 +74,7 @@ class UserMonitoringController extends Controller
      */
     public function status(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Only Admin can access
         if ($user->role !== 'LGU_ADMIN') {

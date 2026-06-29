@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PortalAuth;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +21,7 @@ class ValidateCentralizedToken
     public function handle(Request $request, Closure $next): Response
     {
         // Only validate if user is authenticated via centralized login
-        if (Auth::check() && session('centralized_login')) {
+        if (portal_check() && session('centralized_login')) {
             $token = $request->session()->get('jwt_token');
             
             if ($token) {
@@ -35,7 +35,7 @@ class ValidateCentralizedToken
                     
                     if (!$isValid) {
                         // Token invalid - logout and redirect to centralized login
-                        Auth::logout();
+                        PortalAuth::logoutAll();
                         $request->session()->invalidate();
                         $request->session()->regenerateToken();
                         

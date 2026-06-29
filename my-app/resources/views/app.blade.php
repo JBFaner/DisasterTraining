@@ -17,7 +17,8 @@
     <body class="bg-slate-100 text-slate-900">
         <div
             id="app"
-            data-role="{{ auth()->check() ? (auth()->user()->role ?? 'PARTICIPANT') : 'PARTICIPANT' }}"
+            data-role="{{ portal_check() ? (portal_user()->role ?? 'PARTICIPANT') : 'PARTICIPANT' }}"
+            data-auth-guard="{{ portal_check() ? (\App\Support\PortalAuth::activeGuard() ?? '') : '' }}"
             data-section="{{ $section ?? 'dashboard' }}"
             data-session-timeout-minutes="{{ config('security.session_timeout_minutes', 10) }}"
             data-warning-before-logout-seconds="{{ config('security.warning_before_logout_seconds', 60) }}"
@@ -102,8 +103,8 @@
             @isset($participantEvaluations)
                 data-participant-evaluations='@json($participantEvaluations)'
             @endisset
-            @if(auth()->check())
-                data-user='@json(auth()->user())'
+            @if(portal_check())
+                data-user='@json(portal_user())'
             @elseif(isset($user) && !isset($currentUser))
                 data-user='@json($user)'
             @endif

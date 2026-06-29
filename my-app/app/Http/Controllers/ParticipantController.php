@@ -143,7 +143,7 @@ class ParticipantController extends Controller
         $user->update($data);
 
         AuditLogger::log([
-            'user' => Auth::user(),
+            'user' => portal_user(),
             'action' => 'Updated participant',
             'module' => 'Participants',
             'status' => 'success',
@@ -171,7 +171,7 @@ class ParticipantController extends Controller
         $user->update(['status' => 'inactive']);
 
         AuditLogger::log([
-            'user' => Auth::user(),
+            'user' => portal_user(),
             'action' => 'Deactivated participant',
             'module' => 'Participants',
             'status' => 'warning',
@@ -199,7 +199,7 @@ class ParticipantController extends Controller
         $user->update(['status' => 'active']);
 
         AuditLogger::log([
-            'user' => Auth::user(),
+            'user' => portal_user(),
             'action' => 'Reactivated participant',
             'module' => 'Participants',
             'status' => 'success',
@@ -258,7 +258,7 @@ class ParticipantController extends Controller
      */
     public function myAttendance()
     {
-        $user = Auth::user();
+        $user = portal_user();
         /** @var \App\Models\User|null $user */
         if (!$user || $user->role !== 'PARTICIPANT') {
             abort(403, 'Unauthorized access.');
@@ -289,7 +289,7 @@ class ParticipantController extends Controller
      */
     private function authorizeParticipantAccess()
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (!$user || !in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403, 'Unauthorized access.');
         }

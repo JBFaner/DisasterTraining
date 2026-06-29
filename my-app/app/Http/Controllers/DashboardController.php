@@ -9,8 +9,8 @@ use App\Models\Certificate;
 use App\Models\Evaluation;
 use App\Models\Attendance;
 use App\Models\ParticipantEvaluation;
+use App\Support\PortalAuth;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -21,9 +21,13 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (! $user) {
-            return redirect()->route('admin.login');
+            $loginRoute = PortalAuth::activeGuard() === PortalAuth::PARTICIPANT_GUARD
+                ? 'participant.login'
+                : 'admin.login';
+
+            return redirect()->route($loginRoute);
         }
 
         // Normalize event statuses (same as SimulationEventController)
@@ -282,7 +286,7 @@ class DashboardController extends Controller
                         $event->update([
                             'status' => 'completed',
                             'completed_at' => $now,
-                            'updated_by' => Auth::id(),
+                            'updated_by' => portal_id(),
                         ]);
                     }
                 } catch (\Exception $e) {

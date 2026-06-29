@@ -61,7 +61,7 @@ class AttendanceController extends Controller
                 'status' => $data['status'],
                 'checked_in_at' => isset($data['checked_in_at']) && $data['checked_in_at'] ? now()->parse($data['checked_in_at']) : now(),
                 'notes' => $data['notes'] ?? null,
-                'marked_by' => Auth::id(),
+                'marked_by' => portal_id(),
             ]);
         } else {
             // Create new attendance
@@ -73,7 +73,7 @@ class AttendanceController extends Controller
                 'status' => $data['status'],
                 'checked_in_at' => isset($data['checked_in_at']) && $data['checked_in_at'] ? now()->parse($data['checked_in_at']) : now(),
                 'notes' => $data['notes'] ?? null,
-                'marked_by' => Auth::id(),
+                'marked_by' => portal_id(),
             ]);
         }
 
@@ -103,7 +103,7 @@ class AttendanceController extends Controller
             'checked_in_at' => isset($data['checked_in_at']) && $data['checked_in_at'] ? now()->parse($data['checked_in_at']) : $attendance->checked_in_at,
             'checked_out_at' => isset($data['checked_out_at']) && $data['checked_out_at'] ? now()->parse($data['checked_out_at']) : $attendance->checked_out_at,
             'notes' => $data['notes'] ?? null,
-            'marked_by' => Auth::id(),
+            'marked_by' => portal_id(),
         ]);
 
         return back()->with('status', 'Attendance updated successfully.');
@@ -133,7 +133,7 @@ class AttendanceController extends Controller
                             'status' => 'absent',
                             'check_in_method' => $attendance->check_in_method ?: 'auto',
                             'checked_in_at' => $attendance->checked_in_at ?: now(),
-                            'marked_by' => Auth::id(),
+                            'marked_by' => portal_id(),
                         ]);
                     }
                 } else {
@@ -144,7 +144,7 @@ class AttendanceController extends Controller
                         'status' => 'absent',
                         'check_in_method' => 'auto',
                         'checked_in_at' => now(),
-                        'marked_by' => Auth::id(),
+                        'marked_by' => portal_id(),
                     ]);
                 }
             }
@@ -252,7 +252,7 @@ class AttendanceController extends Controller
                 'status' => 'present',
                 'check_in_method' => $data['check_in_method'],
                 'checked_in_at' => now(),
-                'marked_by' => Auth::id(),
+                'marked_by' => portal_id(),
             ]);
         } else {
             // Create new attendance record
@@ -263,7 +263,7 @@ class AttendanceController extends Controller
                 'status' => 'present',
                 'check_in_method' => $data['check_in_method'],
                 'checked_in_at' => now(),
-                'marked_by' => Auth::id(),
+                'marked_by' => portal_id(),
             ]);
         }
 
@@ -278,7 +278,7 @@ class AttendanceController extends Controller
      */
     private function authorizeAttendanceAccess()
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (!$user || !in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403, 'Unauthorized access.');
         }

@@ -144,7 +144,7 @@ class BarangayProfileController extends Controller
 
     protected function authorizeAdmin(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (!$user || $user->role !== 'LGU_ADMIN') {
             abort(403, 'Unauthorized. Only Admin can access this module.');

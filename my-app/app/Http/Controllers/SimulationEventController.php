@@ -14,7 +14,7 @@ class SimulationEventController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Normalize event statuses before listing:
         // - Mark published events in the past that never started as "ended"
@@ -121,7 +121,7 @@ class SimulationEventController extends Controller
         $data['notification_schedule'] = $request->input('notification_schedule') ? json_decode($request->input('notification_schedule'), true) : null;
 
         $data['status'] = $request->input('status', 'draft');
-        $data['created_by'] = Auth::id();
+        $data['created_by'] = portal_id();
 
         if ($data['status'] === 'published' && !isset($data['published_at'])) {
             $data['published_at'] = now();
@@ -294,7 +294,7 @@ class SimulationEventController extends Controller
         $data['inject_triggers'] = $request->input('inject_triggers') ? json_decode($request->input('inject_triggers'), true) : null;
         $data['notification_schedule'] = $request->input('notification_schedule') ? json_decode($request->input('notification_schedule'), true) : null;
 
-        $data['updated_by'] = Auth::id();
+        $data['updated_by'] = portal_id();
 
         // Preserve existing status if not provided in request
         $wasPublished = $simulationEvent->status === 'published';
@@ -401,7 +401,7 @@ class SimulationEventController extends Controller
         $simulationEvent->update([
             'status' => 'published',
             'published_at' => now(),
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         // Auto-assign resources when event is published
@@ -433,7 +433,7 @@ class SimulationEventController extends Controller
 
         $simulationEvent->update([
             'status' => 'draft',
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -460,7 +460,7 @@ class SimulationEventController extends Controller
 
         $simulationEvent->update([
             'status' => 'cancelled',
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -484,7 +484,7 @@ class SimulationEventController extends Controller
 
         $simulationEvent->update([
             'status' => 'archived',
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -504,7 +504,7 @@ class SimulationEventController extends Controller
     {
         $this->authorizeEventAccess();
 
-        $user = Auth::user();
+        $user = portal_user();
 
         // Check event status is published
         if ($simulationEvent->status !== 'published') {
@@ -543,7 +543,7 @@ class SimulationEventController extends Controller
             if ($now->gt($endDateTime)) {
                 $simulationEvent->update([
                     'status' => 'ended',
-                    'updated_by' => Auth::id(),
+                    'updated_by' => portal_id(),
                 ]);
 
                 return redirect()->route('simulation.events.index')
@@ -566,8 +566,8 @@ class SimulationEventController extends Controller
         $simulationEvent->update([
             'status' => 'ongoing',
             'actual_start_time' => now(),
-            'started_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'started_by' => portal_id(),
+            'updated_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -599,7 +599,7 @@ class SimulationEventController extends Controller
         $simulationEvent->update([
             'status' => 'completed',
             'completed_at' => now(),
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         // Auto-return all resources assigned to this event: mark assignments Returned and refresh resource available/status
@@ -611,7 +611,7 @@ class SimulationEventController extends Controller
         foreach ($assignments as $assignment) {
             $assignment->update([
                 'status' => 'Returned',
-                'returned_by' => Auth::id(),
+                'returned_by' => portal_id(),
                 'returned_at' => now(),
             ]);
             $resourceIds[$assignment->resource_id] = true;
@@ -667,7 +667,7 @@ class SimulationEventController extends Controller
                         $event->update([
                             'status' => 'completed',
                             'completed_at' => $now,
-                            'updated_by' => Auth::id(),
+                            'updated_by' => portal_id(),
                         ]);
                     }
                 } catch (\Exception $e) {
@@ -679,14 +679,14 @@ class SimulationEventController extends Controller
 
     protected function authorizeEventAccess(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (! $user) abort(403);
         if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) abort(403);
     }
 
     protected function authorizeEventDelete(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (! $user) abort(403);
         if ($user->role !== 'LGU_ADMIN') abort(403);
     }
@@ -696,7 +696,7 @@ class SimulationEventController extends Controller
      */
     public function show(SimulationEvent $simulationEvent)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Participants can only view published and ongoing events
         if ($user && $user->role === 'PARTICIPANT') {
@@ -756,7 +756,7 @@ class SimulationEventController extends Controller
      */
     public function register(Request $request, SimulationEvent $simulationEvent)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Only participants can register
         if (!$user || $user->role !== 'PARTICIPANT') {
@@ -822,7 +822,7 @@ class SimulationEventController extends Controller
      */
     public function cancelRegistration(Request $request, SimulationEvent $simulationEvent)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Only participants can cancel their registration
         if (!$user || $user->role !== 'PARTICIPANT') {

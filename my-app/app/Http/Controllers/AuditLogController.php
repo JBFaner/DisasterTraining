@@ -10,7 +10,7 @@ class AuditLogController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
@@ -23,7 +23,7 @@ class AuditLogController extends Controller
 
     public function history(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
@@ -100,7 +100,7 @@ class AuditLogController extends Controller
 
     public function export(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);

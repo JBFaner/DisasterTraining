@@ -36,7 +36,12 @@ class EvaluationScoringService
         $correct = (int) $attempt->score;
         $wrong = max(0, $total - $correct);
         $percentage = (float) $attempt->percentage;
-        $passed = $percentage >= $this->passingScore();
+        $passed = $percentage >= $attempt->passingScore();
+        $durationSeconds = null;
+
+        if ($attempt->started_at && $attempt->completed_at) {
+            $durationSeconds = max(0, (int) $attempt->started_at->diffInSeconds($attempt->completed_at));
+        }
 
         $competencyScores = $this->computeCompetencyScores($questions, $answers);
         $rating = $this->overallStarRating($percentage);
@@ -47,6 +52,8 @@ class EvaluationScoringService
             'participant_id' => $attempt->user_id,
             'training_module_id' => $attempt->training_module_id,
             'ai_scenario_attempt_id' => $attempt->id,
+            'attempt_number' => $attempt->attempt_number,
+            'duration_seconds' => $durationSeconds,
             'scenario_title' => $attempt->scenario_title,
             'difficulty' => $attempt->difficulty,
             'score' => $correct,

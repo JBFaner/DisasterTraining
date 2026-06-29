@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Lock, ArrowLeft, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
-export function PasswordReset({ errors = {}, token = '', email = '' }) {
+export function PasswordReset({ errors = {}, token = '', email = '', loginFrom = 'participant' }) {
+    const loginUrl = loginFrom === 'admin' ? '/admin/login' : '/participant/login';
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -206,7 +207,7 @@ export function PasswordReset({ errors = {}, token = '', email = '' }) {
 
                         <div className="mt-6 text-center">
                             <a
-                                href="/admin/login"
+                                href={loginUrl}
                                 className="text-sm text-slate-500 hover:text-teal-600 inline-flex items-center gap-1 transition-all duration-200 ease-out"
                             >
                                 <ArrowLeft className="w-4 h-4" />

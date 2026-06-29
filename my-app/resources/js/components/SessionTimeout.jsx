@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { getCsrfToken, pingSessionActivity } from '../utils/csrf';
+import { getLogoutUrl } from '../utils/portalAuth';
 
 const ACTIVITY_THROTTLE_MS = 30000; // ping backend at most every 30s
-const CSRF_TOKEN = () => document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
 export function SessionTimeout({ timeoutMinutes = 10, warningSeconds = 60 }) {
     const [showWarning, setShowWarning] = useState(false);
@@ -32,16 +33,7 @@ export function SessionTimeout({ timeoutMinutes = 10, warningSeconds = 60 }) {
         const now = Date.now();
         if (now - lastPingRef.current < ACTIVITY_THROTTLE_MS) return;
         lastPingRef.current = now;
-        fetch('/session/activity', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': CSRF_TOKEN(),
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'same-origin',
-        }).catch(() => {});
+        pingSessionActivity().catch(() => {});
     }, []);
 
     const startIdleTimer = useCallback(() => {
@@ -65,11 +57,11 @@ export function SessionTimeout({ timeoutMinutes = 10, warningSeconds = 60 }) {
                 }
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '/logout?reason=inactivity';
+                form.action = getLogoutUrl('inactivity');
                 const csrf = document.createElement('input');
                 csrf.type = 'hidden';
                 csrf.name = '_token';
-                csrf.value = CSRF_TOKEN();
+                csrf.value = getCsrfToken();
                 form.appendChild(csrf);
                 document.body.appendChild(form);
                 form.submit();
@@ -86,11 +78,11 @@ export function SessionTimeout({ timeoutMinutes = 10, warningSeconds = 60 }) {
         clearTimers();
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '/logout';
+        form.action = getLogoutUrl();
         const csrf = document.createElement('input');
         csrf.type = 'hidden';
         csrf.name = '_token';
-        csrf.value = CSRF_TOKEN();
+        csrf.value = getCsrfToken();
         form.appendChild(csrf);
         document.body.appendChild(form);
         form.submit();

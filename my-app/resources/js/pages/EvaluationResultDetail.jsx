@@ -123,6 +123,8 @@ export function EvaluationResultDetail({ result, passingScore = 75 }) {
                     <div><span className="text-slate-500">Training Module</span><p className="font-medium text-slate-900">{result.training_module?.title}</p></div>
                     <div><span className="text-slate-500">Scenario</span><p className="font-medium text-slate-900">{result.scenario_title}</p></div>
                     <div><span className="text-slate-500">Difficulty</span><p className="font-medium text-slate-900 capitalize">{result.difficulty}</p></div>
+                    <div><span className="text-slate-500">Attempt Number</span><p className="font-medium text-slate-900">{result.attempt_number ? `#${result.attempt_number}` : '—'}</p></div>
+                    <div><span className="text-slate-500">Duration</span><p className="font-medium text-slate-900">{result.duration_seconds != null ? `${Math.floor(result.duration_seconds / 60)}:${String(result.duration_seconds % 60).padStart(2, '0')}` : '—'}</p></div>
                     <div><span className="text-slate-500">Date Completed</span><p className="font-medium text-slate-900">{result.completed_at ? new Date(result.completed_at).toLocaleString() : '—'}</p></div>
                 </div>
             </AdminContentCard>

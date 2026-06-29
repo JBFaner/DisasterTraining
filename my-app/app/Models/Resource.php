@@ -205,7 +205,7 @@ class Resource extends Model
                         'quantity_assigned' => $quantity,
                         'status' => 'Active',
                         'notes' => null,
-                        'assigned_by' => auth()->id(),
+                        'assigned_by' => portal_id(),
                     ]
                 );
             } catch (\Exception $e) {
@@ -224,7 +224,7 @@ class Resource extends Model
                 'available' => $newAvailable,
                 'status' => $status,
                 'assigned_to_event_id' => $event->id,
-                'assigned_handler_id' => $handler ? $handler->id : auth()->id(),
+                'assigned_handler_id' => $handler ? $handler->id : portal_id(),
             ]);
 
             // Log the assignment
@@ -232,7 +232,7 @@ class Resource extends Model
                 'resource_id' => $this->id,
                 'action' => 'assigned_to_event',
                 'notes' => "Assigned {$quantity} unit(s) to event: {$event->title}",
-                'recorded_by' => auth()->id(),
+                'recorded_by' => portal_id(),
             ]);
 
             return true;
@@ -256,14 +256,14 @@ class Resource extends Model
                 'resource_id' => $this->id,
                 'action' => 'returned_with_damage',
                 'notes' => $damageReport,
-                'recorded_by' => auth()->id(),
+                'recorded_by' => portal_id(),
             ]);
         } else {
             ResourceMaintenanceLog::create([
                 'resource_id' => $this->id,
                 'action' => 'returned_from_event',
                 'notes' => 'Resource returned in good condition',
-                'recorded_by' => auth()->id(),
+                'recorded_by' => portal_id(),
             ]);
         }
 
@@ -285,7 +285,7 @@ class Resource extends Model
             'action' => 'maintenance_scheduled',
             'notes' => $notes,
             'technician' => $technician,
-            'recorded_by' => auth()->id(),
+            'recorded_by' => portal_id(),
         ]);
 
         return true;
@@ -307,7 +307,7 @@ class Resource extends Model
             'resource_id' => $this->id,
             'action' => 'maintenance_completed',
             'notes' => $notes,
-            'recorded_by' => auth()->id(),
+            'recorded_by' => portal_id(),
         ]);
 
         return true;

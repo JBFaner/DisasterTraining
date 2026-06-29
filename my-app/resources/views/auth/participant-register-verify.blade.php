@@ -13,6 +13,7 @@
             id="participant-register-verify-root"
             data-verification-method="{{ $verification_method ?? 'email' }}"
             data-contact="{{ $contact ?? '' }}"
+            data-status="{{ session('status', '') }}"
             data-errors='@json($errors->getMessages() ?: [])'
         ></div>
     </body>

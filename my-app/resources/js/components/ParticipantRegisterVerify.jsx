@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Mail, Phone, AlertCircle, CheckCircle2, ArrowLeft, ShieldCheck } from 'lucide-react';
 
-export function ParticipantRegisterVerify({ verificationMethod = 'email', contact = '', errors = {} }) {
+export function ParticipantRegisterVerify({ verificationMethod = 'email', contact = '', errors = {}, status = '' }) {
     const [otp, setOtp] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [resendCooldown, setResendCooldown] = useState(0);
+    const [isResending, setIsResending] = useState(false);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -17,18 +17,9 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
         setOtp(value);
     };
 
-    const handleResend = () => {
-        // TODO: Implement resend logic
-        setResendCooldown(60);
-        const interval = setInterval(() => {
-            setResendCooldown(prev => {
-                if (prev <= 1) {
-                    clearInterval(interval);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+    const handleResend = (e) => {
+        setIsResending(true);
+        e.target.submit();
     };
 
     const getFieldError = (fieldName) => {
@@ -88,6 +79,13 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
                         </div>
                     </div>
                 </div>
+
+                {status && (
+                    <div className="mb-4 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-700 flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>{status}</span>
+                    </div>
+                )}
 
                 {Object.keys(errors).length > 0 && (
                     <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
@@ -154,16 +152,16 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
                     </button>
 
                     <div className="text-center">
-                        <button
-                            type="button"
-                            onClick={handleResend}
-                            disabled={resendCooldown > 0}
-                            className="text-xs text-emerald-700 hover:text-emerald-800 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
-                        >
-                            {resendCooldown > 0 
-                                ? `Resend code in ${resendCooldown}s`
-                                : 'Resend verification code'}
-                        </button>
+                        <form method="POST" action="/participant/register/resend" onSubmit={handleResend}>
+                            <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                            <button
+                                type="submit"
+                                disabled={isResending || isSubmitting}
+                                className="text-xs text-emerald-700 hover:text-emerald-800 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
+                            >
+                                {isResending ? 'Sending new code...' : 'Resend verification code'}
+                            </button>
+                        </form>
                     </div>
                 </form>
 

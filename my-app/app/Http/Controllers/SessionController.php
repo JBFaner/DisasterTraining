@@ -13,11 +13,11 @@ class SessionController extends Controller
      */
     public function activity(Request $request)
     {
-        if (! Auth::check()) {
+        if (! portal_check()) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $user = Auth::user();
+        $user = portal_user();
         $now = now();
         
         // Update session
@@ -38,7 +38,9 @@ class SessionController extends Controller
             }
         }
 
-        return response()->noContent();
+        return response()->json([
+            'csrf_token' => csrf_token(),
+        ]);
     }
 
     /**
@@ -46,7 +48,7 @@ class SessionController extends Controller
      */
     public function config(Request $request)
     {
-        if (! Auth::check()) {
+        if (! portal_check()) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 

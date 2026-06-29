@@ -81,7 +81,7 @@ class ScenarioController extends Controller
         }
 
         $data['status'] = 'draft';
-        $data['created_by'] = Auth::id();
+        $data['created_by'] = portal_id();
 
         $scenario = Scenario::create($data);
 
@@ -165,7 +165,7 @@ class ScenarioController extends Controller
             }
         }
 
-        $data['updated_by'] = Auth::id();
+        $data['updated_by'] = portal_id();
 
         $old = $scenario->getOriginal();
         $scenario->update($data);
@@ -191,7 +191,7 @@ class ScenarioController extends Controller
 
         $scenario->update([
             'status' => 'published',
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -215,7 +215,7 @@ class ScenarioController extends Controller
 
         $scenario->update([
             'status' => 'archived',
-            'updated_by' => Auth::id(),
+            'updated_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -252,7 +252,7 @@ class ScenarioController extends Controller
 
     protected function authorizeScenarioWrite(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (! $user) abort(403);
         if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) abort(403);
     }
@@ -360,7 +360,7 @@ class ScenarioController extends Controller
 
     protected function authorizeScenarioDelete(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (! $user) abort(403);
         if ($user->role !== 'LGU_ADMIN') abort(403);
     }

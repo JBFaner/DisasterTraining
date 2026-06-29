@@ -28,6 +28,13 @@ import {
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
+function formatDuration(seconds) {
+    if (seconds == null || seconds < 0) return '—';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
 function StatusBadge({ status }) {
     const passed = status === 'passed';
     return (
@@ -240,16 +247,18 @@ export function EvaluationResultsIndex({
                                     <th className="text-left px-4 py-3">Training Module</th>
                                     <th className="text-left px-4 py-3">Scenario</th>
                                     <th className="text-left px-4 py-3">Difficulty</th>
+                                    <th className="text-left px-4 py-3">Attempt</th>
                                     <th className="text-left px-4 py-3">Score</th>
                                     <th className="text-left px-4 py-3">%</th>
                                     <th className="text-left px-4 py-3">Status</th>
+                                    <th className="text-left px-4 py-3">Duration</th>
                                     <th className="text-left px-4 py-3">Completed</th>
                                     <th className="text-right px-4 py-3">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {(results || []).length === 0 ? (
-                                    <tr><td colSpan={isParticipant ? 8 : 9} className="px-4 py-8 text-center text-slate-500">No evaluation records yet.</td></tr>
+                                    <tr><td colSpan={isParticipant ? 10 : 11} className="px-4 py-8 text-center text-slate-500">No evaluation records yet.</td></tr>
                                 ) : (
                                     results.map((row) => (
                                         <tr key={row.id} className="hover:bg-slate-50/80">
@@ -259,9 +268,11 @@ export function EvaluationResultsIndex({
                                             <td className="px-4 py-3 text-slate-700">{row.training_module?.title || '—'}</td>
                                             <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{row.scenario_title}</td>
                                             <td className="px-4 py-3 capitalize text-slate-600">{row.difficulty}</td>
+                                            <td className="px-4 py-3 text-slate-600">{row.attempt_number ? `#${row.attempt_number}` : '—'}</td>
                                             <td className="px-4 py-3">{row.correct_answers}/{row.total_questions}</td>
                                             <td className="px-4 py-3 font-semibold">{Number(row.percentage).toFixed(1)}%</td>
                                             <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+                                            <td className="px-4 py-3 text-xs text-slate-500">{formatDuration(row.duration_seconds)}</td>
                                             <td className="px-4 py-3 text-xs text-slate-500">{row.completed_at ? new Date(row.completed_at).toLocaleString() : '—'}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex justify-end gap-1">

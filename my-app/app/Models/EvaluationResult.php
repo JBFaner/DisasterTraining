@@ -34,6 +34,8 @@ class EvaluationResult extends Model
         'participant_answers',
         'eligible_for_simulation',
         'completed_at',
+        'attempt_number',
+        'duration_seconds',
     ];
 
     protected $casts = [
@@ -48,6 +50,8 @@ class EvaluationResult extends Model
         'correct_answers' => 'integer',
         'wrong_answers' => 'integer',
         'total_questions' => 'integer',
+        'attempt_number' => 'integer',
+        'duration_seconds' => 'integer',
         'knowledge_score' => 'integer',
         'decision_making_score' => 'integer',
         'emergency_response_score' => 'integer',

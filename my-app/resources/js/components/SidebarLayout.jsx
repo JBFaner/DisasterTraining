@@ -1,5 +1,6 @@
 import React from 'react';
 import Swal from 'sweetalert2';
+import { getLogoutUrl } from '../utils/portalAuth';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
 import {
     LayoutDashboard,
@@ -268,7 +269,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         <span className="text-sm font-medium">Account Settings</span>
                     </a>
                     <div className="border-t border-slate-800 my-2"></div>
-                    <form method="POST" action="/logout" className="w-full">
+                    <form method="POST" action={getLogoutUrl()} className="w-full">
                         <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
                         <button
                             type="submit"
@@ -352,7 +353,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                     {isCollapsed && (
                         <img src="/logo.svg" alt="LGU Logo" className="h-5 w-auto opacity-80 mx-auto" />
                     )}
-                    <form method="POST" action="/logout" className={isCollapsed ? 'w-full flex justify-center' : ''}>
+                    <form method="POST" action={getLogoutUrl()} className={isCollapsed ? 'w-full flex justify-center' : ''}>
                         <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
                         <button
                             type="submit"

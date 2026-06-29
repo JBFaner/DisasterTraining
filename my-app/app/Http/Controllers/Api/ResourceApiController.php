@@ -69,7 +69,7 @@ class ResourceApiController
     {
         try {
             // Normalize statuses so stale published events are marked as ended
-            SimulationEvent::autoEndPastUnstartedEvents(auth()->id());
+            SimulationEvent::autoEndPastUnstartedEvents(portal_id());
 
             $events = SimulationEvent::where('status', 'published')
                 ->orderBy('event_date', 'desc')
@@ -100,7 +100,7 @@ class ResourceApiController
         try {
             // Normalize statuses before querying so past, never-started events
             // are treated as "ended" and included in post-event flows.
-            SimulationEvent::autoEndPastUnstartedEvents(auth()->id());
+            SimulationEvent::autoEndPastUnstartedEvents(portal_id());
 
             // Get completed events with their resource assignments
             $completedEvents = SimulationEvent::whereIn('status', ['completed', 'ended'])

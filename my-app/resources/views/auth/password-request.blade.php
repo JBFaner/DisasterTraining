@@ -15,6 +15,7 @@
             data-errors='@json($errors->getMessages() ?: [])'
             data-old-email="{{ old('email', '') }}"
             data-status="{{ session('status', '') }}"
+            data-login-from="{{ $loginFrom ?? 'participant' }}"
         ></div>
     </body>
 </html>

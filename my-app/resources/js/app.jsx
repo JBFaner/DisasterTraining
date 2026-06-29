@@ -2895,43 +2895,124 @@ function ParticipantTrainingLessonView({ module }) {
         [items],
     );
 
-    const initialSelectedId = sortedItems[0]?.id || null;
+    const buildProgressState = React.useCallback((lessons, completedIds) => {
+        const completedSet = new Set(completedIds);
+
+        return lessons.map((lesson, index) => {
+            const isCompleted = completedSet.has(lesson.id)
+                || lesson.is_completed === true;
+            const previousLesson = index > 0 ? lessons[index - 1] : null;
+            const isUnlocked = lesson.is_unlocked === true
+                || index === 0
+                || isCompleted
+                || (previousLesson && completedSet.has(previousLesson.id));
+
+            return {
+                ...lesson,
+                is_completed: isCompleted,
+                is_unlocked: isUnlocked,
+                is_locked: !isUnlocked,
+            };
+        });
+    }, []);
+
+    const initialProgress = React.useMemo(
+        () => buildProgressState(
+            sortedItems,
+            sortedItems.filter((l) => l.is_completed).map((l) => l.id),
+        ),
+        [buildProgressState, sortedItems],
+    );
+
+    const initialSelectedId = React.useMemo(() => {
+        const firstUnlocked = initialProgress.find((lesson) => lesson.is_unlocked);
+
+        return firstUnlocked?.id || sortedItems[0]?.id || null;
+    }, [initialProgress, sortedItems]);
+
     const initialCompleted = React.useMemo(
-        () =>
-            (sortedItems || [])
-                .filter((l) => l.is_completed)
-                .map((l) => l.id),
-        [sortedItems],
+        () => initialProgress.filter((l) => l.is_completed).map((l) => l.id),
+        [initialProgress],
+    );
+
+    const initialUnlocked = React.useMemo(
+        () => initialProgress.filter((l) => l.is_unlocked).map((l) => l.id),
+        [initialProgress],
     );
 
     const [selectedLessonId, setSelectedLessonId] =
         React.useState(initialSelectedId);
     const [completedLessonIds, setCompletedLessonIds] =
         React.useState(initialCompleted);
+    const [unlockedLessonIds, setUnlockedLessonIds] =
+        React.useState(initialUnlocked);
+    const [aiTraining, setAiTraining] = React.useState(module?.ai_training || null);
+    const [completionError, setCompletionError] = React.useState('');
+
+    const lessonProgress = React.useMemo(
+        () => buildProgressState(sortedItems, completedLessonIds).map((lesson) => ({
+            ...lesson,
+            is_unlocked: unlockedLessonIds.includes(lesson.id),
+            is_locked: !unlockedLessonIds.includes(lesson.id),
+        })),
+        [buildProgressState, sortedItems, completedLessonIds, unlockedLessonIds],
+    );
 
     React.useEffect(() => {
-        if (!selectedLessonId && sortedItems[0]) {
-            setSelectedLessonId(sortedItems[0].id);
+        if (!selectedLessonId && lessonProgress[0]) {
+            const firstUnlocked = lessonProgress.find((lesson) => lesson.is_unlocked);
+            setSelectedLessonId(firstUnlocked?.id || lessonProgress[0].id);
         }
-    }, [selectedLessonId, sortedItems]);
+    }, [selectedLessonId, lessonProgress]);
 
     const selectedLesson =
-        sortedItems.find((l) => l.id === selectedLessonId) ||
-        sortedItems[0] ||
-        null;
+        lessonProgress.find((l) => l.id === selectedLessonId)
+        || lessonProgress.find((l) => l.is_unlocked)
+        || lessonProgress[0]
+        || null;
 
     const handleLessonSelect = (lessonId) => {
+        const lesson = lessonProgress.find((item) => item.id === lessonId);
+        if (!lesson?.is_unlocked) {
+            return;
+        }
+
         setSelectedLessonId(lessonId);
     };
 
     const toggleCompleted = async (lessonId) => {
+        const lesson = lessonProgress.find((item) => item.id === lessonId);
+        if (!lesson) {
+            return;
+        }
+
         const isCompleted = completedLessonIds.includes(lessonId);
         const next = !isCompleted;
+
+        if (next && lesson.is_locked) {
+            setCompletionError('Complete the previous lesson to unlock this lesson.');
+            return;
+        }
+
+        setCompletionError('');
+
+        const previousCompleted = completedLessonIds;
+        const previousUnlocked = unlockedLessonIds;
 
         // Optimistic update
         setCompletedLessonIds((prev) =>
             next ? [...prev, lessonId] : prev.filter((id) => id !== lessonId),
         );
+
+        if (next) {
+            const lessonIndex = lessonProgress.findIndex((item) => item.id === lessonId);
+            const nextLesson = lessonProgress[lessonIndex + 1];
+            if (nextLesson) {
+                setUnlockedLessonIds((prev) =>
+                    prev.includes(nextLesson.id) ? prev : [...prev, nextLesson.id],
+                );
+            }
+        }
 
         try {
             const csrf =
@@ -2946,22 +3027,50 @@ function ParticipantTrainingLessonView({ module }) {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': csrf,
                         'X-Requested-With': 'XMLHttpRequest',
+                        Accept: 'application/json',
                     },
                     body: JSON.stringify({ completed: next }),
                 },
             );
 
+            const data = await response.json().catch(() => ({}));
+
             if (!response.ok) {
-                throw new Error('Failed to update lesson completion');
+                throw new Error(data.message || 'Failed to update lesson completion');
+            }
+
+            if (Array.isArray(data.completed_content_ids)) {
+                setCompletedLessonIds(data.completed_content_ids);
+            }
+
+            if (Array.isArray(data.content_progress)) {
+                setUnlockedLessonIds(
+                    data.content_progress
+                        .filter((item) => item.is_unlocked)
+                        .map((item) => item.id),
+                );
+            }
+
+            if (data.ai_training) {
+                setAiTraining(data.ai_training);
+                if (Array.isArray(data.ai_training.lesson_progress)) {
+                    setCompletedLessonIds(
+                        data.ai_training.lesson_progress
+                            .filter((lesson) => lesson.is_completed)
+                            .map((lesson) => lesson.id),
+                    );
+                    setUnlockedLessonIds(
+                        data.ai_training.lesson_progress
+                            .filter((lesson) => lesson.is_unlocked)
+                            .map((lesson) => lesson.id),
+                    );
+                }
             }
         } catch (e) {
             console.error('Failed to update completion', e);
-            // Revert optimistic update on error
-            setCompletedLessonIds((prev) =>
-                isCompleted
-                    ? [...prev, lessonId]
-                    : prev.filter((id) => id !== lessonId),
-            );
+            setCompletionError(e.message || 'Could not save lesson completion. Please try again.');
+            setCompletedLessonIds(previousCompleted);
+            setUnlockedLessonIds(previousUnlocked);
         }
     };
 
@@ -3131,9 +3240,15 @@ function ParticipantTrainingLessonView({ module }) {
                 )}
             </div>
 
-            {module?.ai_training ? (
-                <AiScenarioTrainingUnlock module={module} aiTraining={module.ai_training} />
+            {aiTraining ? (
+                <AiScenarioTrainingUnlock module={module} aiTraining={aiTraining} />
             ) : null}
+
+            {completionError && (
+                <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
+                    {completionError}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 {/* Lesson list */}
@@ -3148,52 +3263,97 @@ function ParticipantTrainingLessonView({ module }) {
                             </div>
                         ) : (
                             <ul className="divide-y divide-slate-100">
-                                {sortedItems.map((lesson, index) => {
+                                {lessonProgress.map((lesson, index) => {
                                     const isSelected =
                                         lesson.id === selectedLessonId;
-                                    const isCompleted = completedLessonIds.includes(
-                                        lesson.id,
-                                    );
+                                    const isCompleted = lesson.is_completed;
+                                    const isLocked = lesson.is_locked;
+                                    const isAvailable = lesson.is_unlocked && !isCompleted;
+
                                     return (
                                         <li
                                             key={lesson.id}
-                                            className={`px-4 py-3 text-sm cursor-pointer transition-colors ${isSelected
-                                                ? 'bg-emerald-50 border-l-2 border-emerald-500'
-                                                : 'hover:bg-slate-50'
-                                                }`}
+                                            className={`px-4 py-3 text-sm transition-colors ${
+                                                isLocked
+                                                    ? 'opacity-60 cursor-not-allowed bg-slate-50'
+                                                    : isSelected
+                                                      ? 'bg-emerald-50 border-l-2 border-emerald-500 cursor-pointer'
+                                                      : 'hover:bg-slate-50 cursor-pointer'
+                                            }`}
                                             onClick={() =>
                                                 handleLessonSelect(lesson.id)
                                             }
                                         >
                                             <div className="flex items-center justify-between gap-2">
-                                                <div>
+                                                <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-slate-400">
+                                                        <span className="text-xs text-slate-400 shrink-0">
                                                             #{index + 1}
                                                         </span>
-                                                        <span className="font-medium text-slate-800">
+                                                        {isCompleted && (
+                                                            <CheckCircle2
+                                                                className="w-4 h-4 shrink-0 text-emerald-600"
+                                                                aria-hidden="true"
+                                                            />
+                                                        )}
+                                                        {isLocked && (
+                                                            <Lock
+                                                                className="w-4 h-4 shrink-0 text-slate-400"
+                                                                aria-hidden="true"
+                                                            />
+                                                        )}
+                                                        <span className={`font-medium truncate ${
+                                                            isLocked ? 'text-slate-500' : 'text-slate-800'
+                                                        }`}>
                                                             {lesson.title}
                                                         </span>
+                                                        {isCompleted && (
+                                                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-800 shrink-0">
+                                                                Completed
+                                                            </span>
+                                                        )}
+                                                        {isAvailable && (
+                                                            <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-[0.65rem] font-semibold text-sky-800 shrink-0">
+                                                                Available
+                                                            </span>
+                                                        )}
+                                                        {isLocked && (
+                                                            <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[0.65rem] font-semibold text-slate-600 shrink-0">
+                                                                Locked
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     {(lesson.body || lesson.description) && (
-                                                        <p className="mt-1 text-xs text-slate-600 line-clamp-2">
+                                                        <p className={`mt-1 text-xs line-clamp-2 ${
+                                                            isLocked ? 'text-slate-400' : 'text-slate-600'
+                                                        }`}>
                                                             {lesson.body || lesson.description}
+                                                        </p>
+                                                    )}
+                                                    {isLocked && (
+                                                        <p className="mt-1 text-xs text-slate-500">
+                                                            Complete the previous lesson to unlock this lesson.
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
                                             <div className="mt-2 flex items-center justify-between text-[0.7rem] text-slate-500">
-                                                <label className="inline-flex items-center gap-1 cursor-pointer">
+                                                <label
+                                                    className={`inline-flex items-center gap-1 ${
+                                                        isLocked && !isCompleted
+                                                            ? 'cursor-not-allowed opacity-60'
+                                                            : 'cursor-pointer'
+                                                    }`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     <input
                                                         type="checkbox"
                                                         checked={isCompleted}
-                                                        onChange={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleCompleted(
-                                                                lesson.id,
-                                                            );
+                                                        disabled={isLocked && !isCompleted}
+                                                        onChange={() => {
+                                                            toggleCompleted(lesson.id);
                                                         }}
-                                                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed"
                                                     />
                                                     <span>Mark as completed</span>
                                                 </label>
@@ -3208,7 +3368,7 @@ function ParticipantTrainingLessonView({ module }) {
 
                 {/* Content viewer */}
                 <div className="lg:col-span-2 space-y-4">
-                    {selectedLesson ? (
+                    {selectedLesson && selectedLesson.is_unlocked ? (
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
                             <div className="mb-3">
                                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
@@ -3253,6 +3413,14 @@ function ParticipantTrainingLessonView({ module }) {
                                         </div>
                                     ))}
                             </div>
+                        </div>
+                    ) : selectedLesson && selectedLesson.is_locked ? (
+                        <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm text-sm text-slate-500 space-y-2">
+                            <div className="inline-flex items-center gap-2 text-slate-600">
+                                <Lock className="w-4 h-4" />
+                                <span className="font-medium">This lesson is locked</span>
+                            </div>
+                            <p>Complete the previous lesson to unlock this lesson.</p>
                         </div>
                     ) : (
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm text-sm text-slate-500">

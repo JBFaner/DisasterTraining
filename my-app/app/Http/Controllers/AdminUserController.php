@@ -51,7 +51,7 @@ class AdminUserController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $this->hasUserManagementAccess($user)) {
             abort(403);
@@ -95,7 +95,7 @@ class AdminUserController extends Controller
      */
     public function create(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $this->hasUserManagementAccess($user)) {
             abort(403);
@@ -118,7 +118,7 @@ class AdminUserController extends Controller
      */
     public function edit(User $user)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
@@ -148,7 +148,7 @@ class AdminUserController extends Controller
      */
     public function show(User $user)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
@@ -198,7 +198,7 @@ class AdminUserController extends Controller
      */
     public function disable(Request $request, User $user)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             if ($request->expectsJson() || $request->ajax()) {
@@ -278,7 +278,7 @@ class AdminUserController extends Controller
      */
     public function enable(Request $request, User $user)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             if ($request->expectsJson() || $request->ajax()) {
@@ -347,7 +347,7 @@ class AdminUserController extends Controller
      */
     public function resetPassword(User $user)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
@@ -397,7 +397,7 @@ class AdminUserController extends Controller
      */
     public function manualVerify(User $user)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
@@ -443,7 +443,7 @@ class AdminUserController extends Controller
      */
     public function store(Request $request)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);
@@ -521,7 +521,7 @@ class AdminUserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $currentUser = Auth::user();
+        $currentUser = portal_user();
 
         if (! $this->hasUserManagementAccess($currentUser)) {
             abort(403);

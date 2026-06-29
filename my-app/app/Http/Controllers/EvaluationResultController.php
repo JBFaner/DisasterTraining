@@ -16,7 +16,7 @@ class EvaluationResultController extends Controller
 
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
         abort_unless($user, 403);
 
         $query = EvaluationResult::query()

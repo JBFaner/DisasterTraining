@@ -11,7 +11,7 @@ class PermissionController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
@@ -59,7 +59,7 @@ class PermissionController extends Controller
 
     public function store(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
@@ -100,7 +100,7 @@ class PermissionController extends Controller
 
     public function edit($id)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);
@@ -147,7 +147,7 @@ class PermissionController extends Controller
 
     public function update(Request $request, $id)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         if (! $user || $user->role !== 'LGU_ADMIN') {
             abort(403);

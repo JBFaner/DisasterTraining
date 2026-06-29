@@ -121,8 +121,8 @@ class ResourceController extends Controller
 
         $validated['available'] = $validated['quantity'];
         $validated['status'] = 'Available';
-        $validated['created_by'] = auth()->id();
-        $validated['updated_by'] = auth()->id();
+        $validated['created_by'] = portal_id();
+        $validated['updated_by'] = portal_id();
 
         $resource = Resource::create($validated);
 
@@ -183,7 +183,7 @@ class ResourceController extends Controller
             'image_url' => 'nullable|url',
         ]);
 
-        $validated['updated_by'] = auth()->id();
+        $validated['updated_by'] = portal_id();
 
         $old = $resource->getOriginal();
         $resource->update($validated);
@@ -314,7 +314,7 @@ class ResourceController extends Controller
             if ($assignment) {
                 $assignment->update([
                     'status' => 'Returned',
-                    'returned_by' => auth()->id(),
+                    'returned_by' => portal_id(),
                     'returned_at' => now(),
                     'notes' => $validated['damage_report'] ?? 'Returned after event completion',
                 ]);
@@ -422,7 +422,7 @@ class ResourceController extends Controller
             'resource_id' => $resource->id,
             'action' => 'marked_in_use',
             'notes' => $validated['deployment_notes'] ?? 'Resource deployed during event',
-            'recorded_by' => auth()->id(),
+            'recorded_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -454,7 +454,7 @@ class ResourceController extends Controller
             'resource_id' => $resource->id,
             'action' => 'marked_unused',
             'notes' => $request->input('notes') ?? 'Resource not used during event',
-            'recorded_by' => auth()->id(),
+            'recorded_by' => portal_id(),
         ]);
 
         AuditLogger::log([
@@ -493,7 +493,7 @@ class ResourceController extends Controller
             'resource_id' => $resource->id,
             'action' => 'damage_reported',
             'notes' => "[{$validated['severity']}] {$validated['damage_type']}: {$validated['description']}",
-            'recorded_by' => auth()->id(),
+            'recorded_by' => portal_id(),
         ]);
 
         AuditLogger::log([

@@ -26,11 +26,11 @@ class CertificationController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = portal_user();
 
         // Participant: show own certificates (read-only)
         if ($user && $user->role === 'PARTICIPANT') {
-            $certificates = Certificate::with('simulationEvent')
+            $certificates = Certificate::with(['simulationEvent', 'trainingModule'])
                 ->where('user_id', $user->id)
                 ->whereNull('revoked_at')
                 ->orderByDesc('issued_at')
@@ -269,7 +269,7 @@ class CertificationController extends Controller
             'completion_date' => $completionDate,
             'final_score' => $finalScore,
             'issued_at' => now(),
-            'issued_by' => Auth::id(),
+            'issued_by' => portal_id(),
         ]);
 
         if ($template) {
@@ -301,7 +301,7 @@ class CertificationController extends Controller
         $this->authorizeCertificationAccess();
         $certificate->update([
             'revoked_at' => now(),
-            'revoked_by' => Auth::id(),
+            'revoked_by' => portal_id(),
             'revoke_reason' => $request->input('reason'),
         ]);
         if ($request->expectsJson()) {
@@ -551,11 +551,11 @@ class CertificationController extends Controller
      */
     public function viewCertificate(Certificate $certificate)
     {
-        $user = Auth::user();
+        $user = portal_user();
         if ($user && !in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true) && $user->id !== $certificate->user_id) {
             abort(403);
         }
-        $certificate->load(['user', 'simulationEvent', 'certificateTemplate']);
+        $certificate->load(['user', 'simulationEvent', 'trainingModule', 'certificateTemplate']);
         $template = $certificate->certificateTemplate ?? CertificateTemplate::where('status', 'active')->first();
         
         // Use stored snapshot if available, otherwise fall back to current template
@@ -568,7 +568,10 @@ class CertificationController extends Controller
         $data = [
             'name' => $certificate->user->name ?? '',
             'date' => $certificate->completion_date ? $certificate->completion_date->format('F j, Y') : '',
-            'event' => $certificate->simulationEvent->title ?? '',
+            'event' => $certificate->simulationEvent->title
+                ?? $certificate->trainingModule?->title
+                ?? $certificate->training_type
+                ?? '',
             'certificate_number' => $certificate->certificate_number,
             'score' => $certificate->final_score ? (string) round((float) $certificate->final_score, 1) : '',
             'training_type' => $certificate->training_type ?? '',
@@ -695,7 +698,7 @@ class CertificationController extends Controller
 
     private function authorizeCertificationAccess(): void
     {
-        $user = Auth::user();
+        $user = portal_user();
         if (!$user || !in_array($user->role, ['SUPER_ADMIN', 'LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403);
         }

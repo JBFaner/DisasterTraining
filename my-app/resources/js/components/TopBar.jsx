@@ -1,5 +1,6 @@
 import React from 'react';
 import Swal from 'sweetalert2';
+import { getLogoutUrl } from '../utils/portalAuth';
 import { Bell, ChevronDown, User, Settings, LogOut, Clock, PanelLeft } from 'lucide-react';
 
 export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSidebarCollapsed }) {
@@ -125,7 +126,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
             if (result.isConfirmed) {
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '/logout';
+                form.action = getLogoutUrl();
                 const csrfInput = document.createElement('input');
                 csrfInput.type = 'hidden';
                 csrfInput.name = '_token';

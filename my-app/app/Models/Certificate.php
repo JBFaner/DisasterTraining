@@ -9,6 +9,8 @@ class Certificate extends Model
     protected $fillable = [
         'user_id',
         'simulation_event_id',
+        'training_module_id',
+        'evaluation_result_id',
         'participant_evaluation_id',
         'certificate_template_id',
         'template_background_path',
@@ -43,6 +45,16 @@ class Certificate extends Model
     public function simulationEvent()
     {
         return $this->belongsTo(SimulationEvent::class);
+    }
+
+    public function trainingModule()
+    {
+        return $this->belongsTo(TrainingModule::class);
+    }
+
+    public function evaluationResult()
+    {
+        return $this->belongsTo(EvaluationResult::class);
     }
 
     public function participantEvaluation()
