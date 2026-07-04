@@ -305,10 +305,15 @@ class AuthController extends Controller
                 'required_without:email',
             ],
             'street' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
             ],
+            'philippine_barangay_id' => ['required', 'integer', 'exists:philippine_barangays,id'],
+            'region' => ['required', 'string', 'max:255'],
+            'province' => ['required', 'string', 'max:255'],
+            'municipality_city' => ['required', 'string', 'max:255'],
+            'barangay_name' => ['required', 'string', 'max:255'],
             'password' => ['required', 'confirmed', 'min:8'],
         ], [
             'email.required_without' => 'Please provide either an email or phone number.',
@@ -367,11 +372,18 @@ class AuthController extends Controller
             'name' => $data['name'],
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
-            'street' => $data['street'],
+            'philippine_barangay_id' => $data['philippine_barangay_id'],
+            'region' => $data['region'],
+            'province' => $data['province'],
+            'city' => $data['municipality_city'],
+            'municipality_city' => $data['municipality_city'],
+            'barangay' => $data['barangay_name'],
+            'barangay_name' => $data['barangay_name'],
+            'street' => $data['street'] ?? null,
             'password' => $data['password'],
             'verification_method' => $verificationMethod,
             'verification_code' => $verificationCode,
-            'expires_at' => now()->addMinutes(15), // 15 minutes expiry
+            'expires_at' => now()->addMinutes(15),
         ]);
 
         return redirect()->route('participant.register.verify')
@@ -515,14 +527,20 @@ class AuthController extends Controller
 
         // All verified - create the user
         $participantId = $this->generateParticipantId();
+        $hazardProfile = \App\Models\BarangayProfile::where(
+            'philippine_barangay_id',
+            $registrationData['philippine_barangay_id'] ?? null,
+        )->first();
 
         $user = User::create([
             'name' => $registrationData['name'],
             'email' => $registrationData['email'],
             'phone' => $registrationData['phone'],
+            'philippine_barangay_id' => $registrationData['philippine_barangay_id'] ?? null,
+            'barangay_id' => $hazardProfile?->id,
             'province' => $registrationData['province'] ?? null,
-            'city' => $registrationData['city'] ?? null,
-            'barangay' => $registrationData['barangay'] ?? null,
+            'city' => $registrationData['city'] ?? $registrationData['municipality_city'] ?? null,
+            'barangay' => $registrationData['barangay'] ?? $registrationData['barangay_name'] ?? null,
             'street' => $registrationData['street'] ?? null,
             'password' => $registrationData['password'],
             'role' => 'PARTICIPANT',
@@ -584,14 +602,20 @@ class AuthController extends Controller
 
         // Token is valid - complete registration
         $participantId = $this->generateParticipantId();
+        $hazardProfile = \App\Models\BarangayProfile::where(
+            'philippine_barangay_id',
+            $registrationData['philippine_barangay_id'] ?? null,
+        )->first();
 
         $user = User::create([
             'name' => $registrationData['name'],
             'email' => $registrationData['email'],
             'phone' => $registrationData['phone'],
+            'philippine_barangay_id' => $registrationData['philippine_barangay_id'] ?? null,
+            'barangay_id' => $hazardProfile?->id,
             'province' => $registrationData['province'] ?? null,
-            'city' => $registrationData['city'] ?? null,
-            'barangay' => $registrationData['barangay'] ?? null,
+            'city' => $registrationData['city'] ?? $registrationData['municipality_city'] ?? null,
+            'barangay' => $registrationData['barangay'] ?? $registrationData['barangay_name'] ?? null,
             'street' => $registrationData['street'] ?? null,
             'password' => $registrationData['password'],
             'role' => 'PARTICIPANT',

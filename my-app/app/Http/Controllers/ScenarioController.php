@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Scenario;
+use App\Models\BarangayProfile;
 use App\Models\ScenarioInject;
 use App\Models\ScenarioExpectedAction;
 use App\Models\TrainingModule;
 use App\Services\AuditLogger;
 use App\Services\GeminiService;
+use App\Services\HazardAssessment\HazardTrainingRecommendationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -331,19 +333,27 @@ class ScenarioController extends Controller
         $this->authorizeScenarioWrite();
 
         $data = $request->validate([
-            // Keep a minimum length so the AI has enough context, but avoid being too strict
             'prompt' => ['required', 'string', 'min:10', 'max:1000'],
             'disaster_type' => ['nullable', 'string', 'max:255'],
-            // Be permissive here – accept any label the UI might send (including empty string)
             'difficulty' => ['nullable', 'string', 'max:50'],
+            'barangay_profile_id' => ['nullable', 'integer', 'exists:barangay_profiles,id'],
         ]);
+
+        $hazardContext = null;
+        if (! empty($data['barangay_profile_id'])) {
+            $profile = BarangayProfile::with('hazardRecords')->find($data['barangay_profile_id']);
+            if ($profile) {
+                $hazardContext = app(HazardTrainingRecommendationService::class)->buildAiContext($profile);
+            }
+        }
 
         try {
             $geminiService = new GeminiService();
             $scenarioData = $geminiService->generateScenarioFromPrompt(
                 $data['prompt'],
                 $data['disaster_type'] ?? null,
-                $data['difficulty'] ?? 'Medium'
+                $data['difficulty'] ?? 'Medium',
+                $hazardContext,
             );
 
             return response()->json([

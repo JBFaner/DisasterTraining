@@ -82,8 +82,8 @@ class PermissionsSeeder extends Seeder
             ['name' => 'certifications.settings.manage', 'guard_name' => 'web'],
 
             // Barangay Profile
-            ['name' => 'barangay-profile.view', 'guard_name' => 'web'],
-            ['name' => 'barangay-profile.edit', 'guard_name' => 'web'],
+            ['name' => 'hazard-assessment-profile.view', 'guard_name' => 'web'],
+            ['name' => 'hazard-assessment-profile.edit', 'guard_name' => 'web'],
 
             // Users & Roles
             ['name' => 'users.view', 'guard_name' => 'web'],
@@ -166,7 +166,7 @@ class PermissionsSeeder extends Seeder
             'resources.view', 'resources.assign', 'resources.maintenance',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'evaluations.score', 'evaluations.lock', 'evaluations.export',
             'certifications.view', 'certifications.issue', 'certifications.revoke', 'certifications.templates.manage',
-            'barangay-profile.view', 'barangay-profile.edit',
+            'hazard-assessment-profile.view', 'hazard-assessment-profile.edit',
         ];
 
         foreach ($trainerPermissions as $permName) {

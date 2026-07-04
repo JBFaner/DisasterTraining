@@ -87,11 +87,11 @@ class TrainingModuleController extends Controller
         $barangayProfile = null;
 
         if ($user && $user->barangay_id) {
-            $barangayProfile = \App\Models\BarangayProfile::find($user->barangay_id);
+            $barangayProfile = \App\Models\BarangayProfile::with('hazardRecords')->find($user->barangay_id);
         }
 
         if (! $barangayProfile) {
-            $barangayProfile = \App\Models\BarangayProfile::first();
+            $barangayProfile = \App\Models\BarangayProfile::with('hazardRecords')->first();
         }
 
         return view('app', [

@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Resource;
+use App\Models\BarangayProfile;
 use App\Models\ResourceEventAssignment;
 use App\Models\SimulationEvent;
 use App\Models\Scenario;
+use App\Models\TrainingModule;
+use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -69,10 +72,10 @@ class SimulationEventController extends Controller
     {
         $this->authorizeEventAccess();
 
-        return view('app', [
+        return view('app', array_merge([
             'section' => 'simulation_create',
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
-        ]);
+        ], $this->eventFormOptions()));
     }
 
     public function store(Request $request)
@@ -108,6 +111,7 @@ class SimulationEventController extends Controller
             'required_ppe' => ['nullable', 'string'],
             'email_notifications_enabled' => ['nullable', 'boolean'],
             'sms_notifications_enabled' => ['nullable', 'boolean'],
+            ...$this->campaignFieldRules(),
         ]);
 
         // Handle JSON fields and arrays
@@ -236,11 +240,11 @@ class SimulationEventController extends Controller
             'resources_sample' => isset($eventArray['resources']) && count($eventArray['resources']) > 0 ? $eventArray['resources'][0] : null
         ]);
         
-        return view('app', [
+        return view('app', array_merge([
             'section' => 'simulation_edit',
             'event' => $eventArray,
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
-        ]);
+        ], $this->eventFormOptions()));
     }
 
     public function update(Request $request, SimulationEvent $simulationEvent)
@@ -282,6 +286,7 @@ class SimulationEventController extends Controller
             'required_ppe' => ['nullable', 'string'],
             'email_notifications_enabled' => ['nullable', 'boolean'],
             'sms_notifications_enabled' => ['nullable', 'boolean'],
+            ...$this->campaignFieldRules(),
         ]);
 
         // Handle JSON fields and arrays
@@ -897,5 +902,35 @@ class SimulationEventController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function eventFormOptions(): array
+    {
+        return [
+            'trainingModules' => TrainingModule::where('status', 'published')->orderBy('title')->get(['id', 'title']),
+            'barangay_profiles' => BarangayProfile::with('hazardRecords')->orderBy('barangay_name')->get(),
+            'trainers' => \App\Models\QualifiedTrainer::active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'specialization'])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function campaignFieldRules(): array
+    {
+        return [
+            'venue' => ['nullable', 'string', 'max:255'],
+            'target_audience' => ['nullable', 'string', 'max:255'],
+            'training_module_id' => ['nullable', 'exists:training_modules,id'],
+            'barangay_profile_id' => ['nullable', 'exists:barangay_profiles,id'],
+            'assigned_trainer_id' => ['nullable', 'exists:qualified_trainers,id'],
+            'registration_deadline' => ['nullable', 'date'],
+        ];
     }
 }

@@ -274,6 +274,53 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Bulk mark all approved registrations for an event.
+     */
+    public function bulkMark(Request $request, SimulationEvent $simulationEvent)
+    {
+        $this->authorizeAttendanceAccess();
+
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:present,absent,late,excused'],
+        ]);
+
+        $registrations = $simulationEvent->registrations()
+            ->where('status', 'approved')
+            ->with('attendance')
+            ->get();
+
+        $marked = 0;
+        foreach ($registrations as $registration) {
+            $attendance = $registration->attendance;
+            if ($attendance?->is_locked) {
+                continue;
+            }
+
+            if ($attendance) {
+                $attendance->update([
+                    'status' => $data['status'],
+                    'check_in_method' => $attendance->check_in_method ?: 'manual',
+                    'checked_in_at' => $attendance->checked_in_at ?: now(),
+                    'marked_by' => portal_id(),
+                ]);
+            } else {
+                Attendance::create([
+                    'event_registration_id' => $registration->id,
+                    'user_id' => $registration->user_id,
+                    'simulation_event_id' => $simulationEvent->id,
+                    'status' => $data['status'],
+                    'check_in_method' => 'manual',
+                    'checked_in_at' => now(),
+                    'marked_by' => portal_id(),
+                ]);
+            }
+            $marked++;
+        }
+
+        return back()->with('status', "Marked {$marked} participant(s) as {$data['status']}.");
+    }
+
+    /**
      * Authorize attendance access (Admin and Trainer only).
      */
     private function authorizeAttendanceAccess()

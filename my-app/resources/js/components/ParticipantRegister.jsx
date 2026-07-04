@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, AlertCircle, UserPlus, ArrowRight, Phone } from 'lucide-react';
+import { PhilippineLocationSelect } from './PhilippineLocationSelect';
 
 export function ParticipantRegister({ errors = {}, oldValues = {} }) {
     const [formData, setFormData] = useState({
@@ -8,6 +9,11 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
         countryCode: oldValues.countryCode || '+63',
         mobileNumber: oldValues.mobileNumber || '',
         street: oldValues.street || '',
+        philippine_barangay_id: oldValues.philippine_barangay_id || '',
+        region: oldValues.region || '',
+        province: oldValues.province || '',
+        municipality_city: oldValues.municipality_city || '',
+        barangay_name: oldValues.barangay_name || '',
         password: '',
         password_confirmation: '',
     });
@@ -30,12 +36,12 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
             newErrors.mobileNumber = 'Mobile number must contain digits only.';
         } else if (formData.mobileNumber.length !== 10) {
             newErrors.mobileNumber = 'Mobile number must be 10 digits (e.g. 9123456789).';
-        } else if (!formData.mobileNumber.startsWith('9')) {
+        } else         if (!formData.mobileNumber.startsWith('9')) {
             newErrors.mobileNumber = 'Mobile number must start with 9.';
         }
 
-        if (!formData.street.trim()) {
-            newErrors.street = 'Please enter your complete address.';
+        if (!formData.philippine_barangay_id) {
+            newErrors.location = 'Please select your complete address (Region through Barangay).';
         }
 
         setClientErrors(newErrors);
@@ -47,6 +53,12 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
         if (!acceptedTerms) return;
 
         if (!validateForm()) {
+            return;
+        }
+
+        const barangayInput = e.target.querySelector('[name="philippine_barangay_id"]');
+        if (!barangayInput?.value) {
+            setClientErrors({ location: 'Please select your complete address (Region through Barangay).' });
             return;
         }
 
@@ -284,25 +296,45 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                         </div>
                     </div>
 
-                    {/* Address (single field) */}
+                    {/* Standardized Philippine location */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-2">
+                            Address <span className="text-rose-500">*</span>
+                        </label>
+                        <PhilippineLocationSelect
+                            required
+                            apiBase="/api/locations"
+                            onResolved={(data) => {
+                                if (data) {
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        philippine_barangay_id: String(data.barangay_id || ''),
+                                        region: data.location?.region || '',
+                                        province: data.location?.province || '',
+                                        municipality_city: data.location?.municipality_city || '',
+                                        barangay_name: data.location?.barangay_name || '',
+                                    }));
+                                }
+                            }}
+                        />
+                        {getClientError('location') && (
+                            <p className="mt-1 text-xs text-rose-600">{getClientError('location')}</p>
+                        )}
+                    </div>
+
                     <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="street">
-                            Address <span className="text-rose-500">*</span>
+                            Street / House No. (optional)
                         </label>
                         <input
                             id="street"
                             name="street"
                             type="text"
-                            placeholder="Block 5 Lot 10, Barangay Commonwealth, Quezon City"
+                            placeholder="Block 5 Lot 10, Street name"
                             value={formData.street}
                             onChange={handleChange}
-                            className={`w-full rounded-md border ${
-                                getClientError('street') ? 'border-rose-300' : 'border-slate-300'
-                            } px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463]`}
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463]"
                         />
-                        {getClientError('street') && (
-                            <p className="mt-1 text-xs text-rose-600">{getClientError('street')}</p>
-                        )}
                     </div>
 
                     <div>

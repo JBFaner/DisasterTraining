@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal.sync' => \App\Http\Middleware\SyncPortalGuard::class,
             'portal.admin' => \App\Http\Middleware\EnsureAdminPortal::class,
             'portal.participant' => \App\Http\Middleware\EnsureParticipantPortal::class,
+            'group6.api' => \App\Http\Middleware\VerifyGroup6ApiKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

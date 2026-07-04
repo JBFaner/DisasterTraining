@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createPortal } from 'react-dom';
 import './bootstrap';
@@ -20,6 +20,17 @@ import { AiScenarioConfigPage } from './pages/AiScenarioConfigPage';
 import { AiScenarioTrainingPage, AiScenarioTrainingUnlock } from './pages/AiScenarioTrainingPage';
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
+import AttendanceQrScanner from './components/AttendanceQrScanner';
+import {
+    ParticipantRegistrationAttendanceModule,
+    QualifiedTrainerDetail,
+} from './components/ParticipantAttendanceModule';
+import {
+    HazardAssessmentList,
+    HazardAssessmentDetail,
+    HazardAssessmentForm,
+    HazardAssessmentIntelligencePanel,
+} from './components/HazardAssessmentModule';
 import {
     trainingModulesIndex,
     trainingModuleShow,
@@ -40,6 +51,7 @@ import {
     participantsIndex,
     scenariosIndex,
     barangayProfileIndex,
+    hazardAssessmentProfileIndex,
     settingsAutoApproval,
     adminCertificationApi,
 } from './utils/portalRoutes';
@@ -51,8 +63,14 @@ import {
     AdminSecondaryButton,
     AdminSearchInput,
     AdminViewToggle,
+    AdminContentCard,
     adminSelectClass,
 } from './components/admin/AdminLayout';
+import {
+    AdminDataTable,
+    AdminStatusBadge,
+    AdminTableActionButton,
+} from './components/admin/AdminDataTable';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
@@ -92,6 +110,7 @@ import {
     GraduationCap,
     TrendingUp,
     AlertTriangle,
+    MapPin,
     BarChart3,
     Calendar,
     Target,
@@ -190,7 +209,7 @@ function useFloatingDropdown(isOpen, placement = 'bottom-start') {
     return { referenceRef, floatingRef, floatingStyles };
 }
 
-// Pagination Component – modern redesign
+// Pagination Component â€“ modern redesign
 function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems }) {
     const maxVisiblePages = typeof window !== 'undefined' && window.innerWidth >= 768 ? 7 : 5;
     const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
@@ -216,7 +235,7 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="text-sm text-slate-600 order-2 sm:order-1">
                 <span className="font-medium text-slate-800">{startItem}</span>
-                <span className="mx-1">–</span>
+                <span className="mx-1">â€“</span>
                 <span className="font-medium text-slate-800">{endItem}</span>
                 <span className="mx-1 text-slate-400">of</span>
                 <span className="font-semibold text-slate-800">{totalItems}</span>
@@ -243,7 +262,7 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
                                 1
                             </button>
                             {startPage > 2 && (
-                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">…</span>
+                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">â€¦</span>
                             )}
                         </>
                     )}
@@ -260,7 +279,7 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
                     {endPage < totalPages && (
                         <>
                             {endPage < totalPages - 1 && (
-                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">…</span>
+                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">â€¦</span>
                             )}
                             <button
                                 type="button"
@@ -294,6 +313,8 @@ if (rootElement) {
     const modulesJson = rootElement.getAttribute('data-modules');
     const modulesPaginationJson = rootElement.getAttribute('data-modules-pagination');
     const scenariosJson = rootElement.getAttribute('data-scenarios');
+    const trainingModulesJson = rootElement.getAttribute('data-training-modules');
+    const trainersJson = rootElement.getAttribute('data-trainers');
     const moduleJson = rootElement.getAttribute('data-module');
     const scenarioJson = rootElement.getAttribute('data-scenario');
     const eventsJson = rootElement.getAttribute('data-events');
@@ -301,6 +322,10 @@ if (rootElement) {
     const participantsJson = rootElement.getAttribute('data-participants');
     const participantsPaginationJson = rootElement.getAttribute('data-participants-pagination');
     const participantsSummaryJson = rootElement.getAttribute('data-participants-summary');
+    const qualifiedTrainersJson = rootElement.getAttribute('data-qualified-trainers');
+    const qualifiedTrainersPaginationJson = rootElement.getAttribute('data-qualified-trainers-pagination');
+    const qualifiedTrainersSummaryJson = rootElement.getAttribute('data-qualified-trainers-summary');
+    const qualifiedTrainerJson = rootElement.getAttribute('data-qualified-trainer');
     const participantJson = rootElement.getAttribute('data-participant');
     const registrationsJson = rootElement.getAttribute('data-registrations');
     const usersJson = rootElement.getAttribute('data-users');
@@ -312,6 +337,8 @@ if (rootElement) {
     let modules = [];
     let modulesPagination = null;
     let scenarios = [];
+    let trainingModules = [];
+    let trainers = [];
     let currentModule = null;
     let currentScenario = null;
     let events = [];
@@ -319,6 +346,10 @@ if (rootElement) {
     let participants = [];
     let participantsPagination = null;
     let participantsSummary = null;
+    let qualifiedTrainers = [];
+    let qualifiedTrainersPagination = null;
+    let qualifiedTrainersSummary = null;
+    let currentQualifiedTrainer = null;
     let users = [];
     let currentParticipant = null;
     let registrations = [];
@@ -356,6 +387,20 @@ if (rootElement) {
             scenarios = JSON.parse(scenariosJson);
         } catch (e) {
             console.error('Failed to parse scenarios JSON', e);
+        }
+    }
+    if (trainingModulesJson) {
+        try {
+            trainingModules = JSON.parse(trainingModulesJson);
+        } catch (e) {
+            console.error('Failed to parse training modules JSON', e);
+        }
+    }
+    if (trainersJson) {
+        try {
+            trainers = JSON.parse(trainersJson);
+        } catch (e) {
+            console.error('Failed to parse trainers JSON', e);
         }
     }
     if (eventsJson) {
@@ -397,6 +442,34 @@ if (rootElement) {
             console.error('Failed to parse participants summary JSON', e);
         }
     }
+    if (qualifiedTrainersJson) {
+        try {
+            qualifiedTrainers = JSON.parse(qualifiedTrainersJson);
+        } catch (e) {
+            console.error('Failed to parse qualified trainers JSON', e);
+        }
+    }
+    if (qualifiedTrainersPaginationJson) {
+        try {
+            qualifiedTrainersPagination = JSON.parse(qualifiedTrainersPaginationJson);
+        } catch (e) {
+            console.error('Failed to parse qualified trainers pagination JSON', e);
+        }
+    }
+    if (qualifiedTrainersSummaryJson) {
+        try {
+            qualifiedTrainersSummary = JSON.parse(qualifiedTrainersSummaryJson);
+        } catch (e) {
+            console.error('Failed to parse qualified trainers summary JSON', e);
+        }
+    }
+    if (qualifiedTrainerJson) {
+        try {
+            currentQualifiedTrainer = JSON.parse(qualifiedTrainerJson);
+        } catch (e) {
+            console.error('Failed to parse qualified trainer JSON', e);
+        }
+    }
     let dashboardStats = null;
     const dashboardStatsJson = rootElement.getAttribute('data-dashboard-stats');
     if (dashboardStatsJson) {
@@ -413,6 +486,15 @@ if (rootElement) {
             dashboardCharts = JSON.parse(dashboardChartsJson);
         } catch (e) {
             console.error('Failed to parse dashboard charts JSON', e);
+        }
+    }
+    let hazardAnalytics = null;
+    const hazardAnalyticsJson = rootElement.getAttribute('data-hazard-analytics');
+    if (hazardAnalyticsJson) {
+        try {
+            hazardAnalytics = JSON.parse(hazardAnalyticsJson);
+        } catch (e) {
+            console.error('Failed to parse hazard analytics JSON', e);
         }
     }
     if (participantJson) {
@@ -544,6 +626,9 @@ if (rootElement) {
     const participantEvaluationJson = rootElement.getAttribute('data-participant-evaluation');
     const barangayProfileJson = rootElement.getAttribute('data-barangay-profile');
     const barangayProfilesJson = rootElement.getAttribute('data-barangay-profiles');
+    const hazardAssessmentSummaryJson = rootElement.getAttribute('data-hazard-assessment-summary');
+    const hazardAssessmentOptionsJson = rootElement.getAttribute('data-hazard-assessment-options');
+    const hazardIntelligenceJson = rootElement.getAttribute('data-hazard-intelligence');
     const aiScenarioModulesJson = rootElement.getAttribute('data-ai-scenario-modules');
     const aiScenarioConfigsJson = rootElement.getAttribute('data-ai-scenario-configs');
     const aiScenarioAttemptJson = rootElement.getAttribute('data-ai-scenario-attempt');
@@ -681,6 +766,9 @@ if (rootElement) {
 
     let barangayProfile = null;
     let barangayProfiles = [];
+    let hazardAssessmentSummary = null;
+    let hazardAssessmentOptions = {};
+    let hazardIntelligence = null;
     let aiScenarioModules = [];
     let aiScenarioConfigs = [];
     let aiScenarioAttempt = null;
@@ -704,6 +792,27 @@ if (rootElement) {
             barangayProfiles = JSON.parse(barangayProfilesJson);
         } catch (e) {
             console.error('Failed to parse barangay profiles JSON', e);
+        }
+    }
+    if (hazardAssessmentSummaryJson) {
+        try {
+            hazardAssessmentSummary = JSON.parse(hazardAssessmentSummaryJson);
+        } catch (e) {
+            console.error('Failed to parse hazard assessment summary JSON', e);
+        }
+    }
+    if (hazardAssessmentOptionsJson) {
+        try {
+            hazardAssessmentOptions = JSON.parse(hazardAssessmentOptionsJson);
+        } catch (e) {
+            console.error('Failed to parse hazard assessment options JSON', e);
+        }
+    }
+    if (hazardIntelligenceJson) {
+        try {
+            hazardIntelligence = JSON.parse(hazardIntelligenceJson);
+        } catch (e) {
+            console.error('Failed to parse hazard intelligence JSON', e);
         }
     }
     if (aiScenarioModulesJson) {
@@ -835,7 +944,7 @@ if (rootElement) {
         },
         participants: {
             title: 'Participant Registration & Attendance',
-            description: 'Register participants, manage attendance, and view participation history.',
+            description: 'Manage participants, trainer directory, registrations, and attendance.',
         },
         resources: {
             title: 'Resource & Equipment Inventory',
@@ -852,6 +961,14 @@ if (rootElement) {
         audit_logs: {
             title: 'Audit Logs',
             description: 'Review system activity, security events, and administrative actions across the platform.',
+        },
+        hazard_assessment_profile: {
+            title: 'Hazard Assessment Profile',
+            description: 'Official hazard assessment data powering training recommendations, AI scenarios, and simulation planning.',
+        },
+        barangay_profile: {
+            title: 'Hazard Assessment Profile',
+            description: 'Official hazard assessment data powering training recommendations, AI scenarios, and simulation planning.',
         },
     };
 
@@ -870,7 +987,8 @@ if (rootElement) {
                                         sectionAttr.startsWith('certification_participant') ? 'certification' :
                                             sectionAttr.startsWith('resources') ? 'resources' :
                                                 sectionAttr.startsWith('evaluation') ? 'evaluation' :
-                                                    sectionAttr.startsWith('barangay_profile') ? 'barangay_profile' :
+                                                    sectionAttr.startsWith('hazard_assessment_profile') ? 'hazard_assessment_profile' :
+                                                    sectionAttr.startsWith('barangay_profile') ? 'hazard_assessment_profile' :
                                                         sectionAttr.startsWith('after_action_review') ? 'after_action_review' :
                                                             sectionAttr === 'drill_history_reports' ? 'simulation' :
                                                                 sectionAttr === 'audit_logs' ? 'audit_logs' :
@@ -983,6 +1101,12 @@ if (rootElement) {
                 { label: currentParticipant?.name || 'Details', href: null }
             ];
         }
+        if (sectionAttr === 'qualified_trainer_detail') {
+            return [
+                { label: 'Trainer List', href: '/admin/participants?tab=trainers' },
+                { label: currentQualifiedTrainer?.name || 'Details', href: null }
+            ];
+        }
         if (sectionAttr === 'my_attendance') {
             return [
                 { label: 'My Attendance', href: '/participant/my-attendance' },
@@ -1051,24 +1175,24 @@ if (rootElement) {
             return [];
         }
 
-        if (sectionAttr === 'barangay_profile') {
+        if (sectionAttr === 'hazard_assessment_profile' || sectionAttr === 'barangay_profile') {
             return [];
         }
-        if (sectionAttr === 'barangay_profile_create') {
+        if (sectionAttr === 'hazard_assessment_profile_create' || sectionAttr === 'barangay_profile_create') {
             return [
-                { label: 'Barangay Profile', href: '/admin/barangay-profile' },
+                { label: 'Hazard Assessment Profile', href: '/admin/hazard-assessment-profiles' },
                 { label: 'Create', href: null },
             ];
         }
-        if (sectionAttr === 'barangay_profile_show') {
+        if (sectionAttr === 'hazard_assessment_profile_show' || sectionAttr === 'barangay_profile_show') {
             return [
-                { label: 'Barangay Profile', href: '/admin/barangay-profile' },
+                { label: 'Hazard Assessment Profile', href: '/admin/hazard-assessment-profiles' },
                 { label: barangayProfile?.barangay_name || 'View', href: null },
             ];
         }
-        if (sectionAttr === 'barangay_profile_edit') {
+        if (sectionAttr === 'hazard_assessment_profile_edit' || sectionAttr === 'barangay_profile_edit') {
             return [
-                { label: 'Barangay Profile', href: '/admin/barangay-profile' },
+                { label: 'Hazard Assessment Profile', href: '/admin/hazard-assessment-profiles' },
                 { label: 'Edit', href: null },
             ];
         }
@@ -1142,6 +1266,7 @@ if (rootElement) {
             'evaluation_dashboard',
             'evaluation_results_participant',
             'certification',
+            'hazard_assessment_profile',
             'barangay_profile',
             'admin_users_index',
             'audit_logs',
@@ -1173,13 +1298,16 @@ if (rootElement) {
         }
 
         if (
+            sectionAttr === 'hazard_assessment_profile_create' ||
+            sectionAttr === 'hazard_assessment_profile_show' ||
+            sectionAttr === 'hazard_assessment_profile_edit' ||
             sectionAttr === 'barangay_profile_create' ||
             sectionAttr === 'barangay_profile_show' ||
             sectionAttr === 'barangay_profile_edit'
         ) {
-            if (sectionAttr === 'barangay_profile_create') return 'Create Barangay Profile';
-            if (sectionAttr === 'barangay_profile_edit') return 'Edit Barangay Profile';
-            return barangayProfile?.barangay_name || 'Barangay Profile';
+            if (sectionAttr.endsWith('_create')) return 'Create Hazard Assessment Profile';
+            if (sectionAttr.endsWith('_edit')) return 'Edit Hazard Assessment Profile';
+            return barangayProfile?.barangay_name || 'Hazard Assessment Profile';
         }
 
         if (sectionAttr === 'profile') {
@@ -1242,6 +1370,7 @@ if (rootElement) {
                                 role={role}
                                 dashboardStats={dashboardStats}
                                 dashboardCharts={dashboardCharts}
+                                hazardAnalytics={hazardAnalytics}
                             />
                         )}
 
@@ -1290,7 +1419,7 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'scenario_create' && (
-                            <ScenarioCreateForm modules={modules} />
+                            <ScenarioCreateForm modules={modules} barangayProfiles={barangayProfiles} />
                         )}
 
                         {sectionAttr === 'scenario_edit' && currentScenario && (
@@ -1316,11 +1445,11 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'simulation_create' && (
-                            <SimulationEventCreateForm scenarios={scenarios} />
+                            <SimulationEventCreateForm scenarios={scenarios} trainingModules={trainingModules} trainers={trainers} barangayProfiles={barangayProfiles} />
                         )}
 
                         {sectionAttr === 'simulation_edit' && currentEvent && (
-                            <SimulationEventEditForm event={currentEvent} scenarios={scenarios} />
+                            <SimulationEventEditForm event={currentEvent} scenarios={scenarios} trainingModules={trainingModules} trainers={trainers} barangayProfiles={barangayProfiles} />
                         )}
 
                         {sectionAttr === 'simulation_detail' && currentEvent && (
@@ -1333,8 +1462,16 @@ if (rootElement) {
                                 participants={participants}
                                 participantsPagination={participantsPagination}
                                 participantsSummary={participantsSummary}
-                                role={role}
+                                qualifiedTrainers={qualifiedTrainers}
+                                qualifiedTrainersPagination={qualifiedTrainersPagination}
+                                qualifiedTrainersSummary={qualifiedTrainersSummary}
+                                RegistrationEventsTable={RegistrationEventsTable}
+                                AttendanceEventsTable={AttendanceEventsTable}
                             />
+                        )}
+
+                        {sectionAttr === 'qualified_trainer_detail' && currentQualifiedTrainer && (
+                            <QualifiedTrainerDetail trainer={currentQualifiedTrainer} />
                         )}
 
                         {sectionAttr === 'my_attendance' && currentParticipant && (
@@ -1471,7 +1608,7 @@ if (rootElement) {
                                                 <div>
                                                     <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="barangay_id">Barangay Assignment</label>
                                                     <select id="barangay_id" name="barangay_id" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
-                                                        <option value="">— None —</option>
+                                                        <option value="">â€” None â€”</option>
                                                         {(barangayProfiles || []).map((bp) => (
                                                             <option key={bp.id} value={bp.id}>{bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})</option>
                                                         ))}
@@ -1570,7 +1707,7 @@ if (rootElement) {
                                                 <div>
                                                     <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_barangay_id">Barangay Assignment</label>
                                                     <select id="edit_barangay_id" name="barangay_id" defaultValue={currentUserData.barangay_id ?? ''} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
-                                                        <option value="">— None —</option>
+                                                        <option value="">â€” None â€”</option>
                                                         {(barangayProfiles || []).map((bp) => (
                                                             <option key={bp.id} value={bp.id}>{bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})</option>
                                                         ))}
@@ -1693,17 +1830,21 @@ if (rootElement) {
                             />
                         )}
 
-                        {sectionAttr === 'barangay_profile' && (
-                            <BarangayProfileList profiles={barangayProfiles} />
+                        {(sectionAttr === 'hazard_assessment_profile' || sectionAttr === 'barangay_profile') && (
+                            <HazardAssessmentList
+                                profiles={barangayProfiles}
+                                summary={hazardAssessmentSummary}
+                                options={hazardAssessmentOptions}
+                            />
                         )}
-                        {sectionAttr === 'barangay_profile_create' && (
-                            <BarangayProfileForm profile={null} />
+                        {(sectionAttr === 'hazard_assessment_profile_create' || sectionAttr === 'barangay_profile_create') && (
+                            <HazardAssessmentForm profile={null} options={hazardAssessmentOptions} />
                         )}
-                        {sectionAttr === 'barangay_profile_show' && barangayProfile && (
-                            <BarangayProfileDetail profile={barangayProfile} />
+                        {(sectionAttr === 'hazard_assessment_profile_show' || sectionAttr === 'barangay_profile_show') && barangayProfile && (
+                            <HazardAssessmentDetail profile={barangayProfile} intelligence={hazardIntelligence} />
                         )}
-                        {sectionAttr === 'barangay_profile_edit' && barangayProfile && (
-                            <BarangayProfileForm profile={barangayProfile} />
+                        {(sectionAttr === 'hazard_assessment_profile_edit' || sectionAttr === 'barangay_profile_edit') && barangayProfile && (
+                            <HazardAssessmentForm profile={barangayProfile} options={hazardAssessmentOptions} />
                         )}
                     </div>
                 </SidebarLayout>
@@ -1718,9 +1859,10 @@ if (rootElement) {
     );
 }
 
-function DashboardOverview({ modules, events, participants, role, dashboardStats, dashboardCharts }) {
+function DashboardOverview({ modules, events, participants, role, dashboardStats, dashboardCharts, hazardAnalytics = null }) {
     const stats = dashboardStats || {};
     const charts = dashboardCharts || {};
+    const hazard = hazardAnalytics || {};
     const activeEvents = stats.active_events ?? 0;
     const upcomingEvents = stats.upcoming_events ?? 0;
     const totalParticipants = stats.total_participants ?? (participants?.length || 0);
@@ -1775,10 +1917,10 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
 
     // Insights: most active module (first published by title), improvement placeholder
     const publishedModules = (modules || []).filter((m) => m.status === 'published');
-    const mostActiveModule = publishedModules.length ? publishedModules[0]?.title : '—';
+    const mostActiveModule = publishedModules.length ? publishedModules[0]?.title : 'â€”';
     const topScenario = (events || []).filter((e) => e.status === 'completed' && e.scenario).length
-        ? (events.find((e) => e.status === 'completed' && e.scenario)?.scenario?.title || '—')
-        : '—';
+        ? (events.find((e) => e.status === 'completed' && e.scenario)?.scenario?.title || 'â€”')
+        : 'â€”';
 
     const KpiCard = ({ title, value, href, Icon, trend }) => {
         const content = (
@@ -1915,7 +2057,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                             const percent = total > 0 ? Math.round((value / total) * 100) : 0;
 
                             return {
-                                text: `${label} — ${value} (${percent}%)`,
+                                text: `${label} â€” ${value} (${percent}%)`,
                                 fillStyle: Array.isArray(dataset.backgroundColor)
                                     ? dataset.backgroundColor[index] || primaryGreen
                                     : dataset.backgroundColor || primaryGreen,
@@ -1983,7 +2125,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
 
     return (
         <div className="space-y-8 pb-8">
-            {/* Header — larger, more spacing */}
+            {/* Header â€” larger, more spacing */}
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-emerald-100 rounded-2xl shadow-md">
                     <LayoutDashboard className="w-8 h-8 text-emerald-600" />
@@ -1994,7 +2136,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 1 — Operational KPIs */}
+            {/* Row 1 â€” Operational KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <KpiCard title="Active Events" value={activeEvents} href={simulationEventsIndex(role)} Icon={Play} trend={activeEvents > 0 ? 'Live' : null} />
                 <KpiCard title="Upcoming" value={upcomingEvents} href={simulationEventsIndex(role)} Icon={CalendarClock} />
@@ -2002,7 +2144,51 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 <KpiCard title="Certificates" value={certificatesCount} href={role !== 'PARTICIPANT' ? certificationIndex(role) : null} Icon={Award} />
             </div>
 
-            {/* Row 2 — Top analytics: disaster distribution + evaluation status */}
+            {role !== 'PARTICIPANT' && hazard.total_barangays != null && (
+                <>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-slate-900">Hazard Assessment Analytics</h2>
+                        <a href="/admin/hazard-assessment-profiles" className="text-sm text-emerald-700 hover:text-emerald-800 font-medium">View profiles →</a>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <KpiCard title="Total Barangays" value={hazard.total_barangays ?? 0} href="/admin/hazard-assessment-profiles" Icon={MapPin} />
+                        <KpiCard title="Flood Prone" value={hazard.flood_prone ?? 0} Icon={AlertTriangle} />
+                        <KpiCard title="Fire Prone" value={hazard.fire_prone ?? 0} Icon={AlertTriangle} />
+                        <KpiCard title="Earthquake Prone" value={hazard.earthquake_prone ?? 0} Icon={AlertTriangle} />
+                        <KpiCard title="High Risk" value={hazard.high_risk_barangays ?? 0} Icon={AlertTriangle} />
+                        <KpiCard title="Avg Risk Score" value={hazard.average_risk_score != null ? `${hazard.average_risk_score}%` : '—'} Icon={BarChart3} />
+                    </div>
+                    {(hazard.hazard_distribution && Object.keys(hazard.hazard_distribution).length > 0) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                                <h3 className="text-sm font-bold text-slate-900 mb-3">Hazard Distribution</h3>
+                                <ul className="space-y-2 text-sm">
+                                    {Object.entries(hazard.hazard_distribution).map(([type, count]) => (
+                                        <li key={type} className="flex justify-between">
+                                            <span className="text-slate-700">{type}</span>
+                                            <span className="font-semibold text-slate-900">{count}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            {hazard.agency_distribution && Object.keys(hazard.agency_distribution).length > 0 && (
+                                <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
+                                    <h3 className="text-sm font-bold text-slate-900 mb-3">Source Agency Distribution</h3>
+                                    <ul className="space-y-2 text-sm">
+                                        {Object.entries(hazard.agency_distribution).map(([agency, count]) => (
+                                            <li key={agency} className="flex justify-between">
+                                                <span className="text-slate-700">{agency}</span>
+                                                <span className="font-semibold text-slate-900">{count}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </>
+            )}
+
             {role !== 'PARTICIPANT' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md flex flex-col">
@@ -2040,7 +2226,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             )}
 
-            {/* Row 3 — Requires Attention */}
+            {/* Row 3 â€” Requires Attention */}
             {(eventsStartingToday > 0 || pendingEvaluations > 0 || pendingCertificates > 0 || (role !== 'PARTICIPANT')) && (
                 <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/60 to-white p-6 shadow-md">
                     <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
@@ -2070,13 +2256,13 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                             </li>
                         )}
                         {eventsStartingToday === 0 && pendingEvaluations === 0 && pendingCertificates === 0 && role !== 'PARTICIPANT' && (
-                            <li className="text-sm text-slate-500">No pending items. You’re all set.</li>
+                            <li className="text-sm text-slate-500">No pending items. Youâ€™re all set.</li>
                         )}
                     </ul>
                 </div>
             )}
 
-            {/* Row 4 — Drills per month (bar chart) */}
+            {/* Row 4 â€” Drills per month (bar chart) */}
             {role !== 'PARTICIPANT' && (
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                     <div className="flex items-center justify-between mb-4">
@@ -2096,7 +2282,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             )}
 
-            {/* Row 5 — Performance trend (line chart) + numeric overview (LGU admin only) */}
+            {/* Row 5 â€” Performance trend (line chart) + numeric overview (LGU admin only) */}
             {role !== 'PARTICIPANT' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
@@ -2123,15 +2309,15 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                         <ul className="space-y-3 text-sm">
                             <li className="flex justify-between">
                                 <span className="text-slate-600">Average Score</span>
-                                <span className="font-semibold text-slate-900">{stats.average_score != null ? `${stats.average_score}%` : '—'}</span>
+                                <span className="font-semibold text-slate-900">{stats.average_score != null ? `${stats.average_score}%` : 'â€”'}</span>
                             </li>
                             <li className="flex justify-between">
                                 <span className="text-slate-600">Pass Rate</span>
-                                <span className="font-semibold text-slate-900">{stats.pass_rate != null ? `${stats.pass_rate}%` : '—'}</span>
+                                <span className="font-semibold text-slate-900">{stats.pass_rate != null ? `${stats.pass_rate}%` : 'â€”'}</span>
                             </li>
                             <li className="flex justify-between">
                                 <span className="text-slate-600">Attendance Rate</span>
-                                <span className="font-semibold text-slate-900">{stats.attendance_rate != null ? `${stats.attendance_rate}%` : '—'}</span>
+                                <span className="font-semibold text-slate-900">{stats.attendance_rate != null ? `${stats.attendance_rate}%` : 'â€”'}</span>
                             </li>
                         </ul>
                         <p className="text-xs text-slate-400 mt-3">View details on Evaluations page</p>
@@ -2139,7 +2325,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             )}
 
-            {/* Row 6 — Activity + Upcoming events (visual overview) */}
+            {/* Row 6 â€” Activity + Upcoming events (visual overview) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                     <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
@@ -2152,7 +2338,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                                 recentActivity.map((item, i) => (
                                     <li key={i}>
                                         <a href={item.link || '#'} className="text-sm text-slate-700 hover:text-emerald-600 flex items-center gap-2">
-                                            <span className="text-slate-400">•</span>
+                                            <span className="text-slate-400">â€¢</span>
                                             {item.label}
                                         </a>
                                     </li>
@@ -2185,7 +2371,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 7 — Quick Actions 2x3 icon grid */}
+            {/* Row 7 â€” Quick Actions 2x3 icon grid */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                 <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -2220,11 +2406,11 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 5 — Upcoming Events Calendar */}
+            {/* Row 5 â€” Upcoming Events Calendar */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                 <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
                     <Calendar className="w-5 h-5 text-slate-500" />
-                    Upcoming Events — {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                    Upcoming Events â€” {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500">
@@ -2255,7 +2441,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 6 — System Insights */}
+            {/* Row 6 â€” System Insights */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                 <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
                     <Zap className="w-5 h-5 text-amber-500" />
@@ -2402,7 +2588,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     };
 
     const formatCreatedDate = (dateString) => {
-        if (!dateString) return '—';
+        if (!dateString) return 'â€”';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
     const formatUpdatedDate = (dateString) => {
@@ -2522,7 +2708,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                     <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                         {(modules || []).length === 0 ? (
                             <>
-                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">📦</div>
+                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">ðŸ“¦</div>
                                 <h3 className="text-xl font-semibold text-slate-800 mb-2">No training modules yet.</h3>
                                 <p className="text-slate-600 max-w-sm mb-6">
                                     Create your first disaster simulation module to begin.
@@ -2537,7 +2723,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                             </>
                         ) : (
                             <>
-                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">🔍</div>
+                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">ðŸ”</div>
                                 <h3 className="text-lg font-semibold text-slate-800 mb-1">No modules match your filters.</h3>
                                 <p className="text-slate-600 text-sm mb-4">Try adjusting search or filter criteria.</p>
                                 <button
@@ -2565,13 +2751,13 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <h3 className="font-semibold text-slate-900 truncate">{module.title || 'Untitled Module'}</h3>
-                                    <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
-                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(module.created_at)}{formatUpdatedDate(module.updated_at) ? ` • Updated: ${formatUpdatedDate(module.updated_at)}` : ''}</p>
+                                    <p className="text-sm text-slate-500 mt-0.5">{module.category ?? 'â€”'} â€¢ {module.difficulty ?? 'â€”'}</p>
+                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(module.created_at)}{formatUpdatedDate(module.updated_at) ? ` â€¢ Updated: ${formatUpdatedDate(module.updated_at)}` : ''}</p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
-                                        {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
+                                        {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : 'â€”'}
                                     </span>
                                     <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
                                         <button
@@ -2610,17 +2796,17 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                         <h3 className="font-semibold text-slate-900 truncate" title={module.title}>
                                             {module.title || 'Untitled Module'}
                                         </h3>
-                                        <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
+                                        <p className="text-sm text-slate-500 mt-0.5">{module.category ?? 'â€”'} â€¢ {module.difficulty ?? 'â€”'}</p>
                                     </div>
                                 </div>
                                 <p className="text-xs text-slate-400 mb-2">
                                     Created: {formatCreatedDate(module.created_at)}
-                                    {formatUpdatedDate(module.updated_at) && ` • Updated: ${formatUpdatedDate(module.updated_at)}`}
+                                    {formatUpdatedDate(module.updated_at) && ` â€¢ Updated: ${formatUpdatedDate(module.updated_at)}`}
                                 </p>
                                 <div className="flex items-center justify-between gap-2 mb-3">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
-                                        Status: {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
+                                        Status: {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : 'â€”'}
                                     </span>
                                 </div>
                                 <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
@@ -2807,7 +2993,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         totalItems={effectivePagination?.total ?? filteredModules.length}
                     />
                     {isPageLoading && (
-                        <p className="mt-2 text-xs text-slate-500">Loading modules…</p>
+                        <p className="mt-2 text-xs text-slate-500">Loading modulesâ€¦</p>
                     )}
                 </div>
             )}
@@ -2888,7 +3074,7 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
                             )}
                             <div className="mt-auto flex items-center justify-between text-[0.7rem] text-slate-500 pt-1">
                                 <span>
-                                    Difficulty: {module.difficulty || '—'}
+                                    Difficulty: {module.difficulty || 'â€”'}
                                 </span>
                                 {module.category && (
                                     <span>
@@ -2910,7 +3096,7 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
                         totalItems={effectivePagination.total ?? publishedModules.length}
                     />
                     {isPageLoading && (
-                        <p className="mt-2 text-xs text-slate-500">Loading modules…</p>
+                        <p className="mt-2 text-xs text-slate-500">Loading modulesâ€¦</p>
                     )}
                 </div>
             )}
@@ -3212,7 +3398,7 @@ function ParticipantTrainingLessonView({ module }) {
                     href="/participant/training-modules"
                     className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900"
                 >
-                    ← Back to Training Modules
+                    â† Back to Training Modules
                 </a>
                 <div className="text-[0.7rem] text-slate-500">
                     <a
@@ -3244,7 +3430,7 @@ function ParticipantTrainingLessonView({ module }) {
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-[0.7rem] text-slate-600">
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                            Difficulty: {module.difficulty || '—'}
+                            Difficulty: {module.difficulty || 'â€”'}
                         </span>
                         {module.category && (
                             <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
@@ -3631,10 +3817,14 @@ function TrainingModuleCreateForm({ barangayProfile }) {
     const inputClass = 'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200';
     const labelClass = 'block text-xs font-semibold text-slate-600 mb-1.5';
 
-    const hazards = barangayProfile?.hazards && Array.isArray(barangayProfile.hazards) ? barangayProfile.hazards : [];
+    const hazards = (barangayProfile?.hazard_records || barangayProfile?.hazardRecords || [])
+        .map((h) => h.hazard_type)
+        .filter(Boolean);
+    const legacyHazards = barangayProfile?.hazards && Array.isArray(barangayProfile.hazards) ? barangayProfile.hazards : [];
+    const hazardTypes = hazards.length > 0 ? hazards : legacyHazards;
     const templateCategories = ['Earthquake', 'Fire', 'Flood'];
-    const categoryOptions = hazards.length > 0
-        ? [...new Set([...hazards, ...templateCategories])].sort()
+    const categoryOptions = hazardTypes.length > 0
+        ? [...new Set([...hazardTypes, ...templateCategories])].sort()
         : [];
     const useCategorySelect = categoryOptions.length > 0;
 
@@ -3685,7 +3875,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                                     disabled={isAiGenerating || !title.trim()}
                                     className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    {isAiGenerating ? 'Generating…' : 'Generate with AI'}
+                                    {isAiGenerating ? 'Generatingâ€¦' : 'Generate with AI'}
                                 </button>
                             </div>
                             <input
@@ -3886,19 +4076,19 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                         </div>
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
                                 <span>Keep title clear and scenario-based</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
-                                <span>Limit description to 3–5 sentences</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
+                                <span>Limit description to 3â€“5 sentences</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
                                 <span>Objectives should be measurable</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
                                 <span>Match difficulty to target participants</span>
                             </li>
                         </ul>
@@ -4283,7 +4473,7 @@ function TrainingModuleEditForm({ module }) {
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    •
+                                    â€¢
                                 </span>
                                 <span>
                                     Keep title clear and scenario-based
@@ -4291,21 +4481,21 @@ function TrainingModuleEditForm({ module }) {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    •
+                                    â€¢
                                 </span>
                                 <span>
-                                    Limit description to 3–5 sentences
+                                    Limit description to 3â€“5 sentences
                                 </span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    •
+                                    â€¢
                                 </span>
                                 <span>Objectives should be measurable</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    •
+                                    â€¢
                                 </span>
                                 <span>
                                     Match difficulty to target participants
@@ -4419,7 +4609,7 @@ function ScenariosTable({ scenarios = [], role }) {
     }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
 
     const formatCreatedDate = (dateString) => {
-        if (!dateString) return '—';
+        if (!dateString) return 'â€”';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
     const formatUpdatedDate = (dateString) => {
@@ -4531,7 +4721,7 @@ function ScenariosTable({ scenarios = [], role }) {
                     <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                         {(scenarios || []).length === 0 ? (
                             <>
-                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">🎯</div>
+                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">ðŸŽ¯</div>
                                 <h3 className="text-xl font-semibold text-slate-800 mb-2">No scenarios yet.</h3>
                                 <p className="text-slate-600 max-w-sm mb-6">
                                     Create your first scenario-based exercise to run simulations.
@@ -4546,7 +4736,7 @@ function ScenariosTable({ scenarios = [], role }) {
                             </>
                         ) : (
                             <>
-                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">🔍</div>
+                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">ðŸ”</div>
                                 <h3 className="text-lg font-semibold text-slate-800 mb-1">No scenarios match your filters.</h3>
                                 <p className="text-slate-600 text-sm mb-4">Try adjusting search or filter criteria.</p>
                                 <button
@@ -4570,13 +4760,13 @@ function ScenariosTable({ scenarios = [], role }) {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <h3 className="font-semibold text-slate-900 truncate">{s.title || 'Untitled Scenario'}</h3>
-                                    <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? '—'} • {s.difficulty ?? '—'}</p>
-                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) ? ` • Updated: ${formatUpdatedDate(s.updated_at)}` : ''}</p>
+                                    <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? 'â€”'} â€¢ {s.difficulty ?? 'â€”'}</p>
+                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) ? ` â€¢ Updated: ${formatUpdatedDate(s.updated_at)}` : ''}</p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${scenarioStatusStyle(s.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${scenarioStatusDotStyle(s.status)}`} />
-                                        {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
+                                        {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'â€”'}
                                     </span>
                                     <div className="relative" ref={openManageId === s.id ? manageMenuRef : null}>
                                         <button
@@ -4602,14 +4792,14 @@ function ScenariosTable({ scenarios = [], role }) {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <h3 className="font-semibold text-slate-900 truncate" title={s.title}>{s.title || 'Untitled Scenario'}</h3>
-                                        <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? '—'} • {s.difficulty ?? '—'}</p>
+                                        <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? 'â€”'} â€¢ {s.difficulty ?? 'â€”'}</p>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-400 mb-2">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) && ` • Updated: ${formatUpdatedDate(s.updated_at)}`}</p>
+                                <p className="text-xs text-slate-400 mb-2">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) && ` â€¢ Updated: ${formatUpdatedDate(s.updated_at)}`}</p>
                                 <div className="flex items-center justify-between gap-2 mb-3">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${scenarioStatusStyle(s.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${scenarioStatusDotStyle(s.status)}`} />
-                                        Status: {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
+                                        Status: {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'â€”'}
                                     </span>
                                 </div>
                                 <div className="relative" ref={openManageId === s.id ? manageMenuRef : null}>
@@ -4777,7 +4967,7 @@ function ScenariosTable({ scenarios = [], role }) {
 const SCENARIO_QUICK_TEMPLATES = [
     {
         name: 'Earthquake Response Drill',
-        title: 'Magnitude 6.5 Earthquake – Downtown Response',
+        title: 'Magnitude 6.5 Earthquake â€“ Downtown Response',
         short_description: 'A strong earthquake has struck the downtown area during business hours. Multiple buildings have sustained damage, power is out in several blocks, and there are reports of trapped persons.',
         difficulty: 'Basic',
         affected_area: 'Barangay Central',
@@ -4789,7 +4979,7 @@ const SCENARIO_QUICK_TEMPLATES = [
     },
     {
         name: 'Fire Evacuation Scenario',
-        title: 'Commercial Building Fire – Evacuation Drill',
+        title: 'Commercial Building Fire â€“ Evacuation Drill',
         short_description: 'Fire reported on the second floor of a three-story commercial building. Smoke spreading. Evacuation and assembly point management required.',
         difficulty: 'Basic',
         affected_area: 'Multi-tenant building',
@@ -4801,7 +4991,7 @@ const SCENARIO_QUICK_TEMPLATES = [
     },
     {
         name: 'Flood Response Simulation',
-        title: 'Flash Flood – Low-Lying Barangay',
+        title: 'Flash Flood â€“ Low-Lying Barangay',
         short_description: 'Heavy rainfall has caused flash flooding in low-lying areas. Some residents need evacuation; roads are impassable.',
         difficulty: 'Intermediate',
         affected_area: 'Barangay Riverside',
@@ -4813,10 +5003,11 @@ const SCENARIO_QUICK_TEMPLATES = [
     },
 ];
 
-function ScenarioCreateForm({ modules }) {
+function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [selectedModuleId, setSelectedModuleId] = React.useState('');
+    const [selectedBarangayProfileId, setSelectedBarangayProfileId] = React.useState('');
     const [showAiChat, setShowAiChat] = React.useState(false);
     const [aiPrompt, setAiPrompt] = React.useState('');
     const [aiGenerating, setAiGenerating] = React.useState(false);
@@ -4894,6 +5085,9 @@ function ScenarioCreateForm({ modules }) {
             formData.append('prompt', aiPrompt);
             formData.append('disaster_type', derivedDisasterType || '');
             formData.append('difficulty', formRef.current?.querySelector('[name="difficulty"]')?.value || 'Medium');
+            if (selectedBarangayProfileId) {
+                formData.append('barangay_profile_id', selectedBarangayProfileId);
+            }
             formData.append('_token', csrf);
 
             const response = await fetch('/admin/scenarios/generate-ai', {
@@ -5001,7 +5195,7 @@ function ScenarioCreateForm({ modules }) {
                 </div>
             </div>
 
-            {/* AI Scenario Generator modal – blurred backdrop, page visible behind */}
+            {/* AI Scenario Generator modal â€“ blurred backdrop, page visible behind */}
             {showAiChat && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-md">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-slate-200">
@@ -5029,6 +5223,33 @@ function ScenarioCreateForm({ modules }) {
                         </div>
 
                         <div className="flex-1 overflow-y-auto px-6 py-5">
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2" htmlFor="ai_barangay_profile_id">
+                                    Barangay Hazard Context (optional)
+                                </label>
+                                <select
+                                    id="ai_barangay_profile_id"
+                                    value={selectedBarangayProfileId}
+                                    onChange={(e) => setSelectedBarangayProfileId(e.target.value)}
+                                    disabled={aiGenerating}
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 disabled:bg-slate-100"
+                                >
+                                    <option value="">No barangay context</option>
+                                    {(barangayProfiles || []).map((bp) => (
+                                        <option key={bp.id} value={bp.id}>
+                                            {bp.barangay_name} — {bp.municipality_city}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    When selected, AI uses hazard assessment data to tailor the scenario.
+                                </p>
+                            </div>
+                            {selectedBarangayProfileId && (
+                                <div className="mb-4">
+                                    <HazardAssessmentIntelligencePanel barangayProfileId={selectedBarangayProfileId} />
+                                </div>
+                            )}
                             <label className="block text-sm font-semibold text-slate-700 mb-2">
                                 Describe the scenario you want to generate
                             </label>
@@ -5134,7 +5355,7 @@ function ScenarioCreateForm({ modules }) {
                                         <div>
                                             <label className={labelClass} htmlFor="severity_level">Severity level</label>
                                             <select id="severity_level" name="severity_level" value={severityLevel} onChange={(e) => setSeverityLevel(e.target.value)} className={inputClass}>
-                                                <option value="">Select severity…</option>
+                                                <option value="">Select severityâ€¦</option>
                                                 <option value="Low">Low</option>
                                                 <option value="Medium">Medium</option>
                                                 <option value="High">High</option>
@@ -5165,7 +5386,7 @@ function ScenarioCreateForm({ modules }) {
                                         <div>
                                             <label className={labelClass} htmlFor="communication_status">Communication status</label>
                                             <select id="communication_status" name="communication_status" className={inputClass}>
-                                                <option value="">Select status…</option>
+                                                <option value="">Select statusâ€¦</option>
                                                 <option value="working">Working</option>
                                                 <option value="unstable">Unstable</option>
                                                 <option value="down">Down</option>
@@ -5212,7 +5433,7 @@ function ScenarioCreateForm({ modules }) {
                                             <div>
                                                 <label className={labelClass} htmlFor="training_module_id">Training Module <span className="text-red-500">*</span></label>
                                                 <select id="training_module_id" name="training_module_id" required value={selectedModuleId} onChange={(e) => setSelectedModuleId(e.target.value)} className={inputClass}>
-                                                    <option value="">Select a training module…</option>
+                                                    <option value="">Select a training moduleâ€¦</option>
                                                     {publishedModules.map((m) => (
                                                         <option key={m.id} value={m.id}>{m.title}</option>
                                                     ))}
@@ -5228,7 +5449,7 @@ function ScenarioCreateForm({ modules }) {
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Disaster type</label>
-                                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">{derivedDisasterType || '—'}</div>
+                                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">{derivedDisasterType || 'â€”'}</div>
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Learning objectives</label>
@@ -5236,7 +5457,7 @@ function ScenarioCreateForm({ modules }) {
                                                     {selectedModule && learningObjectives && learningObjectives.length > 0 ? (
                                                         <ul className="space-y-1">
                                                             {learningObjectives.map((obj, i) => (
-                                                                <li key={i}>• {obj}</li>
+                                                                <li key={i}>â€¢ {obj}</li>
                                                             ))}
                                                         </ul>
                                                     ) : selectedModule && (!learningObjectives || learningObjectives.length === 0) ? (
@@ -5279,10 +5500,10 @@ function ScenarioCreateForm({ modules }) {
                                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                                         <h2 className="text-lg font-semibold text-slate-800 mb-4">Scenario Snapshot</h2>
                                         <dl className="space-y-2 text-sm">
-                                            <div><dt className="text-slate-500">Title</dt><dd className="font-medium text-slate-800">{scenarioTitle || '—'}</dd></div>
-                                            <div><dt className="text-slate-500">Module</dt><dd className="font-medium text-slate-800">{selectedModule?.title || '—'}</dd></div>
-                                            <div><dt className="text-slate-500">Difficulty</dt><dd className="font-medium text-slate-800">{difficulty || '—'}</dd></div>
-                                            <div><dt className="text-slate-500">Severity</dt><dd className="font-medium text-slate-800">{severityLevel || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Title</dt><dd className="font-medium text-slate-800">{scenarioTitle || 'â€”'}</dd></div>
+                                            <div><dt className="text-slate-500">Module</dt><dd className="font-medium text-slate-800">{selectedModule?.title || 'â€”'}</dd></div>
+                                            <div><dt className="text-slate-500">Difficulty</dt><dd className="font-medium text-slate-800">{difficulty || 'â€”'}</dd></div>
+                                            <div><dt className="text-slate-500">Severity</dt><dd className="font-medium text-slate-800">{severityLevel || 'â€”'}</dd></div>
                                             <div><dt className="text-slate-500">Victims</dt><dd className="font-medium text-slate-800">{injuredCount}</dd></div>
                                             <div><dt className="text-slate-500">Trapped</dt><dd className="font-medium text-slate-800">{trappedCount}</dd></div>
                                         </dl>
@@ -5385,7 +5606,7 @@ function ScenarioEditForm({ scenario, modules }) {
                                 onChange={(e) => setSelectedModuleId(e.target.value)}
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
-                                <option value="">Select a training module…</option>
+                                <option value="">Select a training moduleâ€¦</option>
                                 {(modules || []).map((m) => (
                                     <option
                                         key={m.id}
@@ -5440,7 +5661,7 @@ function ScenarioEditForm({ scenario, modules }) {
                                 <ul className="space-y-2">
                                     {learningObjectives.map((objective, index) => (
                                         <li key={index} className="text-sm text-slate-700 flex items-start gap-2">
-                                            <span className="text-emerald-600 mt-0.5">•</span>
+                                            <span className="text-emerald-600 mt-0.5">â€¢</span>
                                             <span>{objective}</span>
                                         </li>
                                     ))}
@@ -5599,7 +5820,7 @@ function ScenarioEditForm({ scenario, modules }) {
                             defaultValue={scenario.severity_level || ''}
                             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
-                            <option value="">Select severity…</option>
+                            <option value="">Select severityâ€¦</option>
                             <option value="Low">Low</option>
                             <option value="Medium">Medium</option>
                             <option value="High">High</option>
@@ -5674,7 +5895,7 @@ function ScenarioEditForm({ scenario, modules }) {
                             defaultValue={scenario.communication_status || ''}
                             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
-                            <option value="">Select status…</option>
+                            <option value="">Select statusâ€¦</option>
                             <option value="working">Working</option>
                             <option value="unstable">Unstable</option>
                             <option value="down">Down</option>
@@ -5781,7 +6002,7 @@ function ScenarioDetail({ scenario }) {
 
     const injured = scenario.injured_victims_count ?? null;
     const trapped = scenario.trapped_persons_count ?? null;
-    const severity = scenario.severity_level || '—';
+    const severity = scenario.severity_level || 'â€”';
     const communication = scenario.communication_status || null;
 
     return (
@@ -5792,7 +6013,7 @@ function ScenarioDetail({ scenario }) {
                     href="/admin/scenarios"
                     className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900"
                 >
-                    ← Back to Scenarios
+                    â† Back to Scenarios
                 </a>
                 <div className="text-[0.7rem] text-slate-500">
                     <a
@@ -5844,10 +6065,10 @@ function ScenarioDetail({ scenario }) {
                         </div>
                         <div className="mt-3 text-[0.7rem] text-slate-500">
                             <span className="font-semibold text-slate-600">Created by</span>{' '}
-                            {scenario.creator?.name ?? '—'}
+                            {scenario.creator?.name ?? 'â€”'}
                             {scenario.created_at && (
                                 <>
-                                    <span className="mx-1">•</span>
+                                    <span className="mx-1">â€¢</span>
                                     <span>{formatDateTime(scenario.created_at)}</span>
                                 </>
                             )}
@@ -5882,7 +6103,7 @@ function ScenarioDetail({ scenario }) {
                             Injured
                         </div>
                         <div className="mt-1 text-sm font-semibold text-slate-900">
-                            {injured != null ? injured : '—'}
+                            {injured != null ? injured : 'â€”'}
                         </div>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
@@ -5890,7 +6111,7 @@ function ScenarioDetail({ scenario }) {
                             Trapped
                         </div>
                         <div className="mt-1 text-sm font-semibold text-slate-900">
-                            {trapped != null ? trapped : '—'}
+                            {trapped != null ? trapped : 'â€”'}
                         </div>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
@@ -5907,7 +6128,7 @@ function ScenarioDetail({ scenario }) {
                                     {communication}
                                 </span>
                             ) : (
-                                <span className="text-sm font-semibold text-slate-900">—</span>
+                                <span className="text-sm font-semibold text-slate-900">â€”</span>
                             )}
                         </div>
                     </div>
@@ -6172,7 +6393,7 @@ function SimulationEventsTable({ events, role }) {
         return 'bg-slate-400';
     };
     const formatEventDate = (dateString) => {
-        if (!dateString) return '—';
+        if (!dateString) return 'â€”';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
@@ -6304,7 +6525,7 @@ function SimulationEventsTable({ events, role }) {
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
                     {(events || []).length === 0 ? (
                         <>
-                            <div className="text-5xl mb-4 opacity-80">📅</div>
+                            <div className="text-5xl mb-4 opacity-80">ðŸ“…</div>
                             <h3 className="text-lg font-semibold text-slate-800 mb-1">No simulation events yet</h3>
                             <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">Create your first event to schedule drills and exercises for your team.</p>
                             <a
@@ -6317,7 +6538,7 @@ function SimulationEventsTable({ events, role }) {
                         </>
                     ) : (
                         <>
-                            <div className="text-4xl mb-4 opacity-80">🔍</div>
+                            <div className="text-4xl mb-4 opacity-80">ðŸ”</div>
                             <h3 className="text-lg font-semibold text-slate-800 mb-1">No events match your filters</h3>
                             <p className="text-slate-500 text-sm mb-6">Try adjusting search or filter criteria.</p>
                             <button
@@ -6345,11 +6566,11 @@ function SimulationEventsTable({ events, role }) {
                                         <div className="min-w-0 flex-1">
                                             <h3 className="font-semibold text-slate-900 truncate">{event.title}</h3>
                                             <p className="text-sm text-slate-500 mt-0.5">
-                                                {(event.disaster_type || '—')}{event.event_category ? ` • ${event.event_category}` : ''}
+                                                {(event.disaster_type || 'â€”')}{event.event_category ? ` â€¢ ${event.event_category}` : ''}
                                             </p>
                                             <p className="text-xs text-slate-400 mt-1">
-                                                {formatEventDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}
-                                                {event.location ? ` • ${event.location}` : ''}
+                                                {formatEventDate(event.event_date)} Â· {formatTime(event.start_time)} â€“ {formatTime(event.end_time)}
+                                                {event.location ? ` â€¢ ${event.location}` : ''}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-3 shrink-0">
@@ -6396,13 +6617,13 @@ function SimulationEventsTable({ events, role }) {
                                                     {event.title}
                                                 </a>
                                                 <p className="text-sm text-slate-500 mt-0.5">
-                                                    {(event.disaster_type || '—')}{event.event_category ? ` • ${event.event_category}` : ''}
+                                                    {(event.disaster_type || 'â€”')}{event.event_category ? ` â€¢ ${event.event_category}` : ''}
                                                 </p>
                                             </div>
                                         </div>
                                         <p className="text-xs text-slate-400 mb-2">
-                                            {formatEventDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}
-                                            {event.location ? ` • ${event.location}` : ''}
+                                            {formatEventDate(event.event_date)} Â· {formatTime(event.start_time)} â€“ {formatTime(event.end_time)}
+                                            {event.location ? ` â€¢ ${event.location}` : ''}
                                         </p>
                                         <div className="flex items-center justify-between gap-2 mb-3">
                                             <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(derivedStatus)}`}>
@@ -6457,7 +6678,7 @@ function SimulationEventsTable({ events, role }) {
                                             if (missingFields.length > 0) {
                                                 await Swal.fire({
                                                     title: 'Validation Error!',
-                                                    html: `Please fill in:<br><br>${missingFields.map((f) => `• ${f}`).join('<br>')}`,
+                                                    html: `Please fill in:<br><br>${missingFields.map((f) => `â€¢ ${f}`).join('<br>')}`,
                                                     icon: 'error',
                                                     confirmButtonColor: '#64748b',
                                                 });
@@ -7073,7 +7294,7 @@ function ResourceSelectionSection({ eventResources = [], inline = false }) {
                 </select>
             </div>
             {loading ? (
-                <div className="py-6 text-center text-sm text-slate-500">Loading resources…</div>
+                <div className="py-6 text-center text-sm text-slate-500">Loading resourcesâ€¦</div>
             ) : filteredResources.length === 0 ? (
                 <div className="py-6 text-center text-sm text-slate-500">No resources match your search.</div>
             ) : (
@@ -7131,7 +7352,7 @@ function ResourceSelectionSection({ eventResources = [], inline = false }) {
                     <div key={r.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-slate-100 border border-slate-200">
                         <div className="min-w-0">
                             <p className="text-sm font-medium text-slate-800 truncate">{r.name}</p>
-                            <p className="text-xs text-slate-500">{r.category} · {r.quantity} unit{r.quantity !== 1 ? 's' : ''}</p>
+                            <p className="text-xs text-slate-500">{r.category} Â· {r.quantity} unit{r.quantity !== 1 ? 's' : ''}</p>
                         </div>
                         <button
                             type="button"
@@ -7185,7 +7406,7 @@ function ResourceSelectionSection({ eventResources = [], inline = false }) {
                             <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-slate-900 truncate">{resource.name}</p>
-                                    <p className="text-xs text-slate-600">{resource.category} · {resource.quantity}</p>
+                                    <p className="text-xs text-slate-600">{resource.category} Â· {resource.quantity}</p>
                                 </div>
                                 <button
                                     type="button"
@@ -7240,7 +7461,134 @@ function ResourceSelectionSection({ eventResources = [], inline = false }) {
     );
 }
 
-function SimulationEventCreateForm({ scenarios }) {
+function SimulationEventCampaignFields({ trainingModules = [], trainers = [], barangayProfiles = [], event = null }) {
+    const deadlineValue = event?.registration_deadline
+        ? String(event.registration_deadline).replace(' ', 'T').slice(0, 16)
+        : '';
+    const [selectedBarangayId, setSelectedBarangayId] = React.useState(
+        event?.barangay_profile_id ? String(event.barangay_profile_id) : '',
+    );
+
+    return (
+        <div className="pt-4 border-t border-slate-100 space-y-4">
+            <h3 className="text-sm font-semibold text-slate-800">Campaign & Registration</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="barangay_profile_id">
+                        Barangay (Hazard Assessment Profile)
+                    </label>
+                    <select
+                        id="barangay_profile_id"
+                        name="barangay_profile_id"
+                        value={selectedBarangayId}
+                        onChange={(e) => setSelectedBarangayId(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                        <option value="">Select barangay...</option>
+                        {(barangayProfiles || []).map((bp) => (
+                            <option key={bp.id} value={bp.id}>
+                                {bp.barangay_name} â€” {bp.municipality_city}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+            {selectedBarangayId && (
+                <HazardAssessmentIntelligencePanel barangayProfileId={selectedBarangayId} />
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="venue">
+                        Venue
+                    </label>
+                    <input
+                        id="venue"
+                        name="venue"
+                        type="text"
+                        defaultValue={event?.venue || ''}
+                        placeholder="e.g. Barangay Covered Court"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="target_audience">
+                        Target Audience
+                    </label>
+                    <input
+                        id="target_audience"
+                        name="target_audience"
+                        type="text"
+                        defaultValue={event?.target_audience || ''}
+                        placeholder="e.g. Barangay officials, youth volunteers"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="max_participants">
+                        Max Participants
+                    </label>
+                    <input
+                        id="max_participants"
+                        name="max_participants"
+                        type="number"
+                        min="1"
+                        defaultValue={event?.max_participants || ''}
+                        placeholder="Leave blank for unlimited"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="registration_deadline">
+                        Registration Deadline
+                    </label>
+                    <input
+                        id="registration_deadline"
+                        name="registration_deadline"
+                        type="datetime-local"
+                        defaultValue={deadlineValue}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="training_module_id">
+                        Linked Training Module
+                    </label>
+                    <select
+                        id="training_module_id"
+                        name="training_module_id"
+                        defaultValue={event?.training_module_id || ''}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                        <option value="">None</option>
+                        {(trainingModules || []).map((m) => (
+                            <option key={m.id} value={m.id}>{m.title}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="assigned_trainer_id">
+                        Assigned Trainer
+                    </label>
+                    <select
+                        id="assigned_trainer_id"
+                        name="assigned_trainer_id"
+                        defaultValue={event?.assigned_trainer_id || ''}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                        <option value="">None</option>
+                        {(trainers || []).map((t) => (
+                            <option key={t.id} value={t.id}>
+                                {t.name}{t.specialization ? ` â€” ${t.specialization}` : ''}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SimulationEventCreateForm({ scenarios, trainingModules = [], trainers = [], barangayProfiles = [] }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [selectedScenarioId, setSelectedScenarioId] = React.useState('');
     const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
@@ -7416,7 +7764,7 @@ function SimulationEventCreateForm({ scenarios }) {
                                         required
                                         className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                     >
-                                        <option value="">Select category…</option>
+                                        <option value="">Select categoryâ€¦</option>
                                         <option value="Drill">Drill</option>
                                         <option value="Full-scale Exercise">Full-scale Exercise</option>
                                         <option value="Tabletop">Tabletop</option>
@@ -7453,7 +7801,7 @@ function SimulationEventCreateForm({ scenarios }) {
                                     required
                                     className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 >
-                                    <option value="">Select a scenario…</option>
+                                    <option value="">Select a scenarioâ€¦</option>
                                     {(scenarios || []).map((s) => (
                                         <option key={s.id} value={s.id}>
                                             {s.title} ({s.disaster_type} - {s.difficulty})
@@ -7569,6 +7917,8 @@ function SimulationEventCreateForm({ scenarios }) {
                             </div>
                         </div>
 
+                        <SimulationEventCampaignFields trainingModules={trainingModules} trainers={trainers} barangayProfiles={barangayProfiles} />
+
                         {/* Publishing Controls */}
                         <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
                             <p className="text-xs text-slate-500">
@@ -7595,45 +7945,45 @@ function SimulationEventCreateForm({ scenarios }) {
                 <div className="lg:col-span-4 space-y-4">
                     {/* Panel 1: Pre-Launch Checklist */}
                     <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">✅ Simulation Readiness</h3>
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">âœ… Simulation Readiness</h3>
                         <div className="space-y-2.5">
                             <div className="flex items-center gap-2 text-sm">
                                 {eventTitleAdded ? (
-                                    <span className="text-emerald-600">✅</span>
+                                    <span className="text-emerald-600">âœ…</span>
                                 ) : (
-                                    <span className="text-slate-300">⬜</span>
+                                    <span className="text-slate-300">â¬œ</span>
                                 )}
                                 <span className={eventTitleAdded ? 'text-slate-700' : 'text-slate-400'}>Event title added</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                                 {disasterTypeSelected ? (
-                                    <span className="text-emerald-600">✅</span>
+                                    <span className="text-emerald-600">âœ…</span>
                                 ) : (
-                                    <span className="text-slate-300">⬜</span>
+                                    <span className="text-slate-300">â¬œ</span>
                                 )}
                                 <span className={disasterTypeSelected ? 'text-slate-700' : 'text-slate-400'}>Disaster type selected</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                                 {scenarioAssigned ? (
-                                    <span className="text-emerald-600">✅</span>
+                                    <span className="text-emerald-600">âœ…</span>
                                 ) : (
-                                    <span className="text-slate-300">⬜</span>
+                                    <span className="text-slate-300">â¬œ</span>
                                 )}
                                 <span className={scenarioAssigned ? 'text-slate-700' : 'text-slate-400'}>Scenario assigned</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                                 {dateTimeSet ? (
-                                    <span className="text-emerald-600">✅</span>
+                                    <span className="text-emerald-600">âœ…</span>
                                 ) : (
-                                    <span className="text-slate-300">⬜</span>
+                                    <span className="text-slate-300">â¬œ</span>
                                 )}
                                 <span className={dateTimeSet ? 'text-slate-700' : 'text-slate-400'}>Date & time set</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                                 {locationFilled ? (
-                                    <span className="text-emerald-600">✅</span>
+                                    <span className="text-emerald-600">âœ…</span>
                                 ) : (
-                                    <span className="text-slate-300">⬜</span>
+                                    <span className="text-slate-300">â¬œ</span>
                                 )}
                                 <span className={locationFilled ? 'text-slate-700' : 'text-slate-400'}>Location filled</span>
                             </div>
@@ -7641,7 +7991,7 @@ function SimulationEventCreateForm({ scenarios }) {
                         {allReady && (
                             <div className="mt-4 pt-4 border-t border-emerald-100">
                                 <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                                    <span className="text-lg">🟢</span>
+                                    <span className="text-lg">ðŸŸ¢</span>
                                     <span>Ready to Publish</span>
                                 </div>
                             </div>
@@ -7659,7 +8009,7 @@ function SimulationEventCreateForm({ scenarios }) {
     );
 }
 
-function SimulationEventEditForm({ event, scenarios }) {
+function SimulationEventEditForm({ event, scenarios, trainingModules = [], trainers = [], barangayProfiles = [] }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
@@ -7889,7 +8239,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                                         defaultValue={event.event_category}
                                         className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                     >
-                                        <option value="">Select category…</option>
+                                        <option value="">Select categoryâ€¦</option>
                                         <option value="Drill">Drill</option>
                                         <option value="Full-scale Exercise">
                                             Full-scale Exercise
@@ -7942,7 +8292,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                                     required
                                     className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 >
-                                    <option value="">Select a scenario…</option>
+                                    <option value="">Select a scenarioâ€¦</option>
                                     {(scenarios || []).map((s) => (
                                         <option key={s.id} value={s.id}>
                                             {s.title} ({s.disaster_type} -{' '}
@@ -8157,6 +8507,13 @@ function SimulationEventEditForm({ event, scenarios }) {
                             </div>
                         </div>
 
+                        <SimulationEventCampaignFields
+                            trainingModules={trainingModules}
+                            trainers={trainers}
+                            barangayProfiles={barangayProfiles}
+                            event={event}
+                        />
+
                         {/* Section 6 & 8 omitted: participant settings and safety managed elsewhere */}
 
                         {/* Publishing controls */}
@@ -8184,7 +8541,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                 <div className="lg:col-span-4 space-y-4">
                     <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
                         <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                            ✅ Simulation Readiness
+                            âœ… Simulation Readiness
                         </h3>
                         <div className="space-y-2.5">
                             <div className="flex items-center gap-2 text-sm">
@@ -8195,7 +8552,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {eventTitleAdded ? '✅' : '⬜'}
+                                    {eventTitleAdded ? 'âœ…' : 'â¬œ'}
                                 </span>
                                 <span
                                     className={
@@ -8215,7 +8572,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {disasterTypeSelected ? '✅' : '⬜'}
+                                    {disasterTypeSelected ? 'âœ…' : 'â¬œ'}
                                 </span>
                                 <span
                                     className={
@@ -8235,7 +8592,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {scenarioAssigned ? '✅' : '⬜'}
+                                    {scenarioAssigned ? 'âœ…' : 'â¬œ'}
                                 </span>
                                 <span
                                     className={
@@ -8255,7 +8612,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {dateTimeSet ? '✅' : '⬜'}
+                                    {dateTimeSet ? 'âœ…' : 'â¬œ'}
                                 </span>
                                 <span
                                     className={
@@ -8275,7 +8632,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {locationFilled ? '✅' : '⬜'}
+                                    {locationFilled ? 'âœ…' : 'â¬œ'}
                                 </span>
                                 <span
                                     className={
@@ -8291,7 +8648,7 @@ function SimulationEventEditForm({ event, scenarios }) {
                         {allReady && (
                             <div className="mt-4 pt-4 border-t border-emerald-100">
                                 <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                                    <span className="text-lg">🟢</span>
+                                    <span className="text-lg">ðŸŸ¢</span>
                                     <span>Ready to Publish</span>
                                 </div>
                             </div>
@@ -8419,11 +8776,11 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
                                 <button type="button" onClick={() => setPaperSize('a4')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'a4' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>A4</button>
                                 <button type="button" onClick={() => setPaperSize('letter')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'letter' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>Letter</button>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">Choose paper size for a clean print or PDF. A4: 210×297mm · Letter: 8.5×11 in.</p>
+                            <p className="text-xs text-slate-500 mt-1">Choose paper size for a clean print or PDF. A4: 210Ã—297mm Â· Letter: 8.5Ã—11 in.</p>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate content (HTML with placeholders)</label>
-                            <p className="text-xs text-slate-500 mb-1">Use <code className="bg-slate-100 px-1 rounded">{'{name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{event}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{certificate_number}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{score}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{training_type}'}</code> — the system will replace these with the participant data.</p>
+                            <p className="text-xs text-slate-500 mb-1">Use <code className="bg-slate-100 px-1 rounded">{'{name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{event}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{certificate_number}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{score}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{training_type}'}</code> â€” the system will replace these with the participant data.</p>
                             <textarea name="template_content" rows={10} defaultValue={template?.template_content ?? DEFAULT_TEMPLATE_CONTENT} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono" placeholder="HTML with {name}, {date}, etc." />
                         </div>
                         <div>
@@ -8667,7 +9024,7 @@ function CertificationModule({
                     <p className="text-xs text-slate-500 mt-1">
                         {typeof stats.trend_this_week === 'number' && stats.trend_this_week !== 0 ? (
                             <span className={stats.trend_this_week > 0 ? 'text-emerald-600 font-medium' : 'text-rose-600 font-medium'}>
-                                {stats.trend_this_week > 0 ? '↑' : '↓'} {Math.abs(stats.trend_this_week)}% this week
+                                {stats.trend_this_week > 0 ? 'â†‘' : 'â†“'} {Math.abs(stats.trend_this_week)}% this week
                             </span>
                         ) : 'All time certified'}
                     </p>
@@ -8813,12 +9170,12 @@ function CertificationModule({
                                         <p className="font-semibold text-slate-900">{row.user_name}</p>
                                         <p className="text-sm text-slate-600 truncate">{row.event_title}</p>
                                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                            <span className="text-xs text-slate-500">{row.score != null ? `${row.score}%` : '—'} score</span>
+                                            <span className="text-xs text-slate-500">{row.score != null ? `${row.score}%` : 'â€”'} score</span>
                                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
                                                 row.attendance_status === 'present' || row.attendance_status === 'completed'
                                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
                                             }`}>
-                                                {row.attendance_status === 'present' || row.attendance_status === 'completed' ? '✓ Present' : (row.attendance_status || '—')}
+                                                {row.attendance_status === 'present' || row.attendance_status === 'completed' ? 'âœ“ Present' : (row.attendance_status || 'â€”')}
                                             </span>
                                             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
                                                 row.cert_status === 'eligible' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 ring-1 ring-emerald-200/50' :
@@ -8875,14 +9232,14 @@ function CertificationModule({
                                     <h4 className="text-lg font-semibold text-slate-900 mb-2">{t.name}</h4>
                                     <div className="text-sm text-slate-600 space-y-1 mb-4">
                                         <p><span className="font-medium text-slate-500">Type:</span> {t.type || 'Completion'}</p>
-                                        <p><span className="font-medium text-slate-500">Last Used:</span> {t.last_used_at ? formatDate(t.last_used_at) : '—'}</p>
+                                        <p><span className="font-medium text-slate-500">Last Used:</span> {t.last_used_at ? formatDate(t.last_used_at) : 'â€”'}</p>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                                             t.status === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
                                         }`}>
                                             <span className={`w-1.5 h-1.5 rounded-full ${t.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                                            {t.status === 'active' ? 'Active' : (t.status || '—')}
+                                            {t.status === 'active' ? 'Active' : (t.status || 'â€”')}
                                         </span>
                                         <div className="flex items-center gap-1.5">
                                             <a href={`/admin/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all duration-250" title="Preview"> <Eye className="w-4 h-4" /> </a>
@@ -8925,8 +9282,8 @@ function CertificationModule({
                                             <td className="px-5 py-4 font-mono text-xs text-slate-700">{c.certificate_number}</td>
                                             <td className="px-5 py-4 font-medium text-slate-800">{c.user?.name}</td>
                                             <td className="px-5 py-4 text-slate-600">{c.simulation_event?.title}</td>
-                                            <td className="px-5 py-4 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : '—'}</td>
-                                            <td className="px-5 py-4 text-slate-600">{c.issuer?.name || '—'}</td>
+                                            <td className="px-5 py-4 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : 'â€”'}</td>
+                                            <td className="px-5 py-4 text-slate-600">{c.issuer?.name || 'â€”'}</td>
                                             <td className="px-5 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all" title="View / Print PDF">
@@ -8958,9 +9315,9 @@ function CertificationModule({
                             <div className="flex items-start gap-4">
                                 <input type="checkbox" checked={autoIssue} onChange={(e) => setAutoIssue(e.target.checked)} className="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
                                 <div className="flex-1">
-                                    <p className="font-medium text-slate-900">When score ≥ 70%</p>
+                                    <p className="font-medium text-slate-900">When score â‰¥ 70%</p>
                                     <p className="text-sm text-slate-600 mt-0.5">AND certification eligible = Yes</p>
-                                    <p className="text-sm text-emerald-600 font-medium mt-2">→ Auto Issue Certificate</p>
+                                    <p className="text-sm text-emerald-600 font-medium mt-2">â†’ Auto Issue Certificate</p>
                                     <span className={`inline-flex items-center gap-1.5 mt-2 rounded-full px-3 py-1 text-xs font-semibold ${autoIssue ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${autoIssue ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                                         {autoIssue ? 'Active' : 'Inactive'}
@@ -9030,7 +9387,7 @@ function CertificationModule({
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Final Score</label>
-                                    <p className="text-sm text-slate-800">{issueRow.score != null ? `${issueRow.score}%` : '—'}</p>
+                                    <p className="text-sm text-slate-800">{issueRow.score != null ? `${issueRow.score}%` : 'â€”'}</p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate Type</label>
@@ -9062,103 +9419,7 @@ function CertificationModule({
     );
 }
 
-// Participant Components
-// Participant Registration & Attendance Module
-function ParticipantRegistrationAttendanceModule({ events = [], participants = [], participantsPagination = null, participantsSummary = null, role }) {
-    const [activeTab, setActiveTab] = React.useState('participants');
-
-    const PARTICIPANT_TABS = [
-        { id: 'participants', label: 'Participant List', icon: '👥' },
-        { id: 'registrations', label: 'Event Registrations', icon: '📋' },
-        { id: 'attendance', label: 'Event Attendance', icon: '✓' },
-    ];
-
-    // Stats for summary cards (Certification-style, shown when on participants tab)
-    let totalParticipants = participants.length;
-    let activeParticipants = participants.filter(p => p.status === 'active').length;
-    let inactiveParticipants = participants.filter(p => p.status === 'inactive').length;
-    let registeredThisMonth;
-    {
-        const thisMonth = new Date();
-        thisMonth.setDate(1);
-        registeredThisMonth = participants.filter(p => {
-            if (!p.created_at) return false;
-            return new Date(p.created_at) >= thisMonth;
-        }).length;
-    }
-
-    if (participantsSummary) {
-        totalParticipants = participantsSummary.total ?? totalParticipants;
-        activeParticipants = participantsSummary.active ?? activeParticipants;
-        inactiveParticipants = participantsSummary.inactive ?? inactiveParticipants;
-        registeredThisMonth = participantsSummary.registered_this_month ?? registeredThisMonth;
-    }
-
-    return (
-        <AdminPageShell>
-            <AdminPageHeader
-                icon={Users}
-                title="Participants"
-                description="Manage participant list, event registrations, and attendance."
-            />
-
-            {/* Summary Cards */}
-            {activeTab === 'participants' && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Participants</p>
-                        <p className="text-[32px] font-bold text-slate-900 mt-1">{totalParticipants}</p>
-                        <p className="text-xs text-slate-500 mt-1">All registered</p>
-                    </div>
-                    <div className="bg-white rounded-xl border border-emerald-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
-                        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Active</p>
-                        <p className="text-[32px] font-bold text-emerald-800 mt-1">{activeParticipants}</p>
-                        <p className="text-xs text-slate-500 mt-1">Currently active</p>
-                    </div>
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Inactive</p>
-                        <p className="text-[32px] font-bold text-slate-900 mt-1">{inactiveParticipants}</p>
-                        <p className="text-xs text-slate-500 mt-1">Deactivated</p>
-                    </div>
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Registered This Month</p>
-                        <p className="text-[32px] font-bold text-slate-900 mt-1">{registeredThisMonth}</p>
-                        <p className="text-xs text-slate-500 mt-1">New this month</p>
-                    </div>
-                </div>
-            )}
-
-            {/* Tabs - Certification style (pill strip, green active) */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 w-fit">
-                <div className="flex gap-1 flex-wrap">
-                    {PARTICIPANT_TABS.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-250 flex items-center gap-2 ${
-                                activeTab === tab.id
-                                    ? 'bg-emerald-600 text-white shadow-md'
-                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                            }`}
-                        >
-                            <span>{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Tab Content */}
-            {activeTab === 'participants' ? (
-                <ParticipantsListTab participants={participants} participantsPagination={participantsPagination} />
-            ) : activeTab === 'registrations' ? (
-                <RegistrationEventsTable events={events} />
-            ) : (
-                <AttendanceEventsTable events={events} />
-            )}
-        </AdminPageShell>
-    );
-}
+// Participant Components â€” module lives in ParticipantAttendanceModule.jsx
 
 // Helper: Generate initials from name
 function getInitials(name) {
@@ -9179,228 +9440,6 @@ function getAvatarColor(name) {
     if (!name) return colors[0];
     const index = name.charCodeAt(0) % colors.length;
     return colors[index];
-}
-
-// Tab 1: Participants List
-function ParticipantsListTab({ participants = [], participantsPagination = null }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('all');
-    const [participantsData, setParticipantsData] = React.useState(participants || []);
-    const [pagination, setPagination] = React.useState(participantsPagination);
-    const [isPageLoading, setIsPageLoading] = React.useState(false);
-
-    const baseParticipants = pagination ? participantsData : participants;
-
-    const filteredParticipants = baseParticipants.filter((p) => {
-        const matchesSearch = !searchTerm ||
-            p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.participant_id?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
-
-    const handlePageChange = async (page) => {
-        if (!pagination) return;
-
-        const totalPages = pagination.last_page || 1;
-        const clamped = Math.max(1, Math.min(page, totalPages));
-        if (clamped === pagination.current_page) return;
-
-        setIsPageLoading(true);
-        try {
-            const url = new URL(window.location.href);
-            url.searchParams.set('page', clamped);
-
-            const res = await fetch(url.toString(), {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (!res.ok) {
-                throw new Error(`Failed to load participants page ${clamped}`);
-            }
-
-            const data = await res.json();
-            setParticipantsData(data.participants || []);
-            setPagination(data.pagination || null);
-            window.history.pushState({}, '', url);
-        } catch (error) {
-            console.error('Error loading participants page', error);
-        } finally {
-            setIsPageLoading(false);
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            {/* Filters - card with shadow */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-md p-4">
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search by name, email, or ID..."
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status Filter</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    <div className="flex items-end">
-                        <a
-                            href="/admin/participants/export/csv"
-                            className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center transition-colors"
-                        >
-                            📥 Export CSV
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            {/* Participants Table - Profile Row Style */}
-            <div className="space-y-3">
-                {filteredParticipants.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-12 text-center text-slate-500">
-                        {participants.length === 0
-                            ? 'No participants registered yet. Participants will appear here after self-registration.'
-                            : 'No participants match your search criteria.'}
-                    </div>
-                ) : (
-                    filteredParticipants.map((participant) => {
-                        const initials = getInitials(participant.name);
-                        const avatarColor = getAvatarColor(participant.name);
-                        return (
-                            <div
-                                key={participant.id}
-                                className="bg-white rounded-xl border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 transition-all duration-200 p-5"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4 flex-1">
-                                        {/* Avatar */}
-                                        <div className={`${avatarColor} w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0`}>
-                                            {initials}
-                                        </div>
-                                        {/* Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <a
-                                                    href={`/admin/participants/${participant.id}`}
-                                                    className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors text-base"
-                                                >
-                                                    {participant.name}
-                                                </a>
-                                            </div>
-                                            <p className="text-sm text-slate-600 mb-1">{participant.email}</p>
-                                            <p className="text-xs text-slate-500 font-mono">ID: {participant.participant_id || 'N/A'}</p>
-                                        </div>
-                                        {/* Status & Events */}
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex flex-col items-end gap-2">
-                                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                                                    participant.status === 'active' 
-                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                                                        : 'bg-red-100 text-red-800 border border-red-200'
-                                                }`}>
-                                                    {participant.status === 'active' ? '🟢' : '🔴'} {participant.status === 'active' ? 'Active' : 'Inactive'}
-                                                </span>
-                                                <a
-                                                    href={`/admin/participants/${participant.id}`}
-                                                    className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-semibold hover:bg-blue-100 transition-colors"
-                                                >
-                                                    Events: {participant.event_registrations_count || 0}
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {/* Actions */}
-                                    <div className="flex items-center gap-2 ml-4 shrink-0">
-                                        <a
-                                            href={`/admin/participants/${participant.id}`}
-                                            className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
-                                        >
-                                            View Profile
-                                        </a>
-                                        {participant.status === 'active' ? (
-                                            <form
-                                                method="POST"
-                                                action={`/admin/participants/${participant.id}/deactivate`}
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const result = await Swal.fire({
-                                                        title: 'Deactivate Participant?',
-                                                        text: 'This will prevent them from accessing the system.',
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Yes, deactivate',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#dc2626',
-                                                        cancelButtonColor: '#64748b',
-                                                    });
-                                                    if (result.isConfirmed) e.target.submit();
-                                                }}
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button
-                                                    type="submit"
-                                                    className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200"
-                                                >
-                                                    Deactivate
-                                                </button>
-                                            </form>
-                                        ) : (
-                                            <form
-                                                method="POST"
-                                                action={`/admin/participants/${participant.id}/reactivate`}
-                                                onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const result = await Swal.fire({
-                                                        title: 'Reactivate Participant?',
-                                                        text: 'This will restore their access to the system.',
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonText: 'Yes, reactivate',
-                                                        cancelButtonText: 'Cancel',
-                                                        confirmButtonColor: '#16a34a',
-                                                        cancelButtonColor: '#64748b',
-                                                    });
-                                                    if (result.isConfirmed) e.target.submit();
-                                                }}
-                                            >
-                                                <input type="hidden" name="_token" value={csrf} />
-                                                <button
-                                                    type="submit"
-                                                    className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
-                                                >
-                                                    Reactivate
-                                                </button>
-                                            </form>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-        </div>
-    );
 }
 
 // Registrations Tab - Shows events with registration management
@@ -9495,7 +9534,7 @@ function RegistrationEventsTable({ events = [] }) {
                             onClick={handleExportCsv}
                             className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
                         >
-                            📥 Export CSV
+                            ðŸ“¥ Export CSV
                         </button>
                     </div>
                 </div>
@@ -9522,16 +9561,16 @@ function RegistrationEventsTable({ events = [] }) {
                                     <div className="p-5">
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
+                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">ðŸ“˜ {event.title}</h3>
                                                 <div className="space-y-1 text-sm text-slate-600">
                                                     <div className="flex items-center gap-2">
-                                                        <span>📍</span>
+                                                        <span>ðŸ“</span>
                                                         <span>{event.location || 'Location TBD'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span>🗓</span>
+                                                        <span>ðŸ—“</span>
                                                         <span>
-                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
+                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}â€“{formatTime(event.end_time)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -9542,7 +9581,7 @@ function RegistrationEventsTable({ events = [] }) {
                                         </div>
                                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm text-slate-600">👥</span>
+                                                <span className="text-sm text-slate-600">ðŸ‘¥</span>
                                                 <span className="text-sm font-medium text-slate-900">{event.registrations_count || 0} Registered</span>
                                             </div>
                                             <a
@@ -9662,7 +9701,7 @@ function AttendanceEventsTable({ events = [] }) {
                             onClick={handleExportCsv}
                             className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
                         >
-                            📥 Export CSV
+                            ðŸ“¥ Export CSV
                         </button>
                     </div>
                 </div>
@@ -9689,16 +9728,16 @@ function AttendanceEventsTable({ events = [] }) {
                                     <div className="p-5">
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
+                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">ðŸ“˜ {event.title}</h3>
                                                 <div className="space-y-1 text-sm text-slate-600">
                                                     <div className="flex items-center gap-2">
-                                                        <span>📍</span>
+                                                        <span>ðŸ“</span>
                                                         <span>{event.location || 'Location TBD'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span>🗓</span>
+                                                        <span>ðŸ—“</span>
                                                         <span>
-                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
+                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}â€“{formatTime(event.end_time)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -9709,7 +9748,7 @@ function AttendanceEventsTable({ events = [] }) {
                                         </div>
                                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm text-slate-600">👥</span>
+                                                <span className="text-sm text-slate-600">ðŸ‘¥</span>
                                                 <span className="text-sm font-medium text-slate-900">{event.approved_registrations_count || 0} Approved Participants</span>
                                             </div>
                                             <a
@@ -9844,10 +9883,10 @@ function ParticipantsTable({ participants = [], role }) {
                                         </a>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600">{participant.email}</td>
-                                    <td className="px-4 py-2 text-slate-600">{participant.phone || '—'}</td>
+                                    <td className="px-4 py-2 text-slate-600">{participant.phone || 'â€”'}</td>
                                     <td className="px-4 py-2">
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusColor(participant.status)}`}>
-                                            {participant.status === 'active' ? '🟢' : '🔴'} {participant.status || 'active'}
+                                            {participant.status === 'active' ? 'ðŸŸ¢' : 'ðŸ”´'} {participant.status || 'active'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600 text-center">
@@ -9931,13 +9970,13 @@ function ParticipantDetail({ participant }) {
     const initials = getInitials(participant.name);
     const avatarColor = getAvatarColor(participant.name);
     const statusColor = participant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800';
-    const statusIcon = participant.status === 'active' ? '🟢' : '🔴';
+    const statusIcon = participant.status === 'active' ? 'ðŸŸ¢' : 'ðŸ”´';
 
     return (
         <div>
             <div className="mb-4">
                 <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800 transition-colors">
-                    ← Back to Participants
+                    â† Back to Participants
                 </a>
             </div>
 
@@ -10055,7 +10094,7 @@ function ParticipantDetail({ participant }) {
                         totalItems={pagination.total || filteredParticipants.length}
                     />
                     {isPageLoading && (
-                        <p className="mt-2 text-xs text-slate-500">Loading participants…</p>
+                        <p className="mt-2 text-xs text-slate-500">Loading participantsâ€¦</p>
                     )}
                 </div>
             )}
@@ -10086,7 +10125,7 @@ function ParticipantDetail({ participant }) {
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Phone</label>
-                            <div className="text-sm text-slate-900">{participant.phone || '—'}</div>
+                            <div className="text-sm text-slate-900">{participant.phone || 'â€”'}</div>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Registered At</label>
@@ -10119,7 +10158,7 @@ function ParticipantDetail({ participant }) {
                                                 </div>
                                             </div>
                                             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${regStatusColor}`}>
-                                                {reg.status === 'approved' ? '✅' : reg.status === 'pending' ? '⏳' : '❌'} {reg.status}
+                                                {reg.status === 'approved' ? 'âœ…' : reg.status === 'pending' ? 'â³' : 'âŒ'} {reg.status}
                                             </span>
                                         </div>
                                     </div>
@@ -10142,10 +10181,10 @@ function ParticipantDetail({ participant }) {
                                     attendance.status === 'late' ? 'text-amber-600' :
                                         attendance.status === 'absent' ? 'text-red-600' :
                                             'text-slate-600';
-                                const attStatusIcon = attendance.status === 'present' ? '🟢' :
-                                    attendance.status === 'late' ? '🟡' :
-                                        attendance.status === 'absent' ? '🔴' :
-                                            '⚪';
+                                const attStatusIcon = attendance.status === 'present' ? 'ðŸŸ¢' :
+                                    attendance.status === 'late' ? 'ðŸŸ¡' :
+                                        attendance.status === 'absent' ? 'ðŸ”´' :
+                                            'âšª';
                                 return (
                                     <div key={attendance.id} className="flex gap-4 items-start">
                                         {/* Timeline Line */}
@@ -10166,7 +10205,7 @@ function ParticipantDetail({ participant }) {
                                                         {attendance.checked_in_at
                                                             ? `${new Date(attendance.checked_in_at).toLocaleDateString()} | ${new Date(attendance.checked_in_at).toLocaleTimeString()}`
                                                             : 'No check-in time'}
-                                                        {attendance.check_in_method && ` • ${attendance.check_in_method}`}
+                                                        {attendance.check_in_method && ` â€¢ ${attendance.check_in_method}`}
                                                     </div>
                                                 </div>
                                             </div>
@@ -10230,7 +10269,7 @@ function ParticipantSelfAttendance({ participant }) {
                                                 {event?.title || 'Simulation Event'}
                                             </td>
                                             <td className="py-2 pr-4 text-slate-600">
-                                                {date ? formatDate(date) : '—'}
+                                                {date ? formatDate(date) : 'â€”'}
                                             </td>
                                             <td className="py-2 pr-4">
                                                 <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -10276,7 +10315,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
         <div>
             <div className="mb-4">
                 <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
-                    ← Back to Participants
+                    â† Back to Participants
                 </a>
             </div>
 
@@ -10362,14 +10401,14 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                     <td className="px-4 py-2 text-slate-600">{reg.user?.email || 'N/A'}</td>
                                     <td className="px-4 py-2">
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getRegistrationStatusColor(reg.status)}`}>
-                                            {reg.status === 'approved' ? '✅' : reg.status === 'pending' ? '⏳' : reg.status === 'rejected' ? '❌' : ''} {reg.status}
+                                            {reg.status === 'approved' ? 'âœ…' : reg.status === 'pending' ? 'â³' : reg.status === 'rejected' ? 'âŒ' : ''} {reg.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600 text-xs">{formatDateTime(reg.registered_at)}</td>
                                     <td className="px-4 py-2">
                                         {reg.status === 'pending' && (
                                             <div className="flex gap-2">
-                                                <form method="POST" action={`/event-registrations/${reg.id}/approve`} onSubmit={async (e) => {
+                                                <form method="POST" action={`/admin/event-registrations/${reg.id}/approve`} onSubmit={async (e) => {
                                                     e.preventDefault();
                                                     const result = await Swal.fire({
                                                         title: 'Warning!', text: 'Approve this registration?', icon: 'warning',
@@ -10379,9 +10418,9 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     if (result.isConfirmed) e.target.submit();
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 hover:shadow-sm transition-all duration-200">✅ Approve</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 hover:shadow-sm transition-all duration-200">âœ… Approve</button>
                                                 </form>
-                                                <form method="POST" action={`/event-registrations/${reg.id}/reject`} onSubmit={async (e) => {
+                                                <form method="POST" action={`/admin/event-registrations/${reg.id}/reject`} onSubmit={async (e) => {
                                                     e.preventDefault();
                                                     const { value: reason } = await Swal.fire({
                                                         title: 'Reject Registration', input: 'textarea', inputLabel: 'Rejection Reason',
@@ -10391,7 +10430,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     });
                                                     if (reason) {
                                                         const form = document.createElement('form');
-                                                        form.method = 'POST'; form.action = `/event-registrations/${reg.id}/reject`;
+                                                        form.method = 'POST'; form.action = `/admin/event-registrations/${reg.id}/reject`;
                                                         const csrfInput = document.createElement('input');
                                                         csrfInput.type = 'hidden'; csrfInput.name = '_token'; csrfInput.value = csrf;
                                                         const reasonInput = document.createElement('input');
@@ -10401,7 +10440,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     }
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200">❌ Reject</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200">âŒ Reject</button>
                                                 </form>
                                             </div>
                                         )}
@@ -10432,9 +10471,10 @@ function EventAttendanceTable({ event, registrations = [] }) {
     return (
         <div>
             <div className="mb-4 flex items-center justify-between">
-                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">← Back to Participants</a>
-                <div className="flex gap-2">
-                    <a href={`/admin/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">📥 Export CSV</a>
+                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">â† Back to Participants</a>
+                <div className="flex gap-2 items-center">
+                    <AttendanceQrScanner eventId={event.id} csrfToken={csrf} onSuccess={() => window.location.reload()} />
+                    <a href={`/admin/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">ðŸ“¥ Export CSV</a>
                     <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/lock`} onSubmit={async (e) => {
                         e.preventDefault();
                         const result = await Swal.fire({
@@ -10445,7 +10485,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         if (result.isConfirmed) e.target.submit();
                     }}>
                         <input type="hidden" name="_token" value={csrf} />
-                        <button type="submit" className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1.5">🔒 Lock Attendance</button>
+                        <button type="submit" className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1.5">ðŸ”’ Lock Attendance</button>
                     </form>
                 </div>
             </div>
@@ -10464,13 +10504,13 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         {event.status}
                     </span>
                 </div>
-                <div className="text-xs text-slate-600">{formatDate(event.event_date)} • {event.location || 'Location TBD'}</div>
+                <div className="text-xs text-slate-600">{formatDate(event.event_date)} â€¢ {event.location || 'Location TBD'}</div>
             </div>
 
             {/* Attendance Dashboard - Visual Summary */}
             <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl shadow-sm border border-emerald-200 p-6 mb-4">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-slate-900">📊 Attendance Dashboard</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">ðŸ“Š Attendance Dashboard</h3>
                     {!event.attendance_locked && (
                         <div className="flex gap-2">
                             <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
@@ -10557,25 +10597,25 @@ function EventAttendanceTable({ event, registrations = [] }) {
                     <div className="space-y-3">
                         <div className="bg-white rounded-lg p-4 border border-emerald-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">🟢 Present</span>
+                                <span className="text-sm text-slate-600">ðŸŸ¢ Present</span>
                                 <span className="text-xl font-bold text-emerald-600">{presentCount}</span>
                             </div>
                         </div>
                         <div className="bg-white rounded-lg p-4 border border-amber-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">🟡 Late</span>
+                                <span className="text-sm text-slate-600">ðŸŸ¡ Late</span>
                                 <span className="text-xl font-bold text-amber-600">{lateCount}</span>
                             </div>
                         </div>
                         <div className="bg-white rounded-lg p-4 border border-red-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">🔴 Absent</span>
+                                <span className="text-sm text-slate-600">ðŸ”´ Absent</span>
                                 <span className="text-xl font-bold text-red-600">{absentCount}</span>
                             </div>
                         </div>
                         <div className="bg-white rounded-lg p-4 border border-slate-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">⚪ Not Marked</span>
+                                <span className="text-sm text-slate-600">âšª Not Marked</span>
                                 <span className="text-xl font-bold text-slate-600">{notMarkedCount}</span>
                             </div>
                         </div>
@@ -10613,20 +10653,20 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             attendance.status === 'absent' ? 'bg-red-100 text-red-800 border border-red-200' :
                                                                 attendance.status === 'excused' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-100 text-slate-700'
                                                 }`}>
-                                                    {attendance.status === 'present' ? '🟢' : attendance.status === 'late' ? '🟡' : attendance.status === 'absent' ? '🔴' : ''} {attendance.status}
+                                                    {attendance.status === 'present' ? 'ðŸŸ¢' : attendance.status === 'late' ? 'ðŸŸ¡' : attendance.status === 'absent' ? 'ðŸ”´' : ''} {attendance.status}
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600">Not marked</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.check_in_method || 'Manual'}</td>
-                                        <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.checked_in_at ? formatDateTime(attendance.checked_in_at) : '—'}</td>
+                                        <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.checked_in_at ? formatDateTime(attendance.checked_in_at) : 'â€”'}</td>
                                         <td className="px-4 py-2">
                                             {!attendance?.is_locked && !isMarked ? (
                                                 <div className="flex gap-2">
                                                     <form
                                                         method="POST"
-                                                        action={`/attendances/${attendance?.id || 'new'}`}
+                                                        action={`/admin/attendances/${attendance?.id || 'new'}`}
                                                         onSubmit={async (e) => {
                                                             e.preventDefault();
                                                             const result = await Swal.fire({
@@ -10645,7 +10685,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             if (!attendance?.id) {
                                                                 const form = document.createElement('form');
                                                                 form.method = 'POST';
-                                                                form.action = `/event-registrations/${reg.id}/attendance`;
+                                                                form.action = `/admin/event-registrations/${reg.id}/attendance`;
                                                                 const csrfInput = document.createElement('input');
                                                                 csrfInput.type = 'hidden';
                                                                 csrfInput.name = '_token';
@@ -10676,12 +10716,12 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             type="submit"
                                                             className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
                                                         >
-                                                            🟢 Present
+                                                            ðŸŸ¢ Present
                                                         </button>
                                                     </form>
                                                     <form
                                                         method="POST"
-                                                        action={`/attendances/${attendance?.id || 'new'}`}
+                                                        action={`/admin/attendances/${attendance?.id || 'new'}`}
                                                         onSubmit={async (e) => {
                                                             e.preventDefault();
                                                             const result = await Swal.fire({
@@ -10700,7 +10740,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             if (!attendance?.id) {
                                                                 const form = document.createElement('form');
                                                                 form.method = 'POST';
-                                                                form.action = `/event-registrations/${reg.id}/attendance`;
+                                                                form.action = `/admin/event-registrations/${reg.id}/attendance`;
                                                                 const csrfInput = document.createElement('input');
                                                                 csrfInput.type = 'hidden';
                                                                 csrfInput.name = '_token';
@@ -10731,7 +10771,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             type="submit"
                                                             className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200"
                                                         >
-                                                            🔴 Absent
+                                                            ðŸ”´ Absent
                                                         </button>
                                                     </form>
                                                 </div>
@@ -10804,10 +10844,10 @@ function EvaluationDashboard({ events }) {
 
     const getEvalStatusIcon = (status) => {
         switch (status) {
-            case 'in_progress': return '🔵';
-            case 'completed': return '🟢';
-            case 'locked': return '🟡';
-            default: return '⚪';
+            case 'in_progress': return 'ðŸ”µ';
+            case 'completed': return 'ðŸŸ¢';
+            case 'locked': return 'ðŸŸ¡';
+            default: return 'âšª';
         }
     };
 
@@ -10889,7 +10929,7 @@ function EvaluationDashboard({ events }) {
                             >
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-lg font-semibold text-slate-900 mb-1">📘 {event.title}</h3>
+                                        <h3 className="text-lg font-semibold text-slate-900 mb-1">ðŸ“˜ {event.title}</h3>
                                         <p className="text-sm text-slate-600">
                                             Scenario: {event.scenario_name || 'N/A'} | Date: {formatDate(event.event_date)}
                                         </p>
@@ -11192,7 +11232,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                     }
                     
                     .print-criteria li:before {
-                        content: "•";
+                        content: "â€¢";
                         position: absolute;
                         left: 0;
                         color: #000000 !important;
@@ -11325,9 +11365,9 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                 evaluation.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
-                                {evaluation.status === 'locked' ? '🔒 Locked' :
-                                    evaluation.status === 'completed' ? '🟢 Completed' :
-                                    evaluation.status === 'in_progress' ? '🔵 In Progress' : '⚪ Not Started'}
+                                {evaluation.status === 'locked' ? 'ðŸ”’ Locked' :
+                                    evaluation.status === 'completed' ? 'ðŸŸ¢ Completed' :
+                                    evaluation.status === 'in_progress' ? 'ðŸ”µ In Progress' : 'âšª Not Started'}
                             </span>
                             {(() => {
                                 const evalsArr = Array.isArray(participantEvaluations) ? participantEvaluations : Object.values(participantEvaluations || {});
@@ -11414,7 +11454,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                     <div className={`h-full rounded-full ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${(parseFloat(avgScore) / maxScore) * 100}%` }} />
                                                 </div>
                                                 <span className="text-sm font-bold text-slate-900">{avgScore} / {maxScore}</span>
-                                                <span className={passed ? 'text-emerald-600' : 'text-rose-600'}>{passed ? '✅' : '❌'}</span>
+                                                <span className={passed ? 'text-emerald-600' : 'text-rose-600'}>{passed ? 'âœ…' : 'âŒ'}</span>
                                             </div>
                                         ) : (
                                             <p className="text-xs text-slate-500">No scores yet</p>
@@ -11471,10 +11511,10 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                                 <p className="font-semibold text-slate-900">{name}</p>
                                                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                                                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                                                        {isPresent ? '✓ Present' : 'Not Marked'}
+                                                                        {isPresent ? 'âœ“ Present' : 'Not Marked'}
                                                                     </span>
                                                                     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                                                        ✓ Evaluated
+                                                                        âœ“ Evaluated
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -11551,7 +11591,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                         <p className="font-semibold text-slate-900">{name}</p>
                                                         <div className="flex flex-wrap items-center gap-2 mt-1">
                                                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                                                {isPresent ? '✓ Present' : 'Not Marked'}
+                                                                {isPresent ? 'âœ“ Present' : 'Not Marked'}
                                                             </span>
                                                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${status.label === 'Evaluated' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                                                                 {status.label}
@@ -11560,7 +11600,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                     </div>
                                                     <div className="shrink-0">
                                                         {isLocked ? (
-                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-lg">🔒 Locked</span>
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-lg">ðŸ”’ Locked</span>
                                                         ) : (
                                                             <a
                                                                 href={isPresent ? `/admin/simulation-events/${event.id}/evaluation/${p.user_id}` : '#'}
@@ -11945,7 +11985,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                     passed ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
                                     'bg-rose-100 text-rose-800 border border-rose-200'
                                 }`}>
-                                    {maxScore === 0 ? '—' : passed ? '✓ Pass' : '✗ Fail'}
+                                    {maxScore === 0 ? 'â€”' : passed ? 'âœ“ Pass' : 'âœ— Fail'}
                                 </span>
                             </div>
                         </div>
@@ -12268,7 +12308,7 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                     <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold border ${
                                                         passed ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-rose-100 text-rose-800 border-rose-200'
                                                     }`}>
-                                                        {passed ? '✓ Passed' : '✗ Failed'}
+                                                        {passed ? 'âœ“ Passed' : 'âœ— Failed'}
                                                     </span>
                                                 </td>
                                                 <td className="px-5 py-4 text-center">
@@ -12278,7 +12318,7 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                             Eligible
                                                         </span>
                                                     ) : (
-                                                        <span className="text-slate-400">—</span>
+                                                        <span className="text-slate-400">â€”</span>
                                                     )}
                                                 </td>
                                             </tr>
@@ -12308,7 +12348,7 @@ function ParticipantEvaluationResults({ participantEvaluations }) {
     const hasResults = evaluationsArray.length > 0;
 
     const formatResultDate = (dateString) => {
-        if (!dateString) return '—';
+        if (!dateString) return 'â€”';
         return formatDate(dateString);
     };
 
@@ -12347,7 +12387,7 @@ function ParticipantEvaluationResults({ participantEvaluations }) {
                                             {formatResultDate(pe.event_date)}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-900">
-                                            {pe.average_score != null ? `${Number(pe.average_score).toFixed(1)}%` : '—'}
+                                            {pe.average_score != null ? `${Number(pe.average_score).toFixed(1)}%` : 'â€”'}
                                         </td>
                                         <td className="py-2 pr-4">
                                             <span
@@ -12358,7 +12398,7 @@ function ParticipantEvaluationResults({ participantEvaluations }) {
                                                         : 'bg-rose-50 text-rose-700 border-rose-200',
                                                 ].join(' ')}
                                             >
-                                                {pe.result ? pe.result.charAt(0).toUpperCase() + pe.result.slice(1) : '—'}
+                                                {pe.result ? pe.result.charAt(0).toUpperCase() + pe.result.slice(1) : 'â€”'}
                                             </span>
                                         </td>
                                     </tr>
@@ -12380,7 +12420,7 @@ function ParticipantCertificatesList({ certificates }) {
     const hasCertificates = rows.length > 0;
 
     const formatIssuedDate = (dateString) => {
-        if (!dateString) return '—';
+        if (!dateString) return 'â€”';
         return formatDate(dateString);
     };
 
@@ -12416,7 +12456,7 @@ function ParticipantCertificatesList({ certificates }) {
                                 {rows.map((cert) => (
                                     <tr key={cert.id} className="border-b border-slate-100 last:border-0">
                                         <td className="py-2 pr-4 text-slate-900">
-                                            {cert.certificate_number || '—'}
+                                            {cert.certificate_number || 'â€”'}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-900">
                                             {cert.training_module?.title
@@ -12433,10 +12473,10 @@ function ParticipantCertificatesList({ certificates }) {
                                                 ? `${Number(cert.final_score).toFixed(1)}%`
                                                 : cert.average_score != null
                                                     ? `${Number(cert.average_score).toFixed(1)}%`
-                                                    : '—'}
+                                                    : 'â€”'}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-900">
-                                            {cert.type ? cert.type.charAt(0).toUpperCase() + cert.type.slice(1) : '—'}
+                                            {cert.type ? cert.type.charAt(0).toUpperCase() + cert.type.slice(1) : 'â€”'}
                                         </td>
                                         <td className="py-2 pr-4">
                                             {cert.id && (
@@ -12461,171 +12501,6 @@ function ParticipantCertificatesList({ certificates }) {
     );
 }
 
-// Barangay Profile List (redesigned table)
-function BarangayProfileList({ profiles = [] }) {
-    const [search, setSearch] = React.useState('');
-    const filtered = React.useMemo(() => {
-        if (!search.trim()) return profiles;
-        const q = search.toLowerCase().trim();
-        return profiles.filter(
-            (p) =>
-                (p.barangay_name || '').toLowerCase().includes(q) ||
-                (p.municipality_city || '').toLowerCase().includes(q) ||
-                (p.province || '').toLowerCase().includes(q)
-        );
-    }, [profiles, search]);
-
-    const handleDelete = (p) => {
-        if (!window.confirm(`Delete "${p.barangay_name}"? This cannot be undone.`)) return;
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/barangay-profile/${p.id}`;
-        const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content;
-        if (csrf) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = '_token';
-            input.value = csrf;
-            form.appendChild(input);
-        }
-        const method = document.createElement('input');
-        method.type = 'hidden';
-        method.name = '_method';
-        method.value = 'DELETE';
-        form.appendChild(method);
-        document.body.appendChild(form);
-        form.submit();
-    };
-
-    const hazardDisplay = (hazards) => {
-        if (!hazards || !Array.isArray(hazards) || hazards.length === 0) return '—';
-        return hazards.join(', ');
-    };
-
-    return (
-        <AdminPageShell>
-            <AdminPageHeader
-                icon={Settings}
-                title="Barangay Profile"
-                description="Manage barangay information and disaster hazards for your area."
-                actions={
-                    <AdminPrimaryButton href="/admin/barangay-profile/create">
-                        <Plus className="w-4 h-4" />
-                        Create Profile
-                    </AdminPrimaryButton>
-                }
-            />
-
-            <AdminFilterBar>
-                <AdminSearchInput
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by name, municipality, or province..."
-                />
-            </AdminFilterBar>
-
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[640px] text-sm">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                    Barangay Name
-                                </th>
-                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                    Municipality
-                                </th>
-                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                    Province
-                                </th>
-                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                    Disaster Hazards
-                                </th>
-                                <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filtered.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-5 py-12 text-center">
-                                        <p className="text-slate-500 font-medium">
-                                            {profiles.length === 0
-                                                ? 'No barangay profiles yet.'
-                                                : 'No profiles match your search.'}
-                                        </p>
-                                        <p className="text-slate-400 text-xs mt-1">
-                                            {profiles.length === 0 ? 'Click "Create profile" to add one.' : 'Try a different search term.'}
-                                        </p>
-                                        {profiles.length === 0 && (
-                                            <a
-                                                href="/admin/barangay-profile/create"
-                                                className="inline-flex items-center gap-2 mt-4 rounded-xl px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                                Create profile
-                                            </a>
-                                        )}
-                                    </td>
-                                </tr>
-                            ) : (
-                                filtered.map((p) => (
-                                    <tr
-                                        key={p.id}
-                                        className="bg-white hover:bg-slate-50/80 transition-colors duration-150"
-                                    >
-                                        <td className="px-5 py-4 font-semibold text-slate-900">
-                                            {p.barangay_name || '—'}
-                                        </td>
-                                        <td className="px-5 py-4 text-slate-700">
-                                            {p.municipality_city || '—'}
-                                        </td>
-                                        <td className="px-5 py-4 text-slate-700">
-                                            {p.province || '—'}
-                                        </td>
-                                        <td className="px-5 py-4 text-slate-600 max-w-[200px]">
-                                            <span className="line-clamp-2" title={hazardDisplay(p.hazards)}>
-                                                {hazardDisplay(p.hazards)}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <a
-                                                    href={`/admin/barangay-profile/${p.id}`}
-                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
-                                                    title="View"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </a>
-                                                <a
-                                                    href={`/admin/barangay-profile/${p.id}/edit`}
-                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </a>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDelete(p)}
-                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </AdminPageShell>
-    );
-}
 
 // Drill History Reports page
 function DrillHistoryReportsPage({ drills }) {
@@ -12651,7 +12526,7 @@ function DrillHistoryReportsPage({ drills }) {
     );
 
     // Most common disaster type (by SimulationEvent.disaster_type)
-    let mostCommonDisasterType = '—';
+    let mostCommonDisasterType = 'â€”';
     if (safeDrills.length > 0) {
         const counts = {};
         safeDrills.forEach((d) => {
@@ -12667,7 +12542,7 @@ function DrillHistoryReportsPage({ drills }) {
     }
 
     // Average overall score: from derived_average_score if present
-    let averageOverallScore = '—';
+    let averageOverallScore = 'â€”';
     const eventsWithScore = safeDrills.filter(
         (d) =>
             typeof d.derived_average_score === 'number' &&
@@ -12715,7 +12590,7 @@ function DrillHistoryReportsPage({ drills }) {
                         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
                             <span className="text-xs text-slate-600">Date range</span>
                             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs" />
-                            <span className="text-xs text-slate-400">→</span>
+                            <span className="text-xs text-slate-400">â†’</span>
                             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs" />
                         </div>
                         <AdminPrimaryButton type="button" onClick={() => handleExport('pdf')}>
@@ -12735,7 +12610,7 @@ function DrillHistoryReportsPage({ drills }) {
                         Total drills conducted
                     </p>
                     <p className="mt-1 text-2xl font-bold text-slate-900">
-                        {totalDrills || '—'}
+                        {totalDrills || 'â€”'}
                     </p>
                 </div>
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
@@ -12751,7 +12626,7 @@ function DrillHistoryReportsPage({ drills }) {
                         Participants trained
                     </p>
                     <p className="mt-1 text-2xl font-bold text-slate-900">
-                        {participantsTrained || '—'}
+                        {participantsTrained || 'â€”'}
                     </p>
                 </div>
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
@@ -12772,7 +12647,7 @@ function DrillHistoryReportsPage({ drills }) {
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search drills by event name or scenario…"
+                        placeholder="Search drills by event name or scenarioâ€¦"
                         className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                 </div>
@@ -12855,21 +12730,21 @@ function DrillHistoryReportsPage({ drills }) {
                                             {drill.title || 'Untitled event'}
                                         </td>
                                         <td className="px-4 py-3 text-slate-700">
-                                            {drill.scenario?.title || '—'}
+                                            {drill.scenario?.title || 'â€”'}
                                         </td>
                                         <td className="px-4 py-3 text-slate-700">
-                                            {formatDate(drill.event_date)} {drill.start_time ? `• ${formatTime(drill.start_time)}` : ''}
+                                            {formatDate(drill.event_date)} {drill.start_time ? `â€¢ ${formatTime(drill.start_time)}` : ''}
                                         </td>
                                         <td className="px-4 py-3 text-slate-700">
-                                            {drill.location || '—'}
+                                            {drill.location || 'â€”'}
                                         </td>
                                         <td className="px-4 py-3 text-slate-700">
-                                            {drill.approved_registrations_count ?? drill.registrations_count ?? '—'}
+                                            {drill.approved_registrations_count ?? drill.registrations_count ?? 'â€”'}
                                         </td>
                                         <td className="px-4 py-3 text-slate-700">
                                             {typeof drill.derived_average_score === 'number'
                                                 ? `${drill.derived_average_score.toFixed(1)}%`
-                                                : '—'}
+                                                : 'â€”'}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -12916,9 +12791,9 @@ function DrillHistoryReportsPage({ drills }) {
                             </p>
                         </div>
                         <div className="text-sm text-slate-500">
-                            <div><span className="font-semibold text-slate-700">Duration:</span> —</div>
-                            <div><span className="font-semibold text-slate-700">Facilitator:</span> —</div>
-                            <div><span className="font-semibold text-slate-700">Category:</span> —</div>
+                            <div><span className="font-semibold text-slate-700">Duration:</span> â€”</div>
+                            <div><span className="font-semibold text-slate-700">Facilitator:</span> â€”</div>
+                            <div><span className="font-semibold text-slate-700">Category:</span> â€”</div>
                         </div>
                     </div>
 
@@ -12966,7 +12841,7 @@ function DrillHistoryReportsPage({ drills }) {
     );
 }
 
-// After-Action Review (AAR) — standard layout with tabs
+// After-Action Review (AAR) â€” standard layout with tabs
 const AAR_TABS = [
     { id: 'summary', label: 'Summary', icon: FileText },
     { id: 'objectives', label: 'Objectives', icon: Target },
@@ -13004,15 +12879,15 @@ function AfterActionReviewPage() {
             <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6">
                 <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wide mb-4">Report Identity</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                    <div><span className="text-slate-500">Event Title</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Scenario Name</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Disaster Type</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Date &amp; Time</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Location</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Facilitator(s)</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Evaluator(s)</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Report Generated</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
-                    <div><span className="text-slate-500">Prepared by</span><p className="font-medium text-slate-900 mt-0.5">—</p></div>
+                    <div><span className="text-slate-500">Event Title</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Scenario Name</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Disaster Type</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Date &amp; Time</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Location</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Facilitator(s)</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Evaluator(s)</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Report Generated</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
+                    <div><span className="text-slate-500">Prepared by</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
                 </div>
             </div>
 
@@ -13060,7 +12935,7 @@ function AfterActionReviewPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3"><span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">Achieved / Partially / Not Achieved</span></td></tr>
+                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3"><span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">Achieved / Partially / Not Achieved</span></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -13070,10 +12945,10 @@ function AfterActionReviewPage() {
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold text-slate-900">Performance Evaluation Summary</h2>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Participants evaluated</div><div className="text-xl font-bold text-slate-900">—</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Average score</div><div className="text-xl font-bold text-slate-900">—</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Highest / Lowest</div><div className="text-xl font-bold text-slate-900">—</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Overall rating</div><div className="text-xl font-bold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Participants evaluated</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Average score</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Highest / Lowest</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Overall rating</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
                         </div>
                     </div>
                 )}
@@ -13089,7 +12964,7 @@ function AfterActionReviewPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td></tr>
+                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -13098,7 +12973,7 @@ function AfterActionReviewPage() {
                 {activeTab === 'issues' && (
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold text-slate-900">Strengths Observed</h2>
-                        <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">—</ul>
+                        <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">â€”</ul>
                         <h2 className="text-lg font-semibold text-slate-900">Areas for Improvement</h2>
                         <p className="text-sm text-slate-600">Description, impact, and recommended fix per issue.</p>
                     </div>
@@ -13117,7 +12992,7 @@ function AfterActionReviewPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td><td className="px-4 py-3">—</td></tr>
+                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -13133,10 +13008,10 @@ function AfterActionReviewPage() {
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold text-slate-900">Attendance &amp; Participation Summary</h2>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Registered</div><div className="text-lg font-semibold text-slate-900">—</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Present</div><div className="text-lg font-semibold text-slate-900">—</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Late / Absent</div><div className="text-lg font-semibold text-slate-900">—</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Completion rate</div><div className="text-lg font-semibold text-slate-900">—</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Registered</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Present</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Late / Absent</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
+                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Completion rate</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
                         </div>
                     </div>
                 )}
@@ -13169,7 +13044,7 @@ function ProfilePage({ user }) {
                 description="Manage your account information, contact details, and security settings."
                 actions={
                     <a href="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">
-                        <span className="text-base">←</span>
+                        <span className="text-base">â†</span>
                         Back to dashboard
                     </a>
                 }
@@ -13177,7 +13052,7 @@ function ProfilePage({ user }) {
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-2 sm:ml-7">
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    Signed in as <span className="font-semibold text-slate-800">{safeUser.email || '—'}</span>
+                    Signed in as <span className="font-semibold text-slate-800">{safeUser.email || 'â€”'}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
                     Role:{' '}
@@ -13489,270 +13364,4 @@ function ProfilePage({ user }) {
         </AdminPageShell>
     );
 }
-
-// Barangay Profile View (all details including address)
-function BarangayProfileDetail({ profile }) {
-    const hazards = profile?.hazards || [];
-    return (
-        <div className="space-y-6 w-full">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Barangay Profile</h2>
-                    <p className="text-sm text-slate-600 mt-1">{profile?.barangay_name}</p>
-                </div>
-                <a
-                    href="/admin/barangay-profile"
-                    className="text-sm text-slate-600 hover:text-slate-900"
-                >
-                    ← Back to list
-                </a>
-            </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Barangay Name</h3>
-                    <p className="text-slate-900">{profile?.barangay_name || '—'}</p>
-                </div>
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Municipality / City</h3>
-                    <p className="text-slate-900">{profile?.municipality_city || '—'}</p>
-                </div>
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Province</h3>
-                    <p className="text-slate-900">{profile?.province || '—'}</p>
-                </div>
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Barangay Address</h3>
-                    <p className="text-slate-900 whitespace-pre-wrap">{profile?.barangay_address || '—'}</p>
-                </div>
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-1">Disaster Hazards</h3>
-                    <p className="text-slate-900">
-                        {hazards.length > 0 ? hazards.join(', ') : '—'}
-                    </p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// Barangay Profile Form Component (create & edit)
-function BarangayProfileForm({ profile }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const isEditing = !!profile;
-
-    const [formData, setFormData] = React.useState({
-        barangay_name: profile?.barangay_name || '',
-        municipality_city: profile?.municipality_city || '',
-        province: profile?.province || '',
-        barangay_address: profile?.barangay_address || '',
-        hazards: profile?.hazards || [],
-    });
-
-    const [errors, setErrors] = React.useState({});
-
-    const hazardOptions = [
-        'Earthquake',
-        'Fire',
-        'Flood',
-        'Typhoon',
-        'Landslide',
-        'Storm Surge',
-    ];
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
-    };
-
-    const handleHazardToggle = (hazard) => {
-        setFormData(prev => {
-            const hazards = prev.hazards.includes(hazard)
-                ? prev.hazards.filter(h => h !== hazard)
-                : [...prev.hazards, hazard];
-            return { ...prev, hazards };
-        });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const newErrors = {};
-        if (!formData.barangay_name.trim()) newErrors.barangay_name = 'Barangay name is required';
-        if (!formData.municipality_city.trim()) newErrors.municipality_city = 'Municipality/City is required';
-        if (!formData.province.trim()) newErrors.province = 'Province is required';
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
-        const form = e.target;
-        const formDataToSubmit = new FormData(form);
-        formDataToSubmit.delete('hazards[]');
-        formData.hazards.forEach(hazard => formDataToSubmit.append('hazards[]', hazard));
-        try {
-            const result = await Swal.fire({
-                title: isEditing ? 'Update Profile' : 'Create Profile',
-                text: isEditing ? 'Update this barangay profile?' : 'Create this barangay profile?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: isEditing ? 'Yes, update' : 'Yes, create',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#10b981',
-                cancelButtonColor: '#64748b',
-            });
-            if (result.isConfirmed) form.submit();
-        } catch (err) {
-            console.error('Error submitting form:', err);
-        }
-    };
-
-    const labelClass = 'block text-xs font-semibold text-slate-600 mb-1';
-    const inputClass = (name) =>
-        `w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow ${errors[name] ? 'border-rose-500' : 'border-slate-300'}`;
-
-    return (
-        <div className="w-full max-w-full py-2">
-            <a
-                href="/admin/barangay-profile"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
-            >
-                <ChevronLeft className="w-4 h-4" />
-                Back to Barangay Profile
-            </a>
-
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
-                    <Settings className="w-7 h-7 text-emerald-600" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800">
-                        {isEditing ? 'Edit Barangay Profile' : 'Create Barangay Profile'}
-                    </h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        {isEditing ? 'Update barangay information and hazards' : 'Add a new barangay and its disaster hazards'}
-                    </p>
-                </div>
-            </div>
-
-            <form
-                method="POST"
-                action={isEditing ? `/admin/barangay-profile/${profile.id}` : '/admin/barangay-profile'}
-                onSubmit={handleSubmit}
-                className="training-module-card-enter bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg space-y-6"
-            >
-                <input type="hidden" name="_token" value={csrf} />
-                {isEditing && <input type="hidden" name="_method" value="PUT" />}
-
-                {/* Barangay Information */}
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Barangay Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className={labelClass}>
-                                Barangay Name <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="barangay_name"
-                                value={formData.barangay_name}
-                                onChange={handleInputChange}
-                                className={inputClass('barangay_name')}
-                                placeholder="e.g., Barangay San Jose"
-                            />
-                            {errors.barangay_name && (
-                                <p className="text-xs text-rose-600 mt-1">{errors.barangay_name}</p>
-                            )}
-                        </div>
-                        <div>
-                            <label className={labelClass}>
-                                Municipality / City <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="municipality_city"
-                                value={formData.municipality_city}
-                                onChange={handleInputChange}
-                                className={inputClass('municipality_city')}
-                                placeholder="e.g., Quezon City"
-                            />
-                            {errors.municipality_city && (
-                                <p className="text-xs text-rose-600 mt-1">{errors.municipality_city}</p>
-                            )}
-                        </div>
-                        <div>
-                            <label className={labelClass}>
-                                Province <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="province"
-                                value={formData.province}
-                                onChange={handleInputChange}
-                                className={inputClass('province')}
-                                placeholder="e.g., Metro Manila"
-                            />
-                            {errors.province && (
-                                <p className="text-xs text-rose-600 mt-1">{errors.province}</p>
-                            )}
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className={labelClass}>Barangay Address</label>
-                            <textarea
-                                name="barangay_address"
-                                value={formData.barangay_address}
-                                onChange={handleInputChange}
-                                rows={3}
-                                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
-                                placeholder="Complete barangay address"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Disaster Hazards */}
-                <div className="pt-4 border-t border-slate-100">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-3">Disaster Hazards</h3>
-                    {formData.hazards.map((hazard, index) => (
-                        <input key={index} type="hidden" name="hazards[]" value={hazard} />
-                    ))}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {hazardOptions.map(hazard => {
-                            const checked = formData.hazards.includes(hazard);
-                            return (
-                                <label
-                                    key={hazard}
-                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-colors ${checked ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'}`}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={() => handleHazardToggle(hazard)}
-                                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                    />
-                                    <span className="text-sm font-medium text-slate-700">{hazard}</span>
-                                </label>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Actions */}
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                    <a
-                        href="/admin/barangay-profile"
-                        className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
-                    >
-                        Cancel
-                    </a>
-                    <button
-                        type="submit"
-                        className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow-md transition-all duration-200"
-                    >
-                        {isEditing ? 'Update Profile' : 'Create Profile'}
-                    </button>
-                </div>
-            </form>
-        </div>
-    );
-}
-
 

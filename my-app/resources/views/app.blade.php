@@ -37,6 +37,12 @@
             @isset($scenarios)
                 data-scenarios='@json($scenarios)'
             @endisset
+            @isset($trainingModules)
+                data-training-modules='@json($trainingModules)'
+            @endisset
+            @isset($trainers)
+                data-trainers='@json($trainers)'
+            @endisset
             @isset($scenario)
                 data-scenario='@json($scenario)'
             @endisset
@@ -54,6 +60,18 @@
             @endisset
             @isset($participantsSummary)
                 data-participants-summary='@json($participantsSummary)'
+            @endisset
+            @isset($qualifiedTrainers)
+                data-qualified-trainers='@json($qualifiedTrainers)'
+            @endisset
+            @isset($qualifiedTrainersPagination)
+                data-qualified-trainers-pagination='@json($qualifiedTrainersPagination)'
+            @endisset
+            @isset($qualifiedTrainersSummary)
+                data-qualified-trainers-summary='@json($qualifiedTrainersSummary)'
+            @endisset
+            @isset($qualifiedTrainer)
+                data-qualified-trainer='@json($qualifiedTrainer)'
             @endisset
             @isset($participant)
                 data-participant='@json($participant)'
@@ -134,6 +152,15 @@
             @isset($barangay_profile)
                 data-barangay-profile='@json($barangay_profile)'
             @endisset
+            @isset($hazard_assessment_summary)
+                data-hazard-assessment-summary='@json($hazard_assessment_summary)'
+            @endisset
+            @isset($hazard_assessment_options)
+                data-hazard-assessment-options='@json($hazard_assessment_options)'
+            @endisset
+            @isset($hazard_intelligence)
+                data-hazard-intelligence='@json($hazard_intelligence)'
+            @endisset
             @isset($scores)
                 data-scores='@json($scores)'
             @endisset
@@ -178,6 +205,9 @@
             @endisset
             @isset($dashboard_charts)
                 data-dashboard-charts='@json($dashboard_charts)'
+            @endisset
+            @isset($hazard_analytics)
+                data-hazard-analytics='@json($hazard_analytics)'
             @endisset
             @isset($ai_scenario_modules)
                 data-ai-scenario-modules='@json($ai_scenario_modules)'

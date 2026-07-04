@@ -13,6 +13,7 @@ use App\Http\Controllers\LegacyPortalRedirectController;
 use App\Http\Controllers\ScenarioController;
 use App\Http\Controllers\SimulationEventController;
 use App\Http\Controllers\ParticipantController;
+use App\Http\Controllers\QualifiedTrainerController;
 use App\Http\Controllers\EventRegistrationController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AdminUserController;
@@ -28,7 +29,7 @@ use App\Http\Controllers\SessionController;
 use App\Http\Controllers\UserMonitoringController;
 use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Controllers\AiScenarioConfigController;
-use App\Http\Controllers\AiScenarioAttemptController;
+use App\Http\Controllers\Admin\Group6IntegrationController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
 
@@ -41,6 +42,10 @@ Route::view('/privacy', 'privacy')->name('privacy');
 Route::view('/terms', 'terms')->name('terms');
 Route::view('/data-protection', 'data-protection')->name('data.protection');
 Route::view('/accessibility', 'accessibility')->name('accessibility');
+
+// Public certificate verification (QR code links here)
+Route::get('/certificates/verify/{token}', [\App\Http\Controllers\CertificateVerificationController::class, 'show'])->name('certificates.verify');
+Route::get('/api/certificates/verify/{token}', [\App\Http\Controllers\CertificateVerificationController::class, 'verifyApi'])->name('api.certificates.verify');
 
 // Centralized Login Integration (AlerTara)
 // This route handles incoming requests from login.alertaraqc.com with JWT tokens
@@ -223,6 +228,20 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-events/{simulationEvent}/attendance/lock', [AttendanceController::class, 'lock'])->name('admin.simulation-events.attendance.lock');
         Route::get('/simulation-events/{simulationEvent}/attendance/export', [AttendanceController::class, 'export'])->name('admin.simulation-events.attendance.export');
         Route::post('/simulation-events/{simulationEvent}/attendance/mark-present', [AttendanceController::class, 'markPresentByQR'])->name('admin.simulation-events.attendance.mark-present');
+        Route::post('/simulation-events/{simulationEvent}/attendance/bulk', [AttendanceController::class, 'bulkMark'])->name('admin.simulation-events.attendance.bulk');
+
+        // Admin JSON API (session-authenticated, for React modules)
+        Route::prefix('api')->name('admin.api.')->group(function () {
+            Route::get('/resources', [\App\Http\Controllers\Api\ResourceApiController::class, 'index'])->name('resources.index');
+            Route::get('/resources/{resource}/history', [\App\Http\Controllers\Api\ResourceApiController::class, 'getHistory'])->name('resources.history');
+        });
+
+        // Group 6 — external system integration (status & placeholders only)
+        Route::prefix('integrations/group6')->name('admin.integrations.group6.')->group(function () {
+            Route::get('/status', [Group6IntegrationController::class, 'status'])->name('status');
+            Route::get('/pending-records', [Group6IntegrationController::class, 'pendingRecords'])->name('pending-records');
+            Route::post('/fetch', [Group6IntegrationController::class, 'fetchFromGroup6'])->name('fetch');
+        });
 
         // Participants (admin management)
         Route::get('/participants', [ParticipantController::class, 'index'])->name('admin.participants.index');
@@ -231,6 +250,11 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::put('/participants/{user}', [ParticipantController::class, 'update'])->name('admin.participants.update');
         Route::post('/participants/{user}/deactivate', [ParticipantController::class, 'deactivate'])->name('admin.participants.deactivate');
         Route::post('/participants/{user}/reactivate', [ParticipantController::class, 'reactivate'])->name('admin.participants.reactivate');
+
+        // Qualified trainers (read-only directory synced from Community Engagement System)
+        Route::get('/api/qualified-trainers', [QualifiedTrainerController::class, 'apiIndex'])->name('admin.api.qualified-trainers.index');
+        Route::post('/qualified-trainers/sync', [QualifiedTrainerController::class, 'sync'])->name('admin.qualified-trainers.sync');
+        Route::get('/qualified-trainers/{qualifiedTrainer}', [QualifiedTrainerController::class, 'show'])->name('admin.qualified-trainers.show');
 
         // Event Registrations & Attendance
         Route::post('/event-registrations/{eventRegistration}/approve', [EventRegistrationController::class, 'approve'])->name('admin.event-registrations.approve');
@@ -283,21 +307,40 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::put('/evaluations/{evaluation}/status', [EvaluationController::class, 'updateStatus'])->name('admin.evaluations.update-status');
         Route::post('/evaluations/{evaluation}/lock', [EvaluationController::class, 'lock'])->name('admin.evaluations.lock');
 
-        // Barangay Profile
-        Route::get('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'index'])
-            ->name('admin.barangay-profile.index');
-        Route::get('/barangay-profile/create', [App\Http\Controllers\BarangayProfileController::class, 'create'])
-            ->name('admin.barangay-profile.create');
-        Route::post('/barangay-profile', [App\Http\Controllers\BarangayProfileController::class, 'store'])
-            ->name('admin.barangay-profile.store');
-        Route::get('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'show'])
-            ->name('admin.barangay-profile.show');
-        Route::get('/barangay-profile/{barangayProfile}/edit', [App\Http\Controllers\BarangayProfileController::class, 'edit'])
-            ->name('admin.barangay-profile.edit');
-        Route::put('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'update'])
-            ->name('admin.barangay-profile.update');
-        Route::delete('/barangay-profile/{barangayProfile}', [App\Http\Controllers\BarangayProfileController::class, 'destroy'])
-            ->name('admin.barangay-profile.destroy');
+        // Hazard Assessment Profile (formerly Barangay Profile)
+        Route::get('/api/hazard-assessment-profiles', [App\Http\Controllers\HazardAssessmentProfileController::class, 'apiIndex'])
+            ->name('admin.api.hazard-assessment-profiles.index');
+        Route::get('/api/locations/regions', [App\Http\Controllers\PhilippinesLocationController::class, 'regions']);
+        Route::get('/api/locations/provinces', [App\Http\Controllers\PhilippinesLocationController::class, 'provinces']);
+        Route::get('/api/locations/cities', [App\Http\Controllers\PhilippinesLocationController::class, 'cities']);
+        Route::get('/api/locations/barangays', [App\Http\Controllers\PhilippinesLocationController::class, 'barangays']);
+        Route::get('/api/locations/resolve', [App\Http\Controllers\PhilippinesLocationController::class, 'resolve']);
+        Route::get('/hazard-assessment-profiles', [App\Http\Controllers\HazardAssessmentProfileController::class, 'index'])
+            ->name('admin.hazard-assessment-profiles.index');
+        Route::get('/hazard-assessment-profiles/create', [App\Http\Controllers\HazardAssessmentProfileController::class, 'create'])
+            ->name('admin.hazard-assessment-profiles.create');
+        Route::post('/hazard-assessment-profiles', [App\Http\Controllers\HazardAssessmentProfileController::class, 'store'])
+            ->name('admin.hazard-assessment-profiles.store');
+        Route::get('/hazard-assessment-profiles/{barangayProfile}', [App\Http\Controllers\HazardAssessmentProfileController::class, 'show'])
+            ->name('admin.hazard-assessment-profiles.show');
+        Route::get('/hazard-assessment-profiles/{barangayProfile}/edit', [App\Http\Controllers\HazardAssessmentProfileController::class, 'edit'])
+            ->name('admin.hazard-assessment-profiles.edit');
+        Route::put('/hazard-assessment-profiles/{barangayProfile}', [App\Http\Controllers\HazardAssessmentProfileController::class, 'update'])
+            ->name('admin.hazard-assessment-profiles.update');
+        Route::delete('/hazard-assessment-profiles/{barangayProfile}', [App\Http\Controllers\HazardAssessmentProfileController::class, 'destroy'])
+            ->name('admin.hazard-assessment-profiles.destroy');
+        Route::get('/hazard-assessment-profiles/{barangayProfile}/intelligence', [App\Http\Controllers\HazardAssessmentProfileController::class, 'intelligence'])
+            ->name('admin.hazard-assessment-profiles.intelligence');
+        Route::get('/hazard-assessment-profiles/{barangayProfile}/documents/{document}/download', [App\Http\Controllers\HazardAssessmentProfileController::class, 'downloadDocument'])
+            ->name('admin.hazard-assessment-profiles.documents.download');
+        Route::delete('/hazard-assessment-profiles/{barangayProfile}/documents/{document}', [App\Http\Controllers\HazardAssessmentProfileController::class, 'deleteDocument'])
+            ->name('admin.hazard-assessment-profiles.documents.destroy');
+
+        // Legacy redirects
+        Route::redirect('/barangay-profile', '/admin/hazard-assessment-profiles');
+        Route::redirect('/barangay-profile/create', '/admin/hazard-assessment-profiles/create');
+        Route::get('/barangay-profile/{barangayProfile}', fn ($id) => redirect("/admin/hazard-assessment-profiles/{$id}"));
+        Route::get('/barangay-profile/{barangayProfile}/edit', fn ($id) => redirect("/admin/hazard-assessment-profiles/{$id}/edit"));
 
         // Certification Issuance
         Route::get('/certification', [App\Http\Controllers\CertificationController::class, 'index'])->name('admin.certification.index');

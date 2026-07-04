@@ -25,6 +25,7 @@ import {
     FileText,
     History,
     Sparkles,
+    AlertTriangle,
 } from 'lucide-react';
 import { TopBar } from './TopBar';
 
@@ -590,10 +591,10 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                 <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Administration</NavSectionTitle>}
                     <NavItem
-                        icon={Settings}
-                        label="Barangay Profile"
-                        href="/admin/barangay-profile"
-                        active={currentSection === 'barangay_profile'}
+                        icon={AlertTriangle}
+                        label="Hazard Assessment Profile"
+                        href="/admin/hazard-assessment-profiles"
+                        active={currentSection === 'hazard_assessment_profile' || currentSection?.startsWith('hazard_assessment_profile')}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

@@ -48,7 +48,11 @@ export function resourcesIndex() {
 }
 
 export function barangayProfileIndex() {
-    return '/admin/barangay-profile';
+    return hazardAssessmentProfileIndex();
+}
+
+export function hazardAssessmentProfileIndex() {
+    return '/admin/hazard-assessment-profiles';
 }
 
 export function afterActionReviewIndex() {

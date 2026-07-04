@@ -125,13 +125,13 @@ class GeminiService
     /**
      * Generate a disaster scenario using Gemini API from custom user prompt
      */
-    public function generateScenarioFromPrompt(string $userPrompt, string $disasterType = null, string $difficulty = 'Medium'): array
+    public function generateScenarioFromPrompt(string $userPrompt, ?string $disasterType = null, string $difficulty = 'Medium', ?string $hazardContext = null): array
     {
         if ($this->apiKey === '') {
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
         }
 
-        $prompt = $this->buildScenarioPromptFromUserInput($userPrompt, $disasterType, $difficulty);
+        $prompt = $this->buildScenarioPromptFromUserInput($userPrompt, $disasterType, $difficulty, $hazardContext);
 
         try {
             $generatedText = $this->generateContentText($prompt);
@@ -216,14 +216,15 @@ class GeminiService
     /**
      * Build the prompt for Gemini to generate a scenario from user input
      */
-    private function buildScenarioPromptFromUserInput(string $userPrompt, ?string $disasterType, string $difficulty): string
+    private function buildScenarioPromptFromUserInput(string $userPrompt, ?string $disasterType, string $difficulty, ?string $hazardContext = null): string
     {
         $disasterTypeText = $disasterType ? "Disaster Type: {$disasterType}\n" : "";
+        $hazardBlock = $hazardContext ? "\n\nOFFICIAL HAZARD ASSESSMENT DATA (must be respected):\n{$hazardContext}\n" : "";
         
         $prompt = "You are a disaster preparedness training expert. Based on the following user description, generate a comprehensive disaster response training scenario.
 
 User's Scenario Description: {$userPrompt}
-{$disasterTypeText}Difficulty Level: {$difficulty}
+{$disasterTypeText}Difficulty Level: {$difficulty}{$hazardBlock}
 
 Return the response ONLY as valid JSON (no markdown, no code blocks, no explanations, just the JSON object):
 {
@@ -394,6 +395,7 @@ Important:
         string $difficulty = 'medium',
         int $questionCount = 10,
         string $language = 'en',
+        ?string $hazardContext = null,
     ): array {
         if (! $this->apiKey) {
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
@@ -404,7 +406,7 @@ Important:
         $language = in_array($language, ['en', 'fil'], true) ? $language : 'en';
 
         $module->loadMissing('contents');
-        $prompt = $this->buildTrainingScenarioQuizPrompt($module, $difficulty, $questionCount, $language);
+        $prompt = $this->buildTrainingScenarioQuizPrompt($module, $difficulty, $questionCount, $language, $hazardContext);
         $generatedText = $this->generateContentText($prompt);
 
         return $this->parseTrainingScenarioQuizFromText($generatedText, $questionCount);
@@ -487,6 +489,7 @@ Important:
         string $difficulty,
         int $questionCount,
         string $language = 'en',
+        ?string $hazardContext = null,
     ): string {
         $objectives = is_array($module->learning_objectives)
             ? implode('; ', array_filter($module->learning_objectives))
@@ -505,11 +508,13 @@ Important:
 
         $difficultyLabel = ucfirst($difficulty);
         $languageLabel = $language === 'fil' ? 'Filipino' : 'English';
+        $hazardBlock = $hazardContext ? "\nOfficial Hazard Assessment (scenario must align with these risks only):\n{$hazardContext}\n" : '';
 
         return <<<PROMPT
 You are a disaster preparedness training expert for Local Government Units (LGUs) in the Philippines.
 
 Using ONLY the training module information below, create one realistic disaster scenario and exactly {$questionCount} multiple-choice assessment questions.
+{$hazardBlock}
 
 Write ALL output in {$languageLabel}.
 

@@ -144,7 +144,7 @@ class RoleController extends Controller
                     'resources',
                     'evaluations',
                     'certifications',
-                    'barangay-profile',
+                    'hazard-assessment-profile',
                 ],
                 'review-reporting' => [
                     'audit-logs',

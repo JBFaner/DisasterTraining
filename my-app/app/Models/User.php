@@ -37,6 +37,7 @@ class User extends Authenticatable
         'registered_at',
         'profile_picture',
         'barangay_id',
+        'philippine_barangay_id',
         'last_activity',
     ];
 

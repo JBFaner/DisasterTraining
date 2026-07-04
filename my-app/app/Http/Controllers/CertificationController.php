@@ -264,6 +264,7 @@ class CertificationController extends Controller
             'template_paper_size' => $template?->paper_size,
             'template_content' => $template ? ($template->template_content ?? $template->defaultTemplateContent()) : null,
             'certificate_number' => $certNumber,
+            'qr_verification_token' => bin2hex(random_bytes(32)),
             'type' => $data['type'],
             'training_type' => $data['training_type'] ?? $event->scenario?->title ?? 'Disaster Preparedness Training',
             'completion_date' => $completionDate,

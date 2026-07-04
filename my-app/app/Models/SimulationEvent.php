@@ -28,9 +28,15 @@ class SimulationEvent extends Model
         'is_high_risk_location',
         'scenario_id',
         'scenario_is_required',
+        'training_module_id',
+        'barangay_profile_id',
         'facilitators',
+        'assigned_trainer_id',
         'allowed_participant_types',
+        'target_audience',
         'max_participants',
+        'registration_deadline',
+        'venue',
         'self_registration_enabled',
         'approval_required',
         'qr_code_enabled',
@@ -55,6 +61,7 @@ class SimulationEvent extends Model
 
     protected $casts = [
         'event_date' => 'date',
+        'registration_deadline' => 'datetime',
         'is_recurring' => 'boolean',
         'is_high_risk_location' => 'boolean',
         'scenario_is_required' => 'boolean',
@@ -73,6 +80,21 @@ class SimulationEvent extends Model
         'completed_at' => 'datetime',
         'actual_start_time' => 'datetime',
     ];
+
+    public function assignedTrainer()
+    {
+        return $this->belongsTo(QualifiedTrainer::class, 'assigned_trainer_id');
+    }
+
+    public function trainingModule()
+    {
+        return $this->belongsTo(TrainingModule::class);
+    }
+
+    public function barangayProfile()
+    {
+        return $this->belongsTo(BarangayProfile::class, 'barangay_profile_id');
+    }
 
     public function scenario()
     {

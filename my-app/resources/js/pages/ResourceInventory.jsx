@@ -161,7 +161,7 @@ export function ResourceInventory() {
     const fetchResources = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/admin/resources');
+            const response = await fetch('/admin/api/resources');
             const data = await response.json();
             
             if (!response.ok) {
@@ -205,7 +205,7 @@ export function ResourceInventory() {
 
     const fetchResourceHistory = async (resourceId) => {
         try {
-            const response = await fetch(`/api/admin/resources/${resourceId}/history`);
+            const response = await fetch(`/admin/api/resources/${resourceId}/history`);
             if (!response.ok) throw new Error('Failed to fetch history');
             const data = await response.json();
             setSelectedResourceHistory(data);
@@ -589,7 +589,7 @@ export function ResourceInventory() {
 
     const handleViewResource = (resource) => {
         // Fetch full resource details including assignments
-        fetch(`/api/admin/resources/${resource.id}/history`)
+        fetch(`/admin/api/resources/${resource.id}/history`)
             .then(res => res.json())
             .then(data => {
                 const resourceData = data.resource || resource;

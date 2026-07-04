@@ -2,7 +2,15 @@
 
 namespace App\Providers;
 
+use App\Contracts\Group6\Group6ApiClientInterface;
+use App\Contracts\Group6\Group6DataConsumerInterface;
+use App\Contracts\Group6\Group6EventReferenceProviderInterface;
+use App\Contracts\Group6\Group6InboundReceiverInterface;
 use App\Mail\CustomMailManager;
+use App\Services\Group6\Group6EventReferenceProvider;
+use App\Services\Group6\Group6InboundReceiver;
+use App\Services\Group6\PlaceholderGroup6ApiClient;
+use App\Services\Group6\PlaceholderGroup6DataConsumer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
@@ -17,6 +25,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->extend('mail.manager', function ($manager, $app) {
             return new CustomMailManager($app);
         });
+
+        // Group 6 — external system integration (placeholders until API is available)
+        $this->app->bind(Group6InboundReceiverInterface::class, Group6InboundReceiver::class);
+        $this->app->bind(Group6ApiClientInterface::class, PlaceholderGroup6ApiClient::class);
+        $this->app->bind(Group6DataConsumerInterface::class, PlaceholderGroup6DataConsumer::class);
+        $this->app->bind(Group6EventReferenceProviderInterface::class, Group6EventReferenceProvider::class);
+
+        $this->app->bind(
+            \App\Contracts\HazardAssessment\HazardAssessmentDataProviderInterface::class,
+            \App\Services\HazardAssessment\LocalHazardAssessmentDataProvider::class,
+        );
     }
 
     /**

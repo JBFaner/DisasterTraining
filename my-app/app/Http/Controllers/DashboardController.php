@@ -267,6 +267,9 @@ class DashboardController extends Controller
             'participants' => $participants,
             'dashboard_stats' => $dashboardStats,
             'dashboard_charts' => $dashboardCharts,
+            'hazard_analytics' => $user->role !== 'PARTICIPANT'
+                ? app(\App\Services\HazardAssessment\HazardTrainingRecommendationService::class)->globalAnalytics()
+                : null,
         ]);
     }
 

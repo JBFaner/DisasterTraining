@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\QualifiedTrainerController;
 use App\Models\User;
 use App\Models\SimulationEvent;
 use App\Models\EventRegistration;
@@ -54,9 +55,16 @@ class ParticipantController extends Controller
             $query->where('status', $request->status_filter);
         }
 
+        $sortBy = $request->string('sort_by', 'created_at');
+        $sortDir = $request->string('sort_dir', 'desc') === 'asc' ? 'asc' : 'desc';
+        $allowedSorts = ['name', 'email', 'participant_id', 'status', 'created_at'];
+        if (! in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'created_at';
+        }
+
         $perPage = 10;
 
-        $paginator = $query->orderBy('created_at', 'desc')
+        $paginator = $query->orderBy($sortBy, $sortDir)
             ->paginate($perPage)
             ->withQueryString();
 
@@ -85,17 +93,28 @@ class ParticipantController extends Controller
             ->get();
 
         if ($request->expectsJson()) {
-            return response()->json([
+            $payload = [
                 'participants' => $participants,
                 'pagination' => $participantsPagination,
-            ]);
+            ];
+
+            if ($request->string('list') === 'trainers') {
+                return response()->json(QualifiedTrainerController::buildListResponse($request));
+            }
+
+            return response()->json($payload);
         }
+
+        $trainerList = QualifiedTrainerController::buildListResponse($request);
 
         return view('app', [
             'section' => 'participants',
             'participants' => $participants,
             'participantsPagination' => $participantsPagination,
             'participantsSummary' => $participantsSummary,
+            'qualifiedTrainers' => $trainerList['trainers'],
+            'qualifiedTrainersPagination' => $trainerList['pagination'],
+            'qualifiedTrainersSummary' => $trainerList['summary'],
             'events' => $events,
         ]);
     }

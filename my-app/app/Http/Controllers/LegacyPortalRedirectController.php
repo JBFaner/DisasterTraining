@@ -66,7 +66,7 @@ class LegacyPortalRedirectController extends Controller
 
     public function barangayProfile(Request $request)
     {
-        return redirect()->route('admin.barangay-profile.index', $request->query());
+        return redirect()->route('admin.hazard-assessment-profiles.index', $request->query());
     }
 
     public function auditLogs(Request $request)

@@ -18,6 +18,7 @@ class Certificate extends Model
         'template_paper_size',
         'template_content',
         'certificate_number',
+        'qr_verification_token',
         'type',
         'training_type',
         'completion_date',
@@ -75,5 +76,14 @@ class Certificate extends Model
     public function isRevoked(): bool
     {
         return $this->revoked_at !== null;
+    }
+
+    public function verificationUrl(): ?string
+    {
+        if (! $this->qr_verification_token) {
+            return null;
+        }
+
+        return url('/certificates/verify/'.$this->qr_verification_token);
     }
 }

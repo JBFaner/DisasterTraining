@@ -27,11 +27,22 @@ class AiScenarioTrainingService
         );
         $targetLocale = $sourceLocale === 'en' ? 'fil' : 'en';
 
+        $hazardContext = null;
+        $user = portal_user();
+        if ($user?->barangay_id) {
+            $profile = \App\Models\BarangayProfile::with('hazardRecords')->find($user->barangay_id);
+            if ($profile) {
+                $hazardContext = app(\App\Services\HazardAssessment\HazardTrainingRecommendationService::class)
+                    ->buildAiContext($profile);
+            }
+        }
+
         $result = $this->gemini->generateTrainingScenarioQuiz(
             $module,
             $config->difficulty,
             $config->number_of_questions,
             $sourceLocale,
+            $hazardContext,
         );
 
         $translated = $this->translationService->translateScenarioQuiz($result, $sourceLocale, $targetLocale);

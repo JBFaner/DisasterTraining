@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             ScenarioSeeder::class,
             SimulationEventSeeder::class,
             ResourceSeeder::class,
+            PhilippinesLocationSeeder::class,
             BarangayProfileSeeder::class,
             ParticipantSeeder::class,
             EdrillParticipantSeeder::class,
