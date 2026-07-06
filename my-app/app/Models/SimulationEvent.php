@@ -57,6 +57,10 @@ class SimulationEvent extends Model
         'completed_at',
         'actual_start_time',
         'started_by',
+        'readiness_confirmations',
+        'execution_progress',
+        'timeline_entries',
+        'post_evaluation',
     ];
 
     protected $casts = [
@@ -79,6 +83,10 @@ class SimulationEvent extends Model
         'published_at' => 'datetime',
         'completed_at' => 'datetime',
         'actual_start_time' => 'datetime',
+        'readiness_confirmations' => 'array',
+        'execution_progress' => 'array',
+        'timeline_entries' => 'array',
+        'post_evaluation' => 'array',
     ];
 
     public function assignedTrainer()

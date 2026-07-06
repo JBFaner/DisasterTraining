@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
     Plus,
     Search,
-    Filter,
     Edit2,
     Trash2,
     Eye,
@@ -23,11 +22,11 @@ import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
+    AdminFilterSelect,
     AdminPrimaryButton,
     AdminSecondaryButton,
     adminInputClass,
-    adminSelectClass,
 } from '../components/admin/AdminLayout';
 
 // Pagination Component
@@ -113,13 +112,11 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
 export function ResourceInventory() {
     const [activeTab, setActiveTab] = useState('resources');
     const [searchQuery, setSearchQuery] = useState('');
-    const [showFilters, setShowFilters] = useState(false);
     const [resourceTypeFilter, setResourceTypeFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [conditionFilter, setConditionFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10; // Fixed to 10 items per page
-    const filterRef = React.useRef(null);
     const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(true);
     const [events, setEvents] = useState([]);
@@ -140,23 +137,6 @@ export function ResourceInventory() {
         fetchCompletedEventsWithResources();
     }, []);
 
-
-    // Close filter dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (filterRef.current && !filterRef.current.contains(event.target)) {
-                setShowFilters(false);
-            }
-        };
-
-        if (showFilters) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [showFilters]);
 
     const fetchResources = async () => {
         try {
@@ -975,9 +955,9 @@ export function ResourceInventory() {
             {/* Tab Content */}
             {activeTab === 'resources' && (
                 <div className="space-y-4">
-                    <AdminFilterBar>
-                        <div className="flex flex-col md:flex-row gap-3">
-                            <div className="flex-1 relative min-w-0">
+                    <AdminCollapsibleFilterBar
+                        searchSlot={(
+                            <div className="relative flex-1 min-w-0">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                 <input
                                     type="text"
@@ -1002,93 +982,33 @@ export function ResourceInventory() {
                                     </div>
                                 )}
                             </div>
-                            <div className="flex gap-2 flex-wrap">
-                                <select
-                                    className={adminSelectClass}
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                >
-                                    <option value="all">All Status</option>
-                                    {statusOptions.map((status) => (
-                                        <option key={status} value={status}>{status}</option>
-                                    ))}
-                                </select>
-                                <AdminPrimaryButton type="button" onClick={() => setShowFilters(!showFilters)}>
-                                    <Filter className="w-4 h-4" />
-                                    Filter
-                                </AdminPrimaryButton>
-                            </div>
-                        </div>
-                        <div className="relative mt-2" ref={filterRef}>
-                            {showFilters && (
-                                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-10">
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                                Resource Type
-                                            </label>
-                                            <select
-                                                value={resourceTypeFilter}
-                                                onChange={(e) => setResourceTypeFilter(e.target.value)}
-                                                className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            >
-                                                <option value="all">All Resource Types</option>
-                                                {resourceTypes.map((type) => (
-                                                    <option key={type} value={type}>
-                                                        {type}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                                Status
-                                            </label>
-                                            <select
-                                                value={statusFilter}
-                                                onChange={(e) => setStatusFilter(e.target.value)}
-                                                className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            >
-                                                <option value="all">All Status</option>
-                                                {statusOptions.map((status) => (
-                                                    <option key={status} value={status}>
-                                                        {status}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                                Condition
-                                            </label>
-                                            <select
-                                                value={conditionFilter}
-                                                onChange={(e) => setConditionFilter(e.target.value)}
-                                                className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            >
-                                                <option value="all">All Conditions</option>
-                                                {conditionOptions.map((condition) => (
-                                                    <option key={condition} value={condition}>
-                                                        {condition}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setResourceTypeFilter('all');
-                                                setStatusFilter('all');
-                                                setConditionFilter('all');
-                                            }}
-                                            className="w-full text-xs text-slate-600 hover:text-slate-800 underline"
-                                        >
-                                            Clear filters
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </AdminFilterBar>
+                        )}
+                        hasActiveFilters={resourceTypeFilter !== 'all' || statusFilter !== 'all' || conditionFilter !== 'all'}
+                        onClearFilters={() => {
+                            setResourceTypeFilter('all');
+                            setStatusFilter('all');
+                            setConditionFilter('all');
+                        }}
+                    >
+                        <AdminFilterSelect label="Resource Type" value={resourceTypeFilter} onChange={(e) => setResourceTypeFilter(e.target.value)}>
+                            <option value="all">All Resource Types</option>
+                            {resourceTypes.map((type) => (
+                                <option key={type} value={type}>{type}</option>
+                            ))}
+                        </AdminFilterSelect>
+                        <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                            <option value="all">All Status</option>
+                            {statusOptions.map((status) => (
+                                <option key={status} value={status}>{status}</option>
+                            ))}
+                        </AdminFilterSelect>
+                        <AdminFilterSelect label="Condition" value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)}>
+                            <option value="all">All Conditions</option>
+                            {conditionOptions.map((condition) => (
+                                <option key={condition} value={condition}>{condition}</option>
+                            ))}
+                        </AdminFilterSelect>
+                    </AdminCollapsibleFilterBar>
 
                     {/* Resources Table - Soft rows (card list) */}
                     <div className="space-y-3">

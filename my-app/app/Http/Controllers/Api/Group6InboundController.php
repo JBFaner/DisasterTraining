@@ -7,6 +7,7 @@ use App\Contracts\Group6\Group6InboundReceiverInterface;
 use App\Http\Controllers\Controller;
 use App\Models\Group6InboundRecord;
 use App\Models\SimulationEvent;
+use App\Services\Group6\ParticipantSyncService;
 use App\Services\Group6\QualifiedTrainerSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class Group6InboundController extends Controller
         private readonly Group6InboundReceiverInterface $receiver,
         private readonly Group6EventReferenceProviderInterface $eventReference,
         private readonly QualifiedTrainerSyncService $trainerSync,
+        private readonly ParticipantSyncService $participantSync,
     ) {}
 
     /**
@@ -46,12 +48,15 @@ class Group6InboundController extends Controller
             $request->header('X-Group6-Batch-Id'),
         );
 
+        $processResult = $this->participantSync->processInboundRecord($record);
+
         return response()->json([
-            'success' => true,
-            'message' => 'Participant data received and staged for processing.',
+            'success' => $processResult['success'],
+            'message' => $processResult['message'],
             'inbound_record_id' => $record->id,
-            'status' => $record->status,
-        ], 202);
+            'status' => $record->fresh()->status,
+            'synced' => $processResult['synced'],
+        ], $processResult['success'] ? 200 : 422);
     }
 
     /**

@@ -35,6 +35,8 @@ class User extends Authenticatable
         'participant_id',
         'status',
         'registered_at',
+        'group6_external_id',
+        'last_synced_at',
         'profile_picture',
         'barangay_id',
         'philippine_barangay_id',
@@ -63,6 +65,7 @@ class User extends Authenticatable
             'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'registered_at' => 'datetime',
+            'last_synced_at' => 'datetime',
             'last_login' => 'datetime',
             'last_activity' => 'datetime',
         ];
@@ -86,5 +89,25 @@ class User extends Authenticatable
     public function barangayProfile()
     {
         return $this->belongsTo(BarangayProfile::class, 'barangay_id');
+    }
+
+    public function lessonCompletions()
+    {
+        return $this->hasMany(LessonCompletion::class);
+    }
+
+    public function aiScenarioAttempts()
+    {
+        return $this->hasMany(AiScenarioAttempt::class);
+    }
+
+    public function evaluationResults()
+    {
+        return $this->hasMany(EvaluationResult::class, 'participant_id');
+    }
+
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class);
     }
 }

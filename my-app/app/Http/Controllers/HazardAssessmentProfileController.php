@@ -210,6 +210,19 @@ class HazardAssessmentProfileController extends Controller
             $query->whereHas('hazardRecords', fn ($q) => $q->where('risk_level', $riskLevel));
         }
 
+        if ($request->filled('source_agency_filter')) {
+            $agency = $request->string('source_agency_filter');
+            $query->whereHas('hazardRecords', fn ($q) => $q->where('source_agency', $agency));
+        }
+
+        if ($request->filled('municipality_filter')) {
+            $query->where('municipality_city', $request->string('municipality_filter'));
+        }
+
+        if ($request->filled('province_filter')) {
+            $query->where('province', $request->string('province_filter'));
+        }
+
         if ($request->filled('region_filter')) {
             $query->where('region', $request->string('region_filter'));
         }
@@ -234,6 +247,20 @@ class HazardAssessmentProfileController extends Controller
                 'to' => $paginator->lastItem(),
             ],
             'summary' => $summary,
+            'filter_options' => [
+                'municipalities' => BarangayProfile::query()
+                    ->whereNotNull('municipality_city')
+                    ->distinct()
+                    ->orderBy('municipality_city')
+                    ->pluck('municipality_city')
+                    ->values(),
+                'provinces' => BarangayProfile::query()
+                    ->whereNotNull('province')
+                    ->distinct()
+                    ->orderBy('province')
+                    ->pluck('province')
+                    ->values(),
+            ],
         ];
     }
 

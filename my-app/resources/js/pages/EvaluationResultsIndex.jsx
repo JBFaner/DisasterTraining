@@ -15,15 +15,14 @@ import {
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
+    AdminFilterSelect,
+    AdminFilterInput,
     AdminPrimaryButton,
     AdminSecondaryButton,
-    AdminSearchInput,
     AdminViewToggle,
     AdminContentCard,
     AdminStatCard,
-    adminSelectClass,
-    adminCompactInputClass,
 } from '../components/admin/AdminLayout';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
@@ -357,37 +356,22 @@ export function EvaluationResultsIndex({
                 </>
             )}
 
-            <AdminFilterBar>
-                <form onSubmit={applyFilters} className="flex flex-col gap-3">
-                    <div className="flex flex-col lg:flex-row gap-3">
-                        <AdminSearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search participant, module, scenario..." />
-                        {!isParticipant && (
-                            <>
-                                <select className={adminSelectClass} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                                    <option value="">All Status</option>
-                                    <option value="passed">Passed</option>
-                                    <option value="failed">Failed</option>
-                                    <option value="in_progress">In Progress</option>
-                                </select>
-                                <select className={adminSelectClass} value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
-                                    <option value="">All Modules</option>
-                                    {(modules || []).map((m) => (
-                                        <option key={m.id} value={m.id}>{m.title}</option>
-                                    ))}
-                                </select>
-                                <select className={adminSelectClass} value={attemptFilter} onChange={(e) => setAttemptFilter(e.target.value)}>
-                                    <option value="">All Attempts</option>
-                                    {(attemptNumbers || []).map((num) => (
-                                        <option key={num} value={num}>Attempt #{num}</option>
-                                    ))}
-                                </select>
-                            </>
-                        )}
-                        <input type="date" className={adminCompactInputClass} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-                        <input type="date" className={adminCompactInputClass} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-                    </div>
-                    <div className="flex flex-wrap gap-2 items-center">
-                        <AdminPrimaryButton type="submit"><Search className="w-4 h-4" /> Apply Filters</AdminPrimaryButton>
+            <AdminCollapsibleFilterBar
+                searchValue={search}
+                onSearchChange={(e) => setSearch(e.target.value)}
+                searchPlaceholder="Search participant, module, scenario..."
+                hasActiveFilters={Boolean(statusFilter || moduleFilter || attemptFilter || dateFrom || dateTo)}
+                onClearFilters={() => {
+                    setStatusFilter('');
+                    setModuleFilter('');
+                    setAttemptFilter('');
+                    setDateFrom('');
+                    setDateTo('');
+                }}
+                onSearchSubmit={applyFilters}
+                trailing={(
+                    <>
+                        <AdminPrimaryButton type="submit"><Search className="w-4 h-4" /> Apply</AdminPrimaryButton>
                         {!isParticipant && <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />}
                         {isAdmin && resettableIds.length > 0 && (
                             <AdminSecondaryButton
@@ -400,10 +384,36 @@ export function EvaluationResultsIndex({
                                 {bulkResetting ? 'Resetting...' : `Reset Selected (${selectedIds.length})`}
                             </AdminSecondaryButton>
                         )}
-                        <span className="text-xs text-slate-500 ml-auto">Passing score: {passingScore}%</span>
-                    </div>
-                </form>
-            </AdminFilterBar>
+                    </>
+                )}
+            >
+                {!isParticipant && (
+                    <>
+                        <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                            <option value="">All Status</option>
+                            <option value="passed">Passed</option>
+                            <option value="failed">Failed</option>
+                            <option value="in_progress">In Progress</option>
+                        </AdminFilterSelect>
+                        <AdminFilterSelect label="Training Module" value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
+                            <option value="">All Modules</option>
+                            {(modules || []).map((m) => (
+                                <option key={m.id} value={m.id}>{m.title}</option>
+                            ))}
+                        </AdminFilterSelect>
+                        <AdminFilterSelect label="Attempt" value={attemptFilter} onChange={(e) => setAttemptFilter(e.target.value)}>
+                            <option value="">All Attempts</option>
+                            {(attemptNumbers || []).map((num) => (
+                                <option key={num} value={num}>Attempt #{num}</option>
+                            ))}
+                        </AdminFilterSelect>
+                    </>
+                )}
+                <AdminFilterInput label="Date from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                <AdminFilterInput label="Date to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </AdminCollapsibleFilterBar>
+
+            <p className="text-xs text-slate-500 -mt-2 mb-4 text-right">Passing score: {passingScore}%</p>
 
             <AdminContentCard>
                 {viewMode === 'list' || isParticipant ? (

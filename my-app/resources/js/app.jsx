@@ -6,6 +6,9 @@ import '../css/app.css';
 import { SidebarLayout } from './components/SidebarLayout';
 import { SessionTimeout } from './components/SessionTimeout';
 import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } from './components/ParticipantSimulationEvents';
+import { SimulationEventLifecyclePage } from './components/SimulationEventLifecyclePage';
+import { SimulationEventPlanningModule } from './components/SimulationEventPlanningModule';
+import { SimulationEventCreateForm } from './components/SimulationEventCreateForm';
 import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
 import { AdminUsersPage } from './pages/AdminUsersPage';
@@ -14,7 +17,6 @@ import { RolesPage } from './pages/RolesPage';
 import { PermissionsPage } from './pages/PermissionsPage';
 import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
-import { UserMonitoringPage } from './pages/UserMonitoringPage';
 import { TrainingModuleDetail } from './pages/TrainingModuleDetail';
 import { AiScenarioConfigPage } from './pages/AiScenarioConfigPage';
 import { AiScenarioTrainingPage, AiScenarioTrainingUnlock } from './pages/AiScenarioTrainingPage';
@@ -25,6 +27,7 @@ import {
     ParticipantRegistrationAttendanceModule,
     QualifiedTrainerDetail,
 } from './components/ParticipantAttendanceModule';
+import { ParticipantRegistryProfile } from './components/ParticipantRegistryProfile';
 import {
     HazardAssessmentList,
     HazardAssessmentDetail,
@@ -58,7 +61,9 @@ import {
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
+    AdminFilterSelect,
+    AdminFilterInput,
     AdminPrimaryButton,
     AdminSecondaryButton,
     AdminSearchInput,
@@ -209,7 +214,7 @@ function useFloatingDropdown(isOpen, placement = 'bottom-start') {
     return { referenceRef, floatingRef, floatingStyles };
 }
 
-// Pagination Component â€“ modern redesign
+// Pagination Component – modern redesign
 function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems }) {
     const maxVisiblePages = typeof window !== 'undefined' && window.innerWidth >= 768 ? 7 : 5;
     const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
@@ -235,7 +240,7 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="text-sm text-slate-600 order-2 sm:order-1">
                 <span className="font-medium text-slate-800">{startItem}</span>
-                <span className="mx-1">â€“</span>
+                <span className="mx-1">–</span>
                 <span className="font-medium text-slate-800">{endItem}</span>
                 <span className="mx-1 text-slate-400">of</span>
                 <span className="font-semibold text-slate-800">{totalItems}</span>
@@ -262,7 +267,7 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
                                 1
                             </button>
                             {startPage > 2 && (
-                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">â€¦</span>
+                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">…</span>
                             )}
                         </>
                     )}
@@ -279,7 +284,7 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
                     {endPage < totalPages && (
                         <>
                             {endPage < totalPages - 1 && (
-                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">â€¦</span>
+                                <span className="min-w-[2.25rem] h-9 flex items-center justify-center text-slate-400 text-sm">…</span>
                             )}
                             <button
                                 type="button"
@@ -315,13 +320,16 @@ if (rootElement) {
     const scenariosJson = rootElement.getAttribute('data-scenarios');
     const trainingModulesJson = rootElement.getAttribute('data-training-modules');
     const trainersJson = rootElement.getAttribute('data-trainers');
+    const disasterTypesJson = rootElement.getAttribute('data-disaster-types');
     const moduleJson = rootElement.getAttribute('data-module');
     const scenarioJson = rootElement.getAttribute('data-scenario');
     const eventsJson = rootElement.getAttribute('data-events');
     const eventJson = rootElement.getAttribute('data-event');
+    const eventLifecycleJson = rootElement.getAttribute('data-event-lifecycle');
     const participantsJson = rootElement.getAttribute('data-participants');
     const participantsPaginationJson = rootElement.getAttribute('data-participants-pagination');
     const participantsSummaryJson = rootElement.getAttribute('data-participants-summary');
+    const participantFilterOptionsJson = rootElement.getAttribute('data-participant-filter-options');
     const qualifiedTrainersJson = rootElement.getAttribute('data-qualified-trainers');
     const qualifiedTrainersPaginationJson = rootElement.getAttribute('data-qualified-trainers-pagination');
     const qualifiedTrainersSummaryJson = rootElement.getAttribute('data-qualified-trainers-summary');
@@ -339,13 +347,16 @@ if (rootElement) {
     let scenarios = [];
     let trainingModules = [];
     let trainers = [];
+    let disasterTypes = [];
     let currentModule = null;
     let currentScenario = null;
     let events = [];
     let currentEvent = null;
+    let currentEventLifecycle = null;
     let participants = [];
     let participantsPagination = null;
     let participantsSummary = null;
+    let participantFilterOptions = null;
     let qualifiedTrainers = [];
     let qualifiedTrainersPagination = null;
     let qualifiedTrainersSummary = null;
@@ -403,6 +414,13 @@ if (rootElement) {
             console.error('Failed to parse trainers JSON', e);
         }
     }
+    if (disasterTypesJson) {
+        try {
+            disasterTypes = JSON.parse(disasterTypesJson);
+        } catch (e) {
+            console.error('Failed to parse disaster types JSON', e);
+        }
+    }
     if (eventsJson) {
         try {
             events = JSON.parse(eventsJson);
@@ -419,6 +437,13 @@ if (rootElement) {
             }
         } catch (e) {
             console.error('Failed to parse event JSON', e);
+        }
+    }
+    if (eventLifecycleJson) {
+        try {
+            currentEventLifecycle = JSON.parse(eventLifecycleJson);
+        } catch (e) {
+            console.error('Failed to parse event lifecycle JSON', e);
         }
     }
     if (participantsJson) {
@@ -440,6 +465,13 @@ if (rootElement) {
             participantsSummary = JSON.parse(participantsSummaryJson);
         } catch (e) {
             console.error('Failed to parse participants summary JSON', e);
+        }
+    }
+    if (participantFilterOptionsJson) {
+        try {
+            participantFilterOptions = JSON.parse(participantFilterOptionsJson);
+        } catch (e) {
+            console.error('Failed to parse participant filter options JSON', e);
         }
     }
     if (qualifiedTrainersJson) {
@@ -940,11 +972,11 @@ if (rootElement) {
         },
         simulation: {
             title: 'Simulation Event Planning',
-            description: 'Plan and schedule drills, assign roles, and link scenarios and training modules.',
+            description: 'Plan, prepare, monitor, and complete disaster simulation events end to end.',
         },
         participants: {
             title: 'Participant Registration & Attendance',
-            description: 'Manage participants, trainer directory, registrations, and attendance.',
+            description: 'Synchronized participant registry, trainer directory, event registrations, and attendance.',
         },
         resources: {
             title: 'Resource & Equipment Inventory',
@@ -989,8 +1021,6 @@ if (rootElement) {
                                                 sectionAttr.startsWith('evaluation') ? 'evaluation' :
                                                     sectionAttr.startsWith('hazard_assessment_profile') ? 'hazard_assessment_profile' :
                                                     sectionAttr.startsWith('barangay_profile') ? 'hazard_assessment_profile' :
-                                                        sectionAttr.startsWith('after_action_review') ? 'after_action_review' :
-                                                            sectionAttr === 'drill_history_reports' ? 'simulation' :
                                                                 sectionAttr === 'audit_logs' ? 'audit_logs' :
                                                                     sectionAttr;
 
@@ -998,14 +1028,6 @@ if (rootElement) {
     const getBreadcrumbs = () => {
         if (sectionAttr === 'dashboard') {
             return [{ label: 'Dashboard', href: '/dashboard' }];
-        }
-
-        if (sectionAttr === 'after_action_review') {
-            return [];
-        }
-
-        if (sectionAttr === 'drill_history_reports') {
-            return [];
         }
 
         if (sectionAttr === 'audit_logs') {
@@ -1075,19 +1097,19 @@ if (rootElement) {
         }
         if (sectionAttr === 'simulation_create') {
             return [
-                { label: 'Simulation Events', href: '/admin/simulation-events' },
+                { label: 'Simulation Event Planning', href: '/admin/simulation-events' },
                 { label: 'Create', href: null }
             ];
         }
         if (sectionAttr === 'simulation_edit') {
             return [
-                { label: 'Simulation Events', href: '/admin/simulation-events' },
+                { label: 'Simulation Event Planning', href: '/admin/simulation-events' },
                 { label: 'Edit', href: null }
             ];
         }
         if (sectionAttr === 'simulation_detail') {
             return [
-                { label: 'Simulation Events', href: '/admin/simulation-events' },
+                { label: 'Simulation Event Planning', href: '/admin/simulation-events' },
                 { label: currentEvent?.title || 'Details', href: null }
             ];
         }
@@ -1097,8 +1119,8 @@ if (rootElement) {
         }
         if (sectionAttr === 'participant_detail') {
             return [
-                { label: 'Participants', href: '/admin/participants' },
-                { label: currentParticipant?.name || 'Details', href: null }
+                { label: 'Participant Registry', href: '/admin/participants' },
+                { label: currentParticipant?.name || 'Profile', href: null }
             ];
         }
         if (sectionAttr === 'qualified_trainer_detail') {
@@ -1114,14 +1136,14 @@ if (rootElement) {
         }
         if (sectionAttr === 'event_registrations') {
             return [
-                { label: 'Simulation Events', href: '/admin/simulation-events' },
+                { label: 'Simulation Event Planning', href: '/admin/simulation-events' },
                 { label: currentEvent?.title || 'Event', href: null },
                 { label: 'Registrations', href: null }
             ];
         }
         if (sectionAttr === 'event_attendance') {
             return [
-                { label: 'Simulation Events', href: '/admin/simulation-events' },
+                { label: 'Simulation Event Planning', href: '/admin/simulation-events' },
                 { label: currentEvent?.title || 'Event', href: null },
                 { label: 'Attendance', href: null }
             ];
@@ -1246,10 +1268,6 @@ if (rootElement) {
             ];
         }
 
-        if (sectionAttr === 'user_monitoring') {
-            return [];
-        }
-
         return [{ label: 'Dashboard', href: '/dashboard' }];
     };
 
@@ -1270,9 +1288,6 @@ if (rootElement) {
             'barangay_profile',
             'admin_users_index',
             'audit_logs',
-            'after_action_review',
-            'drill_history_reports',
-            'user_monitoring',
             'ai_scenario_config',
         ]);
         if (indexSections.has(sectionAttr)) {
@@ -1440,12 +1455,22 @@ if (rootElement) {
                             role === 'PARTICIPANT' ? (
                                 <ParticipantSimulationEventsList events={events} />
                             ) : (
-                                <SimulationEventsTable events={events} role={role} />
+                                <SimulationEventPlanningModule
+                                    events={events}
+                                    role={role}
+                                    SimulationEventsTable={SimulationEventsTable}
+                                />
                             )
                         )}
 
                         {sectionAttr === 'simulation_create' && (
-                            <SimulationEventCreateForm scenarios={scenarios} trainingModules={trainingModules} trainers={trainers} barangayProfiles={barangayProfiles} />
+                            <SimulationEventCreateForm
+                                scenarios={scenarios}
+                                trainers={trainers}
+                                barangayProfiles={barangayProfiles}
+                                disasterTypes={disasterTypes}
+                                resourcePanel={<ResourceSelectionSection inline={true} />}
+                            />
                         )}
 
                         {sectionAttr === 'simulation_edit' && currentEvent && (
@@ -1453,7 +1478,15 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'simulation_detail' && currentEvent && (
-                            <ParticipantSimulationEventDetail event={currentEvent} role={role} />
+                            role === 'PARTICIPANT' ? (
+                                <ParticipantSimulationEventDetail event={currentEvent} role={role} />
+                            ) : (
+                                <SimulationEventLifecyclePage
+                                    event={currentEvent}
+                                    lifecycle={currentEventLifecycle}
+                                    role={role}
+                                />
+                            )
                         )}
 
                         {sectionAttr === 'participants' && (
@@ -1462,6 +1495,7 @@ if (rootElement) {
                                 participants={participants}
                                 participantsPagination={participantsPagination}
                                 participantsSummary={participantsSummary}
+                                participantFilterOptions={participantFilterOptions}
                                 qualifiedTrainers={qualifiedTrainers}
                                 qualifiedTrainersPagination={qualifiedTrainersPagination}
                                 qualifiedTrainersSummary={qualifiedTrainersSummary}
@@ -1495,15 +1529,7 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
-                            <ParticipantDetail participant={currentParticipant} />
-                        )}
-
-                        {sectionAttr === 'after_action_review' && (
-                            <AfterActionReviewPage />
-                        )}
-
-                        {sectionAttr === 'drill_history_reports' && (
-                            <DrillHistoryReportsPage drills={events || []} />
+                            <ParticipantRegistryProfile participant={currentParticipant} />
                         )}
 
                         {sectionAttr === 'profile' && (
@@ -1608,7 +1634,7 @@ if (rootElement) {
                                                 <div>
                                                     <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="barangay_id">Barangay Assignment</label>
                                                     <select id="barangay_id" name="barangay_id" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
-                                                        <option value="">â€” None â€”</option>
+                                                        <option value="">— None —</option>
                                                         {(barangayProfiles || []).map((bp) => (
                                                             <option key={bp.id} value={bp.id}>{bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})</option>
                                                         ))}
@@ -1707,7 +1733,7 @@ if (rootElement) {
                                                 <div>
                                                     <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_barangay_id">Barangay Assignment</label>
                                                     <select id="edit_barangay_id" name="barangay_id" defaultValue={currentUserData.barangay_id ?? ''} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
-                                                        <option value="">â€” None â€”</option>
+                                                        <option value="">— None —</option>
                                                         {(barangayProfiles || []).map((bp) => (
                                                             <option key={bp.id} value={bp.id}>{bp.barangay_name || 'Unnamed'} ({bp.municipality_city || ''}, {bp.province || ''})</option>
                                                         ))}
@@ -1745,10 +1771,6 @@ if (rootElement) {
 
                         {sectionAttr === 'audit_logs' && (
                             <AuditLogs />
-                        )}
-
-                        {sectionAttr === 'user_monitoring' && (
-                            <UserMonitoringPage users={users || []} />
                         )}
 
                         {sectionAttr === 'resources' && (
@@ -1917,10 +1939,10 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
 
     // Insights: most active module (first published by title), improvement placeholder
     const publishedModules = (modules || []).filter((m) => m.status === 'published');
-    const mostActiveModule = publishedModules.length ? publishedModules[0]?.title : 'â€”';
+    const mostActiveModule = publishedModules.length ? publishedModules[0]?.title : '—';
     const topScenario = (events || []).filter((e) => e.status === 'completed' && e.scenario).length
-        ? (events.find((e) => e.status === 'completed' && e.scenario)?.scenario?.title || 'â€”')
-        : 'â€”';
+        ? (events.find((e) => e.status === 'completed' && e.scenario)?.scenario?.title || '—')
+        : '—';
 
     const KpiCard = ({ title, value, href, Icon, trend }) => {
         const content = (
@@ -2057,7 +2079,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                             const percent = total > 0 ? Math.round((value / total) * 100) : 0;
 
                             return {
-                                text: `${label} â€” ${value} (${percent}%)`,
+                                text: `${label} — ${value} (${percent}%)`,
                                 fillStyle: Array.isArray(dataset.backgroundColor)
                                     ? dataset.backgroundColor[index] || primaryGreen
                                     : dataset.backgroundColor || primaryGreen,
@@ -2125,7 +2147,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
 
     return (
         <div className="space-y-8 pb-8">
-            {/* Header â€” larger, more spacing */}
+            {/* Header — larger, more spacing */}
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-emerald-100 rounded-2xl shadow-md">
                     <LayoutDashboard className="w-8 h-8 text-emerald-600" />
@@ -2136,7 +2158,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 1 â€” Operational KPIs */}
+            {/* Row 1 — Operational KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <KpiCard title="Active Events" value={activeEvents} href={simulationEventsIndex(role)} Icon={Play} trend={activeEvents > 0 ? 'Live' : null} />
                 <KpiCard title="Upcoming" value={upcomingEvents} href={simulationEventsIndex(role)} Icon={CalendarClock} />
@@ -2226,7 +2248,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             )}
 
-            {/* Row 3 â€” Requires Attention */}
+            {/* Row 3 — Requires Attention */}
             {(eventsStartingToday > 0 || pendingEvaluations > 0 || pendingCertificates > 0 || (role !== 'PARTICIPANT')) && (
                 <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/60 to-white p-6 shadow-md">
                     <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
@@ -2256,13 +2278,13 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                             </li>
                         )}
                         {eventsStartingToday === 0 && pendingEvaluations === 0 && pendingCertificates === 0 && role !== 'PARTICIPANT' && (
-                            <li className="text-sm text-slate-500">No pending items. Youâ€™re all set.</li>
+                            <li className="text-sm text-slate-500">No pending items. You’re all set.</li>
                         )}
                     </ul>
                 </div>
             )}
 
-            {/* Row 4 â€” Drills per month (bar chart) */}
+            {/* Row 4 — Drills per month (bar chart) */}
             {role !== 'PARTICIPANT' && (
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                     <div className="flex items-center justify-between mb-4">
@@ -2282,7 +2304,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             )}
 
-            {/* Row 5 â€” Performance trend (line chart) + numeric overview (LGU admin only) */}
+            {/* Row 5 — Performance trend (line chart) + numeric overview (LGU admin only) */}
             {role !== 'PARTICIPANT' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
@@ -2309,15 +2331,15 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                         <ul className="space-y-3 text-sm">
                             <li className="flex justify-between">
                                 <span className="text-slate-600">Average Score</span>
-                                <span className="font-semibold text-slate-900">{stats.average_score != null ? `${stats.average_score}%` : 'â€”'}</span>
+                                <span className="font-semibold text-slate-900">{stats.average_score != null ? `${stats.average_score}%` : '—'}</span>
                             </li>
                             <li className="flex justify-between">
                                 <span className="text-slate-600">Pass Rate</span>
-                                <span className="font-semibold text-slate-900">{stats.pass_rate != null ? `${stats.pass_rate}%` : 'â€”'}</span>
+                                <span className="font-semibold text-slate-900">{stats.pass_rate != null ? `${stats.pass_rate}%` : '—'}</span>
                             </li>
                             <li className="flex justify-between">
                                 <span className="text-slate-600">Attendance Rate</span>
-                                <span className="font-semibold text-slate-900">{stats.attendance_rate != null ? `${stats.attendance_rate}%` : 'â€”'}</span>
+                                <span className="font-semibold text-slate-900">{stats.attendance_rate != null ? `${stats.attendance_rate}%` : '—'}</span>
                             </li>
                         </ul>
                         <p className="text-xs text-slate-400 mt-3">View details on Evaluations page</p>
@@ -2325,7 +2347,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             )}
 
-            {/* Row 6 â€” Activity + Upcoming events (visual overview) */}
+            {/* Row 6 — Activity + Upcoming events (visual overview) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                     <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
@@ -2338,7 +2360,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                                 recentActivity.map((item, i) => (
                                     <li key={i}>
                                         <a href={item.link || '#'} className="text-sm text-slate-700 hover:text-emerald-600 flex items-center gap-2">
-                                            <span className="text-slate-400">â€¢</span>
+                                            <span className="text-slate-400">•</span>
                                             {item.label}
                                         </a>
                                     </li>
@@ -2371,7 +2393,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 7 â€” Quick Actions 2x3 icon grid */}
+            {/* Row 7 — Quick Actions 2x3 icon grid */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                 <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -2406,11 +2428,11 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 5 â€” Upcoming Events Calendar */}
+            {/* Row 5 — Upcoming Events Calendar */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                 <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
                     <Calendar className="w-5 h-5 text-slate-500" />
-                    Upcoming Events â€” {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                    Upcoming Events — {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500">
@@ -2441,7 +2463,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                 </div>
             </div>
 
-            {/* Row 6 â€” System Insights */}
+            {/* Row 6 — System Insights */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
                 <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
                     <Zap className="w-5 h-5 text-amber-500" />
@@ -2461,7 +2483,6 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [showFilters, setShowFilters] = React.useState(false);
     const [filterStatus, setFilterStatus] = React.useState('');
     const [filterDifficulty, setFilterDifficulty] = React.useState('');
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
@@ -2472,28 +2493,10 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     const [viewMode, setViewMode] = React.useState('grid'); // 'grid' | 'list'
     const [openManageId, setOpenManageId] = React.useState(null);
     const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
-    const filterRef = React.useRef(null);
     const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles: manageFloatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique disaster types for filter
     const disasterTypes = [...new Set((modulesData || []).map(m => m.category).filter(Boolean))];
-
-    // Close filter dropdown when clicking outside
-    React.useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (filterRef.current && !filterRef.current.contains(event.target)) {
-                setShowFilters(false);
-            }
-        };
-
-        if (showFilters) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [showFilters]);
 
     // Close Manage menu when clicking outside (button or portal dropdown)
     React.useEffect(() => {
@@ -2551,6 +2554,13 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
         }
     };
 
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchModulesWithFilters(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
+
     // Filter modules (client-side refinement on current page data)
     const filteredModules = (modulesData || []).filter((module) => {
         const matchesSearch = !searchQuery ||
@@ -2588,7 +2598,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     };
 
     const formatCreatedDate = (dateString) => {
-        if (!dateString) return 'â€”';
+        if (!dateString) return '—';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
     const formatUpdatedDate = (dateString) => {
@@ -2622,85 +2632,40 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                 }
             />
 
-            <AdminFilterBar>
-                <form onSubmit={(e) => { e.preventDefault(); fetchModulesWithFilters(1); }} className="flex flex-col md:flex-row gap-3">
-                    <AdminSearchInput
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search modules..."
-                    />
-                    <div className="flex flex-wrap gap-2">
-                        <select
-                            className={adminSelectClass}
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                            <option value="unpublished">Unpublished</option>
-                            <option value="archived">Archived</option>
-                        </select>
-                        <button
-                            type="button"
-                            onClick={() => setShowFilters(!showFilters)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors"
-                        >
-                            <Filter className="w-4 h-4" />
-                            Filter
-                        </button>
-                        <button
-                            type="submit"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-medium text-sm transition-colors"
-                        >
-                            <Search className="w-4 h-4" />
-                            Search
-                        </button>
-                        <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />
-                    </div>
-                </form>
-                {showFilters && (
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Difficulty</label>
-                                <select
-                                    value={filterDifficulty}
-                                    onChange={(e) => setFilterDifficulty(e.target.value)}
-                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                >
-                                    <option value="">All Difficulties</option>
-                                    <option value="Beginner">Beginner</option>
-                                    <option value="Intermediate">Intermediate</option>
-                                    <option value="Advanced">Advanced</option>
-                                </select>
-                            </div>
-                            {disasterTypes.length > 0 && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
-                                    <select
-                                        value={filterDisasterType}
-                                        onChange={(e) => setFilterDisasterType(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                    >
-                                        <option value="">All Types</option>
-                                        {disasterTypes.map((type) => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => { setFilterStatus(''); setFilterDifficulty(''); setFilterDisasterType(''); setShowFilters(false); }}
-                            className="mt-3 text-xs text-slate-600 hover:text-slate-800 underline transition-colors duration-200"
-                        >
-                            Clear filters
-                        </button>
-                    </div>
+            <AdminCollapsibleFilterBar
+                searchValue={searchQuery}
+                onSearchChange={(e) => setSearchQuery(e.target.value)}
+                searchPlaceholder="Search modules..."
+                hasActiveFilters={Boolean(filterStatus || filterDifficulty || filterDisasterType)}
+                onClearFilters={() => {
+                    setFilterStatus('');
+                    setFilterDifficulty('');
+                    setFilterDisasterType('');
+                }}
+                trailing={<AdminViewToggle viewMode={viewMode} onChange={setViewMode} />}
+            >
+                <AdminFilterSelect label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                    <option value="">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="unpublished">Unpublished</option>
+                    <option value="archived">Archived</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Difficulty" value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)}>
+                    <option value="">All Difficulties</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                </AdminFilterSelect>
+                {disasterTypes.length > 0 && (
+                    <AdminFilterSelect label="Disaster Type" value={filterDisasterType} onChange={(e) => setFilterDisasterType(e.target.value)}>
+                        <option value="">All Types</option>
+                        {disasterTypes.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </AdminFilterSelect>
                 )}
-            </AdminFilterBar>
+            </AdminCollapsibleFilterBar>
 
             {/* Card grid or empty state */}
             {filteredModules.length === 0 ? (
@@ -2708,7 +2673,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                     <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                         {(modules || []).length === 0 ? (
                             <>
-                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">ðŸ“¦</div>
+                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">📦</div>
                                 <h3 className="text-xl font-semibold text-slate-800 mb-2">No training modules yet.</h3>
                                 <p className="text-slate-600 max-w-sm mb-6">
                                     Create your first disaster simulation module to begin.
@@ -2723,7 +2688,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                             </>
                         ) : (
                             <>
-                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">ðŸ”</div>
+                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">🔍</div>
                                 <h3 className="text-lg font-semibold text-slate-800 mb-1">No modules match your filters.</h3>
                                 <p className="text-slate-600 text-sm mb-4">Try adjusting search or filter criteria.</p>
                                 <button
@@ -2751,13 +2716,13 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <h3 className="font-semibold text-slate-900 truncate">{module.title || 'Untitled Module'}</h3>
-                                    <p className="text-sm text-slate-500 mt-0.5">{module.category ?? 'â€”'} â€¢ {module.difficulty ?? 'â€”'}</p>
-                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(module.created_at)}{formatUpdatedDate(module.updated_at) ? ` â€¢ Updated: ${formatUpdatedDate(module.updated_at)}` : ''}</p>
+                                    <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
+                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(module.created_at)}{formatUpdatedDate(module.updated_at) ? ` • Updated: ${formatUpdatedDate(module.updated_at)}` : ''}</p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
-                                        {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : 'â€”'}
+                                        {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
                                     </span>
                                     <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
                                         <button
@@ -2796,17 +2761,17 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                         <h3 className="font-semibold text-slate-900 truncate" title={module.title}>
                                             {module.title || 'Untitled Module'}
                                         </h3>
-                                        <p className="text-sm text-slate-500 mt-0.5">{module.category ?? 'â€”'} â€¢ {module.difficulty ?? 'â€”'}</p>
+                                        <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
                                     </div>
                                 </div>
                                 <p className="text-xs text-slate-400 mb-2">
                                     Created: {formatCreatedDate(module.created_at)}
-                                    {formatUpdatedDate(module.updated_at) && ` â€¢ Updated: ${formatUpdatedDate(module.updated_at)}`}
+                                    {formatUpdatedDate(module.updated_at) && ` • Updated: ${formatUpdatedDate(module.updated_at)}`}
                                 </p>
                                 <div className="flex items-center justify-between gap-2 mb-3">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
-                                        Status: {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : 'â€”'}
+                                        Status: {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
                                     </span>
                                 </div>
                                 <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
@@ -2993,7 +2958,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         totalItems={effectivePagination?.total ?? filteredModules.length}
                     />
                     {isPageLoading && (
-                        <p className="mt-2 text-xs text-slate-500">Loading modulesâ€¦</p>
+                        <p className="mt-2 text-xs text-slate-500">Loading modules…</p>
                     )}
                 </div>
             )}
@@ -3074,7 +3039,7 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
                             )}
                             <div className="mt-auto flex items-center justify-between text-[0.7rem] text-slate-500 pt-1">
                                 <span>
-                                    Difficulty: {module.difficulty || 'â€”'}
+                                    Difficulty: {module.difficulty || '—'}
                                 </span>
                                 {module.category && (
                                     <span>
@@ -3096,7 +3061,7 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
                         totalItems={effectivePagination.total ?? publishedModules.length}
                     />
                     {isPageLoading && (
-                        <p className="mt-2 text-xs text-slate-500">Loading modulesâ€¦</p>
+                        <p className="mt-2 text-xs text-slate-500">Loading modules…</p>
                     )}
                 </div>
             )}
@@ -3398,7 +3363,7 @@ function ParticipantTrainingLessonView({ module }) {
                     href="/participant/training-modules"
                     className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900"
                 >
-                    â† Back to Training Modules
+                    ← Back to Training Modules
                 </a>
                 <div className="text-[0.7rem] text-slate-500">
                     <a
@@ -3430,7 +3395,7 @@ function ParticipantTrainingLessonView({ module }) {
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-[0.7rem] text-slate-600">
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                            Difficulty: {module.difficulty || 'â€”'}
+                            Difficulty: {module.difficulty || '—'}
                         </span>
                         {module.category && (
                             <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
@@ -3875,7 +3840,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                                     disabled={isAiGenerating || !title.trim()}
                                     className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    {isAiGenerating ? 'Generatingâ€¦' : 'Generate with AI'}
+                                    {isAiGenerating ? 'Generating…' : 'Generate with AI'}
                                 </button>
                             </div>
                             <input
@@ -4076,19 +4041,19 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                         </div>
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
                                 <span>Keep title clear and scenario-based</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
-                                <span>Limit description to 3â€“5 sentences</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span>Limit description to 3–5 sentences</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
                                 <span>Objectives should be measurable</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-500 mt-0.5 shrink-0">â€¢</span>
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
                                 <span>Match difficulty to target participants</span>
                             </li>
                         </ul>
@@ -4473,7 +4438,7 @@ function TrainingModuleEditForm({ module }) {
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    â€¢
+                                    •
                                 </span>
                                 <span>
                                     Keep title clear and scenario-based
@@ -4481,21 +4446,21 @@ function TrainingModuleEditForm({ module }) {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    â€¢
+                                    •
                                 </span>
                                 <span>
-                                    Limit description to 3â€“5 sentences
+                                    Limit description to 3–5 sentences
                                 </span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    â€¢
+                                    •
                                 </span>
                                 <span>Objectives should be measurable</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
-                                    â€¢
+                                    •
                                 </span>
                                 <span>
                                     Match difficulty to target participants
@@ -4541,7 +4506,6 @@ function ScenariosTable({ scenarios = [], role }) {
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const canDelete = role === 'LGU_ADMIN';
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [showFilters, setShowFilters] = React.useState(false);
     const [filterStatus, setFilterStatus] = React.useState('');
     const [filterDifficulty, setFilterDifficulty] = React.useState('');
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
@@ -4549,28 +4513,10 @@ function ScenariosTable({ scenarios = [], role }) {
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
     const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
-    const filterRef = React.useRef(null);
     const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique values for filters
     const disasterTypes = [...new Set((scenarios || []).map(s => s.disaster_type).filter(Boolean))];
-
-    // Close filter dropdown when clicking outside
-    React.useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (filterRef.current && !filterRef.current.contains(event.target)) {
-                setShowFilters(false);
-            }
-        };
-
-        if (showFilters) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [showFilters]);
 
     // Close Manage menu when clicking outside (button or portal dropdown)
     React.useEffect(() => {
@@ -4609,7 +4555,7 @@ function ScenariosTable({ scenarios = [], role }) {
     }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
 
     const formatCreatedDate = (dateString) => {
-        if (!dateString) return 'â€”';
+        if (!dateString) return '—';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
     const formatUpdatedDate = (dateString) => {
@@ -4643,77 +4589,39 @@ function ScenariosTable({ scenarios = [], role }) {
                 }
             />
 
-            <AdminFilterBar>
-                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-3">
-                    <AdminSearchInput
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search scenarios..."
-                    />
-                    <div className="flex flex-wrap gap-2">
-                        <select
-                            className={adminSelectClass}
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                            <option value="archived">Archived</option>
-                        </select>
-                        <button
-                            type="button"
-                            onClick={() => setShowFilters(!showFilters)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm"
-                        >
-                            <Filter className="w-4 h-4" />
-                            Filter
-                        </button>
-                        <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />
-                    </div>
-                </form>
-                {showFilters && (
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Difficulty</label>
-                                <select
-                                    value={filterDifficulty}
-                                    onChange={(e) => setFilterDifficulty(e.target.value)}
-                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                >
-                                    <option value="">All Difficulties</option>
-                                    <option value="Basic">Basic</option>
-                                    <option value="Intermediate">Intermediate</option>
-                                    <option value="Advanced">Advanced</option>
-                                </select>
-                            </div>
-                            {disasterTypes.length > 0 && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
-                                    <select
-                                        value={filterDisasterType}
-                                        onChange={(e) => setFilterDisasterType(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                    >
-                                        <option value="">All Types</option>
-                                        {disasterTypes.map((type) => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => { setFilterStatus(''); setFilterDifficulty(''); setFilterDisasterType(''); setShowFilters(false); }}
-                            className="mt-3 text-xs text-slate-600 hover:text-slate-800 underline transition-colors duration-200"
-                        >
-                            Clear filters
-                        </button>
-                    </div>
+            <AdminCollapsibleFilterBar
+                searchValue={searchQuery}
+                onSearchChange={(e) => setSearchQuery(e.target.value)}
+                searchPlaceholder="Search scenarios..."
+                hasActiveFilters={Boolean(filterStatus || filterDifficulty || filterDisasterType)}
+                onClearFilters={() => {
+                    setFilterStatus('');
+                    setFilterDifficulty('');
+                    setFilterDisasterType('');
+                }}
+                trailing={<AdminViewToggle viewMode={viewMode} onChange={setViewMode} />}
+            >
+                <AdminFilterSelect label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                    <option value="">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Difficulty" value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)}>
+                    <option value="">All Difficulties</option>
+                    <option value="Basic">Basic</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                </AdminFilterSelect>
+                {disasterTypes.length > 0 && (
+                    <AdminFilterSelect label="Disaster Type" value={filterDisasterType} onChange={(e) => setFilterDisasterType(e.target.value)}>
+                        <option value="">All Types</option>
+                        {disasterTypes.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </AdminFilterSelect>
                 )}
-            </AdminFilterBar>
+            </AdminCollapsibleFilterBar>
 
             {/* Card grid or empty state */}
             {filteredScenarios.length === 0 ? (
@@ -4721,7 +4629,7 @@ function ScenariosTable({ scenarios = [], role }) {
                     <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                         {(scenarios || []).length === 0 ? (
                             <>
-                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">ðŸŽ¯</div>
+                                <div className="text-7xl mb-4 opacity-90" aria-hidden="true">🎯</div>
                                 <h3 className="text-xl font-semibold text-slate-800 mb-2">No scenarios yet.</h3>
                                 <p className="text-slate-600 max-w-sm mb-6">
                                     Create your first scenario-based exercise to run simulations.
@@ -4736,7 +4644,7 @@ function ScenariosTable({ scenarios = [], role }) {
                             </>
                         ) : (
                             <>
-                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">ðŸ”</div>
+                                <div className="text-5xl mb-3 opacity-80" aria-hidden="true">🔍</div>
                                 <h3 className="text-lg font-semibold text-slate-800 mb-1">No scenarios match your filters.</h3>
                                 <p className="text-slate-600 text-sm mb-4">Try adjusting search or filter criteria.</p>
                                 <button
@@ -4760,13 +4668,13 @@ function ScenariosTable({ scenarios = [], role }) {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <h3 className="font-semibold text-slate-900 truncate">{s.title || 'Untitled Scenario'}</h3>
-                                    <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? 'â€”'} â€¢ {s.difficulty ?? 'â€”'}</p>
-                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) ? ` â€¢ Updated: ${formatUpdatedDate(s.updated_at)}` : ''}</p>
+                                    <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? '—'} • {s.difficulty ?? '—'}</p>
+                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) ? ` • Updated: ${formatUpdatedDate(s.updated_at)}` : ''}</p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${scenarioStatusStyle(s.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${scenarioStatusDotStyle(s.status)}`} />
-                                        {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'â€”'}
+                                        {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
                                     </span>
                                     <div className="relative" ref={openManageId === s.id ? manageMenuRef : null}>
                                         <button
@@ -4792,14 +4700,14 @@ function ScenariosTable({ scenarios = [], role }) {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <h3 className="font-semibold text-slate-900 truncate" title={s.title}>{s.title || 'Untitled Scenario'}</h3>
-                                        <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? 'â€”'} â€¢ {s.difficulty ?? 'â€”'}</p>
+                                        <p className="text-sm text-slate-500 mt-0.5">{s.disaster_type ?? '—'} • {s.difficulty ?? '—'}</p>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-400 mb-2">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) && ` â€¢ Updated: ${formatUpdatedDate(s.updated_at)}`}</p>
+                                <p className="text-xs text-slate-400 mb-2">Created: {formatCreatedDate(s.created_at)}{formatUpdatedDate(s.updated_at) && ` • Updated: ${formatUpdatedDate(s.updated_at)}`}</p>
                                 <div className="flex items-center justify-between gap-2 mb-3">
                                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${scenarioStatusStyle(s.status)}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${scenarioStatusDotStyle(s.status)}`} />
-                                        Status: {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'â€”'}
+                                        Status: {s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : '—'}
                                     </span>
                                 </div>
                                 <div className="relative" ref={openManageId === s.id ? manageMenuRef : null}>
@@ -4967,7 +4875,7 @@ function ScenariosTable({ scenarios = [], role }) {
 const SCENARIO_QUICK_TEMPLATES = [
     {
         name: 'Earthquake Response Drill',
-        title: 'Magnitude 6.5 Earthquake â€“ Downtown Response',
+        title: 'Magnitude 6.5 Earthquake – Downtown Response',
         short_description: 'A strong earthquake has struck the downtown area during business hours. Multiple buildings have sustained damage, power is out in several blocks, and there are reports of trapped persons.',
         difficulty: 'Basic',
         affected_area: 'Barangay Central',
@@ -4979,7 +4887,7 @@ const SCENARIO_QUICK_TEMPLATES = [
     },
     {
         name: 'Fire Evacuation Scenario',
-        title: 'Commercial Building Fire â€“ Evacuation Drill',
+        title: 'Commercial Building Fire – Evacuation Drill',
         short_description: 'Fire reported on the second floor of a three-story commercial building. Smoke spreading. Evacuation and assembly point management required.',
         difficulty: 'Basic',
         affected_area: 'Multi-tenant building',
@@ -4991,7 +4899,7 @@ const SCENARIO_QUICK_TEMPLATES = [
     },
     {
         name: 'Flood Response Simulation',
-        title: 'Flash Flood â€“ Low-Lying Barangay',
+        title: 'Flash Flood – Low-Lying Barangay',
         short_description: 'Heavy rainfall has caused flash flooding in low-lying areas. Some residents need evacuation; roads are impassable.',
         difficulty: 'Intermediate',
         affected_area: 'Barangay Riverside',
@@ -5195,7 +5103,7 @@ function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
                 </div>
             </div>
 
-            {/* AI Scenario Generator modal â€“ blurred backdrop, page visible behind */}
+            {/* AI Scenario Generator modal – blurred backdrop, page visible behind */}
             {showAiChat && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-md">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-slate-200">
@@ -5355,7 +5263,7 @@ function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
                                         <div>
                                             <label className={labelClass} htmlFor="severity_level">Severity level</label>
                                             <select id="severity_level" name="severity_level" value={severityLevel} onChange={(e) => setSeverityLevel(e.target.value)} className={inputClass}>
-                                                <option value="">Select severityâ€¦</option>
+                                                <option value="">Select severity…</option>
                                                 <option value="Low">Low</option>
                                                 <option value="Medium">Medium</option>
                                                 <option value="High">High</option>
@@ -5386,7 +5294,7 @@ function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
                                         <div>
                                             <label className={labelClass} htmlFor="communication_status">Communication status</label>
                                             <select id="communication_status" name="communication_status" className={inputClass}>
-                                                <option value="">Select statusâ€¦</option>
+                                                <option value="">Select status…</option>
                                                 <option value="working">Working</option>
                                                 <option value="unstable">Unstable</option>
                                                 <option value="down">Down</option>
@@ -5433,7 +5341,7 @@ function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
                                             <div>
                                                 <label className={labelClass} htmlFor="training_module_id">Training Module <span className="text-red-500">*</span></label>
                                                 <select id="training_module_id" name="training_module_id" required value={selectedModuleId} onChange={(e) => setSelectedModuleId(e.target.value)} className={inputClass}>
-                                                    <option value="">Select a training moduleâ€¦</option>
+                                                    <option value="">Select a training module…</option>
                                                     {publishedModules.map((m) => (
                                                         <option key={m.id} value={m.id}>{m.title}</option>
                                                     ))}
@@ -5449,7 +5357,7 @@ function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Disaster type</label>
-                                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">{derivedDisasterType || 'â€”'}</div>
+                                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">{derivedDisasterType || '—'}</div>
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Learning objectives</label>
@@ -5457,7 +5365,7 @@ function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
                                                     {selectedModule && learningObjectives && learningObjectives.length > 0 ? (
                                                         <ul className="space-y-1">
                                                             {learningObjectives.map((obj, i) => (
-                                                                <li key={i}>â€¢ {obj}</li>
+                                                                <li key={i}>• {obj}</li>
                                                             ))}
                                                         </ul>
                                                     ) : selectedModule && (!learningObjectives || learningObjectives.length === 0) ? (
@@ -5500,10 +5408,10 @@ function ScenarioCreateForm({ modules, barangayProfiles = [] }) {
                                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                                         <h2 className="text-lg font-semibold text-slate-800 mb-4">Scenario Snapshot</h2>
                                         <dl className="space-y-2 text-sm">
-                                            <div><dt className="text-slate-500">Title</dt><dd className="font-medium text-slate-800">{scenarioTitle || 'â€”'}</dd></div>
-                                            <div><dt className="text-slate-500">Module</dt><dd className="font-medium text-slate-800">{selectedModule?.title || 'â€”'}</dd></div>
-                                            <div><dt className="text-slate-500">Difficulty</dt><dd className="font-medium text-slate-800">{difficulty || 'â€”'}</dd></div>
-                                            <div><dt className="text-slate-500">Severity</dt><dd className="font-medium text-slate-800">{severityLevel || 'â€”'}</dd></div>
+                                            <div><dt className="text-slate-500">Title</dt><dd className="font-medium text-slate-800">{scenarioTitle || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Module</dt><dd className="font-medium text-slate-800">{selectedModule?.title || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Difficulty</dt><dd className="font-medium text-slate-800">{difficulty || '—'}</dd></div>
+                                            <div><dt className="text-slate-500">Severity</dt><dd className="font-medium text-slate-800">{severityLevel || '—'}</dd></div>
                                             <div><dt className="text-slate-500">Victims</dt><dd className="font-medium text-slate-800">{injuredCount}</dd></div>
                                             <div><dt className="text-slate-500">Trapped</dt><dd className="font-medium text-slate-800">{trappedCount}</dd></div>
                                         </dl>
@@ -5606,7 +5514,7 @@ function ScenarioEditForm({ scenario, modules }) {
                                 onChange={(e) => setSelectedModuleId(e.target.value)}
                                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
-                                <option value="">Select a training moduleâ€¦</option>
+                                <option value="">Select a training module…</option>
                                 {(modules || []).map((m) => (
                                     <option
                                         key={m.id}
@@ -5661,7 +5569,7 @@ function ScenarioEditForm({ scenario, modules }) {
                                 <ul className="space-y-2">
                                     {learningObjectives.map((objective, index) => (
                                         <li key={index} className="text-sm text-slate-700 flex items-start gap-2">
-                                            <span className="text-emerald-600 mt-0.5">â€¢</span>
+                                            <span className="text-emerald-600 mt-0.5">•</span>
                                             <span>{objective}</span>
                                         </li>
                                     ))}
@@ -5820,7 +5728,7 @@ function ScenarioEditForm({ scenario, modules }) {
                             defaultValue={scenario.severity_level || ''}
                             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
-                            <option value="">Select severityâ€¦</option>
+                            <option value="">Select severity…</option>
                             <option value="Low">Low</option>
                             <option value="Medium">Medium</option>
                             <option value="High">High</option>
@@ -5895,7 +5803,7 @@ function ScenarioEditForm({ scenario, modules }) {
                             defaultValue={scenario.communication_status || ''}
                             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
-                            <option value="">Select statusâ€¦</option>
+                            <option value="">Select status…</option>
                             <option value="working">Working</option>
                             <option value="unstable">Unstable</option>
                             <option value="down">Down</option>
@@ -6002,7 +5910,7 @@ function ScenarioDetail({ scenario }) {
 
     const injured = scenario.injured_victims_count ?? null;
     const trapped = scenario.trapped_persons_count ?? null;
-    const severity = scenario.severity_level || 'â€”';
+    const severity = scenario.severity_level || '—';
     const communication = scenario.communication_status || null;
 
     return (
@@ -6013,7 +5921,7 @@ function ScenarioDetail({ scenario }) {
                     href="/admin/scenarios"
                     className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900"
                 >
-                    â† Back to Scenarios
+                    ← Back to Scenarios
                 </a>
                 <div className="text-[0.7rem] text-slate-500">
                     <a
@@ -6065,10 +5973,10 @@ function ScenarioDetail({ scenario }) {
                         </div>
                         <div className="mt-3 text-[0.7rem] text-slate-500">
                             <span className="font-semibold text-slate-600">Created by</span>{' '}
-                            {scenario.creator?.name ?? 'â€”'}
+                            {scenario.creator?.name ?? '—'}
                             {scenario.created_at && (
                                 <>
-                                    <span className="mx-1">â€¢</span>
+                                    <span className="mx-1">•</span>
                                     <span>{formatDateTime(scenario.created_at)}</span>
                                 </>
                             )}
@@ -6103,7 +6011,7 @@ function ScenarioDetail({ scenario }) {
                             Injured
                         </div>
                         <div className="mt-1 text-sm font-semibold text-slate-900">
-                            {injured != null ? injured : 'â€”'}
+                            {injured != null ? injured : '—'}
                         </div>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
@@ -6111,7 +6019,7 @@ function ScenarioDetail({ scenario }) {
                             Trapped
                         </div>
                         <div className="mt-1 text-sm font-semibold text-slate-900">
-                            {trapped != null ? trapped : 'â€”'}
+                            {trapped != null ? trapped : '—'}
                         </div>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
@@ -6128,7 +6036,7 @@ function ScenarioDetail({ scenario }) {
                                     {communication}
                                 </span>
                             ) : (
-                                <span className="text-sm font-semibold text-slate-900">â€”</span>
+                                <span className="text-sm font-semibold text-slate-900">—</span>
                             )}
                         </div>
                     </div>
@@ -6240,12 +6148,9 @@ function ScenarioDetail({ scenario }) {
 }
 
 // Simulation Events Components
-function SimulationEventsTable({ events, role }) {
+function SimulationEventsTable({ events, role, embedded = false, activeOnly = false }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [autoApprovalEnabled, setAutoApprovalEnabled] = React.useState(false);
-    const [isLoadingToggle, setIsLoadingToggle] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [showFilters, setShowFilters] = React.useState(false);
     const [filterStatus, setFilterStatus] = React.useState('');
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
     const [filterCategory, setFilterCategory] = React.useState('');
@@ -6253,29 +6158,17 @@ function SimulationEventsTable({ events, role }) {
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
     const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
-    const filterRef = React.useRef(null);
     const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
+    const scopedEvents = React.useMemo(() => {
+        const source = events || [];
+        if (!activeOnly) return source;
+        return source.filter((event) => !['completed', 'ended', 'archived'].includes(event.status));
+    }, [events, activeOnly]);
+
     // Get unique values for filters
-    const disasterTypes = [...new Set((events || []).map(e => e.disaster_type).filter(Boolean))];
-    const categories = [...new Set((events || []).map(e => e.event_category).filter(Boolean))];
-
-    // Close filter dropdown when clicking outside
-    React.useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (filterRef.current && !filterRef.current.contains(event.target)) {
-                setShowFilters(false);
-            }
-        };
-
-        if (showFilters) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [showFilters]);
+    const disasterTypes = [...new Set(scopedEvents.map(e => e.disaster_type).filter(Boolean))];
+    const categories = [...new Set(scopedEvents.map(e => e.event_category).filter(Boolean))];
 
     // Close Manage menu when clicking outside (button or portal dropdown)
     React.useEffect(() => {
@@ -6291,13 +6184,16 @@ function SimulationEventsTable({ events, role }) {
     }, [openManageId]);
 
     // Filter events
-    const filteredEvents = (events || []).filter((event) => {
+    const filteredEvents = scopedEvents.filter((event) => {
         const matchesSearch = !searchQuery ||
             event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
             (event.location && event.location.toLowerCase().includes(searchQuery.toLowerCase()));
         const derivedStatus = deriveSimulationEventStatus(event);
-        const matchesStatus = !filterStatus || derivedStatus === filterStatus;
+        const matchesStatus = !filterStatus
+            || (filterStatus === 'ready'
+                ? event.monitoring_status === 'Ready'
+                : derivedStatus === filterStatus);
         const matchesDisasterType = !filterDisasterType || event.disaster_type === filterDisasterType;
         const matchesCategory = !filterCategory || event.event_category === filterCategory;
 
@@ -6314,50 +6210,6 @@ function SimulationEventsTable({ events, role }) {
     React.useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery, filterStatus, filterDisasterType, filterCategory]);
-
-    // Load initial auto-approval setting
-    React.useEffect(() => {
-        fetch('/admin/settings/auto-approval')
-            .then(res => res.json())
-            .then(data => setAutoApprovalEnabled(data.enabled))
-            .catch(err => console.error('Failed to load auto-approval setting:', err));
-    }, []);
-
-    const handleToggleAutoApproval = async () => {
-        setIsLoadingToggle(true);
-        try {
-            const response = await fetch('/admin/settings/auto-approval', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
-                body: JSON.stringify({ enabled: !autoApprovalEnabled }),
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                setAutoApprovalEnabled(data.enabled);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Settings Updated',
-                    text: data.message,
-                    timer: 3000,
-                    showConfirmButton: false,
-                });
-            }
-        } catch (error) {
-            console.error('Failed to toggle auto-approval:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to update auto-approval setting.',
-            });
-        } finally {
-            setIsLoadingToggle(false);
-        }
-    };
 
     // Status/time helpers are centralized in `resources/js/utils/simulationEventStatus.js`.
 
@@ -6393,7 +6245,7 @@ function SimulationEventsTable({ events, role }) {
         return 'bg-slate-400';
     };
     const formatEventDate = (dateString) => {
-        if (!dateString) return 'â€”';
+        if (!dateString) return '—';
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
@@ -6424,108 +6276,52 @@ function SimulationEventsTable({ events, role }) {
         return { canStart: true, reason: '', effectiveStatus };
     };
 
-    return (
-        <AdminPageShell>
-            <AdminPageHeader
-                icon={CalendarClock}
-                title="Simulation Events"
-                description="Plan and manage disaster simulation events, schedules, and registration."
-                actions={
-                    <>
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
-                            <span className="text-xs font-medium text-slate-700">Auto-Approve</span>
-                            <button
-                                type="button"
-                                onClick={handleToggleAutoApproval}
-                                disabled={isLoadingToggle}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${autoApprovalEnabled ? 'bg-emerald-600' : 'bg-slate-300'} ${isLoadingToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                role="switch"
-                                aria-checked={autoApprovalEnabled}
-                            >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoApprovalEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                            </button>
-                            <span className="text-xs text-slate-500">{autoApprovalEnabled ? 'On' : 'Off'}</span>
-                        </div>
-                        <AdminPrimaryButton href="/admin/simulation-events/create">
-                            <Plus className="w-4 h-4" />
-                            Create Event
-                        </AdminPrimaryButton>
-                    </>
-                }
-            />
-
-            {/* Search and filters */}
-            <AdminFilterBar>
-                <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col md:flex-row gap-3">
-                    <AdminSearchInput value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search events..." />
-                    <div className="flex flex-wrap gap-2">
-                        <select className={adminSelectClass} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                            <option value="">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                            <option value="ongoing">Ongoing</option>
-                            <option value="ended">Ended</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="archived">Archived</option>
-                        </select>
-                        <button type="button" onClick={() => setShowFilters(!showFilters)} className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm">
-                            <Filter className="w-4 h-4" /> Filter
-                        </button>
-                        <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />
-                    </div>
-                </form>
-                {showFilters && (
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {disasterTypes.length > 0 && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
-                                    <select
-                                        value={filterDisasterType}
-                                        onChange={(e) => setFilterDisasterType(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                    >
-                                        <option value="">All Types</option>
-                                        {disasterTypes.map((type) => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                            {categories.length > 0 && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Category</label>
-                                    <select
-                                        value={filterCategory}
-                                        onChange={(e) => setFilterCategory(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                    >
-                                        <option value="">All Categories</option>
-                                        {categories.map((cat) => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => { setFilterStatus(''); setFilterDisasterType(''); setFilterCategory(''); setShowFilters(false); }}
-                            className="mt-3 text-xs text-slate-600 hover:text-slate-800 underline transition-colors duration-200"
-                        >
-                            Clear filters
-                        </button>
-                    </div>
+    const eventsContent = (
+        <>
+            <AdminCollapsibleFilterBar
+                searchValue={searchQuery}
+                onSearchChange={(e) => setSearchQuery(e.target.value)}
+                searchPlaceholder="Search events..."
+                hasActiveFilters={Boolean(filterStatus || filterDisasterType || filterCategory)}
+                onClearFilters={() => {
+                    setFilterStatus('');
+                    setFilterDisasterType('');
+                    setFilterCategory('');
+                }}
+                trailing={<AdminViewToggle viewMode={viewMode} onChange={setViewMode} />}
+            >
+                <AdminFilterSelect label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                    <option value="">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="ready">Ready</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="cancelled">Cancelled</option>
+                </AdminFilterSelect>
+                {disasterTypes.length > 0 && (
+                    <AdminFilterSelect label="Disaster Type" value={filterDisasterType} onChange={(e) => setFilterDisasterType(e.target.value)}>
+                        <option value="">All Types</option>
+                        {disasterTypes.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </AdminFilterSelect>
                 )}
-            </AdminFilterBar>
+                {categories.length > 0 && (
+                    <AdminFilterSelect label="Category" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                        <option value="">All Categories</option>
+                        {categories.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </AdminFilterSelect>
+                )}
+            </AdminCollapsibleFilterBar>
 
             {/* Content: empty state or list/grid */}
             {filteredEvents.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
-                    {(events || []).length === 0 ? (
+                    {scopedEvents.length === 0 ? (
                         <>
-                            <div className="text-5xl mb-4 opacity-80">ðŸ“…</div>
+                            <div className="text-5xl mb-4 opacity-80">📅</div>
                             <h3 className="text-lg font-semibold text-slate-800 mb-1">No simulation events yet</h3>
                             <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">Create your first event to schedule drills and exercises for your team.</p>
                             <a
@@ -6538,7 +6334,7 @@ function SimulationEventsTable({ events, role }) {
                         </>
                     ) : (
                         <>
-                            <div className="text-4xl mb-4 opacity-80">ðŸ”</div>
+                            <div className="text-4xl mb-4 opacity-80">🔍</div>
                             <h3 className="text-lg font-semibold text-slate-800 mb-1">No events match your filters</h3>
                             <p className="text-slate-500 text-sm mb-6">Try adjusting search or filter criteria.</p>
                             <button
@@ -6566,11 +6362,11 @@ function SimulationEventsTable({ events, role }) {
                                         <div className="min-w-0 flex-1">
                                             <h3 className="font-semibold text-slate-900 truncate">{event.title}</h3>
                                             <p className="text-sm text-slate-500 mt-0.5">
-                                                {(event.disaster_type || 'â€”')}{event.event_category ? ` â€¢ ${event.event_category}` : ''}
+                                                {(event.disaster_type || '—')}{event.event_category ? ` • ${event.event_category}` : ''}
                                             </p>
                                             <p className="text-xs text-slate-400 mt-1">
-                                                {formatEventDate(event.event_date)} Â· {formatTime(event.start_time)} â€“ {formatTime(event.end_time)}
-                                                {event.location ? ` â€¢ ${event.location}` : ''}
+                                                {formatEventDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}
+                                                {event.location ? ` • ${event.location}` : ''}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-3 shrink-0">
@@ -6617,13 +6413,13 @@ function SimulationEventsTable({ events, role }) {
                                                     {event.title}
                                                 </a>
                                                 <p className="text-sm text-slate-500 mt-0.5">
-                                                    {(event.disaster_type || 'â€”')}{event.event_category ? ` â€¢ ${event.event_category}` : ''}
+                                                    {(event.disaster_type || '—')}{event.event_category ? ` • ${event.event_category}` : ''}
                                                 </p>
                                             </div>
                                         </div>
                                         <p className="text-xs text-slate-400 mb-2">
-                                            {formatEventDate(event.event_date)} Â· {formatTime(event.start_time)} â€“ {formatTime(event.end_time)}
-                                            {event.location ? ` â€¢ ${event.location}` : ''}
+                                            {formatEventDate(event.event_date)} · {formatTime(event.start_time)} – {formatTime(event.end_time)}
+                                            {event.location ? ` • ${event.location}` : ''}
                                         </p>
                                         <div className="flex items-center justify-between gap-2 mb-3">
                                             <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${eventStatusStyle(derivedStatus)}`}>
@@ -6678,7 +6474,7 @@ function SimulationEventsTable({ events, role }) {
                                             if (missingFields.length > 0) {
                                                 await Swal.fire({
                                                     title: 'Validation Error!',
-                                                    html: `Please fill in:<br><br>${missingFields.map((f) => `â€¢ ${f}`).join('<br>')}`,
+                                                    html: `Please fill in:<br><br>${missingFields.map((f) => `• ${f}`).join('<br>')}`,
                                                     icon: 'error',
                                                     confirmButtonColor: '#64748b',
                                                 });
@@ -6910,6 +6706,27 @@ function SimulationEventsTable({ events, role }) {
                     )}
                 </>
             )}
+        </>
+    );
+
+    if (embedded) {
+        return eventsContent;
+    }
+
+    return (
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={CalendarClock}
+                title="Simulation Event Planning"
+                description="Plan, prepare, and manage upcoming and ongoing disaster simulation events."
+                actions={
+                    <AdminPrimaryButton href="/admin/simulation-events/create">
+                        <Plus className="w-4 h-4" />
+                        Create Event
+                    </AdminPrimaryButton>
+                }
+            />
+            {eventsContent}
         </AdminPageShell>
     );
 }
@@ -7294,7 +7111,7 @@ function ResourceSelectionSection({ eventResources = [], inline = false }) {
                 </select>
             </div>
             {loading ? (
-                <div className="py-6 text-center text-sm text-slate-500">Loading resourcesâ€¦</div>
+                <div className="py-6 text-center text-sm text-slate-500">Loading resources…</div>
             ) : filteredResources.length === 0 ? (
                 <div className="py-6 text-center text-sm text-slate-500">No resources match your search.</div>
             ) : (
@@ -7352,7 +7169,7 @@ function ResourceSelectionSection({ eventResources = [], inline = false }) {
                     <div key={r.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-slate-100 border border-slate-200">
                         <div className="min-w-0">
                             <p className="text-sm font-medium text-slate-800 truncate">{r.name}</p>
-                            <p className="text-xs text-slate-500">{r.category} Â· {r.quantity} unit{r.quantity !== 1 ? 's' : ''}</p>
+                            <p className="text-xs text-slate-500">{r.category} · {r.quantity} unit{r.quantity !== 1 ? 's' : ''}</p>
                         </div>
                         <button
                             type="button"
@@ -7406,7 +7223,7 @@ function ResourceSelectionSection({ eventResources = [], inline = false }) {
                             <div key={resource.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-slate-900 truncate">{resource.name}</p>
-                                    <p className="text-xs text-slate-600">{resource.category} Â· {resource.quantity}</p>
+                                    <p className="text-xs text-slate-600">{resource.category} · {resource.quantity}</p>
                                 </div>
                                 <button
                                     type="button"
@@ -7487,7 +7304,7 @@ function SimulationEventCampaignFields({ trainingModules = [], trainers = [], ba
                         <option value="">Select barangay...</option>
                         {(barangayProfiles || []).map((bp) => (
                             <option key={bp.id} value={bp.id}>
-                                {bp.barangay_name} â€” {bp.municipality_city}
+                                {bp.barangay_name} — {bp.municipality_city}
                             </option>
                         ))}
                     </select>
@@ -7578,431 +7395,10 @@ function SimulationEventCampaignFields({ trainingModules = [], trainers = [], ba
                         <option value="">None</option>
                         {(trainers || []).map((t) => (
                             <option key={t.id} value={t.id}>
-                                {t.name}{t.specialization ? ` â€” ${t.specialization}` : ''}
+                                {t.name}{t.specialization ? ` — ${t.specialization}` : ''}
                             </option>
                         ))}
                     </select>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function SimulationEventCreateForm({ scenarios, trainingModules = [], trainers = [], barangayProfiles = [] }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [selectedScenarioId, setSelectedScenarioId] = React.useState('');
-    const selectedScenario = (scenarios || []).find((s) => String(s.id) === String(selectedScenarioId)) || null;
-    const formRef = React.useRef(null);
-    const [startTimeValue, setStartTimeValue] = React.useState('');
-    const [endTimeValue, setEndTimeValue] = React.useState('');
-    // Pre-launch checklist (driven by form fields)
-    const [checklistTitle, setChecklistTitle] = React.useState('');
-    const [checklistEventDate, setChecklistEventDate] = React.useState('');
-    const [checklistLocation, setChecklistLocation] = React.useState('');
-
-    const minDate = new Date().toISOString().split('T')[0];
-
-    const eventTitleAdded = checklistTitle.trim() !== '';
-    const disasterTypeSelected = !!(selectedScenario && selectedScenario.disaster_type);
-    const scenarioAssigned = selectedScenarioId !== '';
-    const dateTimeSet = !!(checklistEventDate && startTimeValue && endTimeValue);
-    const locationFilled = checklistLocation.trim() !== '';
-    const allReady = eventTitleAdded && disasterTypeSelected && scenarioAssigned && dateTimeSet && locationFilled;
-
-    const handleStartTimeChange = (e) => {
-        const start = e.target.value;
-        setStartTimeValue(start);
-        if (start && endTimeValue && endTimeValue < start) setEndTimeValue('');
-        if (formRef.current && start) {
-            const endInput = formRef.current.querySelector('#end_time');
-            if (endInput && endInput.value && endInput.value < start) endInput.value = '';
-        }
-    };
-
-    const handleFormSubmit = (e) => {
-        e.preventDefault();
-
-        const form = formRef.current;
-        if (!form) return;
-
-        const eventDateInput = form.querySelector('#event_date');
-        const startTimeInput = form.querySelector('#start_time');
-        const endTimeInput = form.querySelector('#end_time');
-
-        if (eventDateInput && eventDateInput.value && eventDateInput.value < minDate) {
-            Swal.fire({
-                title: 'Invalid date',
-                text: 'Event date cannot be in the past. Please select today or a future date.',
-                icon: 'warning',
-                confirmButtonColor: '#10b981',
-            });
-            return;
-        }
-
-        if (startTimeInput?.value && endTimeInput?.value && endTimeInput.value < startTimeInput.value) {
-            Swal.fire({
-                title: 'Invalid time',
-                text: 'End time must be the same as or later than start time.',
-                icon: 'warning',
-                confirmButtonColor: '#10b981',
-            });
-            return;
-        }
-
-        const hiddenInput = document.getElementById('selected_resources_input');
-        if (hiddenInput && formRef.current) {
-            const resourcesData = hiddenInput.value ? JSON.parse(hiddenInput.value) : [];
-            console.log('Form submitting with resources:', resourcesData);
-        } else {
-            setTimeout(() => {
-                const input = document.getElementById('selected_resources_input');
-                if (!input && formRef.current) {
-                    const formEl = formRef.current;
-                    const resourcesInput = document.createElement('input');
-                    resourcesInput.type = 'hidden';
-                    resourcesInput.name = 'resources';
-                    resourcesInput.id = 'selected_resources_input';
-                    resourcesInput.value = '[]';
-                    formEl.appendChild(resourcesInput);
-                }
-            }, 0);
-        }
-
-        Swal.fire({
-            title: 'Save as draft?',
-            text: 'Are you sure you want to save this event as draft? You can edit and publish it later.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, save as draft',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#64748b',
-        }).then((result) => {
-            if (result.isConfirmed && formRef.current) {
-                formRef.current.submit();
-            }
-        });
-    };
-
-    return (
-        <div className="w-full max-w-full py-2">
-            <a
-                href="/admin/simulation-events"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
-            >
-                <ChevronLeft className="w-4 h-4" />
-                Back to Simulation Events
-            </a>
-
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-emerald-100 rounded-xl shadow-md">
-                    <CalendarClock className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-semibold text-slate-800">
-                        Create Simulation Event
-                    </h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        Schedule a new disaster simulation drill or exercise
-                    </p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-8">
-                    <form
-                        id="simulation-event-create-form"
-                        ref={formRef}
-                        method="POST"
-                        action="/admin/simulation-events"
-                        className="training-module-card-enter space-y-6 bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8 transition-shadow duration-300 hover:shadow-lg"
-                        onSubmit={handleFormSubmit}
-                    >
-                        <input type="hidden" name="_token" value={csrf} />
-                        <input type="hidden" name="status" value="draft" />
-                        <input type="hidden" name="disaster_type" value={selectedScenario?.disaster_type || ''} />
-
-                        {/* Section 1: Basic Event Information */}
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_title">
-                                    Event Title <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    id="event_title"
-                                    name="title"
-                                    type="text"
-                                    required
-                                    value={checklistTitle}
-                                    onChange={(e) => setChecklistTitle(e.target.value)}
-                                    placeholder="e.g. Earthquake Evacuation Drill"
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="disaster_type">
-                                        Disaster Type <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        id="disaster_type"
-                                        type="text"
-                                        value={selectedScenario ? selectedScenario.disaster_type : ''}
-                                        readOnly
-                                        disabled
-                                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
-                                        placeholder="Select a scenario first"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_category">
-                                        Event Category <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        id="event_category"
-                                        name="event_category"
-                                        required
-                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    >
-                                        <option value="">Select categoryâ€¦</option>
-                                        <option value="Drill">Drill</option>
-                                        <option value="Full-scale Exercise">Full-scale Exercise</option>
-                                        <option value="Tabletop">Tabletop</option>
-                                        <option value="Training Session">Training Session</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_description">
-                                    Event Description
-                                </label>
-                                <textarea
-                                    id="event_description"
-                                    name="description"
-                                    rows={4}
-                                    placeholder="What the drill is about and the main learning objectives"
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Scenario Assignment */}
-                        <div className="pt-4 border-t border-slate-100 space-y-3">
-                            <h3 className="text-sm font-semibold text-slate-800">Scenario Assignment</h3>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="scenario_id">
-                                    Select Scenario <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    id="scenario_id"
-                                    name="scenario_id"
-                                    value={selectedScenarioId}
-                                    onChange={(e) => setSelectedScenarioId(e.target.value)}
-                                    required
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                >
-                                    <option value="">Select a scenarioâ€¦</option>
-                                    {(scenarios || []).map((s) => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.title} ({s.disaster_type} - {s.difficulty})
-                                        </option>
-                                    ))}
-                                </select>
-                                {selectedScenario && (
-                                    <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600">
-                                        <div className="font-semibold mb-1">Scenario Preview</div>
-                                        <div>Hazard: {selectedScenario.disaster_type}</div>
-                                        <div>Difficulty: {selectedScenario.difficulty}</div>
-                                        {selectedScenario.short_description && (
-                                            <div className="mt-1">{selectedScenario.short_description}</div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Section 2: Event Schedule */}
-                        <div className="pt-4 border-t border-slate-100">
-                            <h3 className="text-sm font-semibold text-slate-800 mb-3">2. Event Schedule</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="event_date">
-                                        Event Date <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        id="event_date"
-                                        name="event_date"
-                                        type="date"
-                                        required
-                                        min={minDate}
-                                        value={checklistEventDate}
-                                        onChange={(e) => setChecklistEventDate(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="start_time">
-                                        Start Time <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        id="start_time"
-                                        name="start_time"
-                                        type="time"
-                                        required
-                                        value={startTimeValue}
-                                        onChange={handleStartTimeChange}
-                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="end_time">
-                                        End Time <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        id="end_time"
-                                        name="end_time"
-                                        type="time"
-                                        required
-                                        min={startTimeValue || undefined}
-                                        value={endTimeValue}
-                                        onChange={(e) => setEndTimeValue(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Section 3: Event Location */}
-                        <div className="pt-4 border-t border-slate-100 space-y-4">
-                            <h3 className="text-sm font-semibold text-slate-800">3. Event Location</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location">
-                                        Location / Building / Area
-                                    </label>
-                                    <input
-                                        id="location"
-                                        name="location"
-                                        type="text"
-                                        value={checklistLocation}
-                                        onChange={(e) => setChecklistLocation(e.target.value)}
-                                        placeholder="e.g. Barangay Hall"
-                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="room_zone">
-                                        Room / Zone
-                                    </label>
-                                    <input
-                                        id="room_zone"
-                                        name="room_zone"
-                                        type="text"
-                                        placeholder="e.g. Main Hall, Zone A"
-                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="location_notes">
-                                    Location Notes
-                                </label>
-                                <textarea
-                                    id="location_notes"
-                                    name="location_notes"
-                                    rows={3}
-                                    placeholder="Accessibility notes, exits, hazard zones, assembly points"
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                        </div>
-
-                        <SimulationEventCampaignFields trainingModules={trainingModules} trainers={trainers} barangayProfiles={barangayProfiles} />
-
-                        {/* Publishing Controls */}
-                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-500">
-                                This event will be saved as a draft. You can publish it later from the Simulation Events page.
-                            </p>
-                            <div className="flex gap-2">
-                                <a
-                                    href="/admin/simulation-events"
-                                    className="inline-flex items-center rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                                >
-                                    Cancel
-                                </a>
-                                <button
-                                    type="submit"
-                                    className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 shadow-sm hover:shadow-md transition-all duration-200"
-                                >
-                                    Save as Draft
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <div className="lg:col-span-4 space-y-4">
-                    {/* Panel 1: Pre-Launch Checklist */}
-                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">âœ… Simulation Readiness</h3>
-                        <div className="space-y-2.5">
-                            <div className="flex items-center gap-2 text-sm">
-                                {eventTitleAdded ? (
-                                    <span className="text-emerald-600">âœ…</span>
-                                ) : (
-                                    <span className="text-slate-300">â¬œ</span>
-                                )}
-                                <span className={eventTitleAdded ? 'text-slate-700' : 'text-slate-400'}>Event title added</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                {disasterTypeSelected ? (
-                                    <span className="text-emerald-600">âœ…</span>
-                                ) : (
-                                    <span className="text-slate-300">â¬œ</span>
-                                )}
-                                <span className={disasterTypeSelected ? 'text-slate-700' : 'text-slate-400'}>Disaster type selected</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                {scenarioAssigned ? (
-                                    <span className="text-emerald-600">âœ…</span>
-                                ) : (
-                                    <span className="text-slate-300">â¬œ</span>
-                                )}
-                                <span className={scenarioAssigned ? 'text-slate-700' : 'text-slate-400'}>Scenario assigned</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                {dateTimeSet ? (
-                                    <span className="text-emerald-600">âœ…</span>
-                                ) : (
-                                    <span className="text-slate-300">â¬œ</span>
-                                )}
-                                <span className={dateTimeSet ? 'text-slate-700' : 'text-slate-400'}>Date & time set</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                {locationFilled ? (
-                                    <span className="text-emerald-600">âœ…</span>
-                                ) : (
-                                    <span className="text-slate-300">â¬œ</span>
-                                )}
-                                <span className={locationFilled ? 'text-slate-700' : 'text-slate-400'}>Location filled</span>
-                            </div>
-                        </div>
-                        {allReady && (
-                            <div className="mt-4 pt-4 border-t border-emerald-100">
-                                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                                    <span className="text-lg">ðŸŸ¢</span>
-                                    <span>Ready to Publish</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Panel 2: Resources for Simulation */}
-                    <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">Resources for Simulation</h3>
-                        <ResourceSelectionSection inline={true} />
-                    </div>
                 </div>
             </div>
         </div>
@@ -8239,7 +7635,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                                         defaultValue={event.event_category}
                                         className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                     >
-                                        <option value="">Select categoryâ€¦</option>
+                                        <option value="">Select category…</option>
                                         <option value="Drill">Drill</option>
                                         <option value="Full-scale Exercise">
                                             Full-scale Exercise
@@ -8292,7 +7688,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                                     required
                                     className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 >
-                                    <option value="">Select a scenarioâ€¦</option>
+                                    <option value="">Select a scenario…</option>
                                     {(scenarios || []).map((s) => (
                                         <option key={s.id} value={s.id}>
                                             {s.title} ({s.disaster_type} -{' '}
@@ -8541,7 +7937,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                 <div className="lg:col-span-4 space-y-4">
                     <div className="training-module-card-enter rounded-2xl bg-white border border-slate-200 shadow-md p-5 transition-shadow duration-300 hover:shadow-lg">
                         <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                            âœ… Simulation Readiness
+                            ✅ Simulation Readiness
                         </h3>
                         <div className="space-y-2.5">
                             <div className="flex items-center gap-2 text-sm">
@@ -8552,7 +7948,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {eventTitleAdded ? 'âœ…' : 'â¬œ'}
+                                    {eventTitleAdded ? '✅' : '⬜'}
                                 </span>
                                 <span
                                     className={
@@ -8572,7 +7968,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {disasterTypeSelected ? 'âœ…' : 'â¬œ'}
+                                    {disasterTypeSelected ? '✅' : '⬜'}
                                 </span>
                                 <span
                                     className={
@@ -8592,7 +7988,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {scenarioAssigned ? 'âœ…' : 'â¬œ'}
+                                    {scenarioAssigned ? '✅' : '⬜'}
                                 </span>
                                 <span
                                     className={
@@ -8612,7 +8008,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {dateTimeSet ? 'âœ…' : 'â¬œ'}
+                                    {dateTimeSet ? '✅' : '⬜'}
                                 </span>
                                 <span
                                     className={
@@ -8632,7 +8028,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                                             : 'text-slate-300'
                                     }
                                 >
-                                    {locationFilled ? 'âœ…' : 'â¬œ'}
+                                    {locationFilled ? '✅' : '⬜'}
                                 </span>
                                 <span
                                     className={
@@ -8648,7 +8044,7 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
                         {allReady && (
                             <div className="mt-4 pt-4 border-t border-emerald-100">
                                 <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                                    <span className="text-lg">ðŸŸ¢</span>
+                                    <span className="text-lg">🟢</span>
                                     <span>Ready to Publish</span>
                                 </div>
                             </div>
@@ -8776,11 +8172,11 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
                                 <button type="button" onClick={() => setPaperSize('a4')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'a4' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>A4</button>
                                 <button type="button" onClick={() => setPaperSize('letter')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'letter' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>Letter</button>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">Choose paper size for a clean print or PDF. A4: 210Ã—297mm Â· Letter: 8.5Ã—11 in.</p>
+                            <p className="text-xs text-slate-500 mt-1">Choose paper size for a clean print or PDF. A4: 210×297mm · Letter: 8.5×11 in.</p>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate content (HTML with placeholders)</label>
-                            <p className="text-xs text-slate-500 mb-1">Use <code className="bg-slate-100 px-1 rounded">{'{name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{event}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{certificate_number}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{score}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{training_type}'}</code> â€” the system will replace these with the participant data.</p>
+                            <p className="text-xs text-slate-500 mb-1">Use <code className="bg-slate-100 px-1 rounded">{'{name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{event}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{certificate_number}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{score}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{training_type}'}</code> — the system will replace these with the participant data.</p>
                             <textarea name="template_content" rows={10} defaultValue={template?.template_content ?? DEFAULT_TEMPLATE_CONTENT} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono" placeholder="HTML with {name}, {date}, etc." />
                         </div>
                         <div>
@@ -9024,7 +8420,7 @@ function CertificationModule({
                     <p className="text-xs text-slate-500 mt-1">
                         {typeof stats.trend_this_week === 'number' && stats.trend_this_week !== 0 ? (
                             <span className={stats.trend_this_week > 0 ? 'text-emerald-600 font-medium' : 'text-rose-600 font-medium'}>
-                                {stats.trend_this_week > 0 ? 'â†‘' : 'â†“'} {Math.abs(stats.trend_this_week)}% this week
+                                {stats.trend_this_week > 0 ? '↑' : '↓'} {Math.abs(stats.trend_this_week)}% this week
                             </span>
                         ) : 'All time certified'}
                     </p>
@@ -9068,89 +8464,78 @@ function CertificationModule({
                 </div>
             </div>
 
-            {/* Filters - contextual per tab */}
-            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-5">
-                <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
-                    <div className="sm:col-span-2">
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder={activeTab === 'history' ? 'Name, event, or certificate ID...' : activeTab === 'templates' ? 'Search template name...' : 'Search by name or event...'}
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
-                        />
-                    </div>
-                    {(activeTab === 'eligible' || activeTab === 'history') && (
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Event</label>
-                            <select
-                                value={eventFilter}
-                                onChange={(e) => setEventFilter(e.target.value)}
-                                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 bg-white"
-                            >
-                                <option value="">All Events</option>
-                                {eventsForFilter?.map((ev) => (
-                                    <option key={ev.id} value={ev.id}>{ev.title}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                    {activeTab === 'eligible' && (
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 bg-white"
-                            >
-                                <option value="">All</option>
-                                <option value="eligible">Eligible</option>
-                                <option value="not_eligible">Not Eligible</option>
-                                <option value="pending">Pending</option>
-                            </select>
-                        </div>
-                    )}
-                    {activeTab === 'history' && (
-                        <>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate ID</label>
-                                <input type="text" value={certIdSearch} onChange={(e) => setCertIdSearch(e.target.value)} placeholder="Search by cert number..." className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Date From</label>
-                                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Date To</label>
-                                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                                <select value={issuedStatusFilter} onChange={(e) => setIssuedStatusFilter(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 bg-white">
-                                    <option value="active">Active</option>
-                                    <option value="revoked">Revoked</option>
-                                    <option value="all">All</option>
-                                </select>
-                            </div>
-                            <button type="button" onClick={handleApplyHistoryFilters} className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 text-white rounded-xl font-medium text-sm transition-all duration-250">
-                                <Filter className="w-4 h-4" />
-                                Apply Filters
-                            </button>
-                        </>
-                    )}
-                </div>
-                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
-                        <a href={`/admin/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all duration-200">
+            <AdminCollapsibleFilterBar
+                searchValue={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder={
+                    activeTab === 'history'
+                        ? 'Name, event, or certificate ID...'
+                        : activeTab === 'templates'
+                            ? 'Search template name...'
+                            : 'Search by name or event...'
+                }
+                hasActiveFilters={
+                    activeTab === 'eligible'
+                        ? Boolean(eventFilter || statusFilter)
+                        : activeTab === 'history'
+                            ? Boolean(eventFilter || certIdSearch || dateFrom || dateTo || issuedStatusFilter !== 'active')
+                            : false
+                }
+                onClearFilters={() => {
+                    setEventFilter('');
+                    setStatusFilter('');
+                    setCertIdSearch('');
+                    setDateFrom('');
+                    setDateTo('');
+                    setIssuedStatusFilter('active');
+                }}
+                showFilterToggle={activeTab === 'eligible' || activeTab === 'history'}
+                trailing={(
+                    <>
+                        {activeTab === 'history' && (
+                            <AdminPrimaryButton type="button" onClick={handleApplyHistoryFilters}>
+                                <Search className="w-4 h-4" />
+                                Apply
+                            </AdminPrimaryButton>
+                        )}
+                        <a href={`/admin/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-colors">
                             <Download className="w-4 h-4" /> Export CSV
                         </a>
-                        <a href="/admin/certification/export/pdf" className="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-all duration-200">
+                        <a href="/admin/certification/export/pdf" className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-colors">
                             <Download className="w-4 h-4" /> Export PDF
                         </a>
-                    </div>
-                </div>
-            </div>
+                    </>
+                )}
+            >
+                {(activeTab === 'eligible' || activeTab === 'history') && (
+                    <AdminFilterSelect label="Event" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
+                        <option value="">All Events</option>
+                        {eventsForFilter?.map((ev) => (
+                            <option key={ev.id} value={ev.id}>{ev.title}</option>
+                        ))}
+                    </AdminFilterSelect>
+                )}
+                {activeTab === 'eligible' && (
+                    <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                        <option value="">All</option>
+                        <option value="eligible">Eligible</option>
+                        <option value="not_eligible">Not Eligible</option>
+                        <option value="pending">Pending</option>
+                    </AdminFilterSelect>
+                )}
+                {activeTab === 'history' && (
+                    <>
+                        <AdminFilterInput label="Certificate ID" value={certIdSearch} onChange={(e) => setCertIdSearch(e.target.value)} placeholder="Search by cert number..." />
+                        <AdminFilterInput label="Date from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                        <AdminFilterInput label="Date to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                        <AdminFilterSelect label="Status" value={issuedStatusFilter} onChange={(e) => setIssuedStatusFilter(e.target.value)}>
+                            <option value="active">Active</option>
+                            <option value="revoked">Revoked</option>
+                            <option value="all">All</option>
+                        </AdminFilterSelect>
+                    </>
+                )}
+            </AdminCollapsibleFilterBar>
 
             {/* Eligible Participants - Profile-style rows */}
             {activeTab === 'eligible' && (
@@ -9170,12 +8555,12 @@ function CertificationModule({
                                         <p className="font-semibold text-slate-900">{row.user_name}</p>
                                         <p className="text-sm text-slate-600 truncate">{row.event_title}</p>
                                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                            <span className="text-xs text-slate-500">{row.score != null ? `${row.score}%` : 'â€”'} score</span>
+                                            <span className="text-xs text-slate-500">{row.score != null ? `${row.score}%` : '—'} score</span>
                                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
                                                 row.attendance_status === 'present' || row.attendance_status === 'completed'
                                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
                                             }`}>
-                                                {row.attendance_status === 'present' || row.attendance_status === 'completed' ? 'âœ“ Present' : (row.attendance_status || 'â€”')}
+                                                {row.attendance_status === 'present' || row.attendance_status === 'completed' ? '✓ Present' : (row.attendance_status || '—')}
                                             </span>
                                             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
                                                 row.cert_status === 'eligible' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 ring-1 ring-emerald-200/50' :
@@ -9232,14 +8617,14 @@ function CertificationModule({
                                     <h4 className="text-lg font-semibold text-slate-900 mb-2">{t.name}</h4>
                                     <div className="text-sm text-slate-600 space-y-1 mb-4">
                                         <p><span className="font-medium text-slate-500">Type:</span> {t.type || 'Completion'}</p>
-                                        <p><span className="font-medium text-slate-500">Last Used:</span> {t.last_used_at ? formatDate(t.last_used_at) : 'â€”'}</p>
+                                        <p><span className="font-medium text-slate-500">Last Used:</span> {t.last_used_at ? formatDate(t.last_used_at) : '—'}</p>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                                             t.status === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
                                         }`}>
                                             <span className={`w-1.5 h-1.5 rounded-full ${t.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                                            {t.status === 'active' ? 'Active' : (t.status || 'â€”')}
+                                            {t.status === 'active' ? 'Active' : (t.status || '—')}
                                         </span>
                                         <div className="flex items-center gap-1.5">
                                             <a href={`/admin/certification/templates/${t.id}/preview`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all duration-250" title="Preview"> <Eye className="w-4 h-4" /> </a>
@@ -9282,8 +8667,8 @@ function CertificationModule({
                                             <td className="px-5 py-4 font-mono text-xs text-slate-700">{c.certificate_number}</td>
                                             <td className="px-5 py-4 font-medium text-slate-800">{c.user?.name}</td>
                                             <td className="px-5 py-4 text-slate-600">{c.simulation_event?.title}</td>
-                                            <td className="px-5 py-4 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : 'â€”'}</td>
-                                            <td className="px-5 py-4 text-slate-600">{c.issuer?.name || 'â€”'}</td>
+                                            <td className="px-5 py-4 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : '—'}</td>
+                                            <td className="px-5 py-4 text-slate-600">{c.issuer?.name || '—'}</td>
                                             <td className="px-5 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all" title="View / Print PDF">
@@ -9315,9 +8700,9 @@ function CertificationModule({
                             <div className="flex items-start gap-4">
                                 <input type="checkbox" checked={autoIssue} onChange={(e) => setAutoIssue(e.target.checked)} className="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
                                 <div className="flex-1">
-                                    <p className="font-medium text-slate-900">When score â‰¥ 70%</p>
+                                    <p className="font-medium text-slate-900">When score ≥ 70%</p>
                                     <p className="text-sm text-slate-600 mt-0.5">AND certification eligible = Yes</p>
-                                    <p className="text-sm text-emerald-600 font-medium mt-2">â†’ Auto Issue Certificate</p>
+                                    <p className="text-sm text-emerald-600 font-medium mt-2">→ Auto Issue Certificate</p>
                                     <span className={`inline-flex items-center gap-1.5 mt-2 rounded-full px-3 py-1 text-xs font-semibold ${autoIssue ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${autoIssue ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                                         {autoIssue ? 'Active' : 'Inactive'}
@@ -9387,7 +8772,7 @@ function CertificationModule({
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Final Score</label>
-                                    <p className="text-sm text-slate-800">{issueRow.score != null ? `${issueRow.score}%` : 'â€”'}</p>
+                                    <p className="text-sm text-slate-800">{issueRow.score != null ? `${issueRow.score}%` : '—'}</p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate Type</label>
@@ -9419,7 +8804,7 @@ function CertificationModule({
     );
 }
 
-// Participant Components â€” module lives in ParticipantAttendanceModule.jsx
+// Participant Components — module lives in ParticipantAttendanceModule.jsx
 
 // Helper: Generate initials from name
 function getInitials(name) {
@@ -9502,43 +8887,26 @@ function RegistrationEventsTable({ events = [] }) {
 
     return (
         <div>
-            {/* Filters - card with shadow like Resources */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-md p-4 mb-4">
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search by event title, scenario, or location..."
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status Filter</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="published">Published</option>
-                            <option value="ongoing">Ongoing</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                    </div>
-                    <div className="flex items-end">
-                        <button
-                            type="button"
-                            onClick={handleExportCsv}
-                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
-                        >
-                            ðŸ“¥ Export CSV
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <AdminCollapsibleFilterBar
+                searchValue={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search by event title, scenario, or location..."
+                hasActiveFilters={statusFilter !== 'all'}
+                onClearFilters={() => setStatusFilter('all')}
+                trailing={(
+                    <AdminPrimaryButton type="button" onClick={handleExportCsv}>
+                        <Download className="w-4 h-4" />
+                        Export CSV
+                    </AdminPrimaryButton>
+                )}
+            >
+                <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="all">All Status</option>
+                    <option value="published">Published</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                </AdminFilterSelect>
+            </AdminCollapsibleFilterBar>
 
             {/* Event Cards Layout */}
             <div className="space-y-4">
@@ -9561,16 +8929,16 @@ function RegistrationEventsTable({ events = [] }) {
                                     <div className="p-5">
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">ðŸ“˜ {event.title}</h3>
+                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
                                                 <div className="space-y-1 text-sm text-slate-600">
                                                     <div className="flex items-center gap-2">
-                                                        <span>ðŸ“</span>
+                                                        <span>📍</span>
                                                         <span>{event.location || 'Location TBD'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span>ðŸ—“</span>
+                                                        <span>📖</span>
                                                         <span>
-                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}â€“{formatTime(event.end_time)}
+                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -9581,7 +8949,7 @@ function RegistrationEventsTable({ events = [] }) {
                                         </div>
                                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm text-slate-600">ðŸ‘¥</span>
+                                                <span className="text-sm text-slate-600">👥</span>
                                                 <span className="text-sm font-medium text-slate-900">{event.registrations_count || 0} Registered</span>
                                             </div>
                                             <a
@@ -9669,43 +9037,26 @@ function AttendanceEventsTable({ events = [] }) {
 
     return (
         <div>
-            {/* Filters - card with shadow like Resources */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-md p-4 mb-4">
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Search</label>
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search by event title, scenario, or location..."
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Status Filter</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="published">Published</option>
-                            <option value="ongoing">Ongoing</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                    </div>
-                    <div className="flex items-end">
-                        <button
-                            type="button"
-                            onClick={handleExportCsv}
-                            className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-medium px-3 py-2 w-full justify-center"
-                        >
-                            ðŸ“¥ Export CSV
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <AdminCollapsibleFilterBar
+                searchValue={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search by event title, scenario, or location..."
+                hasActiveFilters={statusFilter !== 'all'}
+                onClearFilters={() => setStatusFilter('all')}
+                trailing={(
+                    <AdminPrimaryButton type="button" onClick={handleExportCsv}>
+                        <Download className="w-4 h-4" />
+                        Export CSV
+                    </AdminPrimaryButton>
+                )}
+            >
+                <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="all">All Status</option>
+                    <option value="published">Published</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                </AdminFilterSelect>
+            </AdminCollapsibleFilterBar>
 
             {/* Event Cards Layout */}
             <div className="space-y-4">
@@ -9728,16 +9079,16 @@ function AttendanceEventsTable({ events = [] }) {
                                     <div className="p-5">
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">ðŸ“˜ {event.title}</h3>
+                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
                                                 <div className="space-y-1 text-sm text-slate-600">
                                                     <div className="flex items-center gap-2">
-                                                        <span>ðŸ“</span>
+                                                        <span>📍</span>
                                                         <span>{event.location || 'Location TBD'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span>ðŸ—“</span>
+                                                        <span>📖</span>
                                                         <span>
-                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}â€“{formatTime(event.end_time)}
+                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -9748,7 +9099,7 @@ function AttendanceEventsTable({ events = [] }) {
                                         </div>
                                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm text-slate-600">ðŸ‘¥</span>
+                                                <span className="text-sm text-slate-600">👥</span>
                                                 <span className="text-sm font-medium text-slate-900">{event.approved_registrations_count || 0} Approved Participants</span>
                                             </div>
                                             <a
@@ -9883,10 +9234,10 @@ function ParticipantsTable({ participants = [], role }) {
                                         </a>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600">{participant.email}</td>
-                                    <td className="px-4 py-2 text-slate-600">{participant.phone || 'â€”'}</td>
+                                    <td className="px-4 py-2 text-slate-600">{participant.phone || '—'}</td>
                                     <td className="px-4 py-2">
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusColor(participant.status)}`}>
-                                            {participant.status === 'active' ? 'ðŸŸ¢' : 'ðŸ”´'} {participant.status || 'active'}
+                                            {participant.status === 'active' ? '🟢' : '🔴'} {participant.status || 'active'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600 text-center">
@@ -9970,13 +9321,13 @@ function ParticipantDetail({ participant }) {
     const initials = getInitials(participant.name);
     const avatarColor = getAvatarColor(participant.name);
     const statusColor = participant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800';
-    const statusIcon = participant.status === 'active' ? 'ðŸŸ¢' : 'ðŸ”´';
+    const statusIcon = participant.status === 'active' ? '🟢' : '🔴';
 
     return (
         <div>
             <div className="mb-4">
                 <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800 transition-colors">
-                    â† Back to Participants
+                    ← Back to Participants
                 </a>
             </div>
 
@@ -10094,7 +9445,7 @@ function ParticipantDetail({ participant }) {
                         totalItems={pagination.total || filteredParticipants.length}
                     />
                     {isPageLoading && (
-                        <p className="mt-2 text-xs text-slate-500">Loading participantsâ€¦</p>
+                        <p className="mt-2 text-xs text-slate-500">Loading participants…</p>
                     )}
                 </div>
             )}
@@ -10125,7 +9476,7 @@ function ParticipantDetail({ participant }) {
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Phone</label>
-                            <div className="text-sm text-slate-900">{participant.phone || 'â€”'}</div>
+                            <div className="text-sm text-slate-900">{participant.phone || '—'}</div>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Registered At</label>
@@ -10158,7 +9509,7 @@ function ParticipantDetail({ participant }) {
                                                 </div>
                                             </div>
                                             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${regStatusColor}`}>
-                                                {reg.status === 'approved' ? 'âœ…' : reg.status === 'pending' ? 'â³' : 'âŒ'} {reg.status}
+                                                {reg.status === 'approved' ? '✅' : reg.status === 'pending' ? '⏳' : '❌'} {reg.status}
                                             </span>
                                         </div>
                                     </div>
@@ -10181,10 +9532,10 @@ function ParticipantDetail({ participant }) {
                                     attendance.status === 'late' ? 'text-amber-600' :
                                         attendance.status === 'absent' ? 'text-red-600' :
                                             'text-slate-600';
-                                const attStatusIcon = attendance.status === 'present' ? 'ðŸŸ¢' :
-                                    attendance.status === 'late' ? 'ðŸŸ¡' :
-                                        attendance.status === 'absent' ? 'ðŸ”´' :
-                                            'âšª';
+                                const attStatusIcon = attendance.status === 'present' ? '🟢' :
+                                    attendance.status === 'late' ? '🟡' :
+                                        attendance.status === 'absent' ? '🔴' :
+                                            '⚪';
                                 return (
                                     <div key={attendance.id} className="flex gap-4 items-start">
                                         {/* Timeline Line */}
@@ -10205,7 +9556,7 @@ function ParticipantDetail({ participant }) {
                                                         {attendance.checked_in_at
                                                             ? `${new Date(attendance.checked_in_at).toLocaleDateString()} | ${new Date(attendance.checked_in_at).toLocaleTimeString()}`
                                                             : 'No check-in time'}
-                                                        {attendance.check_in_method && ` â€¢ ${attendance.check_in_method}`}
+                                                        {attendance.check_in_method && ` • ${attendance.check_in_method}`}
                                                     </div>
                                                 </div>
                                             </div>
@@ -10269,7 +9620,7 @@ function ParticipantSelfAttendance({ participant }) {
                                                 {event?.title || 'Simulation Event'}
                                             </td>
                                             <td className="py-2 pr-4 text-slate-600">
-                                                {date ? formatDate(date) : 'â€”'}
+                                                {date ? formatDate(date) : '—'}
                                             </td>
                                             <td className="py-2 pr-4">
                                                 <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -10315,7 +9666,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
         <div>
             <div className="mb-4">
                 <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
-                    â† Back to Participants
+                    ← Back to Participants
                 </a>
             </div>
 
@@ -10401,7 +9752,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                     <td className="px-4 py-2 text-slate-600">{reg.user?.email || 'N/A'}</td>
                                     <td className="px-4 py-2">
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getRegistrationStatusColor(reg.status)}`}>
-                                            {reg.status === 'approved' ? 'âœ…' : reg.status === 'pending' ? 'â³' : reg.status === 'rejected' ? 'âŒ' : ''} {reg.status}
+                                            {reg.status === 'approved' ? '✅' : reg.status === 'pending' ? '⏳' : reg.status === 'rejected' ? '❌' : ''} {reg.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-slate-600 text-xs">{formatDateTime(reg.registered_at)}</td>
@@ -10418,7 +9769,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     if (result.isConfirmed) e.target.submit();
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 hover:shadow-sm transition-all duration-200">âœ… Approve</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 hover:shadow-sm transition-all duration-200">✅ Approve</button>
                                                 </form>
                                                 <form method="POST" action={`/admin/event-registrations/${reg.id}/reject`} onSubmit={async (e) => {
                                                     e.preventDefault();
@@ -10440,7 +9791,7 @@ function EventRegistrationsTable({ event, registrations = [] }) {
                                                     }
                                                 }}>
                                                     <input type="hidden" name="_token" value={csrf} />
-                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200">âŒ Reject</button>
+                                                    <button type="submit" className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200">❌ Reject</button>
                                                 </form>
                                             </div>
                                         )}
@@ -10471,10 +9822,10 @@ function EventAttendanceTable({ event, registrations = [] }) {
     return (
         <div>
             <div className="mb-4 flex items-center justify-between">
-                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">â† Back to Participants</a>
+                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">← Back to Participants</a>
                 <div className="flex gap-2 items-center">
                     <AttendanceQrScanner eventId={event.id} csrfToken={csrf} onSuccess={() => window.location.reload()} />
-                    <a href={`/admin/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">ðŸ“¥ Export CSV</a>
+                    <a href={`/admin/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">📥 Export CSV</a>
                     <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/lock`} onSubmit={async (e) => {
                         e.preventDefault();
                         const result = await Swal.fire({
@@ -10485,7 +9836,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         if (result.isConfirmed) e.target.submit();
                     }}>
                         <input type="hidden" name="_token" value={csrf} />
-                        <button type="submit" className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1.5">ðŸ”’ Lock Attendance</button>
+                        <button type="submit" className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1.5">🔒 Lock Attendance</button>
                     </form>
                 </div>
             </div>
@@ -10504,13 +9855,13 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         {event.status}
                     </span>
                 </div>
-                <div className="text-xs text-slate-600">{formatDate(event.event_date)} â€¢ {event.location || 'Location TBD'}</div>
+                <div className="text-xs text-slate-600">{formatDate(event.event_date)} • {event.location || 'Location TBD'}</div>
             </div>
 
             {/* Attendance Dashboard - Visual Summary */}
             <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl shadow-sm border border-emerald-200 p-6 mb-4">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-slate-900">ðŸ“Š Attendance Dashboard</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">📊 Attendance Dashboard</h3>
                     {!event.attendance_locked && (
                         <div className="flex gap-2">
                             <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
@@ -10597,25 +9948,25 @@ function EventAttendanceTable({ event, registrations = [] }) {
                     <div className="space-y-3">
                         <div className="bg-white rounded-lg p-4 border border-emerald-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">ðŸŸ¢ Present</span>
+                                <span className="text-sm text-slate-600">🟢 Present</span>
                                 <span className="text-xl font-bold text-emerald-600">{presentCount}</span>
                             </div>
                         </div>
                         <div className="bg-white rounded-lg p-4 border border-amber-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">ðŸŸ¡ Late</span>
+                                <span className="text-sm text-slate-600">🟡 Late</span>
                                 <span className="text-xl font-bold text-amber-600">{lateCount}</span>
                             </div>
                         </div>
                         <div className="bg-white rounded-lg p-4 border border-red-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">ðŸ”´ Absent</span>
+                                <span className="text-sm text-slate-600">🔴 Absent</span>
                                 <span className="text-xl font-bold text-red-600">{absentCount}</span>
                             </div>
                         </div>
                         <div className="bg-white rounded-lg p-4 border border-slate-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">âšª Not Marked</span>
+                                <span className="text-sm text-slate-600">⚪ Not Marked</span>
                                 <span className="text-xl font-bold text-slate-600">{notMarkedCount}</span>
                             </div>
                         </div>
@@ -10653,14 +10004,14 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             attendance.status === 'absent' ? 'bg-red-100 text-red-800 border border-red-200' :
                                                                 attendance.status === 'excused' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-100 text-slate-700'
                                                 }`}>
-                                                    {attendance.status === 'present' ? 'ðŸŸ¢' : attendance.status === 'late' ? 'ðŸŸ¡' : attendance.status === 'absent' ? 'ðŸ”´' : ''} {attendance.status}
+                                                    {attendance.status === 'present' ? '🟢' : attendance.status === 'late' ? '🟡' : attendance.status === 'absent' ? '🔴' : ''} {attendance.status}
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600">Not marked</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.check_in_method || 'Manual'}</td>
-                                        <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.checked_in_at ? formatDateTime(attendance.checked_in_at) : 'â€”'}</td>
+                                        <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.checked_in_at ? formatDateTime(attendance.checked_in_at) : '—'}</td>
                                         <td className="px-4 py-2">
                                             {!attendance?.is_locked && !isMarked ? (
                                                 <div className="flex gap-2">
@@ -10716,7 +10067,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             type="submit"
                                                             className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 hover:shadow-sm transition-all duration-200"
                                                         >
-                                                            ðŸŸ¢ Present
+                                                            🟢 Present
                                                         </button>
                                                     </form>
                                                     <form
@@ -10771,7 +10122,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                                             type="submit"
                                                             className="inline-flex items-center rounded-lg border border-red-500 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 hover:shadow-sm transition-all duration-200"
                                                         >
-                                                            ðŸ”´ Absent
+                                                            🔴 Absent
                                                         </button>
                                                     </form>
                                                 </div>
@@ -10844,10 +10195,10 @@ function EvaluationDashboard({ events }) {
 
     const getEvalStatusIcon = (status) => {
         switch (status) {
-            case 'in_progress': return 'ðŸ”µ';
-            case 'completed': return 'ðŸŸ¢';
-            case 'locked': return 'ðŸŸ¡';
-            default: return 'âšª';
+            case 'in_progress': return '🔵';
+            case 'completed': return '🟢';
+            case 'locked': return '🟡';
+            default: return '⚪';
         }
     };
 
@@ -10929,7 +10280,7 @@ function EvaluationDashboard({ events }) {
                             >
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-lg font-semibold text-slate-900 mb-1">ðŸ“˜ {event.title}</h3>
+                                        <h3 className="text-lg font-semibold text-slate-900 mb-1">📘 {event.title}</h3>
                                         <p className="text-sm text-slate-600">
                                             Scenario: {event.scenario_name || 'N/A'} | Date: {formatDate(event.event_date)}
                                         </p>
@@ -11232,7 +10583,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                     }
                     
                     .print-criteria li:before {
-                        content: "â€¢";
+                        content: "•";
                         position: absolute;
                         left: 0;
                         color: #000000 !important;
@@ -11365,9 +10716,9 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                 evaluation.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
-                                {evaluation.status === 'locked' ? 'ðŸ”’ Locked' :
-                                    evaluation.status === 'completed' ? 'ðŸŸ¢ Completed' :
-                                    evaluation.status === 'in_progress' ? 'ðŸ”µ In Progress' : 'âšª Not Started'}
+                                {evaluation.status === 'locked' ? '🔒 Locked' :
+                                    evaluation.status === 'completed' ? '🟢 Completed' :
+                                    evaluation.status === 'in_progress' ? '🔵 In Progress' : '⚪ Not Started'}
                             </span>
                             {(() => {
                                 const evalsArr = Array.isArray(participantEvaluations) ? participantEvaluations : Object.values(participantEvaluations || {});
@@ -11454,7 +10805,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                     <div className={`h-full rounded-full ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${(parseFloat(avgScore) / maxScore) * 100}%` }} />
                                                 </div>
                                                 <span className="text-sm font-bold text-slate-900">{avgScore} / {maxScore}</span>
-                                                <span className={passed ? 'text-emerald-600' : 'text-rose-600'}>{passed ? 'âœ…' : 'âŒ'}</span>
+                                                <span className={passed ? 'text-emerald-600' : 'text-rose-600'}>{passed ? '✅' : '❌'}</span>
                                             </div>
                                         ) : (
                                             <p className="text-xs text-slate-500">No scores yet</p>
@@ -11511,10 +10862,10 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                                 <p className="font-semibold text-slate-900">{name}</p>
                                                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                                                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                                                        {isPresent ? 'âœ“ Present' : 'Not Marked'}
+                                                                        {isPresent ? '✓ Present' : 'Not Marked'}
                                                                     </span>
                                                                     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                                                        âœ“ Evaluated
+                                                                        ✓ Evaluated
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -11591,7 +10942,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                         <p className="font-semibold text-slate-900">{name}</p>
                                                         <div className="flex flex-wrap items-center gap-2 mt-1">
                                                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isPresent ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                                                {isPresent ? 'âœ“ Present' : 'Not Marked'}
+                                                                {isPresent ? '✓ Present' : 'Not Marked'}
                                                             </span>
                                                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${status.label === 'Evaluated' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                                                                 {status.label}
@@ -11600,7 +10951,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                     </div>
                                                     <div className="shrink-0">
                                                         {isLocked ? (
-                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-lg">ðŸ”’ Locked</span>
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-lg">🔒 Locked</span>
                                                         ) : (
                                                             <a
                                                                 href={isPresent ? `/admin/simulation-events/${event.id}/evaluation/${p.user_id}` : '#'}
@@ -11985,7 +11336,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                     passed ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
                                     'bg-rose-100 text-rose-800 border border-rose-200'
                                 }`}>
-                                    {maxScore === 0 ? 'â€”' : passed ? 'âœ“ Pass' : 'âœ— Fail'}
+                                    {maxScore === 0 ? '—' : passed ? '✓ Pass' : '✗ Fail'}
                                 </span>
                             </div>
                         </div>
@@ -12308,7 +11659,7 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                     <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold border ${
                                                         passed ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-rose-100 text-rose-800 border-rose-200'
                                                     }`}>
-                                                        {passed ? 'âœ“ Passed' : 'âœ— Failed'}
+                                                        {passed ? '✓ Passed' : '✗ Failed'}
                                                     </span>
                                                 </td>
                                                 <td className="px-5 py-4 text-center">
@@ -12318,7 +11669,7 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                             Eligible
                                                         </span>
                                                     ) : (
-                                                        <span className="text-slate-400">â€”</span>
+                                                        <span className="text-slate-400">—</span>
                                                     )}
                                                 </td>
                                             </tr>
@@ -12348,7 +11699,7 @@ function ParticipantEvaluationResults({ participantEvaluations }) {
     const hasResults = evaluationsArray.length > 0;
 
     const formatResultDate = (dateString) => {
-        if (!dateString) return 'â€”';
+        if (!dateString) return '—';
         return formatDate(dateString);
     };
 
@@ -12387,7 +11738,7 @@ function ParticipantEvaluationResults({ participantEvaluations }) {
                                             {formatResultDate(pe.event_date)}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-900">
-                                            {pe.average_score != null ? `${Number(pe.average_score).toFixed(1)}%` : 'â€”'}
+                                            {pe.average_score != null ? `${Number(pe.average_score).toFixed(1)}%` : '—'}
                                         </td>
                                         <td className="py-2 pr-4">
                                             <span
@@ -12398,7 +11749,7 @@ function ParticipantEvaluationResults({ participantEvaluations }) {
                                                         : 'bg-rose-50 text-rose-700 border-rose-200',
                                                 ].join(' ')}
                                             >
-                                                {pe.result ? pe.result.charAt(0).toUpperCase() + pe.result.slice(1) : 'â€”'}
+                                                {pe.result ? pe.result.charAt(0).toUpperCase() + pe.result.slice(1) : '—'}
                                             </span>
                                         </td>
                                     </tr>
@@ -12420,7 +11771,7 @@ function ParticipantCertificatesList({ certificates }) {
     const hasCertificates = rows.length > 0;
 
     const formatIssuedDate = (dateString) => {
-        if (!dateString) return 'â€”';
+        if (!dateString) return '—';
         return formatDate(dateString);
     };
 
@@ -12456,7 +11807,7 @@ function ParticipantCertificatesList({ certificates }) {
                                 {rows.map((cert) => (
                                     <tr key={cert.id} className="border-b border-slate-100 last:border-0">
                                         <td className="py-2 pr-4 text-slate-900">
-                                            {cert.certificate_number || 'â€”'}
+                                            {cert.certificate_number || '—'}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-900">
                                             {cert.training_module?.title
@@ -12473,10 +11824,10 @@ function ParticipantCertificatesList({ certificates }) {
                                                 ? `${Number(cert.final_score).toFixed(1)}%`
                                                 : cert.average_score != null
                                                     ? `${Number(cert.average_score).toFixed(1)}%`
-                                                    : 'â€”'}
+                                                    : '—'}
                                         </td>
                                         <td className="py-2 pr-4 text-slate-900">
-                                            {cert.type ? cert.type.charAt(0).toUpperCase() + cert.type.slice(1) : 'â€”'}
+                                            {cert.type ? cert.type.charAt(0).toUpperCase() + cert.type.slice(1) : '—'}
                                         </td>
                                         <td className="py-2 pr-4">
                                             {cert.id && (
@@ -12501,867 +11852,4 @@ function ParticipantCertificatesList({ certificates }) {
     );
 }
 
-
-// Drill History Reports page
-function DrillHistoryReportsPage({ drills }) {
-    const [search, setSearch] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('');
-    const [disasterFilter, setDisasterFilter] = React.useState('');
-    const [facilitatorFilter, setFacilitatorFilter] = React.useState('');
-    const [dateFrom, setDateFrom] = React.useState('');
-    const [dateTo, setDateTo] = React.useState('');
-    const [expandedId, setExpandedId] = React.useState(null);
-
-    const safeDrills = Array.isArray(drills) ? drills : [];
-
-    // Derived summary stats from completed events
-    const totalDrills = safeDrills.length;
-    const participantsTrained = safeDrills.reduce(
-        (sum, d) =>
-            sum +
-            (d.approved_registrations_count ??
-                d.registrations_count ??
-                0),
-        0,
-    );
-
-    // Most common disaster type (by SimulationEvent.disaster_type)
-    let mostCommonDisasterType = 'â€”';
-    if (safeDrills.length > 0) {
-        const counts = {};
-        safeDrills.forEach((d) => {
-            const t = (d.disaster_type || '').trim();
-            if (!t) return;
-            counts[t] = (counts[t] || 0) + 1;
-        });
-        const entries = Object.entries(counts);
-        if (entries.length > 0) {
-            entries.sort((a, b) => b[1] - a[1]);
-            mostCommonDisasterType = entries[0][0];
-        }
-    }
-
-    // Average overall score: from derived_average_score if present
-    let averageOverallScore = 'â€”';
-    const eventsWithScore = safeDrills.filter(
-        (d) =>
-            typeof d.derived_average_score === 'number' &&
-            !Number.isNaN(d.derived_average_score),
-    );
-    if (eventsWithScore.length > 0) {
-        const sum = eventsWithScore.reduce(
-            (acc, d) => acc + d.derived_average_score,
-            0,
-        );
-        averageOverallScore = `${(sum / eventsWithScore.length).toFixed(1)}%`;
-    }
-
-    const filteredDrills = safeDrills.filter((event) => {
-        const q = search.trim().toLowerCase();
-        const matchesSearch =
-            !q ||
-            (event.title || '').toLowerCase().includes(q) ||
-            (event.scenario?.title || '').toLowerCase().includes(q);
-
-        const matchesStatus = !statusFilter || event.status === statusFilter;
-        // disasterFilter / facilitatorFilter are placeholders for now
-
-        return matchesSearch && matchesStatus;
-    });
-
-    const handleExport = (format) => {
-        console.log('Export drill history as', format);
-    };
-
-    const handleRowClick = (id) => {
-        setExpandedId((prev) => (prev === id ? null : id));
-    };
-
-    const expandedDrill = safeDrills.find((event) => event.id === expandedId) || null;
-
-    return (
-        <AdminPageShell>
-            <AdminPageHeader
-                icon={ClipboardList}
-                title="Drill History Reports"
-                description="View past simulation events, performance results, and generate formal reports."
-                actions={
-                    <>
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
-                            <span className="text-xs text-slate-600">Date range</span>
-                            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs" />
-                            <span className="text-xs text-slate-400">â†’</span>
-                            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs" />
-                        </div>
-                        <AdminPrimaryButton type="button" onClick={() => handleExport('pdf')}>
-                            <Printer className="w-4 h-4" /> Export PDF
-                        </AdminPrimaryButton>
-                        <AdminSecondaryButton type="button" onClick={() => handleExport('csv')}>
-                            <Download className="w-4 h-4" /> Export CSV
-                        </AdminSecondaryButton>
-                    </>
-                }
-            />
-
-            {/* Stats cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        Total drills conducted
-                    </p>
-                    <p className="mt-1 text-2xl font-bold text-slate-900">
-                        {totalDrills || 'â€”'}
-                    </p>
-                </div>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        Average overall score
-                    </p>
-                    <p className="mt-1 text-2xl font-bold text-slate-900">
-                        {averageOverallScore}
-                    </p>
-                </div>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        Participants trained
-                    </p>
-                    <p className="mt-1 text-2xl font-bold text-slate-900">
-                        {participantsTrained || 'â€”'}
-                    </p>
-                </div>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        Most common disaster type
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
-                        {mostCommonDisasterType}
-                    </p>
-                </div>
-            </div>
-
-            {/* Filters panel */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search drills by event name or scenarioâ€¦"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    >
-                        <option value="">All Status</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="Failed">Failed</option>
-                        <option value="Interrupted">Interrupted</option>
-                    </select>
-                    <select
-                        value={disasterFilter}
-                        onChange={(e) => setDisasterFilter(e.target.value)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    >
-                        <option value="">All Disasters</option>
-                        <option value="Earthquake">Earthquake</option>
-                        <option value="Fire">Fire</option>
-                        <option value="Flood">Flood</option>
-                    </select>
-                    <select
-                        value={facilitatorFilter}
-                        onChange={(e) => setFacilitatorFilter(e.target.value)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    >
-                        <option value="">All Facilitators</option>
-                    </select>
-                </div>
-            </div>
-
-            {/* History table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
-                <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-800">
-                        Drill History
-                    </p>
-                    <button
-                        type="button"
-                        onClick={() => handleExport('summary')}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                        <FileText className="w-4 h-4" />
-                        Generate summary report
-                    </button>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Event Name</th>
-                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Scenario</th>
-                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Date</th>
-                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Location</th>
-                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Participants</th>
-                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Avg Score</th>
-                                <th className="text-left px-4 py-3 font-semibold text-slate-700">Status</th>
-                                <th className="text-right px-4 py-3 font-semibold text-slate-700">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredDrills.length === 0 ? (
-                                <tr>
-                                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">
-                                        No drills match your filters.
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredDrills.map((drill) => (
-                                    <tr
-                                        key={drill.id}
-                                        className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
-                                        onClick={() => handleRowClick(drill.id)}
-                                    >
-                                        <td className="px-4 py-3 font-medium text-slate-900">
-                                            {drill.title || 'Untitled event'}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-700">
-                                            {drill.scenario?.title || 'â€”'}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-700">
-                                            {formatDate(drill.event_date)} {drill.start_time ? `â€¢ ${formatTime(drill.start_time)}` : ''}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-700">
-                                            {drill.location || 'â€”'}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-700">
-                                            {drill.approved_registrations_count ?? drill.registrations_count ?? 'â€”'}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-700">
-                                            {typeof drill.derived_average_score === 'number'
-                                                ? `${drill.derived_average_score.toFixed(1)}%`
-                                                : 'â€”'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                {drill.status}
-                                            </span>
-                                        </td>
-                                        <td
-                                            className="px-4 py-3 text-right"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <div className="inline-flex items-center gap-1">
-                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="View Report">
-                                                    <FileText className="w-4 h-4" />
-                                                </button>
-                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="View Attendance">
-                                                    <Users className="w-4 h-4" />
-                                                </button>
-                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="Download AAR">
-                                                    <Download className="w-4 h-4" />
-                                                </button>
-                                                <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="View Timeline">
-                                                    <Calendar className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Expanded drill detail view */} 
-            {expandedDrill && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-6 md:p-8">
-                    <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-4">
-                        <div>
-                            <h2 className="text-lg font-semibold text-slate-900">
-                                {expandedDrill.name}
-                            </h2>
-                            <p className="text-sm text-slate-500">
-                                Scenario: {expandedDrill.scenario}
-                            </p>
-                        </div>
-                        <div className="text-sm text-slate-500">
-                            <div><span className="font-semibold text-slate-700">Duration:</span> â€”</div>
-                            <div><span className="font-semibold text-slate-700">Facilitator:</span> â€”</div>
-                            <div><span className="font-semibold text-slate-700">Category:</span> â€”</div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
-                                    Performance Summary
-                                </h3>
-                                <p className="text-slate-700">
-                                    Total participants, average score, pass rate, completion rate.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
-                                    Evaluation Summary
-                                </h3>
-                                <p className="text-slate-700">
-                                    Strengths, weaknesses, and evaluator notes.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
-                                    Resources Used
-                                </h3>
-                                <p className="text-slate-700">
-                                    Equipment list, damaged items, missing items, resource shortages.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">
-                                    Timeline Log
-                                </h3>
-                                <p className="text-slate-700">
-                                    Chronological activity log for this drill.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </AdminPageShell>
-    );
-}
-
-// After-Action Review (AAR) â€” standard layout with tabs
-const AAR_TABS = [
-    { id: 'summary', label: 'Summary', icon: FileText },
-    { id: 'objectives', label: 'Objectives', icon: Target },
-    { id: 'scores', label: 'Scores', icon: BarChart3 },
-    { id: 'timeline', label: 'Timeline', icon: Calendar },
-    { id: 'issues', label: 'Issues', icon: AlertTriangle },
-    { id: 'recommendations', label: 'Recommendations', icon: ClipboardList },
-    { id: 'resources', label: 'Resources', icon: Copy },
-    { id: 'attendance', label: 'Attendance', icon: Users },
-    { id: 'attachments', label: 'Attachments', icon: FileText },
-];
-
-function AfterActionReviewPage() {
-    const [activeTab, setActiveTab] = React.useState('summary');
-
-    const handleGeneratePdf = () => {
-        window.print();
-    };
-
-    return (
-        <AdminPageShell>
-            <AdminPageHeader
-                icon={FileText}
-                title="After-Action Review"
-                description="Post-drill reports: executive summary, objectives vs results, scores, timeline, issues, and recommendations."
-                actions={
-                    <AdminPrimaryButton type="button" onClick={handleGeneratePdf}>
-                        <Printer className="w-4 h-4" />
-                        Generate AAR Report (PDF)
-                    </AdminPrimaryButton>
-                }
-            />
-
-            {/* Report Identity (Header Section) */}
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6">
-                <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wide mb-4">Report Identity</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                    <div><span className="text-slate-500">Event Title</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Scenario Name</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Disaster Type</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Date &amp; Time</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Location</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Facilitator(s)</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Evaluator(s)</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Report Generated</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                    <div><span className="text-slate-500">Prepared by</span><p className="font-medium text-slate-900 mt-0.5">â€”</p></div>
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
-                {AAR_TABS.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                        <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'}`}
-                        >
-                            <Icon className="w-4 h-4" />
-                            {tab.label}
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Tab content */}
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-                {activeTab === 'summary' && (
-                    <div className="space-y-6">
-                        <h2 className="text-lg font-semibold text-slate-900">Executive Summary</h2>
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                            Purpose of the exercise, overall performance result, major strengths, and major weaknesses. Quick overview for decision makers.
-                        </p>
-                        <h3 className="text-sm font-semibold text-slate-800">Exercise Overview</h3>
-                        <p className="text-sm text-slate-600">Scenario description, objectives, participants, agencies/teams present, and event phases conducted.</p>
-                    </div>
-                )}
-                {activeTab === 'objectives' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Objectives vs Results</h2>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
-                                <thead className="bg-slate-50">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Objective</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Expected Outcome</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Actual Result</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3"><span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">Achieved / Partially / Not Achieved</span></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-                {activeTab === 'scores' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Performance Evaluation Summary</h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Participants evaluated</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Average score</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Highest / Lowest</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Overall rating</div><div className="text-xl font-bold text-slate-900">â€”</div></div>
-                        </div>
-                    </div>
-                )}
-                {activeTab === 'timeline' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Incident Timeline Log</h2>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
-                                <thead className="bg-slate-50">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700 w-24">Time</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Event</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-                {activeTab === 'issues' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Strengths Observed</h2>
-                        <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">â€”</ul>
-                        <h2 className="text-lg font-semibold text-slate-900">Areas for Improvement</h2>
-                        <p className="text-sm text-slate-600">Description, impact, and recommended fix per issue.</p>
-                    </div>
-                )}
-                {activeTab === 'recommendations' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Recommendations &amp; Action Plan</h2>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
-                                <thead className="bg-slate-50">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Issue</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Recommendation</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Responsible</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Deadline</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-t border-slate-200"><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td><td className="px-4 py-3">â€”</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-                {activeTab === 'resources' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Resource Utilization Summary</h2>
-                        <p className="text-sm text-slate-600">Equipment used, damaged, missing items, and shortages.</p>
-                    </div>
-                )}
-                {activeTab === 'attendance' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Attendance &amp; Participation Summary</h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Registered</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Present</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Late / Absent</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
-                            <div className="rounded-xl border border-slate-200 p-4"><div className="text-xs text-slate-500">Completion rate</div><div className="text-lg font-semibold text-slate-900">â€”</div></div>
-                        </div>
-                    </div>
-                )}
-                {activeTab === 'attachments' && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Attachments</h2>
-                        <p className="text-sm text-slate-600">Photos, videos, documents, maps, evaluation sheets. Upload and manage attachments here.</p>
-                    </div>
-                )}
-            </div>
-        </AdminPageShell>
-    );
-}
-
-function ProfilePage({ user }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const safeUser = user || {};
-    const initials = (safeUser.name || 'User')
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase?.() || '')
-        .join('');
-
-    return (
-        <AdminPageShell className="max-w-6xl mx-auto">
-            <AdminPageHeader
-                icon={UserCircle}
-                title="My Profile"
-                description="Manage your account information, contact details, and security settings."
-                actions={
-                    <a href="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">
-                        <span className="text-base">â†</span>
-                        Back to dashboard
-                    </a>
-                }
-            />
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-2 sm:ml-7">
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    Signed in as <span className="font-semibold text-slate-800">{safeUser.email || 'â€”'}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 border border-slate-200">
-                    Role:{' '}
-                    <span className="font-semibold text-slate-800 text-[0.7rem] uppercase tracking-wide">
-                        {safeUser.role || 'User'}
-                    </span>
-                </span>
-            </div>
-
-            <section className="grid gap-6 lg:grid-cols-[240px,minmax(0,1fr)] items-start">
-                <aside className="bg-white rounded-2xl shadow-md border border-slate-200 p-4 space-y-4">
-                    <div>
-                        <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-2">
-                            Manage Profile
-                        </h2>
-                        <p className="text-xs text-slate-500">
-                            Switch between profile details, security, and contact information.
-                        </p>
-                    </div>
-                    <nav className="space-y-1 text-sm">
-                        <a href="#profile-information" className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900 text-white font-medium shadow-sm">
-                            <span>Profile Information</span>
-                            <span className="text-[10px] uppercase tracking-wide opacity-80">Main</span>
-                        </a>
-                        <a href="#security" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
-                            Security (Change Password)
-                        </a>
-                        <a href="#email-phone" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
-                            Email &amp; Phone
-                        </a>
-                        <a href="#activity-logs" className="block px-3 py-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
-                            Activity Logs <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-600">Soon</span>
-                        </a>
-                    </nav>
-                </aside>
-
-                <div className="space-y-6">
-                    <section id="profile-information" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl sm:text-2xl font-semibold shadow-md">
-                                {initials || 'U'}
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
-                                <p className="text-xs text-slate-500">
-                                    Update your name and address details. Your contact information is shown to administrators for coordination.
-                                </p>
-                            </div>
-                        </div>
-
-                        <form method="POST" action="/profile" className="space-y-4 max-w-xl">
-                            <input type="hidden" name="_token" value={csrf} />
-                            <input type="hidden" name="_method" value="PUT" />
-
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="sm:col-span-2">
-                                    <label htmlFor="name" className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Full Name
-                                    </label>
-                                    <input
-                                        id="name"
-                                        name="name"
-                                        type="text"
-                                        defaultValue={safeUser.name || ''}
-                                        required
-                                        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-
-                                <div className="sm:col-span-2">
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Email
-                                    </label>
-                                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                                        <span className="font-medium text-slate-900">{safeUser.email || 'Not set'}</span>
-                                        {safeUser.email_verified_at ? (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                Verified
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                                Unverified
-                                            </span>
-                                        )}
-                                        {safeUser.pending_email && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                                                Pending: {safeUser.pending_email}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="mt-1 text-xs text-slate-500">
-                                        Use the Email &amp; Phone section to request changes and manage verification.
-                                    </p>
-                                </div>
-
-                                <div className="sm:col-span-2">
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Phone Number
-                                    </label>
-                                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                                        <span className="font-medium text-slate-900">{safeUser.phone || 'Not provided'}</span>
-                                        {safeUser.phone_verified_at && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                Verified
-                                            </span>
-                                        )}
-                                        {safeUser.pending_phone && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                                                Pending: {safeUser.pending_phone}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="mt-1 text-xs text-slate-500">
-                                        Phone changes are confirmed via an email sent to your current address.
-                                    </p>
-                                </div>
-
-                                <div className="sm:col-span-2">
-                                    <label htmlFor="street" className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Address
-                                    </label>
-                                    <input
-                                        id="street"
-                                        name="street"
-                                        type="text"
-                                        defaultValue={safeUser.street || ''}
-                                        placeholder="Block 5 Lot 10, Barangay Commonwealth, Quezon City"
-                                        required
-                                        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
-                                <button
-                                    type="submit"
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                    Save changes
-                                </button>
-                            </div>
-                        </form>
-                    </section>
-
-                    <section id="security" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <h2 className="text-sm font-semibold text-slate-900">Security</h2>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Change your password to keep your account secure.
-                                </p>
-                            </div>
-                        </div>
-
-                        <form method="POST" action="/profile/password" className="space-y-3 max-w-md">
-                            <input type="hidden" name="_token" value={csrf} />
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="current_password">
-                                    Current Password
-                                </label>
-                                <input
-                                    id="current_password"
-                                    name="current_password"
-                                    type="password"
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="password">
-                                    New Password
-                                </label>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Minimum 8 characters, with at least one uppercase letter, one lowercase letter, and one number.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="password_confirmation">
-                                    Confirm New Password
-                                </label>
-                                <input
-                                    id="password_confirmation"
-                                    name="password_confirmation"
-                                    type="password"
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-
-                            <div className="pt-2 flex justify-end">
-                                <button
-                                    type="submit"
-                                    className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
-                                >
-                                    Update password
-                                </button>
-                            </div>
-                        </form>
-                    </section>
-
-                    <section id="email-phone" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <h2 className="text-sm font-semibold text-slate-900">
-                                    Email &amp; Phone
-                                </h2>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Request changes to your primary email and phone number. All changes are verified before they go live.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <form method="POST" action="/profile/email" className="space-y-2">
-                                <input type="hidden" name="_token" value={csrf} />
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="new_email">
-                                    Change Email Address
-                                </label>
-                                <div className="grid gap-1 sm:gap-2 sm:grid-cols-[minmax(0,1.7fr)_auto] items-center">
-                                    <div>
-                                        <input
-                                            id="new_email"
-                                            name="new_email"
-                                            type="email"
-                                            placeholder="you@example.com"
-                                            className="w-full rounded-lg border border-slate-300 px-3 text-sm h-11 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="sm:pl-2">
-                                        <button
-                                            type="submit"
-                                            className="inline-flex items-center justify-center px-4 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold whitespace-nowrap"
-                                        >
-                                            Send verification link
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-
-                            {safeUser.pending_email && (
-                                <form method="POST" action="/profile/email/resend" className="space-y-1">
-                                    <input type="hidden" name="_token" value={csrf} />
-                                    <p className="text-xs text-slate-500">
-                                        We have a pending email change to <strong>{safeUser.pending_email}</strong>. If you did not receive the verification email, you can resend it.
-                                    </p>
-                                    <button
-                                        type="submit"
-                                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[0.7rem] font-semibold"
-                                    >
-                                        Resend verification email
-                                    </button>
-                                </form>
-                            )}
-
-                            <form method="POST" action="/profile/phone" className="space-y-2">
-                                <input type="hidden" name="_token" value={csrf} />
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="new_phone">
-                                    Change Phone Number
-                                </label>
-                                <div className="grid gap-1 sm:gap-2 sm:grid-cols-[minmax(0,1.7fr)_auto] items-center">
-                                    <div>
-                                        <input
-                                            id="new_phone"
-                                            name="new_phone"
-                                            type="text"
-                                            placeholder="+63 9XXXXXXXXX"
-                                            className="w-full rounded-lg border border-slate-300 px-3 text-sm h-11 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="sm:pl-2">
-                                        <button
-                                            type="submit"
-                                            className="inline-flex items-center justify-center px-4 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold whitespace-nowrap"
-                                        >
-                                            Send confirmation email
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </section>
-
-                    <section id="activity-logs" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-3">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <h2 className="text-sm font-semibold text-slate-900">
-                                    Activity Logs
-                                </h2>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    In a future update, this section will show your recent sign-ins and important security events.
-                                </p>
-                            </div>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                Coming soon
-                            </span>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                            For now, administrators can review detailed account activity from the Audit Logs module.
-                        </p>
-                    </section>
-                </div>
-            </section>
-        </AdminPageShell>
-    );
-}
 

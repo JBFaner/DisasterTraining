@@ -52,6 +52,9 @@
             @isset($event)
                 data-event='@json($event)'
             @endisset
+            @isset($event_lifecycle)
+                data-event-lifecycle='@json($event_lifecycle)'
+            @endisset
             @isset($participants)
                 data-participants='@json($participants)'
             @endisset
@@ -60,6 +63,9 @@
             @endisset
             @isset($participantsSummary)
                 data-participants-summary='@json($participantsSummary)'
+            @endisset
+            @isset($participantFilterOptions)
+                data-participant-filter-options='@json($participantFilterOptions)'
             @endisset
             @isset($qualifiedTrainers)
                 data-qualified-trainers='@json($qualifiedTrainers)'
@@ -148,6 +154,9 @@
             @endisset
             @isset($barangay_profiles)
                 data-barangay-profiles='@json($barangay_profiles)'
+            @endisset
+            @isset($disaster_types)
+                data-disaster-types='@json($disaster_types)'
             @endisset
             @isset($barangay_profile)
                 data-barangay-profile='@json($barangay_profile)'

@@ -5,22 +5,25 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\QualifiedTrainerController;
 use App\Models\User;
 use App\Models\SimulationEvent;
-use App\Models\EventRegistration;
 use App\Services\AuditLogger;
+use App\Services\Group6\ParticipantSyncService;
+use App\Services\ParticipantRegistryService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class ParticipantController extends Controller
 {
+    public function __construct(
+        private readonly ParticipantRegistryService $registry,
+        private readonly ParticipantSyncService $syncService,
+    ) {}
+
     /**
-     * Display a listing of participants.
+     * Display the participant registry (read-only, synchronized records).
      */
     public function index(Request $request)
     {
         $this->authorizeParticipantAccess();
 
-        // Global summary stats (not affected by filters/pagination)
         $summaryBase = User::where('role', 'PARTICIPANT');
         $startOfMonth = now()->startOfMonth();
 
@@ -28,47 +31,53 @@ class ParticipantController extends Controller
             'total' => (clone $summaryBase)->count(),
             'active' => (clone $summaryBase)->where('status', 'active')->count(),
             'inactive' => (clone $summaryBase)->where('status', 'inactive')->count(),
-            'registered_this_month' => (clone $summaryBase)->where('created_at', '>=', $startOfMonth)->count(),
+            'synced_this_month' => (clone $summaryBase)->where('last_synced_at', '>=', $startOfMonth)->count(),
         ];
 
         $query = User::where('role', 'PARTICIPANT')
             ->withCount(['eventRegistrations', 'attendances']);
 
-        // Search by name or participant_id
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
+        if ($request->filled('search')) {
+            $search = $request->string('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('participant_id', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('participant_id', 'like', "%{$search}%")
+                    ->orWhere('group6_external_id', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
-        // Filter by role (participant type)
-        if ($request->has('role_filter') && $request->role_filter) {
-            // This would need a separate field or we can use a different approach
-            // For now, we'll skip this filter
+        if ($request->filled('status_filter')) {
+            $query->where('status', $request->string('status_filter'));
         }
 
-        // Filter by status
-        if ($request->has('status_filter') && $request->status_filter) {
-            $query->where('status', $request->status_filter);
+        if ($request->filled('barangay_filter')) {
+            $query->where('barangay', $request->string('barangay_filter'));
         }
 
-        $sortBy = $request->string('sort_by', 'created_at');
-        $sortDir = $request->string('sort_dir', 'desc') === 'asc' ? 'asc' : 'desc';
-        $allowedSorts = ['name', 'email', 'participant_id', 'status', 'created_at'];
+        if ($request->filled('municipality_filter')) {
+            $query->where('city', $request->string('municipality_filter'));
+        }
+
+        if ($request->filled('training_status_filter')) {
+            $this->applyTrainingStatusFilter($query, $request->string('training_status_filter'));
+        }
+
+        if ($request->filled('certificate_status_filter')) {
+            $this->applyCertificateStatusFilter($query, $request->string('certificate_status_filter'));
+        }
+
+        $sortBy = $request->string('sort_by', 'name');
+        $sortDir = $request->string('sort_dir', 'asc') === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['name', 'email', 'participant_id', 'status', 'barangay', 'city', 'last_synced_at', 'created_at'];
         if (! in_array($sortBy, $allowedSorts, true)) {
-            $sortBy = 'created_at';
+            $sortBy = 'name';
         }
 
         $perPage = 10;
-
-        $paginator = $query->orderBy($sortBy, $sortDir)
-            ->paginate($perPage)
-            ->withQueryString();
-
-        $participants = $paginator->items();
+        $paginator = $query->orderBy($sortBy, $sortDir)->paginate($perPage)->withQueryString();
+        $participants = collect($this->registry->enrichMany($paginator->items()));
 
         $participantsPagination = [
             'current_page' => $paginator->currentPage(),
@@ -79,23 +88,22 @@ class ParticipantController extends Controller
             'to' => $paginator->lastItem(),
         ];
 
-        // Load events with registration counts for the tabs
         $events = SimulationEvent::with(['scenario'])
             ->withCount([
                 'registrations',
                 'registrations as approved_registrations_count' => function ($query) {
                     $query->where('status', 'approved');
-                }
+                },
             ])
-            // Show active lifecycle events for admin registration/attendance management
             ->whereIn('status', ['published', 'ongoing', 'completed'])
             ->orderByDesc('event_date')
             ->get();
 
         if ($request->expectsJson()) {
             $payload = [
-                'participants' => $participants,
+                'participants' => $participants->values()->all(),
                 'pagination' => $participantsPagination,
+                'filter_options' => $this->registry->buildFilterOptions(),
             ];
 
             if ($request->string('list') === 'trainers') {
@@ -109,9 +117,10 @@ class ParticipantController extends Controller
 
         return view('app', [
             'section' => 'participants',
-            'participants' => $participants,
+            'participants' => $participants->values()->all(),
             'participantsPagination' => $participantsPagination,
             'participantsSummary' => $participantsSummary,
+            'participantFilterOptions' => $this->registry->buildFilterOptions(),
             'qualifiedTrainers' => $trainerList['trainers'],
             'qualifiedTrainersPagination' => $trainerList['pagination'],
             'qualifiedTrainersSummary' => $trainerList['summary'],
@@ -120,7 +129,33 @@ class ParticipantController extends Controller
     }
 
     /**
-     * Show participant profile (read-only core info).
+     * Sync participant records from the external registration system.
+     */
+    public function sync(Request $request)
+    {
+        $this->authorizeParticipantAccess();
+
+        $result = $this->syncService->syncFromApi();
+
+        AuditLogger::log([
+            'user' => portal_user(),
+            'action' => 'Synced participant registry',
+            'module' => 'Participant Registry',
+            'status' => $result['success'] ? 'success' : 'warning',
+            'description' => $result['message'] ?? 'Participant registry sync attempted.',
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json($result, $result['success'] ? 200 : 501);
+        }
+
+        return redirect()
+            ->route('admin.participants.index')
+            ->with($result['success'] ? 'status' : 'error', $result['message']);
+    }
+
+    /**
+     * Show read-only participant registry profile.
      */
     public function show(User $user)
     {
@@ -134,7 +169,31 @@ class ParticipantController extends Controller
             'eventRegistrations.simulationEvent',
             'eventRegistrations.attendance',
             'attendances.simulationEvent',
+            'lessonCompletions.module',
+            'lessonCompletions.lesson',
+            'aiScenarioAttempts.trainingModule',
+            'evaluationResults.trainingModule',
+            'certificates.simulationEvent',
+            'certificates.trainingModule',
         ]);
+
+        $this->registry->enrichParticipant($user);
+        $user->registry_profile = [
+            'statuses' => $this->registry->computeStatuses($user),
+            'lesson_completions' => $user->lessonCompletions,
+            'ai_scenario_attempts' => $user->aiScenarioAttempts,
+            'evaluation_results' => $user->evaluationResults,
+            'certificates' => $user->certificates,
+            'attendance_summary' => [
+                'total' => $user->attendances->count(),
+                'present' => $user->attendances->whereIn('status', ['present', 'late', 'completed'])->count(),
+                'absent' => $user->attendances->where('status', 'absent')->count(),
+            ],
+        ];
+
+        if (request()->expectsJson()) {
+            return response()->json(['participant' => $user]);
+        }
 
         return view('app', [
             'section' => 'participant_detail',
@@ -143,143 +202,12 @@ class ParticipantController extends Controller
     }
 
     /**
-     * Update limited participant fields (role correction, status).
-     */
-    public function update(Request $request, User $user)
-    {
-        $this->authorizeParticipantAccess();
-
-        if ($user->role !== 'PARTICIPANT') {
-            abort(404);
-        }
-
-        $data = $request->validate([
-            'status' => ['nullable', 'string', 'in:active,inactive'],
-            'phone' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $old = $user->only(['status', 'phone']);
-        $user->update($data);
-
-        AuditLogger::log([
-            'user' => portal_user(),
-            'action' => 'Updated participant',
-            'module' => 'Participants',
-            'status' => 'success',
-            'description' => 'Participant record updated.',
-            'old_values' => $old,
-            'new_values' => $user->only(['status', 'phone']),
-        ]);
-
-        return redirect()->route('admin.participants.show', $user)
-            ->with('status', 'Participant updated successfully.');
-    }
-
-    /**
-     * Deactivate participant (soft delete).
-     */
-    public function deactivate(User $user)
-    {
-        $this->authorizeParticipantAccess();
-
-        if ($user->role !== 'PARTICIPANT') {
-            abort(404);
-        }
-
-        $oldStatus = $user->status;
-        $user->update(['status' => 'inactive']);
-
-        AuditLogger::log([
-            'user' => portal_user(),
-            'action' => 'Deactivated participant',
-            'module' => 'Participants',
-            'status' => 'warning',
-            'description' => 'Participant account deactivated.',
-            'old_values' => ['status' => $oldStatus],
-            'new_values' => ['status' => 'inactive'],
-        ]);
-
-        return redirect()->route('admin.participants.index')
-            ->with('status', 'Participant deactivated.');
-    }
-
-    /**
-     * Reactivate participant.
-     */
-    public function reactivate(User $user)
-    {
-        $this->authorizeParticipantAccess();
-
-        if ($user->role !== 'PARTICIPANT') {
-            abort(404);
-        }
-
-        $oldStatus = $user->status;
-        $user->update(['status' => 'active']);
-
-        AuditLogger::log([
-            'user' => portal_user(),
-            'action' => 'Reactivated participant',
-            'module' => 'Participants',
-            'status' => 'success',
-            'description' => 'Participant account reactivated.',
-            'old_values' => ['status' => $oldStatus],
-            'new_values' => ['status' => 'active'],
-        ]);
-
-        return redirect()->route('admin.participants.index')
-            ->with('status', 'Participant reactivated.');
-    }
-
-    /**
-     * Export participant list (CSV).
-     */
-    public function export(Request $request)
-    {
-        $this->authorizeParticipantAccess();
-
-        $participants = User::where('role', 'PARTICIPANT')
-            ->withCount(['eventRegistrations', 'attendances'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $filename = 'participants_' . date('Y-m-d_His') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($participants) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['Participant ID', 'Name', 'Email', 'Phone', 'Status', 'Registered At', 'Events Registered', 'Attendances']);
-
-            foreach ($participants as $participant) {
-                fputcsv($file, [
-                    $participant->participant_id ?? 'N/A',
-                    $participant->name,
-                    $participant->email,
-                    $participant->phone ?? 'N/A',
-                    $participant->status,
-                    $participant->registered_at ? $participant->registered_at->format('Y-m-d H:i:s') : 'N/A',
-                    $participant->event_registrations_count,
-                    $participant->attendances_count,
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-
-    /**
      * Participant self-service attendance view.
      */
     public function myAttendance()
     {
         $user = portal_user();
-        /** @var \App\Models\User|null $user */
-        if (!$user || $user->role !== 'PARTICIPANT') {
+        if (! $user || $user->role !== 'PARTICIPANT') {
             abort(403, 'Unauthorized access.');
         }
 
@@ -292,26 +220,93 @@ class ParticipantController extends Controller
     }
 
     /**
-     * Generate unique participant ID.
+     * Export participant registry (CSV).
      */
-    private function generateParticipantId()
+    public function export(Request $request)
     {
-        do {
-            $id = 'PART-' . strtoupper(Str::random(8));
-        } while (User::where('participant_id', $id)->exists());
+        $this->authorizeParticipantAccess();
 
-        return $id;
+        $participants = User::where('role', 'PARTICIPANT')
+            ->withCount(['eventRegistrations', 'attendances'])
+            ->orderBy('name')
+            ->get();
+
+        $participants = $this->registry->enrichMany($participants);
+
+        $filename = 'participant_registry_'.date('Y-m-d_His').'.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($participants) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, [
+                'Participant ID', 'Full Name', 'Email', 'Phone', 'Barangay', 'Municipality',
+                'Status', 'Training Status', 'Attendance Status', 'Evaluation Status',
+                'Certificate Status', 'Last Synced',
+            ]);
+
+            foreach ($participants as $participant) {
+                fputcsv($file, [
+                    $participant->participant_id ?? 'N/A',
+                    $participant->name,
+                    $participant->email,
+                    $participant->phone ?? 'N/A',
+                    $participant->barangay ?? 'N/A',
+                    $participant->city ?? 'N/A',
+                    $participant->status,
+                    $participant->training_status ?? 'Not Started',
+                    $participant->attendance_status ?? 'No Records',
+                    $participant->evaluation_status ?? 'Not Evaluated',
+                    $participant->certificate_status ?? 'None',
+                    $participant->last_synced_at?->format('Y-m-d H:i:s') ?? 'N/A',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
-    /**
-     * Authorize participant access (Admin and Trainer only).
-     */
-    private function authorizeParticipantAccess()
+    protected function applyTrainingStatusFilter($query, string $status): void
+    {
+        if ($status === 'Not Started') {
+            $query->whereDoesntHave('lessonCompletions')
+                ->whereDoesntHave('aiScenarioAttempts', fn ($q) => $q->where('status', 'completed'));
+        } elseif ($status === 'In Progress') {
+            $query->where(function ($q) {
+                $q->whereHas('lessonCompletions')
+                    ->orWhereHas('aiScenarioAttempts');
+            })->whereDoesntHave('aiScenarioAttempts', fn ($q) => $q->where('status', 'completed'));
+        } elseif ($status === 'Completed') {
+            $query->where(function ($q) {
+                $q->whereHas('aiScenarioAttempts', fn ($inner) => $inner->where('status', 'completed'))
+                    ->orWhereIn('id', function ($sub) {
+                        $sub->select('user_id')
+                            ->from('lesson_completions')
+                            ->groupBy('user_id')
+                            ->havingRaw('COUNT(*) >= 3');
+                    });
+            });
+        }
+    }
+
+    protected function applyCertificateStatusFilter($query, string $status): void
+    {
+        if ($status === 'Issued') {
+            $query->whereHas('certificates', fn ($q) => $q->whereNull('revoked_at'));
+        } elseif ($status === 'None') {
+            $query->whereDoesntHave('certificates', fn ($q) => $q->whereNull('revoked_at'));
+        }
+    }
+
+    private function authorizeParticipantAccess(): void
     {
         $user = portal_user();
-        if (!$user || !in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403, 'Unauthorized access.');
         }
     }
 }
-

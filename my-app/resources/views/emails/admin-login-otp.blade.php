@@ -37,7 +37,7 @@
                     <tr>
                         <td style="padding: 8px 0; font-size: 13px; color: #6b7280;">
                             <p style="margin: 0 0 8px 0;">
-                                This code will expire in 10 minutes. If you did not attempt to log in, you can safely ignore this email.
+                                This code will expire in 2 minutes. If you did not attempt to log in, you can safely ignore this email.
                             </p>
                             <p style="margin: 0;">
                                 For your security, do not share this code with anyone.

@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
     AdminPrimaryButton,
     AdminSecondaryButton,
     AdminSearchInput,
@@ -137,14 +137,13 @@ export function RolesPage({ roles = [] }) {
                 }
             />
 
-            <AdminFilterBar>
-                <AdminSearchInput
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search roles..."
-                    className="max-w-sm"
-                />
-            </AdminFilterBar>
+            <AdminCollapsibleFilterBar
+                searchValue={search}
+                onSearchChange={(e) => setSearch(e.target.value)}
+                searchPlaceholder="Search roles..."
+                searchClassName="max-w-sm"
+                showFilterToggle={false}
+            />
 
             <AdminContentCard>
                 <div className="overflow-x-auto">

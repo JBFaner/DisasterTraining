@@ -10,11 +10,16 @@ use App\Models\Scenario;
 use App\Models\TrainingModule;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SimulationEventLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SimulationEventController extends Controller
 {
+    public function __construct(
+        protected SimulationEventLifecycleService $lifecycle
+    ) {}
+
     public function index()
     {
         $user = portal_user();
@@ -49,9 +54,18 @@ class SimulationEventController extends Controller
         // Auto-complete ongoing events that have passed their end time
         $this->autoCompleteExpiredEvents();
 
-        $events = SimulationEvent::with(['scenario', 'creator', 'resources' => function ($query) {
-            $query->withPivot('quantity_needed', 'quantity_assigned', 'status', 'notes');
-        }])
+        $events = SimulationEvent::with([
+            'scenario.trainingModule',
+            'assignedTrainer',
+            'creator',
+            'resources' => function ($query) {
+                $query->withPivot('quantity_needed', 'quantity_assigned', 'status', 'notes');
+            },
+            'registrations' => function ($query) {
+                $query->where('status', 'approved')->with('user:id,name');
+            },
+            'attendances',
+        ])
             ->withCount([
                 'registrations',
                 'registrations as approved_registrations_count' => function ($query) {
@@ -60,6 +74,17 @@ class SimulationEventController extends Controller
             ])
             ->orderByDesc('created_at')
             ->get();
+
+        $events->each(function (SimulationEvent $event) {
+            $event->monitoring_status = $this->lifecycle->resolveMonitoringStatus($event);
+            $event->evaluation_summary = $this->lifecycle->normalizePostEvaluation($event);
+            $event->attendance_summary = $this->lifecycle->buildAttendanceSummary($event);
+            $event->participant_names = $event->registrations
+                ->map(fn ($registration) => $registration->user?->name)
+                ->filter()
+                ->values()
+                ->all();
+        });
 
         return view('app', [
             'section' => 'simulation',
@@ -75,6 +100,7 @@ class SimulationEventController extends Controller
         return view('app', array_merge([
             'section' => 'simulation_create',
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
+            'disaster_types' => config('hazard_assessment.hazard_types', []),
         ], $this->eventFormOptions()));
     }
 
@@ -113,6 +139,18 @@ class SimulationEventController extends Controller
             'sms_notifications_enabled' => ['nullable', 'boolean'],
             ...$this->campaignFieldRules(),
         ]);
+
+        if (empty($data['scenario_id']) && ! empty($data['disaster_type'])) {
+            $data['scenario_id'] = Scenario::query()
+                ->where('status', 'published')
+                ->where('disaster_type', $data['disaster_type'])
+                ->orderBy('title')
+                ->value('id');
+        }
+
+        if (empty($data['location']) && ! empty($data['venue'])) {
+            $data['location'] = $data['venue'];
+        }
 
         // Handle JSON fields and arrays
         $data['facilitators'] = $request->input('facilitators') ? json_decode($request->input('facilitators'), true) : null;
@@ -517,6 +555,11 @@ class SimulationEventController extends Controller
                 ->with('status', 'Only published events can be started.');
         }
 
+        if (! $this->lifecycle->isReadyToStart($simulationEvent)) {
+            return redirect()->back()
+                ->with('status', 'Cannot start simulation until all readiness checklist items are completed.');
+        }
+
         // Check current date matches event date
         $eventDate = $simulationEvent->event_date;
         $today = now()->format('Y-m-d');
@@ -575,6 +618,9 @@ class SimulationEventController extends Controller
             'updated_by' => portal_id(),
         ]);
 
+        $this->lifecycle->initializeExecutionProgress($simulationEvent->fresh());
+        $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Started');
+
         AuditLogger::log([
             'action' => 'Started simulation event',
             'module' => 'Simulation Events',
@@ -606,6 +652,8 @@ class SimulationEventController extends Controller
             'completed_at' => now(),
             'updated_by' => portal_id(),
         ]);
+
+        $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Completed');
 
         // Auto-return all resources assigned to this event: mark assignments Returned and refresh resource available/status
         $assignments = ResourceEventAssignment::where('event_id', $simulationEvent->id)
@@ -746,13 +794,19 @@ class SimulationEventController extends Controller
             'scenario.trainingModule.lessons' => function ($query) {
                 $query->orderBy('order');
             },
-            'registrations',
+            'assignedTrainer',
+            'registrations.user',
             'resources',
+            'assignedResources.resource',
+            'attendances.user',
         ]);
+
+        $lifecycle = $this->lifecycle->buildPayload($simulationEvent);
 
         return view('app', [
             'section' => 'simulation_detail',
             'event' => $simulationEvent,
+            'event_lifecycle' => $lifecycle,
         ]);
     }
 

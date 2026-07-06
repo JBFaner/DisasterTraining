@@ -3,22 +3,19 @@ import {
     Users,
     GraduationCap,
     Eye,
-    Pencil,
-    Lock,
-    Unlock,
-    Filter,
     Download,
     RefreshCw,
+    CalendarPlus,
+    BarChart3,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
+    AdminFilterSelect,
     AdminPrimaryButton,
     AdminSecondaryButton,
-    AdminSearchInput,
-    adminSelectClass,
 } from './admin/AdminLayout';
 import {
     AdminDataTable,
@@ -54,6 +51,7 @@ export function ParticipantRegistrationAttendanceModule({
     participants = [],
     participantsPagination = null,
     participantsSummary = null,
+    participantFilterOptions = null,
     qualifiedTrainers = [],
     qualifiedTrainersPagination = null,
     qualifiedTrainersSummary = null,
@@ -74,7 +72,7 @@ export function ParticipantRegistrationAttendanceModule({
     };
 
     const PARTICIPANT_TABS = [
-        { id: 'participants', label: 'Participant List', icon: Users },
+        { id: 'participants', label: 'Participant Registry', icon: Users },
         { id: 'trainers', label: 'Trainer List', icon: GraduationCap },
         { id: 'registrations', label: 'Event Registrations', icon: '📋' },
         { id: 'attendance', label: 'Event Attendance', icon: '✓' },
@@ -83,12 +81,12 @@ export function ParticipantRegistrationAttendanceModule({
     let totalParticipants = participantsSummary?.total ?? participants.length;
     let activeParticipants = participantsSummary?.active ?? participants.filter((p) => p.status === 'active').length;
     let inactiveParticipants = participantsSummary?.inactive ?? participants.filter((p) => p.status === 'inactive').length;
-    let registeredThisMonth = participantsSummary?.registered_this_month ?? 0;
+    let participantsSyncedThisMonth = participantsSummary?.synced_this_month ?? 0;
 
     let totalTrainers = qualifiedTrainersSummary?.total ?? qualifiedTrainers.length;
     let activeTrainers = qualifiedTrainersSummary?.active ?? qualifiedTrainers.filter((t) => t.status === 'active').length;
     let inactiveTrainers = qualifiedTrainersSummary?.inactive ?? qualifiedTrainers.filter((t) => t.status === 'inactive').length;
-    let syncedThisMonth = qualifiedTrainersSummary?.synced_this_month ?? 0;
+    let trainersSyncedThisMonth = qualifiedTrainersSummary?.synced_this_month ?? 0;
 
     return (
         <AdminPageShell>
@@ -100,10 +98,10 @@ export function ParticipantRegistrationAttendanceModule({
 
             {activeTab === 'participants' && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <StatCard label="Total Participants" value={totalParticipants} hint="All registered" />
-                    <StatCard label="Active" value={activeParticipants} hint="Currently active" accent="emerald" />
-                    <StatCard label="Inactive" value={inactiveParticipants} hint="Deactivated" />
-                    <StatCard label="Registered This Month" value={registeredThisMonth} hint="New this month" />
+                    <StatCard label="Total Participants" value={totalParticipants} hint="Synchronized registry" />
+                    <StatCard label="Active" value={activeParticipants} hint="Active in external system" accent="emerald" />
+                    <StatCard label="Inactive" value={inactiveParticipants} hint="Inactive in external system" />
+                    <StatCard label="Synced This Month" value={participantsSyncedThisMonth} hint="Last registry sync" />
                 </div>
             )}
 
@@ -112,7 +110,7 @@ export function ParticipantRegistrationAttendanceModule({
                     <StatCard label="Total Trainers" value={totalTrainers} hint="Community Engagement System" />
                     <StatCard label="Active" value={activeTrainers} hint="Available for assignment" accent="emerald" />
                     <StatCard label="Inactive" value={inactiveTrainers} hint="Unavailable in directory" />
-                    <StatCard label="Synced This Month" value={syncedThisMonth} hint="Last directory sync" />
+                    <StatCard label="Synced This Month" value={trainersSyncedThisMonth} hint="Last directory sync" />
                 </div>
             )}
 
@@ -140,9 +138,10 @@ export function ParticipantRegistrationAttendanceModule({
             </div>
 
             {activeTab === 'participants' && (
-                <ParticipantsListTab
+                <ParticipantRegistryTab
                     participants={participants}
                     participantsPagination={participantsPagination}
+                    filterOptions={participantFilterOptions}
                 />
             )}
             {activeTab === 'trainers' && (
@@ -171,16 +170,46 @@ function StatCard({ label, value, hint, accent = 'slate' }) {
     );
 }
 
-function ParticipantsListTab({ participants = [], participantsPagination = null }) {
+function registryStatusBadge(label) {
+    const map = {
+        'Not Started': 'bg-slate-100 text-slate-700',
+        'In Progress': 'bg-sky-50 text-sky-700',
+        Completed: 'bg-emerald-50 text-emerald-700',
+        'No Records': 'bg-slate-100 text-slate-600',
+        Active: 'bg-emerald-50 text-emerald-700',
+        Partial: 'bg-amber-50 text-amber-800',
+        Absent: 'bg-rose-50 text-rose-700',
+        'Not Evaluated': 'bg-slate-100 text-slate-600',
+        None: 'bg-slate-100 text-slate-600',
+        Issued: 'bg-indigo-50 text-indigo-700',
+    };
+    return map[label] || 'bg-slate-100 text-slate-700';
+}
+
+function RegistryLabelBadge({ label }) {
+    if (!label) return '—';
+    return (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${registryStatusBadge(label)}`}>
+            {label}
+        </span>
+    );
+}
+
+function ParticipantRegistryTab({ participants = [], participantsPagination = null, filterOptions = null }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
-    const [sortKey, setSortKey] = React.useState('created_at');
-    const [sortDir, setSortDir] = React.useState('desc');
+    const [barangayFilter, setBarangayFilter] = React.useState('');
+    const [municipalityFilter, setMunicipalityFilter] = React.useState('');
+    const [trainingStatusFilter, setTrainingStatusFilter] = React.useState('');
+    const [certificateStatusFilter, setCertificateStatusFilter] = React.useState('');
+    const [sortKey, setSortKey] = React.useState('name');
+    const [sortDir, setSortDir] = React.useState('asc');
     const [participantsData, setParticipantsData] = React.useState(participants || []);
     const [pagination, setPagination] = React.useState(participantsPagination);
+    const [options, setOptions] = React.useState(filterOptions || { barangays: [], municipalities: [] });
     const [isLoading, setIsLoading] = React.useState(false);
-    const [actionLoadingId, setActionLoadingId] = React.useState(null);
+    const [isSyncing, setIsSyncing] = React.useState(false);
 
     const fetchParticipants = React.useCallback(async (page = 1) => {
         setIsLoading(true);
@@ -189,6 +218,10 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
             url.searchParams.set('page', page);
             if (searchTerm.trim()) url.searchParams.set('search', searchTerm.trim());
             if (statusFilter !== 'all') url.searchParams.set('status_filter', statusFilter);
+            if (barangayFilter) url.searchParams.set('barangay_filter', barangayFilter);
+            if (municipalityFilter) url.searchParams.set('municipality_filter', municipalityFilter);
+            if (trainingStatusFilter) url.searchParams.set('training_status_filter', trainingStatusFilter);
+            if (certificateStatusFilter) url.searchParams.set('certificate_status_filter', certificateStatusFilter);
             url.searchParams.set('sort_by', sortKey);
             url.searchParams.set('sort_dir', sortDir);
 
@@ -200,64 +233,57 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
             const data = await res.json();
             setParticipantsData(data.participants || []);
             setPagination(data.pagination || null);
+            if (data.filter_options) setOptions(data.filter_options);
         } catch (error) {
             console.error(error);
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm, statusFilter, sortKey, sortDir]);
+    }, [searchTerm, statusFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir]);
 
     React.useEffect(() => {
         const timer = setTimeout(() => fetchParticipants(1), 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, statusFilter, sortKey, sortDir, fetchParticipants]);
+    }, [searchTerm, statusFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir, fetchParticipants]);
 
-    const handleSort = (key, dir) => {
-        setSortKey(key);
-        setSortDir(dir);
-    };
-
-    const handleToggleStatus = async (participant) => {
-        const isActive = participant.status === 'active';
-        const action = isActive ? 'deactivate' : 'reactivate';
-        const result = await Swal.fire({
-            title: isActive ? 'Deactivate Participant?' : 'Reactivate Participant?',
-            text: isActive
-                ? 'This will prevent them from accessing the system.'
-                : 'This will restore their access to the system.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: isActive ? 'Yes, deactivate' : 'Yes, reactivate',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: isActive ? '#dc2626' : '#16a34a',
-        });
-        if (!result.isConfirmed) return;
-
-        setActionLoadingId(participant.id);
+    const handleSync = async () => {
+        setIsSyncing(true);
         try {
-            const formData = new FormData();
-            formData.append('_token', csrf);
-            const res = await fetch(`/admin/participants/${participant.id}/${action}`, {
+            const res = await fetch('/admin/participants/sync', {
                 method: 'POST',
-                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
-                body: formData,
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
             });
-            if (res.ok) {
-                await fetchParticipants(pagination?.current_page || 1);
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('Registry synced', data.message, 'success');
+                await fetchParticipants(1);
+            } else {
+                Swal.fire(
+                    'Sync unavailable',
+                    data.message || 'The Community Registration & Campaign Management System API is not yet configured.',
+                    'info',
+                );
             }
+        } catch {
+            Swal.fire('Error', 'Failed to sync participant registry.', 'error');
         } finally {
-            setActionLoadingId(null);
+            setIsSyncing(false);
         }
     };
+
+    const hasActiveFilters = statusFilter !== 'all' || barangayFilter || municipalityFilter || trainingStatusFilter || certificateStatusFilter;
 
     const columns = [
         {
             key: 'participant_id',
             label: 'Participant ID',
             sortable: true,
-            render: (row) => (
-                <span className="text-xs font-mono text-slate-600">{row.participant_id || '—'}</span>
-            ),
+            render: (row) => <span className="text-xs font-mono text-slate-600">{row.participant_id || row.group6_external_id || '—'}</span>,
         },
         {
             key: 'name',
@@ -267,93 +293,142 @@ function ParticipantsListTab({ participants = [], participantsPagination = null 
         },
         {
             key: 'email',
-            label: 'Email',
+            label: 'Email Address',
             sortable: true,
             render: (row) => <span className="text-sm text-slate-700">{row.email || '—'}</span>,
         },
         {
-            key: 'status',
-            label: 'Status',
-            sortable: true,
-            render: (row) => <AdminStatusBadge status={row.status} />,
+            key: 'phone',
+            label: 'Contact Number',
+            render: (row) => <span className="text-sm text-slate-700">{row.phone || '—'}</span>,
         },
         {
-            key: 'event_registrations_count',
-            label: 'Events',
-            sortable: false,
-            render: (row) => (
-                <span className="inline-flex items-center rounded-lg bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-medium">
-                    {row.event_registrations_count ?? 0}
-                </span>
-            ),
+            key: 'barangay',
+            label: 'Barangay',
+            sortable: true,
+            render: (row) => <span className="text-sm text-slate-600">{row.barangay || '—'}</span>,
         },
         {
-            key: 'created_at',
-            label: 'Registered',
+            key: 'city',
+            label: 'Municipality / City',
             sortable: true,
-            render: (row) => <span className="text-sm text-slate-600">{formatDate(row.created_at)}</span>,
+            render: (row) => <span className="text-sm text-slate-600">{row.city || row.municipality || '—'}</span>,
+        },
+        {
+            key: 'training_status',
+            label: 'Training Status',
+            render: (row) => <RegistryLabelBadge label={row.training_status} />,
+        },
+        {
+            key: 'attendance_status',
+            label: 'Attendance Status',
+            render: (row) => <RegistryLabelBadge label={row.attendance_status} />,
+        },
+        {
+            key: 'evaluation_status',
+            label: 'Evaluation Status',
+            render: (row) => <RegistryLabelBadge label={row.evaluation_status} />,
+        },
+        {
+            key: 'certificate_status',
+            label: 'Certificate Status',
+            render: (row) => <RegistryLabelBadge label={row.certificate_status} />,
+        },
+        {
+            key: 'last_synced_at',
+            label: 'Last Synced',
+            sortable: true,
+            render: (row) => <span className="text-sm text-slate-600">{formatDate(row.last_synced_at)}</span>,
         },
     ];
 
     return (
         <div className="space-y-4">
-            <AdminFilterBar>
-                <div className="flex flex-col md:flex-row md:items-center gap-3">
-                    <AdminSearchInput
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search by name, email, or ID..."
-                    />
-                    <div className="flex items-center gap-2 shrink-0">
-                        <Filter className="w-4 h-4 text-slate-400" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className={adminSelectClass}
-                        >
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                        <AdminSecondaryButton href="/admin/participants/export/csv">
-                            <Download className="w-4 h-4" />
-                            Export
-                        </AdminSecondaryButton>
-                    </div>
-                </div>
-            </AdminFilterBar>
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                Participant records are read-only in this system. Profile updates are managed in the{' '}
+                <span className="font-semibold">Community Registration & Campaign Management System</span> and synchronized here via API.
+            </div>
+
+            <AdminCollapsibleFilterBar
+                searchValue={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search by name, email, ID, or contact number..."
+                hasActiveFilters={hasActiveFilters}
+                onClearFilters={() => {
+                    setStatusFilter('all');
+                    setBarangayFilter('');
+                    setMunicipalityFilter('');
+                    setTrainingStatusFilter('');
+                    setCertificateStatusFilter('');
+                }}
+                trailing={(
+                    <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
+                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        Sync Participants
+                    </AdminPrimaryButton>
+                )}
+            >
+                <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Barangay" value={barangayFilter} onChange={(e) => setBarangayFilter(e.target.value)}>
+                    <option value="">All Barangays</option>
+                    {(options.barangays || []).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                    ))}
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Municipality" value={municipalityFilter} onChange={(e) => setMunicipalityFilter(e.target.value)}>
+                    <option value="">All Municipalities</option>
+                    {(options.municipalities || []).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                    ))}
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Training Status" value={trainingStatusFilter} onChange={(e) => setTrainingStatusFilter(e.target.value)}>
+                    <option value="">All Training Status</option>
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Certificate Status" value={certificateStatusFilter} onChange={(e) => setCertificateStatusFilter(e.target.value)}>
+                    <option value="">All Certificate Status</option>
+                    <option value="None">None</option>
+                    <option value="Issued">Issued</option>
+                </AdminFilterSelect>
+            </AdminCollapsibleFilterBar>
 
             <AdminDataTable
                 columns={columns}
                 data={participantsData}
                 sortKey={sortKey}
                 sortDir={sortDir}
-                onSort={handleSort}
+                onSort={(key, dir) => { setSortKey(key); setSortDir(dir); }}
                 isLoading={isLoading}
                 pagination={pagination}
                 onPageChange={(page) => fetchParticipants(page)}
+                minWidth="1400px"
                 emptyTitle="No participants found"
-                emptyDescription="Participants will appear here after self-registration."
+                emptyDescription="Sync Participants to load records from the Community Registration & Campaign Management System."
                 renderActions={(row) => (
                     <>
                         <AdminTableActionButton
                             href={`/admin/participants/${row.id}`}
                             icon={Eye}
-                            title="View"
+                            title="View Profile"
                             variant="view"
                         />
                         <AdminTableActionButton
-                            href={`/admin/participants/${row.id}`}
-                            icon={Pencil}
-                            title="Edit"
+                            href="/admin/participants?tab=registrations"
+                            icon={CalendarPlus}
+                            title="Register to Simulation Event"
                             variant="edit"
                         />
                         <AdminTableActionButton
-                            onClick={() => handleToggleStatus(row)}
-                            icon={row.status === 'active' ? Lock : Unlock}
-                            title={row.status === 'active' ? 'Deactivate' : 'Reactivate'}
-                            variant={row.status === 'active' ? 'warning' : 'edit'}
-                            disabled={actionLoadingId === row.id}
+                            href={`/admin/participants/${row.id}?tab=training`}
+                            icon={BarChart3}
+                            title="View Progress"
+                            variant="default"
                         />
                     </>
                 )}
@@ -509,31 +584,25 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
                 <span className="font-semibold">Community Engagement System</span> and synchronized here via API.
             </div>
 
-            <AdminFilterBar>
-                <div className="flex flex-col md:flex-row md:items-center gap-3">
-                    <AdminSearchInput
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search by name, email, ID, or specialization..."
-                    />
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                        <Filter className="w-4 h-4 text-slate-400" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className={adminSelectClass}
-                        >
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                        <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
-                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                            Sync Trainer Directory
-                        </AdminPrimaryButton>
-                    </div>
-                </div>
-            </AdminFilterBar>
+            <AdminCollapsibleFilterBar
+                searchValue={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search by name, email, ID, or specialization..."
+                hasActiveFilters={statusFilter !== 'all'}
+                onClearFilters={() => setStatusFilter('all')}
+                trailing={(
+                    <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
+                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        Sync Trainer Directory
+                    </AdminPrimaryButton>
+                )}
+            >
+                <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </AdminFilterSelect>
+            </AdminCollapsibleFilterBar>
 
             <AdminDataTable
                 columns={columns}

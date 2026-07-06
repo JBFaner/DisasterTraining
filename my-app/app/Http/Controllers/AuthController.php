@@ -8,6 +8,7 @@ use App\Mail\AdminLoginOtpEmail;
 use App\Services\SmsService;
 use App\Services\AuditLogger;
 use App\Services\LoginAttemptService;
+use App\Support\MaskedEmail;
 use App\Support\PortalAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    private const ADMIN_OTP_EXPIRY_MINUTES = 2;
+
     public function showLogin(Request $request)
     {
         $request->session()->regenerateToken();
@@ -760,16 +763,23 @@ class AuthController extends Controller
                 ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
         }
 
-        $devOtp = null;
-        $loginEmail = null;
-        if (app()->environment('local') && config('app.debug')) {
-            $devOtp = $otpData['otp'] ?? null;
-        }
+        $showDevSection = app()->environment('local') || config('app.debug');
+        $devOtp = $showDevSection ? ($otpData['otp'] ?? null) : null;
 
         $user = User::find($otpData['user_id']);
         $loginEmail = $user?->email;
+        $maskedEmail = MaskedEmail::mask($loginEmail);
+        $expiresAt = (int) ($otpData['expires_at'] ?? 0);
+        $isExpired = now()->getTimestamp() > $expiresAt;
 
-        return view('auth.admin-login-verify', compact('devOtp', 'loginEmail'));
+        return view('auth.admin-login-verify', compact(
+            'devOtp',
+            'loginEmail',
+            'maskedEmail',
+            'expiresAt',
+            'isExpired',
+            'showDevSection',
+        ));
     }
 
     /**
@@ -791,13 +801,13 @@ class AuthController extends Controller
                 ->withErrors(['email' => 'Unable to resend code. Please log in again.']);
         }
 
-        $lastResend = $request->session()->get('admin_otp_last_resend_at', 0);
-        if (now()->getTimestamp() - $lastResend < 60) {
-            return back()->withErrors(['otp' => 'Please wait at least 60 seconds before requesting a new code.']);
+        $now = now()->getTimestamp();
+        if ($now <= ($otpData['expires_at'] ?? 0)) {
+            return back()->withErrors(['otp' => 'Please wait until the current code expires before requesting a new one.']);
         }
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = now()->addMinutes(10)->getTimestamp();
+        $expiresAt = now()->addMinutes(self::ADMIN_OTP_EXPIRY_MINUTES)->getTimestamp();
 
         $request->session()->put('admin_login_otp', [
             'user_id' => $user->id,
@@ -805,7 +815,6 @@ class AuthController extends Controller
             'expires_at' => $expiresAt,
             'remember' => $otpData['remember'] ?? false,
         ]);
-        $request->session()->put('admin_otp_last_resend_at', now()->getTimestamp());
 
         try {
             Mail::to($user->email)->send(new AdminLoginOtpEmail($otp, $user->name));
@@ -814,7 +823,9 @@ class AuthController extends Controller
             return back()->withErrors(['otp' => 'Unable to send verification code. Please try again in a moment.']);
         }
 
-        return back()->with('status', 'A new verification code has been sent to your email.');
+        $maskedEmail = MaskedEmail::mask($user->email);
+
+        return back()->with('status', "A new 6-digit verification code has been sent to {$maskedEmail}. The code will expire in ".self::ADMIN_OTP_EXPIRY_MINUTES.' minutes.');
     }
 
     /**
@@ -839,8 +850,6 @@ class AuthController extends Controller
         $now = now()->getTimestamp();
 
         if ($now > ($otpData['expires_at'] ?? 0)) {
-            $request->session()->forget('admin_login_otp');
-
             AuditLogger::log([
                 'user' => User::find($otpData['user_id']),
                 'action' => 'OTP verification failed',
@@ -849,8 +858,8 @@ class AuthController extends Controller
                 'description' => 'Admin/trainer OTP expired.',
             ]);
 
-            return redirect()->route('admin.login')
-                ->withErrors(['email' => 'Verification code expired. Please log in again.']);
+            return back()
+                ->withErrors(['otp' => 'The verification code has expired.']);
         }
 
         if ($request->otp !== ($otpData['otp'] ?? null)) {
@@ -910,7 +919,7 @@ class AuthController extends Controller
     private function sendAdminLoginOtp(Request $request, User $user)
     {
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = now()->addMinutes(10)->getTimestamp();
+        $expiresAt = now()->addMinutes(self::ADMIN_OTP_EXPIRY_MINUTES)->getTimestamp();
 
         $request->session()->put('admin_login_otp', [
             'user_id' => $user->id,
@@ -925,7 +934,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             \Log::error('Failed to send admin login OTP: '.$e->getMessage());
 
-            if (app()->environment('local') && config('app.debug')) {
+            if (app()->environment('local') || config('app.debug')) {
                 \Log::info("Admin login OTP for {$user->email}: {$otp}");
 
                 return redirect('/admin/login/verify')
@@ -954,8 +963,10 @@ class AuthController extends Controller
             'description' => 'Admin/trainer email OTP sent after password verification.',
         ]);
 
+        $maskedEmail = MaskedEmail::mask($user->email);
+
         return redirect('/admin/login/verify')
-            ->with('status', 'We have sent a verification code to your email. Please enter it to continue.');
+            ->with('status', "A 6-digit verification code has been sent to {$maskedEmail}. The code will expire in ".self::ADMIN_OTP_EXPIRY_MINUTES.' minutes.');
     }
 }
 

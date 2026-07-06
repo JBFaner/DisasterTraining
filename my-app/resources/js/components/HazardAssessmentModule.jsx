@@ -5,7 +5,6 @@ import {
     Pencil,
     Trash2,
     Plus,
-    Filter,
     FileText,
     Download,
     CheckCircle2,
@@ -18,10 +17,10 @@ import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
+    AdminFilterSelect,
     AdminPrimaryButton,
     AdminSecondaryButton,
-    AdminSearchInput,
     adminSelectClass,
     adminCompactInputClass,
 } from './admin/AdminLayout';
@@ -205,12 +204,18 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
     const [searchTerm, setSearchTerm] = React.useState('');
     const [hazardFilter, setHazardFilter] = React.useState('all');
     const [riskFilter, setRiskFilter] = React.useState('all');
+    const [sourceAgencyFilter, setSourceAgencyFilter] = React.useState('all');
+    const [municipalityFilter, setMunicipalityFilter] = React.useState('all');
+    const [provinceFilter, setProvinceFilter] = React.useState('all');
     const [sortKey, setSortKey] = React.useState('barangay_name');
     const [sortDir, setSortDir] = React.useState('asc');
     const [profilesData, setProfilesData] = React.useState(profiles || []);
     const [pagination, setPagination] = React.useState(null);
     const [summaryData, setSummaryData] = React.useState(summary);
+    const [filterOptions, setFilterOptions] = React.useState({ municipalities: [], provinces: [] });
     const [isLoading, setIsLoading] = React.useState(false);
+
+    const sourceAgencies = options.source_agencies || [];
 
     const fetchProfiles = React.useCallback(async (page = 1) => {
         setIsLoading(true);
@@ -220,6 +225,9 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
             if (searchTerm.trim()) url.searchParams.set('search', searchTerm.trim());
             if (hazardFilter !== 'all') url.searchParams.set('hazard_filter', hazardFilter);
             if (riskFilter !== 'all') url.searchParams.set('risk_filter', riskFilter);
+            if (sourceAgencyFilter !== 'all') url.searchParams.set('source_agency_filter', sourceAgencyFilter);
+            if (municipalityFilter !== 'all') url.searchParams.set('municipality_filter', municipalityFilter);
+            if (provinceFilter !== 'all') url.searchParams.set('province_filter', provinceFilter);
             url.searchParams.set('sort_by', sortKey);
             url.searchParams.set('sort_dir', sortDir);
 
@@ -232,17 +240,32 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
             setProfilesData(data.profiles || []);
             setPagination(data.pagination || null);
             setSummaryData(data.summary || summary);
+            if (data.filter_options) setFilterOptions(data.filter_options);
         } catch (error) {
             console.error(error);
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm, hazardFilter, riskFilter, sortKey, sortDir, summary]);
+    }, [searchTerm, hazardFilter, riskFilter, sourceAgencyFilter, municipalityFilter, provinceFilter, sortKey, sortDir, summary]);
+
+    const hasActiveFilters = hazardFilter !== 'all'
+        || riskFilter !== 'all'
+        || sourceAgencyFilter !== 'all'
+        || municipalityFilter !== 'all'
+        || provinceFilter !== 'all';
+
+    const clearFilters = () => {
+        setHazardFilter('all');
+        setRiskFilter('all');
+        setSourceAgencyFilter('all');
+        setMunicipalityFilter('all');
+        setProvinceFilter('all');
+    };
 
     React.useEffect(() => {
         const timer = setTimeout(() => fetchProfiles(1), 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, hazardFilter, riskFilter, sortKey, sortDir, fetchProfiles]);
+    }, [searchTerm, hazardFilter, riskFilter, sourceAgencyFilter, municipalityFilter, provinceFilter, sortKey, sortDir, fetchProfiles]);
 
     const stats = summaryData || summary || {};
 
@@ -310,26 +333,40 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
                 <SummaryCard label="Avg Risk Score" value={stats.average_risk_score != null ? `${stats.average_risk_score}%` : '—'} accent="slate" />
             </div>
 
-            <AdminFilterBar>
-                <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                    <AdminSearchInput
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search barangay, municipality, province, or region..."
-                    />
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                        <Filter className="w-4 h-4 text-slate-400" />
-                        <select value={hazardFilter} onChange={(e) => setHazardFilter(e.target.value)} className={adminSelectClass}>
-                            <option value="all">All Hazards</option>
-                            {hazardTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                        <select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)} className={adminSelectClass}>
-                            <option value="all">All Risk Levels</option>
-                            {riskLevels.map((t) => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                    </div>
-                </div>
-            </AdminFilterBar>
+            <AdminCollapsibleFilterBar
+                searchValue={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search barangay, municipality, province, or region..."
+                hasActiveFilters={hasActiveFilters}
+                onClearFilters={clearFilters}
+            >
+                <AdminFilterSelect label="Hazard Type" value={hazardFilter} onChange={(e) => setHazardFilter(e.target.value)}>
+                    <option value="all">All Hazards</option>
+                    {hazardTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Risk Level" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+                    <option value="all">All Risk Levels</option>
+                    {riskLevels.map((t) => <option key={t} value={t}>{t}</option>)}
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Source Agency" value={sourceAgencyFilter} onChange={(e) => setSourceAgencyFilter(e.target.value)}>
+                    <option value="all">All Agencies</option>
+                    {sourceAgencies.map((agency) => (
+                        <option key={agency} value={agency}>{labels[agency] || agency}</option>
+                    ))}
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Municipality / City" value={municipalityFilter} onChange={(e) => setMunicipalityFilter(e.target.value)}>
+                    <option value="all">All Municipalities</option>
+                    {(filterOptions.municipalities || []).map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                    ))}
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Province" value={provinceFilter} onChange={(e) => setProvinceFilter(e.target.value)}>
+                    <option value="all">All Provinces</option>
+                    {(filterOptions.provinces || []).map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                    ))}
+                </AdminFilterSelect>
+            </AdminCollapsibleFilterBar>
 
             <AdminDataTable
                 columns={columns}
