@@ -28,6 +28,7 @@ use App\Http\Controllers\EvaluationResultController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Controllers\AiScenarioConfigController;
+use App\Http\Controllers\AiScenarioAttemptController;
 use App\Http\Controllers\Admin\Group6IntegrationController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
@@ -452,6 +453,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         ->name('training.modules.edit');
 
     Route::get('/evaluations', [LegacyPortalRedirectController::class, 'evaluations'])->name('legacy.evaluations');
+    Route::get('/scenarios', [LegacyPortalRedirectController::class, 'scenarios'])->name('legacy.scenarios');
     Route::get('/simulation-events', [LegacyPortalRedirectController::class, 'simulationEvents'])->name('legacy.simulation-events');
     Route::get('/simulation-events/{simulationEvent}', [LegacyPortalRedirectController::class, 'simulationEventShow'])->name('legacy.simulation-events.show');
     Route::get('/resources', [LegacyPortalRedirectController::class, 'resources'])->name('legacy.resources');

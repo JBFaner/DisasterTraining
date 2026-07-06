@@ -24,6 +24,11 @@ class LegacyPortalRedirectController extends Controller
         return $this->redirectByPortal($request, 'admin.evaluations.index', 'participant.evaluations.index');
     }
 
+    public function scenarios(Request $request)
+    {
+        return redirect()->route('admin.scenarios.index', $request->query());
+    }
+
     public function simulationEvents(Request $request)
     {
         return $this->redirectByPortal($request, 'admin.simulation-events.index', 'participant.simulation-events.index');

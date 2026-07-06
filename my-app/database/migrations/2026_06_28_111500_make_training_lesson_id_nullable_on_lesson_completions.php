@@ -9,13 +9,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE lesson_completions MODIFY training_lesson_id BIGINT UNSIGNED NULL');
+        $driver = Schema::getConnection()->getDriverName();
 
-        $indexNames = collect(DB::select('SHOW INDEX FROM lesson_completions'))
-            ->pluck('Key_name')
-            ->unique();
+        if ($driver === 'mysql') {
+            DB::statement('ALTER TABLE lesson_completions MODIFY training_lesson_id BIGINT UNSIGNED NULL');
+        } else {
+            Schema::table('lesson_completions', function (Blueprint $table) {
+                $table->unsignedBigInteger('training_lesson_id')->nullable()->change();
+            });
+        }
 
-        if (! $indexNames->contains('lesson_completion_content_unique')) {
+        if (! $this->indexExists('lesson_completions', 'lesson_completion_content_unique')) {
             Schema::table('lesson_completions', function (Blueprint $table) {
                 $table->unique(['user_id', 'training_content_id'], 'lesson_completion_content_unique');
             });
@@ -24,16 +28,40 @@ return new class extends Migration
 
     public function down(): void
     {
-        $indexNames = collect(DB::select('SHOW INDEX FROM lesson_completions'))
-            ->pluck('Key_name')
-            ->unique();
-
-        if ($indexNames->contains('lesson_completion_content_unique')) {
+        if ($this->indexExists('lesson_completions', 'lesson_completion_content_unique')) {
             Schema::table('lesson_completions', function (Blueprint $table) {
                 $table->dropUnique('lesson_completion_content_unique');
             });
         }
 
-        DB::statement('ALTER TABLE lesson_completions MODIFY training_lesson_id BIGINT UNSIGNED NOT NULL');
+        $driver = Schema::getConnection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            DB::statement('ALTER TABLE lesson_completions MODIFY training_lesson_id BIGINT UNSIGNED NOT NULL');
+        } else {
+            Schema::table('lesson_completions', function (Blueprint $table) {
+                $table->unsignedBigInteger('training_lesson_id')->nullable(false)->change();
+            });
+        }
+    }
+
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $driver = Schema::getConnection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            return collect(DB::select("SHOW INDEX FROM {$table}"))
+                ->pluck('Key_name')
+                ->unique()
+                ->contains($indexName);
+        }
+
+        if ($driver === 'sqlite') {
+            $indexes = DB::select("PRAGMA index_list('{$table}')");
+
+            return collect($indexes)->contains(fn ($index) => $index->name === $indexName);
+        }
+
+        return false;
     }
 };
