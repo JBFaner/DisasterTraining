@@ -5,7 +5,6 @@ import * as ScrollArea from '@radix-ui/react-scroll-area';
 import {
     LayoutDashboard,
     BookOpen,
-    Activity,
     CalendarClock,
     Users,
     Box,
@@ -22,8 +21,6 @@ import {
     MoreVertical,
     X,
     Settings,
-    FileText,
-    History,
     Sparkles,
     AlertTriangle,
 } from 'lucide-react';
@@ -568,27 +565,6 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
             )}
             {isAdmin && (
                 <div className={isCollapsed ? 'w-full' : ''}>
-                    {!isCollapsed && <NavSectionTitle>Review &amp; Reporting</NavSectionTitle>}
-                    <NavItem
-                        icon={FileText}
-                        label="After-Action Review"
-                        href="/admin/after-action-review"
-                        active={currentSection === 'after_action_review'}
-                        isCollapsed={isCollapsed}
-                        onNavigate={onNavigate}
-                    />
-                    <NavItem
-                        icon={History}
-                        label="Drill History Reports"
-                        href="/admin/drill-history-reports"
-                        active={currentSection === 'drill_history_reports'}
-                        isCollapsed={isCollapsed}
-                        onNavigate={onNavigate}
-                    />
-                </div>
-            )}
-            {isAdmin && (
-                <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Administration</NavSectionTitle>}
                     <NavItem
                         icon={AlertTriangle}
@@ -623,14 +599,6 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                                 active: currentSection === 'admin_roles',
                             },
                         ]}
-                    />
-                    <NavItem
-                        icon={Activity}
-                        label="User Monitoring"
-                        href="/admin/user-monitoring"
-                        active={currentSection === 'user_monitoring'}
-                        isCollapsed={isCollapsed}
-                        onNavigate={onNavigate}
                     />
                     <NavItem
                         icon={ClipboardCheck}

@@ -1,6 +1,13 @@
 import React from 'react';
 import { LayoutGrid, List, Search } from 'lucide-react';
 
+export {
+    AdminCollapsibleFilterBar,
+    AdminFilterField,
+    AdminFilterSelect,
+    AdminFilterInput,
+} from './AdminCollapsibleFilterBar';
+
 /** Shared Tailwind classes for admin forms */
 export const adminInputClass =
     'w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500';

@@ -1,13 +1,12 @@
 import React from 'react';
-import { Filter, Download, ChevronDown, ChevronUp, CheckCircle2, XCircle, Shield, User as UserIcon, Clock, ClipboardCheck } from 'lucide-react';
+import { Download, ChevronDown, ChevronUp, CheckCircle2, XCircle, Shield, User as UserIcon, Clock, ClipboardCheck } from 'lucide-react';
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
+    AdminFilterSelect,
+    AdminFilterInput,
     AdminSecondaryButton,
-    AdminSearchInput,
-    adminCompactInputClass,
-    adminSelectClass,
     AdminContentCard,
 } from '../components/admin/AdminLayout';
 
@@ -227,64 +226,51 @@ export function AuditLogs() {
                 }
             />
 
-            <AdminFilterBar>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
-                    <Filter className="w-4 h-4 text-slate-400" />
-                    <span className="font-medium">Filter &amp; Search</span>
-                    <span className="text-xs text-slate-400">({meta.total} log{meta.total === 1 ? '' : 's'})</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    <div className="md:col-span-2">
-                        <AdminSearchInput
-                            placeholder="Search by user or action..."
-                            value={search}
-                            onChange={handleSearchChange}
-                        />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Filter by user"
-                        className={adminCompactInputClass}
-                        value={filters.user}
-                        onChange={(e) => handleFilterChange('user', e.target.value)}
-                    />
-                    <select
-                        className={`w-full ${adminSelectClass}`}
-                        value={filters.status}
-                        onChange={(e) => handleFilterChange('status', e.target.value)}
-                    >
-                        <option value="">All Status</option>
-                        <option value="success">Success</option>
-                        <option value="failed">Failed</option>
-                        <option value="warning">Warning</option>
-                    </select>
-                    <select
-                        className={`w-full ${adminSelectClass}`}
-                        value={filters.module}
-                        onChange={(e) => handleFilterChange('module', e.target.value)}
-                    >
-                        {MODULE_OPTIONS.map(opt => (
-                            <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-                    <div className="md:col-span-2">
-                        <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:gap-3">
-                            <input
-                                type="date"
-                                className={`w-full ${adminSelectClass}`}
-                                value={filters.date_from}
-                                onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                            />
-                            <input
-                                type="date"
-                                className={`w-full ${adminSelectClass}`}
-                                value={filters.date_to}
-                                onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                            />
-                        </div>
-                    </div>
-                </div>
-            </AdminFilterBar>
+            <AdminCollapsibleFilterBar
+                searchValue={search}
+                onSearchChange={handleSearchChange}
+                searchPlaceholder="Search by user or action..."
+                hasActiveFilters={Boolean(filters.user || filters.status || filters.module || filters.date_from || filters.date_to)}
+                onClearFilters={() => {
+                    setFilters({ user: '', status: '', module: '', date_from: '', date_to: '' });
+                    setPage(1);
+                }}
+                panelHeader={(
+                    <p className="text-xs text-slate-500 mb-3">
+                        {meta.total} log{meta.total === 1 ? '' : 's'} matching current criteria
+                    </p>
+                )}
+            >
+                <AdminFilterInput
+                    label="Filter by user"
+                    value={filters.user}
+                    onChange={(e) => handleFilterChange('user', e.target.value)}
+                    placeholder="Name or email"
+                />
+                <AdminFilterSelect label="Status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}>
+                    <option value="">All Status</option>
+                    <option value="success">Success</option>
+                    <option value="failed">Failed</option>
+                    <option value="warning">Warning</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Module" value={filters.module} onChange={(e) => handleFilterChange('module', e.target.value)}>
+                    {MODULE_OPTIONS.map((opt) => (
+                        <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+                    ))}
+                </AdminFilterSelect>
+                <AdminFilterInput
+                    label="Date from"
+                    type="date"
+                    value={filters.date_from}
+                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                />
+                <AdminFilterInput
+                    label="Date to"
+                    type="date"
+                    value={filters.date_to}
+                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                />
+            </AdminCollapsibleFilterBar>
 
             <AdminContentCard>
                     <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr] gap-4 px-5 py-4 text-xs font-semibold text-slate-600 bg-slate-50 border-b border-slate-200">

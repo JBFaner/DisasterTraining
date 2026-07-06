@@ -12,6 +12,7 @@ use App\Http\Controllers\LegacyTrainingModuleRedirectController;
 use App\Http\Controllers\LegacyPortalRedirectController;
 use App\Http\Controllers\ScenarioController;
 use App\Http\Controllers\SimulationEventController;
+use App\Http\Controllers\SimulationEventLifecycleController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\QualifiedTrainerController;
 use App\Http\Controllers\EventRegistrationController;
@@ -24,9 +25,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\EvaluationResultController;
-use App\Http\Controllers\AfterActionReviewController;
 use App\Http\Controllers\SessionController;
-use App\Http\Controllers\UserMonitoringController;
 use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Controllers\AiScenarioConfigController;
 use App\Http\Controllers\Admin\Group6IntegrationController;
@@ -222,6 +221,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-events/{simulationEvent}/archive', [SimulationEventController::class, 'archive'])->name('admin.simulation-events.archive');
         Route::post('/simulation-events/{simulationEvent}/start', [SimulationEventController::class, 'start'])->name('admin.simulation-events.start');
         Route::post('/simulation-events/{simulationEvent}/complete', [SimulationEventController::class, 'complete'])->name('admin.simulation-events.complete');
+        Route::get('/simulation-events/{simulationEvent}/lifecycle', [SimulationEventLifecycleController::class, 'show'])->name('admin.simulation-events.lifecycle');
+        Route::patch('/simulation-events/{simulationEvent}/readiness', [SimulationEventLifecycleController::class, 'updateReadiness'])->name('admin.simulation-events.readiness');
+        Route::post('/simulation-events/{simulationEvent}/execution-steps/{step}', [SimulationEventLifecycleController::class, 'completeStep'])->name('admin.simulation-events.execution-steps.complete');
+        Route::post('/simulation-events/{simulationEvent}/post-evaluation', [SimulationEventLifecycleController::class, 'storePostEvaluation'])->name('admin.simulation-events.post-evaluation');
         Route::delete('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'destroy'])->name('admin.simulation-events.destroy');
         Route::get('/simulation-events/{simulationEvent}/registrations', [EventRegistrationController::class, 'index'])->name('admin.simulation-events.registrations');
         Route::get('/simulation-events/{simulationEvent}/attendance', [AttendanceController::class, 'index'])->name('admin.simulation-events.attendance');
@@ -245,11 +248,11 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
 
         // Participants (admin management)
         Route::get('/participants', [ParticipantController::class, 'index'])->name('admin.participants.index');
+        Route::post('/participants/sync', [ParticipantController::class, 'sync'])->name('admin.participants.sync');
         Route::get('/participants/export/csv', [ParticipantController::class, 'export'])->name('admin.participants.export');
-        Route::get('/participants/{user}', [ParticipantController::class, 'show'])->name('admin.participants.show');
-        Route::put('/participants/{user}', [ParticipantController::class, 'update'])->name('admin.participants.update');
-        Route::post('/participants/{user}/deactivate', [ParticipantController::class, 'deactivate'])->name('admin.participants.deactivate');
-        Route::post('/participants/{user}/reactivate', [ParticipantController::class, 'reactivate'])->name('admin.participants.reactivate');
+        Route::get('/participants/{user}', [ParticipantController::class, 'show'])
+            ->whereNumber('user')
+            ->name('admin.participants.show');
 
         // Qualified trainers (read-only directory synced from Community Engagement System)
         Route::get('/api/qualified-trainers', [QualifiedTrainerController::class, 'apiIndex'])->name('admin.api.qualified-trainers.index');
@@ -284,12 +287,6 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/resources/{resource}/complete-maintenance', [ResourceController::class, 'completeMaintenance'])->name('admin.resources.complete-maintenance');
         Route::get('/resources/{resource}/maintenance-logs', [ResourceController::class, 'maintenanceLogs'])->name('admin.resources.maintenance-logs');
         Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('admin.resources.destroy');
-
-        // After-Action Review & Drill History Reports
-        Route::get('/after-action-review', [AfterActionReviewController::class, 'index'])
-            ->name('admin.after-action-review.index');
-        Route::get('/drill-history-reports', [\App\Http\Controllers\DrillHistoryReportsController::class, 'index'])
-            ->name('admin.drill-history-reports.index');
 
         // Evaluation & Scoring System (AI scenario results)
         Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('admin.evaluations.index');
@@ -388,9 +385,6 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::get('/permissions/{id}/edit', [App\Http\Controllers\PermissionController::class, 'edit'])->name('admin.permissions.edit');
         Route::put('/permissions/{id}', [App\Http\Controllers\PermissionController::class, 'update'])->name('admin.permissions.update');
 
-        // User Monitoring
-        Route::get('/user-monitoring', [UserMonitoringController::class, 'index'])->name('admin.user-monitoring.index');
-        Route::get('/api/user-monitoring/status', [UserMonitoringController::class, 'status'])->name('admin.user-monitoring.status');
     });
 
     // Participant portal routes
@@ -463,10 +457,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     Route::get('/resources', [LegacyPortalRedirectController::class, 'resources'])->name('legacy.resources');
     Route::get('/resources/{resource}', [LegacyPortalRedirectController::class, 'resources'])->name('legacy.resources.show');
     Route::get('/participants', [LegacyPortalRedirectController::class, 'participants'])->name('legacy.participants');
-    Route::get('/participants/{user}', [LegacyPortalRedirectController::class, 'participants'])->name('legacy.participants.show');
+    Route::get('/participants/{user}', [LegacyPortalRedirectController::class, 'participants'])
+        ->whereNumber('user')
+        ->name('legacy.participants.show');
     Route::get('/certification', [LegacyPortalRedirectController::class, 'certification'])->name('legacy.certification');
-    Route::get('/after-action-review', [LegacyPortalRedirectController::class, 'afterActionReview'])->name('legacy.after-action-review');
-    Route::get('/drill-history-reports', [LegacyPortalRedirectController::class, 'drillHistoryReports'])->name('legacy.drill-history-reports');
     Route::get('/barangay-profile', [LegacyPortalRedirectController::class, 'barangayProfile'])->name('legacy.barangay-profile');
     Route::get('/barangay-profile/{barangayProfile}', [LegacyPortalRedirectController::class, 'barangayProfile'])->name('legacy.barangay-profile.show');
     Route::get('/audit-logs', [LegacyPortalRedirectController::class, 'auditLogs'])->name('legacy.audit-logs');

@@ -55,14 +55,6 @@ export function hazardAssessmentProfileIndex() {
     return '/admin/hazard-assessment-profiles';
 }
 
-export function afterActionReviewIndex() {
-    return '/admin/after-action-review';
-}
-
-export function drillHistoryReportsIndex() {
-    return '/admin/drill-history-reports';
-}
-
 export function auditLogsIndex() {
     return '/admin/audit-logs';
 }

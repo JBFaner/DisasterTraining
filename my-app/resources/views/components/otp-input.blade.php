@@ -104,6 +104,11 @@
                         }
                     }
 
+                    function focusFirstEmpty() {
+                        const firstEmpty = digits.findIndex((input) => input.value === '');
+                        focusDigit(firstEmpty === -1 ? digits.length - 1 : firstEmpty);
+                    }
+
                     function clearAll(focusFirstDigit) {
                         digits.forEach((input) => {
                             input.value = '';
@@ -211,6 +216,11 @@
                         });
 
                         input.addEventListener('focus', () => {
+                            const firstEmpty = digits.findIndex((d) => d.value === '');
+                            if (firstEmpty !== -1 && firstEmpty < index) {
+                                focusDigit(firstEmpty);
+                                return;
+                            }
                             input.select();
                         });
                     });
@@ -230,7 +240,7 @@
                         clearAll(true);
                     } else {
                         syncHidden();
-                        focusDigit(0);
+                        focusFirstEmpty();
                     }
                 }
 

@@ -1,12 +1,11 @@
 import React from 'react';
-import { Filter, Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, UserCircle } from 'lucide-react';
+import { Plus, Eye, Pencil, Lock, Unlock, CheckCircle2, UserCircle } from 'lucide-react';
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminFilterBar,
+    AdminCollapsibleFilterBar,
+    AdminFilterSelect,
     AdminPrimaryButton,
-    AdminSearchInput,
-    adminSelectClass,
     AdminContentCard,
 } from '../components/admin/AdminLayout';
 
@@ -166,38 +165,26 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                 }
             />
 
-            <AdminFilterBar>
-                <div className="flex flex-col md:flex-row md:items-center gap-3">
-                    <AdminSearchInput
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by name or email..."
-                    />
-                    <div className="flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-                        <select
-                            value={roleFilter}
-                            onChange={(e) => setRoleFilter(e.target.value)}
-                            className={adminSelectClass}
-                        >
-                            <option value="all">All Roles</option>
-                            <option value="LGU_ADMIN">LGU Admin</option>
-                            <option value="LGU_TRAINER">Trainer</option>
-                            <option value="STAFF">Staff</option>
-                        </select>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className={adminSelectClass}
-                        >
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="disabled">Disabled</option>
-                            <option value="pending_verification">Pending Verification</option>
-                        </select>
-                    </div>
-                </div>
-            </AdminFilterBar>
+            <AdminCollapsibleFilterBar
+                searchValue={search}
+                onSearchChange={(e) => setSearch(e.target.value)}
+                searchPlaceholder="Search by name or email..."
+                hasActiveFilters={roleFilter !== 'all' || statusFilter !== 'all'}
+                onClearFilters={() => { setRoleFilter('all'); setStatusFilter('all'); }}
+            >
+                <AdminFilterSelect label="Role" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+                    <option value="all">All Roles</option>
+                    <option value="LGU_ADMIN">LGU Admin</option>
+                    <option value="LGU_TRAINER">Trainer</option>
+                    <option value="STAFF">Staff</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                    <option value="pending_verification">Pending Verification</option>
+                </AdminFilterSelect>
+            </AdminCollapsibleFilterBar>
 
             <AdminContentCard className="w-full">
                 <div className="overflow-x-auto w-full">

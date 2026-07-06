@@ -54,16 +54,6 @@ class LegacyPortalRedirectController extends Controller
         return $this->redirectByPortal($request, 'admin.certification.index', 'participant.certification.index');
     }
 
-    public function afterActionReview(Request $request)
-    {
-        return redirect()->route('admin.after-action-review.index', $request->query());
-    }
-
-    public function drillHistoryReports(Request $request)
-    {
-        return redirect()->route('admin.drill-history-reports.index', $request->query());
-    }
-
     public function barangayProfile(Request $request)
     {
         return redirect()->route('admin.hazard-assessment-profiles.index', $request->query());

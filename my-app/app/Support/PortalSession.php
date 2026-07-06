@@ -194,10 +194,6 @@ class PortalSession
             'resources',
             'resources/*',
             'settings/*',
-            'after-action-review',
-            'after-action-review/*',
-            'drill-history-reports',
-            'drill-history-reports/*',
         )) {
             return self::ADMIN;
         }
