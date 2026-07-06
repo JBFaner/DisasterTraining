@@ -51,6 +51,8 @@ class AiScenarioConfig extends Model
         'allow_resume_attempt',
         'shuffle_questions',
         'shuffle_answer_choices',
+        'current_version_id',
+        'published_version_id',
     ];
 
     protected $casts = [
@@ -83,13 +85,47 @@ class AiScenarioConfig extends Model
         return $this->hasMany(AiScenarioAttempt::class);
     }
 
+    public function currentVersion(): BelongsTo
+    {
+        return $this->belongsTo(AiScenarioAssessmentVersion::class, 'current_version_id');
+    }
+
+    public function publishedVersion(): BelongsTo
+    {
+        return $this->belongsTo(AiScenarioAssessmentVersion::class, 'published_version_id');
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(AiScenarioAssessmentVersion::class)->orderByDesc('version_number');
+    }
+
     public function isReady(): bool
     {
         if (! $this->is_enabled) {
             return false;
         }
 
-        return app(AiScenarioLocaleService::class)->isReady($this);
+        $published = $this->publishedVersion;
+        if (! $published || $published->status !== AiScenarioAssessmentVersion::STATUS_PUBLISHED) {
+            return false;
+        }
+
+        return app(AiScenarioLocaleService::class)->isReady($published->toContentSnapshot());
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function publishedContentSnapshot(): ?array
+    {
+        $published = $this->publishedVersion;
+
+        if (! $published || $published->status !== AiScenarioAssessmentVersion::STATUS_PUBLISHED) {
+            return null;
+        }
+
+        return $published->toContentSnapshot();
     }
 
     public function requiresLessonReviewOnFail(): bool

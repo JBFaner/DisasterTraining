@@ -28,6 +28,7 @@ use App\Http\Controllers\EvaluationResultController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Controllers\AiScenarioConfigController;
+use App\Http\Controllers\AiScenarioWorkflowController;
 use App\Http\Controllers\AiScenarioAttemptController;
 use App\Http\Controllers\Admin\Group6IntegrationController;
 use App\Http\Middleware\CheckSessionInactivity;
@@ -186,12 +187,45 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/training-modules/{trainingModule}/contents/reorder', [AdminTrainingModuleController::class, 'reorderContents'])
             ->name('admin.training-modules.contents.reorder');
 
-        Route::get('/ai-scenario-config', [AiScenarioConfigController::class, 'index'])
+        Route::get('/ai-scenario-training', [AiScenarioConfigController::class, 'index'])
+            ->name('admin.ai-scenario-training.index');
+        Route::get('/ai-scenario-config', fn () => redirect()->route('admin.ai-scenario-training.index'))
             ->name('admin.ai-scenario-config.index');
         Route::post('/ai-scenario-config', [AiScenarioConfigController::class, 'store'])
             ->name('admin.ai-scenario-config.store');
         Route::post('/ai-scenario-config/{config}/generate', [AiScenarioConfigController::class, 'generate'])
             ->name('admin.ai-scenario-config.generate');
+
+        Route::prefix('ai-scenario-config/{config}/versions/{version}')->group(function () {
+            Route::get('/', [AiScenarioWorkflowController::class, 'show'])
+                ->name('admin.ai-scenario-workflow.show');
+            Route::patch('/scenario', [AiScenarioWorkflowController::class, 'updateScenario'])
+                ->name('admin.ai-scenario-workflow.scenario.update');
+            Route::post('/questions', [AiScenarioWorkflowController::class, 'storeQuestion'])
+                ->name('admin.ai-scenario-workflow.questions.store');
+            Route::patch('/questions/{questionNumber}', [AiScenarioWorkflowController::class, 'updateQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.ai-scenario-workflow.questions.update');
+            Route::delete('/questions/{questionNumber}', [AiScenarioWorkflowController::class, 'destroyQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.ai-scenario-workflow.questions.destroy');
+            Route::post('/questions/{questionNumber}/duplicate', [AiScenarioWorkflowController::class, 'duplicateQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.ai-scenario-workflow.questions.duplicate');
+            Route::post('/questions/{questionNumber}/regenerate', [AiScenarioWorkflowController::class, 'regenerateQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.ai-scenario-workflow.questions.regenerate');
+            Route::post('/save-draft', [AiScenarioWorkflowController::class, 'saveDraft'])
+                ->name('admin.ai-scenario-workflow.save-draft');
+            Route::post('/approve', [AiScenarioWorkflowController::class, 'approve'])
+                ->name('admin.ai-scenario-workflow.approve');
+            Route::post('/publish', [AiScenarioWorkflowController::class, 'publish'])
+                ->name('admin.ai-scenario-workflow.publish');
+            Route::post('/restore', [AiScenarioWorkflowController::class, 'restore'])
+                ->name('admin.ai-scenario-workflow.restore');
+            Route::post('/duplicate', [AiScenarioWorkflowController::class, 'duplicate'])
+                ->name('admin.ai-scenario-workflow.duplicate');
+        });
 
         // Scenarios
         Route::get('/scenarios', [ScenarioController::class, 'index'])->name('admin.scenarios.index');

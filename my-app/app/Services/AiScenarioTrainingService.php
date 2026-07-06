@@ -15,6 +15,7 @@ class AiScenarioTrainingService
         private readonly GeminiService $gemini,
         private readonly AiScenarioTranslationService $translationService,
         private readonly AiScenarioLocaleService $localeService,
+        private readonly AiScenarioWorkflowService $workflowService,
     ) {}
 
     public function generateForConfig(AiScenarioConfig $config): AiScenarioConfig
@@ -53,9 +54,12 @@ class AiScenarioTrainingService
         $config->generation_language = $sourceLocale;
         $config->generated_at = now();
         $config->translated_at = now();
+        $config->is_enabled = false;
         $config->save();
 
-        return $config->fresh();
+        $this->workflowService->createVersionFromGeneration($config, $bilingual, 'AI Generated');
+
+        return $config->fresh(['trainingModule', 'currentVersion', 'publishedVersion']);
     }
 
     public function createAttempt(User $user, TrainingModule $module, AiScenarioConfig $config): AiScenarioAttempt

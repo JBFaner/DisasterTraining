@@ -26,12 +26,18 @@ class AiScenarioConfigController extends Controller
             ->orderBy('title')
             ->get();
 
-        $configs = AiScenarioConfig::with(['trainingModule', 'creator'])
+        $configs = AiScenarioConfig::with([
+            'trainingModule',
+            'creator',
+            'currentVersion.creator',
+            'publishedVersion',
+            'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
+        ])
             ->orderByDesc('updated_at')
             ->get();
 
         return view('app', [
-            'section' => 'ai_scenario_config',
+            'section' => 'ai_scenario_training',
             'ai_scenario_modules' => $modules,
             'ai_scenario_configs' => $configs,
         ]);
@@ -72,7 +78,12 @@ class AiScenarioConfigController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Configuration saved.',
-                'config' => $config->fresh(['trainingModule']),
+                'config' => $config->fresh([
+                    'trainingModule',
+                    'currentVersion.creator',
+                    'publishedVersion',
+                    'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
+                ]),
             ]);
         }
 
@@ -89,8 +100,6 @@ class AiScenarioConfigController extends Controller
 
         try {
             $config = $this->trainingService->generateForConfig($config);
-            $config->is_enabled = true;
-            $config->save();
 
             AuditLogger::log([
                 'action' => 'Generated AI scenario quiz',
@@ -102,7 +111,12 @@ class AiScenarioConfigController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Scenario and quiz generated successfully.',
-                    'config' => $config->fresh(['trainingModule']),
+                    'config' => $config->fresh([
+                    'trainingModule',
+                    'currentVersion.creator',
+                    'publishedVersion',
+                    'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
+                ]),
                 ]);
             }
 

@@ -631,4 +631,37 @@ PROMPT;
 
         return $valid[$index % count($valid)];
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function generateSingleQuizQuestion(
+        \App\Models\TrainingModule $module,
+        string $difficulty,
+        string $language,
+        int $questionNumber,
+        ?string $scenarioContext = null,
+    ): array {
+        $languageLabel = $language === 'fil' ? 'Filipino' : 'English';
+        $prompt = <<<PROMPT
+Generate ONE multiple-choice quiz question in {$languageLabel} for disaster preparedness training module "{$module->title}".
+Difficulty: {$difficulty}.
+Scenario context: {$scenarioContext}
+
+Return ONLY valid JSON:
+{
+  "number": {$questionNumber},
+  "competency": "knowledge|decision_making|emergency_response|safety_awareness",
+  "question": "...",
+  "choices": {"A":"...","B":"...","C":"...","D":"..."},
+  "correct_answer": "A|B|C|D",
+  "explanation": "..."
+}
+PROMPT;
+
+        $text = $this->generateContentText($prompt);
+        $parsed = $this->parseTrainingScenarioQuizFromText($text, 1);
+
+        return $parsed['questions'][0] ?? throw new \Exception('AI did not return a question.');
+    }
 }

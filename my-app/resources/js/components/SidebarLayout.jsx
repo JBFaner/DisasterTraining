@@ -516,8 +516,8 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={Sparkles}
                         label="AI Scenario Training"
-                        href="/admin/ai-scenario-config"
-                        active={currentSection === 'ai_scenario_config'}
+                        href="/admin/ai-scenario-training"
+                        active={currentSection === 'ai_scenario_training'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

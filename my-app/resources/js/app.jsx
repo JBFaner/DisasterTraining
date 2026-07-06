@@ -18,7 +18,7 @@ import { PermissionsPage } from './pages/PermissionsPage';
 import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
 import { TrainingModuleDetail } from './pages/TrainingModuleDetail';
-import { AiScenarioConfigPage } from './pages/AiScenarioConfigPage';
+import { AiScenarioTrainingModule } from './components/AiScenarioTrainingModule';
 import { AiScenarioTrainingPage, AiScenarioTrainingUnlock } from './pages/AiScenarioTrainingPage';
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
@@ -1006,7 +1006,7 @@ if (rootElement) {
 
     const navSection =
         sectionAttr.startsWith('training') ? 'training' :
-            sectionAttr === 'ai_scenario_config' ? 'ai_scenario_config' :
+            sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config' ? 'ai_scenario_training' :
                 sectionAttr.startsWith('ai_scenario') ? 'training' :
             sectionAttr.startsWith('scenario') ? 'scenario' :
                 sectionAttr.startsWith('simulation') ? 'simulation' :
@@ -1041,7 +1041,7 @@ if (rootElement) {
         if (sectionAttr === 'training') {
             return [];
         }
-        if (sectionAttr === 'ai_scenario_config') {
+        if (sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config') {
             return [];
         }
         if (sectionAttr === 'ai_scenario_attempt') {
@@ -1288,6 +1288,7 @@ if (rootElement) {
             'barangay_profile',
             'admin_users_index',
             'audit_logs',
+            'ai_scenario_training',
             'ai_scenario_config',
         ]);
         if (indexSections.has(sectionAttr)) {
@@ -1421,8 +1422,8 @@ if (rootElement) {
                             )
                         )}
 
-                        {sectionAttr === 'ai_scenario_config' && (
-                            <AiScenarioConfigPage modules={aiScenarioModules} configs={aiScenarioConfigs} />
+                        {(sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config') && (
+                            <AiScenarioTrainingModule modules={aiScenarioModules} configs={aiScenarioConfigs} />
                         )}
 
                         {sectionAttr === 'ai_scenario_attempt' && aiScenarioAttempt && (
@@ -2403,7 +2404,7 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                                 <BookOpen className="w-10 h-10 text-emerald-600" />
                                 <span className="text-sm font-medium text-slate-700">+ Module</span>
                             </a>
-                            <a href="/admin/ai-scenario-config" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                            <a href="/admin/ai-scenario-training" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                                 <Sparkles className="w-10 h-10 text-emerald-600" />
                                 <span className="text-sm font-medium text-slate-700">AI Scenario</span>
                             </a>

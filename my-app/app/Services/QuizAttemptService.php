@@ -168,7 +168,14 @@ class QuizAttemptService
             ->where('training_module_id', $module->id)
             ->max('attempt_number') + 1;
         $timeLimit = (int) ($config->time_limit_minutes ?? 60);
-        $questions = $config->generated_questions ?? [];
+        $snapshot = $config->publishedContentSnapshot();
+        if (! $snapshot) {
+            throw ValidationException::withMessages([
+                'ai_scenario' => 'No published assessment is available for this training module.',
+            ]);
+        }
+
+        $questions = $snapshot['generated_questions'] ?? [];
         $questionOrder = $this->buildQuestionOrder($questions, (bool) $config->shuffle_questions);
         $shuffledChoices = $this->buildShuffledChoices($questions, $questionOrder, (bool) $config->shuffle_answer_choices);
         $orderedQuestions = $this->applyQuestionOrder($questions, $questionOrder, $shuffledChoices);
@@ -187,6 +194,7 @@ class QuizAttemptService
             $shuffledChoices,
             $firstQuestionNumber,
             $now,
+            $snapshot,
         ) {
             return AiScenarioAttempt::create([
                 'user_id' => $user->id,
@@ -196,15 +204,15 @@ class QuizAttemptService
                 'training_cycle' => $trainingCycle,
                 'status' => self::STATUS_IN_PROGRESS,
                 'current_question' => $firstQuestionNumber,
-                'scenario_title' => $config->scenario_title,
-                'title_en' => $config->title_en,
-                'title_fil' => $config->title_fil,
-                'generated_scenario' => $config->generated_scenario,
-                'description_en' => $config->description_en,
-                'description_fil' => $config->description_fil,
-                'learning_objectives_en' => $config->learning_objectives_en,
-                'learning_objectives_fil' => $config->learning_objectives_fil,
-                'generated_language' => $config->generated_language ?? 'en',
+                'scenario_title' => $snapshot['scenario_title'] ?? $config->scenario_title,
+                'title_en' => $snapshot['title_en'] ?? $config->title_en,
+                'title_fil' => $snapshot['title_fil'] ?? $config->title_fil,
+                'generated_scenario' => $snapshot['generated_scenario'] ?? $config->generated_scenario,
+                'description_en' => $snapshot['description_en'] ?? $config->description_en,
+                'description_fil' => $snapshot['description_fil'] ?? $config->description_fil,
+                'learning_objectives_en' => $snapshot['learning_objectives_en'] ?? $config->learning_objectives_en,
+                'learning_objectives_fil' => $snapshot['learning_objectives_fil'] ?? $config->learning_objectives_fil,
+                'generated_language' => $snapshot['generated_language'] ?? $config->generated_language ?? 'en',
                 'display_language' => $config->generated_language ?? 'en',
                 'generated_questions' => $orderedQuestions,
                 'question_order' => $questionOrder,
