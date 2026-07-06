@@ -47,6 +47,29 @@ function formatDate(value) {
     return new Date(value).toLocaleString();
 }
 
+function formatGeneratedDateParts(value) {
+    if (!value) {
+        return { date: '—', time: null };
+    }
+
+    const parsed = new Date(value);
+    return {
+        date: parsed.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
+        time: parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' }),
+    };
+}
+
+function GeneratedDateCell({ value }) {
+    const { date, time } = formatGeneratedDateParts(value);
+
+    return (
+        <div className="text-slate-600 text-xs leading-tight whitespace-nowrap">
+            <div>{date}</div>
+            {time && <div className="text-slate-500">{time}</div>}
+        </div>
+    );
+}
+
 function formatUserName(user, fallbackName) {
     if (fallbackName) return fallbackName;
     if (!user) return '—';
@@ -79,14 +102,10 @@ function AssessmentStatusBadge({ status }) {
     );
 }
 
-function CurrentVersionBadge({ isCurrent }) {
-    if (!isCurrent) {
-        return <span className="text-slate-400 text-sm">—</span>;
-    }
-
+function CurrentVersionBadge({ compact = false }) {
     return (
-        <span className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+        <span className={`inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 font-medium text-sky-700 shrink-0 ${compact ? 'px-2 py-0.5 text-[0.65rem]' : 'px-2.5 py-0.5 text-xs'}`}>
+            <CheckCircle2 className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
             Current
         </span>
     );
@@ -629,26 +648,13 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
         {
             key: 'status',
             label: 'Status',
-            render: (row) => (
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <AssessmentStatusBadge status={row.status} />
-                    {row.is_current && (
-                        <span className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-0.5 text-[0.65rem] font-medium text-sky-700">
-                            Current
-                        </span>
-                    )}
-                </div>
-            ),
-        },
-        {
-            key: 'is_current',
-            label: 'In Use',
-            render: (row) => <CurrentVersionBadge isCurrent={row.is_current} />,
+            render: (row) => <AssessmentStatusBadge status={row.status} />,
         },
         {
             key: 'created_at',
             label: 'Generated Date',
-            render: (row) => <span className="text-slate-600 text-sm">{formatDate(row.created_at)}</span>,
+            className: 'whitespace-nowrap',
+            render: (row) => <GeneratedDateCell value={row.created_at} />,
         },
     ];
 
@@ -880,13 +886,13 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                 columns={scenarioColumns}
                 data={scenarioRows}
                 rowKey="id"
-                minWidth="1000px"
+                minWidth="860px"
                 emptyTitle="No generated scenarios"
                 emptyDescription={selectedModule
                     ? `No AI assessments for "${selectedModule.title}" yet. Save configuration and generate content.`
                     : 'Select a training module to view its assessments.'}
                 renderActions={(row) => (
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end items-center gap-1.5">
                         <AdminTableActionButton icon={Eye} title="View" variant="view" onClick={() => openViewPanel(row)} />
                         {row.status !== 'published' && (
                             <>
@@ -895,6 +901,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                 <AdminTableActionButton icon={Send} title="Publish" variant="edit" onClick={() => handlePublish(row)} disabled={workflowBusy} />
                             </>
                         )}
+                        {row.is_current && <CurrentVersionBadge compact />}
                     </div>
                 )}
             />
@@ -910,7 +917,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                 <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5">
                                     Version {activeVersion.version_number}
                                     <AssessmentStatusBadge status={activeVersion.status} />
-                                    {activeVersion.is_current && <CurrentVersionBadge isCurrent />}
+                                    {activeVersion.is_current && <CurrentVersionBadge />}
                                 </p>
                             </div>
                             <button type="button" onClick={closePanel} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">

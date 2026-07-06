@@ -49,10 +49,13 @@ class AiScenarioWorkflowController extends Controller
 
         $this->logAction('Updated AI scenario content', $config, $version);
 
+        $config = $config->fresh(AiScenarioAdminSerializer::configRelations());
+        $version = $version->fresh(AiScenarioAdminSerializer::versionRelations());
+
         return response()->json([
             'message' => 'Scenario saved.',
-            'version' => AiScenarioAdminSerializer::serializeVersion($version->fresh(AiScenarioAdminSerializer::versionRelations()), $config),
-            'config' => AiScenarioAdminSerializer::serializeConfig($config->fresh(AiScenarioAdminSerializer::configRelations())),
+            'version' => AiScenarioAdminSerializer::serializeVersion($version, $config),
+            'config' => AiScenarioAdminSerializer::serializeConfig($config),
         ]);
     }
 
