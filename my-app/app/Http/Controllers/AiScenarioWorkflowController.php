@@ -6,6 +6,7 @@ use App\Models\AiScenarioAssessmentVersion;
 use App\Models\AiScenarioConfig;
 use App\Services\AiScenarioWorkflowService;
 use App\Services\AuditLogger;
+use App\Support\AiScenarioAdminSerializer;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -20,16 +21,10 @@ class AiScenarioWorkflowController extends Controller
     {
         $this->authorizeAdmin();
 
-        $config->load([
-            'trainingModule',
-            'currentVersion.creator',
-            'currentVersion.approver',
-            'publishedVersion',
-            'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
-        ]);
+        $config->load(AiScenarioAdminSerializer::configRelations());
 
         return response()->json([
-            'config' => $this->serializeConfig($config),
+            'config' => AiScenarioAdminSerializer::serializeConfig($config),
         ]);
     }
 
@@ -56,10 +51,8 @@ class AiScenarioWorkflowController extends Controller
 
         return response()->json([
             'message' => 'Scenario saved.',
-            'version' => $this->serializeVersion($version),
-            'config' => $this->serializeConfig($config->fresh([
-                'trainingModule', 'currentVersion', 'publishedVersion', 'versions.creator', 'versions.approver',
-            ])),
+            'version' => AiScenarioAdminSerializer::serializeVersion($version->fresh(AiScenarioAdminSerializer::versionRelations()), $config),
+            'config' => AiScenarioAdminSerializer::serializeConfig($config->fresh(AiScenarioAdminSerializer::configRelations())),
         ]);
     }
 
@@ -252,16 +245,11 @@ class AiScenarioWorkflowController extends Controller
             $this->workflowService->destroyVersion($version);
             $this->logAction('Deleted AI scenario version '.$version->version_number, $config, $version);
 
-            $config = $config->fresh([
-                'trainingModule',
-                'currentVersion.creator',
-                'publishedVersion',
-                'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
-            ]);
+            $config = $config->fresh(AiScenarioAdminSerializer::configRelations());
 
             return response()->json([
                 'message' => 'Assessment deleted.',
-                'config' => $this->serializeConfig($config),
+                'config' => AiScenarioAdminSerializer::serializeConfig($config),
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -273,87 +261,16 @@ class AiScenarioWorkflowController extends Controller
 
     protected function versionResponse(string $message, AiScenarioConfig $config, AiScenarioAssessmentVersion $version)
     {
-        $config = $config->fresh([
-            'trainingModule',
-            'currentVersion.creator',
-            'currentVersion.approver',
-            'publishedVersion',
-            'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
-        ]);
+        $config = $config->fresh(AiScenarioAdminSerializer::configRelations());
 
         return response()->json([
             'message' => $message,
-            'version' => $this->serializeVersion($version->fresh(['creator', 'approver'])),
-            'config' => $this->serializeConfig($config),
+            'version' => AiScenarioAdminSerializer::serializeVersion(
+                $version->fresh(AiScenarioAdminSerializer::versionRelations()),
+                $config,
+            ),
+            'config' => AiScenarioAdminSerializer::serializeConfig($config),
         ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function serializeConfig(AiScenarioConfig $config): array
-    {
-        return [
-            'id' => $config->id,
-            'training_module_id' => $config->training_module_id,
-            'training_module' => $config->trainingModule,
-            'difficulty' => $config->difficulty,
-            'number_of_questions' => $config->number_of_questions,
-            'generation_language' => $config->generation_language,
-            'is_enabled' => $config->is_enabled,
-            'time_limit_minutes' => $config->time_limit_minutes,
-            'max_attempts' => $config->max_attempts,
-            'passing_score' => $config->passing_score,
-            'fail_retake_policy' => $config->fail_retake_policy,
-            'auto_submit_on_expire' => $config->auto_submit_on_expire,
-            'allow_resume_attempt' => $config->allow_resume_attempt,
-            'shuffle_questions' => $config->shuffle_questions,
-            'shuffle_answer_choices' => $config->shuffle_answer_choices,
-            'current_version_id' => $config->current_version_id,
-            'published_version_id' => $config->published_version_id,
-            'current_version' => $config->currentVersion ? $this->serializeVersion($config->currentVersion) : null,
-            'published_version' => $config->publishedVersion ? $this->serializeVersion($config->publishedVersion) : null,
-            'versions' => $config->versions?->map(fn ($v) => $this->serializeVersion($v))->values() ?? [],
-            'generated_at' => $config->generated_at,
-            'updated_at' => $config->updated_at,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function serializeVersion(AiScenarioAssessmentVersion $version): array
-    {
-        return [
-            'id' => $version->id,
-            'ai_scenario_config_id' => $version->ai_scenario_config_id,
-            'version_number' => $version->version_number,
-            'status' => $version->status,
-            'disaster_type' => $version->disaster_type,
-            'difficulty' => $version->difficulty,
-            'estimated_time_minutes' => $version->estimated_time_minutes,
-            'scenario_title' => $version->scenario_title,
-            'title_en' => $version->title_en,
-            'title_fil' => $version->title_fil,
-            'generated_scenario' => $version->generated_scenario,
-            'description_en' => $version->description_en,
-            'description_fil' => $version->description_fil,
-            'learning_objectives_en' => $version->learning_objectives_en,
-            'learning_objectives_fil' => $version->learning_objectives_fil,
-            'generated_questions' => $version->generated_questions ?? [],
-            'generated_language' => $version->generated_language,
-            'change_note' => $version->change_note,
-            'parent_version_id' => $version->parent_version_id,
-            'created_by' => $version->created_by,
-            'approved_by' => $version->approved_by,
-            'approved_at' => $version->approved_at,
-            'published_at' => $version->published_at,
-            'created_at' => $version->created_at,
-            'updated_at' => $version->updated_at,
-            'creator' => $version->creator,
-            'approver' => $version->approver,
-            'question_count' => count($version->generated_questions ?? []),
-        ];
     }
 
     protected function assertVersionBelongsToConfig(AiScenarioAssessmentVersion $version, AiScenarioConfig $config): void

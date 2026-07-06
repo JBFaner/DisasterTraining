@@ -7,6 +7,7 @@ use App\Models\AiScenarioConfig;
 use App\Models\TrainingModule;
 use App\Services\AiScenarioTrainingService;
 use App\Services\AuditLogger;
+use App\Support\AiScenarioAdminSerializer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,15 +27,10 @@ class AiScenarioConfigController extends Controller
             ->orderBy('title')
             ->get();
 
-        $configs = AiScenarioConfig::with([
-            'trainingModule',
-            'creator',
-            'currentVersion.creator',
-            'publishedVersion',
-            'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
-        ])
+        $configs = AiScenarioConfig::with(AiScenarioAdminSerializer::configRelations())
             ->orderByDesc('updated_at')
-            ->get();
+            ->get()
+            ->map(fn (AiScenarioConfig $config) => AiScenarioAdminSerializer::serializeConfig($config));
 
         return view('app', [
             'section' => 'ai_scenario_training',
@@ -79,14 +75,11 @@ class AiScenarioConfigController extends Controller
         ]);
 
         if ($request->expectsJson()) {
+            $fresh = $config->fresh(AiScenarioAdminSerializer::configRelations());
+
             return response()->json([
                 'message' => 'Configuration saved.',
-                'config' => $config->fresh([
-                    'trainingModule',
-                    'currentVersion.creator',
-                    'publishedVersion',
-                    'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
-                ]),
+                'config' => AiScenarioAdminSerializer::serializeConfig($fresh),
             ]);
         }
 
@@ -112,14 +105,11 @@ class AiScenarioConfigController extends Controller
             ]);
 
             if ($request->expectsJson()) {
+                $fresh = $config->fresh(AiScenarioAdminSerializer::configRelations());
+
                 return response()->json([
                     'message' => 'Scenario and quiz generated successfully.',
-                    'config' => $config->fresh([
-                    'trainingModule',
-                    'currentVersion.creator',
-                    'publishedVersion',
-                    'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
-                ]),
+                    'config' => AiScenarioAdminSerializer::serializeConfig($fresh),
                 ]);
             }
 

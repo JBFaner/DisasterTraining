@@ -15,6 +15,7 @@ import {
     Video,
     X,
 } from 'lucide-react';
+import { getCsrfHeaders, getCsrfToken, pingSessionActivity } from '../utils/csrf';
 
 const CONTENT_TYPE_LABELS = {
     text: 'Text Lesson',
@@ -103,8 +104,67 @@ function ContentTypeIcon({ type }) {
     return <FileText className="w-5 h-5 text-slate-600" />;
 }
 
+async function submitTrainingForm(form, moduleId) {
+    const ping = await pingSessionActivity();
+    if (!ping.ok) {
+        const message = ping.status === 419 || ping.status === 401
+            ? 'Your session expired. Please refresh the page and try again.'
+            : 'Could not verify your session. Please refresh and try again.';
+        await Swal.fire({ icon: 'error', title: 'Session error', text: message });
+        return false;
+    }
+
+    const token = getCsrfToken();
+    const formData = new FormData(form);
+    formData.set('_token', token);
+
+    const spoofedMethod = formData.get('_method');
+    const method = spoofedMethod ? 'POST' : (form.getAttribute('method') || 'POST').toUpperCase();
+
+    const response = await fetch(form.action, {
+        method,
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'text/html,application/xhtml+xml',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...getCsrfHeaders(),
+        },
+        redirect: 'manual',
+    });
+
+    if (response.status === 419) {
+        await Swal.fire({ icon: 'error', title: 'Session expired', text: 'Please refresh the page and try again.' });
+        return false;
+    }
+
+    if (response.status === 422) {
+        const data = await response.json().catch(() => ({}));
+        const errors = data.errors ? Object.values(data.errors).flat().join('\n') : data.message;
+        await Swal.fire({ icon: 'error', title: 'Validation failed', text: errors || 'Please check the form and try again.' });
+        return false;
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('Location');
+        const showUrl = `/admin/training-modules/${moduleId}`;
+        const nextUrl = location && !location.includes('/contents')
+            ? new URL(location, window.location.origin).pathname
+            : showUrl;
+        window.location.assign(nextUrl);
+        return true;
+    }
+
+    if (!response.ok) {
+        await Swal.fire({ icon: 'error', title: 'Request failed', text: 'Could not save changes. Please try again.' });
+        return false;
+    }
+
+    window.location.assign(`/admin/training-modules/${moduleId}`);
+    return true;
+}
+
 export function TrainingModuleDetail({ module }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const rootEl = document.getElementById('app');
     const flashStatus = rootEl?.getAttribute('data-status') || '';
     const flashErrors = React.useMemo(() => {
@@ -149,18 +209,65 @@ export function TrainingModuleDetail({ module }) {
 
         const order = current.map((c) => c.id);
         try {
+            await pingSessionActivity();
+            const token = getCsrfToken();
             const formData = new FormData();
-            formData.append('_token', csrf);
+            formData.append('_token', token);
             order.forEach((id, index) => formData.append(`order[${index}]`, id));
 
-            await fetch(`/admin/training-modules/${module.id}/contents/reorder`, {
+            const response = await fetch(`/admin/training-modules/${module.id}/contents/reorder`, {
                 method: 'POST',
                 body: formData,
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
             });
+
+            if (response.status === 419) {
+                await Swal.fire({ icon: 'error', title: 'Session expired', text: 'Please refresh the page and try again.' });
+            }
         } catch (e) {
             console.error('Failed to reorder contents', e);
         }
+    };
+
+    const handleAddContent = async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const fileInput = form.querySelector('input[name="file"]');
+
+        if (fileInput?.files?.length) {
+            const result = await Swal.fire({
+                title: 'Storage location',
+                text: 'Choose where to store the uploaded file.',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Cloudinary',
+                denyButtonText: 'Local storage',
+                cancelButtonText: 'Cancel',
+            });
+            if (result.isDismissed) return;
+            form.querySelector('input[name="storage_target"]').value = result.isConfirmed ? 'cloudinary' : 'local';
+        }
+
+        await submitTrainingForm(form, module.id);
+    };
+
+    const handleDeleteContent = async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const ok = await Swal.fire({ title: 'Delete content?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
+        if (!ok.isConfirmed) return;
+        await submitTrainingForm(form, module.id);
+    };
+
+    const handleEditContent = async (e) => {
+        e.preventDefault();
+        await submitTrainingForm(e.currentTarget, module.id);
     };
 
     const handleContentClick = (content) => {
@@ -283,12 +390,8 @@ export function TrainingModuleDetail({ module }) {
                                         <button type="button" onClick={() => handleContentClick(content)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200">
                                             <Eye className="w-3.5 h-3.5" /> View
                                         </button>
-                                        <form method="POST" action={`/admin/training-modules/${module.id}/contents/${content.id}`} onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const ok = await Swal.fire({ title: 'Delete content?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
-                                            if (ok.isConfirmed) e.target.submit();
-                                        }}>
-                                            <input type="hidden" name="_token" value={csrf} />
+                                        <form method="POST" action={`/admin/training-modules/${module.id}/contents/${content.id}`} onSubmit={handleDeleteContent}>
+                                            <input type="hidden" name="_token" value={getCsrfToken()} />
                                             <input type="hidden" name="_method" value="DELETE" />
                                             <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
                                                 <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -308,27 +411,9 @@ export function TrainingModuleDetail({ module }) {
                         action={`/admin/training-modules/${module.id}/contents`}
                         encType="multipart/form-data"
                         className="space-y-3 rounded-2xl bg-white border border-slate-200 shadow-md p-5"
-                        onSubmit={async (e) => {
-                            const form = e.currentTarget;
-                            const fileInput = form.querySelector('input[name="file"]');
-                            if (!fileInput?.files?.length) return;
-                            e.preventDefault();
-                            const result = await Swal.fire({
-                                title: 'Storage location',
-                                text: 'Choose where to store the uploaded file.',
-                                icon: 'question',
-                                showCancelButton: true,
-                                showDenyButton: true,
-                                confirmButtonText: 'Cloudinary',
-                                denyButtonText: 'Local storage',
-                                cancelButtonText: 'Cancel',
-                            });
-                            if (result.isDismissed) return;
-                            form.querySelector('input[name="storage_target"]').value = result.isConfirmed ? 'cloudinary' : 'local';
-                            form.submit();
-                        }}
+                        onSubmit={handleAddContent}
                     >
-                        <input type="hidden" name="_token" value={csrf} />
+                        <input type="hidden" name="_token" value={getCsrfToken()} />
                         <input type="hidden" name="storage_target" value="auto" />
                         <div>
                             <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">Title *</label>
@@ -389,8 +474,8 @@ export function TrainingModuleDetail({ module }) {
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-6">
                                     {isEditMode ? (
-                                        <form method="POST" action={`/admin/training-modules/${module.id}/contents/${selectedContent.id}`} encType="multipart/form-data" className="space-y-4">
-                                            <input type="hidden" name="_token" value={csrf} />
+                                        <form method="POST" action={`/admin/training-modules/${module.id}/contents/${selectedContent.id}`} encType="multipart/form-data" className="space-y-4" onSubmit={handleEditContent}>
+                                            <input type="hidden" name="_token" value={getCsrfToken()} />
                                             <input type="hidden" name="_method" value="PUT" />
                                             <input name="title" type="text" required value={editFormData.title} onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
                                             <select name="content_type" value={editFormData.content_type} onChange={(e) => setEditFormData({ ...editFormData, content_type: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">

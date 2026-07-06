@@ -586,27 +586,7 @@ PROMPT;
 
         $normalized = [];
         foreach ($questions as $index => $question) {
-            $number = (int) ($question['number'] ?? ($index + 1));
-            $choices = $question['choices'] ?? [];
-            $correct = strtoupper((string) ($question['correct_answer'] ?? 'A'));
-
-            if (! in_array($correct, ['A', 'B', 'C', 'D'], true)) {
-                $correct = 'A';
-            }
-
-            $normalized[] = [
-                'number' => $number,
-                'competency' => $this->normalizeQuizCompetency($question['competency'] ?? null, $index, $expectedCount),
-                'question' => (string) ($question['question'] ?? ''),
-                'choices' => [
-                    'A' => (string) ($choices['A'] ?? ''),
-                    'B' => (string) ($choices['B'] ?? ''),
-                    'C' => (string) ($choices['C'] ?? ''),
-                    'D' => (string) ($choices['D'] ?? ''),
-                ],
-                'correct_answer' => $correct,
-                'explanation' => (string) ($question['explanation'] ?? ''),
-            ];
+            $normalized[] = $this->normalizeQuizQuestionRecord($question, $index, $expectedCount);
         }
 
         usort($normalized, fn ($a, $b) => $a['number'] <=> $b['number']);
@@ -618,6 +598,65 @@ PROMPT;
             'learning_objectives' => $json['learning_objectives'] ?? [],
             'questions' => array_values($normalized),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function normalizeQuizQuestionRecord(array $question, int $index, int $expectedCount): array
+    {
+        $number = (int) ($question['number'] ?? ($index + 1));
+        $choices = $question['choices'] ?? [];
+        $correct = strtoupper((string) ($question['correct_answer'] ?? 'A'));
+
+        if (! in_array($correct, ['A', 'B', 'C', 'D'], true)) {
+            $correct = 'A';
+        }
+
+        return [
+            'number' => $number,
+            'competency' => $this->normalizeQuizCompetency($question['competency'] ?? null, $index, $expectedCount),
+            'question' => (string) ($question['question'] ?? ''),
+            'choices' => [
+                'A' => (string) ($choices['A'] ?? ''),
+                'B' => (string) ($choices['B'] ?? ''),
+                'C' => (string) ($choices['C'] ?? ''),
+                'D' => (string) ($choices['D'] ?? ''),
+            ],
+            'correct_answer' => $correct,
+            'explanation' => (string) ($question['explanation'] ?? ''),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function parseSingleQuizQuestionFromText(string $text, int $questionNumber): array
+    {
+        $cleanText = preg_replace('/```json\s*/i', '', $text);
+        $cleanText = preg_replace('/```\s*/', '', $cleanText ?? '');
+        $cleanText = trim($cleanText ?? '');
+
+        if (! preg_match('/\{[\s\S]*\}/', $cleanText, $matches)) {
+            throw new \Exception('Could not extract JSON from AI response.');
+        }
+
+        $json = json_decode($matches[0], true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('Invalid JSON in AI response: '.json_last_error_msg());
+        }
+
+        if (isset($json['questions'][0]) && is_array($json['questions'][0])) {
+            $question = $json['questions'][0];
+        } elseif (isset($json['question'])) {
+            $question = $json;
+        } else {
+            throw new \Exception('AI response did not include a question.');
+        }
+
+        $question['number'] = $questionNumber;
+
+        return $this->normalizeQuizQuestionRecord($question, 0, 1);
     }
 
     private function normalizeQuizCompetency(?string $value, int $index, int $total): string
@@ -660,8 +699,7 @@ Return ONLY valid JSON:
 PROMPT;
 
         $text = $this->generateContentText($prompt);
-        $parsed = $this->parseTrainingScenarioQuizFromText($text, 1);
 
-        return $parsed['questions'][0] ?? throw new \Exception('AI did not return a question.');
+        return $this->parseSingleQuizQuestionFromText($text, $questionNumber);
     }
 }

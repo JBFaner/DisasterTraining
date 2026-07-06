@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AiScenarioAttempt;
+use App\Models\AiScenarioAssessmentVersion;
 use App\Models\AiScenarioConfig;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
@@ -82,7 +83,20 @@ class AiScenarioTrainingService
         $config->is_enabled = false;
         $config->save();
 
-        $this->workflowService->createVersionFromGeneration($config, $bilingual, 'AI Generated');
+        $config->loadMissing('currentVersion');
+        $currentDraft = $config->currentVersion;
+
+        if (
+            $currentDraft
+            && ! in_array($currentDraft->status, [
+                AiScenarioAssessmentVersion::STATUS_PUBLISHED,
+                AiScenarioAssessmentVersion::STATUS_ARCHIVED,
+            ], true)
+        ) {
+            $this->workflowService->replaceDraftFromGeneration($currentDraft, $bilingual, 'AI Regenerated');
+        } else {
+            $this->workflowService->createVersionFromGeneration($config, $bilingual, 'AI Generated');
+        }
 
         return $config->fresh(['trainingModule', 'currentVersion', 'publishedVersion']);
     }

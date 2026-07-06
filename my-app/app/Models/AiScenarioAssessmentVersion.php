@@ -31,6 +31,7 @@ class AiScenarioAssessmentVersion extends Model
     public const EDITABLE_STATUSES = [
         self::STATUS_AI_GENERATED,
         self::STATUS_UNDER_REVIEW,
+        self::STATUS_APPROVED,
     ];
 
     protected $fillable = [
@@ -56,12 +57,16 @@ class AiScenarioAssessmentVersion extends Model
         'approved_by',
         'approved_at',
         'published_at',
+        'published_by',
+        'last_edited_by',
+        'last_edited_at',
     ];
 
     protected $casts = [
         'generated_questions' => 'array',
         'approved_at' => 'datetime',
         'published_at' => 'datetime',
+        'last_edited_at' => 'datetime',
         'version_number' => 'integer',
         'estimated_time_minutes' => 'integer',
     ];
@@ -89,6 +94,16 @@ class AiScenarioAssessmentVersion extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by');
+    }
+
+    public function lastEditor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'last_edited_by');
     }
 
     public function isEditable(): bool

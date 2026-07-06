@@ -60,6 +60,60 @@ class AiScenarioWorkflowService
     }
 
     /**
+     * @param  array<string, mixed>  $bilingualContent
+     */
+    public function replaceDraftFromGeneration(
+        AiScenarioAssessmentVersion $version,
+        array $bilingualContent,
+        string $changeNote = 'AI Regenerated',
+    ): AiScenarioAssessmentVersion {
+        if (in_array($version->status, [
+            AiScenarioAssessmentVersion::STATUS_PUBLISHED,
+            AiScenarioAssessmentVersion::STATUS_ARCHIVED,
+        ], true)) {
+            throw ValidationException::withMessages([
+                'version' => 'Published or archived versions cannot be replaced. Generate a new version instead.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($version, $bilingualContent, $changeNote) {
+            $questions = $this->normalizeQuestionsForStorage($bilingualContent['generated_questions'] ?? []);
+            $config = $version->config()->firstOrFail();
+
+            $version->update([
+                'status' => AiScenarioAssessmentVersion::STATUS_AI_GENERATED,
+                'disaster_type' => $bilingualContent['disaster_type'] ?? $config->trainingModule?->category,
+                'difficulty' => $config->difficulty,
+                'estimated_time_minutes' => $config->time_limit_minutes,
+                'scenario_title' => $bilingualContent['scenario_title'] ?? $bilingualContent['title_en'] ?? null,
+                'title_en' => $bilingualContent['title_en'] ?? null,
+                'title_fil' => $bilingualContent['title_fil'] ?? null,
+                'generated_scenario' => $bilingualContent['generated_scenario'] ?? $bilingualContent['description_en'] ?? null,
+                'description_en' => $bilingualContent['description_en'] ?? null,
+                'description_fil' => $bilingualContent['description_fil'] ?? null,
+                'learning_objectives_en' => $bilingualContent['learning_objectives_en'] ?? null,
+                'learning_objectives_fil' => $bilingualContent['learning_objectives_fil'] ?? null,
+                'generated_questions' => $questions,
+                'generated_language' => $bilingualContent['generated_language'] ?? 'en',
+                'change_note' => $changeNote,
+                'approved_by' => null,
+                'approved_at' => null,
+                'published_at' => null,
+                'published_by' => null,
+                'last_edited_by' => null,
+                'last_edited_at' => null,
+            ]);
+
+            $config->update([
+                'current_version_id' => $version->id,
+                'is_enabled' => false,
+            ]);
+
+            return $version->fresh(['creator', 'config.trainingModule']);
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $scenarioData
      */
     public function updateScenario(AiScenarioAssessmentVersion $version, array $scenarioData): AiScenarioAssessmentVersion
@@ -80,6 +134,7 @@ class AiScenarioWorkflowService
             'generated_scenario' => $scenarioData['description_en'] ?? $version->generated_scenario,
             'status' => AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW,
         ]);
+        $this->touchDraftEdit($version);
         $version->save();
 
         return $version->fresh();
@@ -98,6 +153,7 @@ class AiScenarioWorkflowService
 
         $version->generated_questions = $this->renumberQuestions($questions);
         $version->status = AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW;
+        $this->touchDraftEdit($version);
         $version->save();
 
         return $version->fresh();
@@ -135,6 +191,7 @@ class AiScenarioWorkflowService
 
         $version->generated_questions = $questions;
         $version->status = AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW;
+        $this->touchDraftEdit($version);
         $version->save();
 
         return $version->fresh();
@@ -151,6 +208,7 @@ class AiScenarioWorkflowService
 
         $version->generated_questions = $this->renumberQuestions($questions);
         $version->status = AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW;
+        $this->touchDraftEdit($version);
         $version->save();
 
         return $version->fresh();
@@ -175,6 +233,7 @@ class AiScenarioWorkflowService
 
         $version->generated_questions = $this->renumberQuestions($questions);
         $version->status = AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW;
+        $this->touchDraftEdit($version);
         $version->save();
 
         return $version->fresh();
@@ -228,6 +287,7 @@ class AiScenarioWorkflowService
 
         $version->generated_questions = $questions;
         $version->status = AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW;
+        $this->touchDraftEdit($version);
         $version->save();
 
         return $version->fresh();
@@ -235,8 +295,13 @@ class AiScenarioWorkflowService
 
     public function saveDraft(AiScenarioAssessmentVersion $version): AiScenarioAssessmentVersion
     {
-        if ($version->status === AiScenarioAssessmentVersion::STATUS_APPROVED) {
-            $version = $this->forkForEdit($version, 'Returned to draft by administrator');
+        if (in_array($version->status, [
+            AiScenarioAssessmentVersion::STATUS_PUBLISHED,
+            AiScenarioAssessmentVersion::STATUS_ARCHIVED,
+        ], true)) {
+            throw ValidationException::withMessages([
+                'version' => 'Published or archived versions cannot be returned to draft.',
+            ]);
         }
 
         $version->update(['status' => AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW]);
@@ -306,6 +371,7 @@ class AiScenarioWorkflowService
                 'generated_questions' => $questions,
                 'status' => AiScenarioAssessmentVersion::STATUS_PUBLISHED,
                 'published_at' => now(),
+                'published_by' => portal_id(),
             ]);
 
             $config->update([
@@ -323,8 +389,14 @@ class AiScenarioWorkflowService
                 'generated_language' => $version->generated_language,
             ]);
 
-            return $version->fresh(['config.trainingModule', 'creator', 'approver']);
+            return $version->fresh(['config.trainingModule', 'creator', 'approver', 'publisher', 'lastEditor']);
         });
+    }
+
+    protected function touchDraftEdit(AiScenarioAssessmentVersion $version): void
+    {
+        $version->last_edited_by = portal_id();
+        $version->last_edited_at = now();
     }
 
     public function restoreVersion(AiScenarioAssessmentVersion $source): AiScenarioAssessmentVersion
@@ -466,38 +538,6 @@ class AiScenarioWorkflowService
         return ['valid' => true, 'errors' => []];
     }
 
-    protected function forkForEdit(AiScenarioAssessmentVersion $version, string $changeNote): AiScenarioAssessmentVersion
-    {
-        $config = $version->config()->firstOrFail();
-        $versionNumber = $this->nextVersionNumber($config);
-
-        $new = AiScenarioAssessmentVersion::create([
-            'ai_scenario_config_id' => $config->id,
-            'version_number' => $versionNumber,
-            'status' => AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW,
-            'disaster_type' => $version->disaster_type,
-            'difficulty' => $version->difficulty,
-            'estimated_time_minutes' => $version->estimated_time_minutes,
-            'scenario_title' => $version->scenario_title,
-            'title_en' => $version->title_en,
-            'title_fil' => $version->title_fil,
-            'generated_scenario' => $version->generated_scenario,
-            'description_en' => $version->description_en,
-            'description_fil' => $version->description_fil,
-            'learning_objectives_en' => $version->learning_objectives_en,
-            'learning_objectives_fil' => $version->learning_objectives_fil,
-            'generated_questions' => $version->generated_questions,
-            'generated_language' => $version->generated_language,
-            'change_note' => $changeNote,
-            'parent_version_id' => $version->id,
-            'created_by' => portal_id(),
-        ]);
-
-        $config->update(['current_version_id' => $new->id]);
-
-        return $new;
-    }
-
     protected function resolveEditableVersion(
         AiScenarioAssessmentVersion $version,
         string $forkNote,
@@ -511,15 +551,7 @@ class AiScenarioWorkflowService
             ]);
         }
 
-        if ($version->status === AiScenarioAssessmentVersion::STATUS_APPROVED) {
-            return $this->forkForEdit($version, $forkNote);
-        }
-
-        if ($version->status === AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW) {
-            return $version;
-        }
-
-        return $this->forkForEdit($version, $forkNote);
+        return $version;
     }
 
     protected function nextVersionNumber(AiScenarioConfig $config): int
