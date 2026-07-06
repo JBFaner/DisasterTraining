@@ -244,6 +244,7 @@ class AiScenarioWorkflowService
         return $version->fresh();
     }
 
+    public function approveVersion(AiScenarioAssessmentVersion $version): AiScenarioAssessmentVersion
     {
         $this->validateForPublish($version->config, $version);
 
@@ -267,10 +268,20 @@ class AiScenarioWorkflowService
 
     public function publishVersion(AiScenarioAssessmentVersion $version): AiScenarioAssessmentVersion
     {
-        if ($version->status !== AiScenarioAssessmentVersion::STATUS_APPROVED) {
+        if ($version->status === AiScenarioAssessmentVersion::STATUS_PUBLISHED) {
             throw ValidationException::withMessages([
-                'status' => 'Only approved assessments can be published.',
+                'status' => 'This assessment is already published.',
             ]);
+        }
+
+        if ($version->status !== AiScenarioAssessmentVersion::STATUS_APPROVED) {
+            if (! in_array($version->status, AiScenarioAssessmentVersion::EDITABLE_STATUSES, true)) {
+                throw ValidationException::withMessages([
+                    'status' => 'This assessment cannot be published.',
+                ]);
+            }
+
+            $version = $this->approveVersion($version);
         }
 
         $this->validateForPublish($version->config, $version);
@@ -377,6 +388,31 @@ class AiScenarioWorkflowService
             $config->update(['current_version_id' => $version->id]);
 
             return $version->fresh();
+        });
+    }
+
+    public function destroyVersion(AiScenarioAssessmentVersion $version): void
+    {
+        if ($version->status === AiScenarioAssessmentVersion::STATUS_PUBLISHED) {
+            throw ValidationException::withMessages([
+                'version' => 'Published assessments cannot be deleted.',
+            ]);
+        }
+
+        $config = $version->config;
+
+        DB::transaction(function () use ($version, $config) {
+            $versionId = $version->id;
+            $version->delete();
+
+            if ($config->current_version_id === $versionId) {
+                $latest = AiScenarioAssessmentVersion::query()
+                    ->where('ai_scenario_config_id', $config->id)
+                    ->orderByDesc('version_number')
+                    ->first();
+
+                $config->update(['current_version_id' => $latest?->id]);
+            }
         });
     }
 

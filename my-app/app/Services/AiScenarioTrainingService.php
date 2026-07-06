@@ -18,11 +18,36 @@ class AiScenarioTrainingService
         private readonly AiScenarioWorkflowService $workflowService,
     ) {}
 
+    public function resolveDifficultyForModule(TrainingModule $module): string
+    {
+        $module->loadMissing('contents');
+
+        $label = strtolower(trim((string) $module->difficulty));
+
+        $base = match (true) {
+            in_array($label, ['beginner', 'basic', 'easy'], true) => 'easy',
+            in_array($label, ['advanced', 'hard', 'expert'], true) => 'hard',
+            default => 'medium',
+        };
+
+        $contentCount = $module->contents?->count() ?? 0;
+        if ($contentCount >= 8 && $base === 'easy') {
+            return 'medium';
+        }
+        if ($contentCount >= 12 && $base === 'medium') {
+            return 'hard';
+        }
+
+        return $base;
+    }
+
     public function generateForConfig(AiScenarioConfig $config): AiScenarioConfig
     {
         $config->loadMissing('trainingModule.contents');
 
         $module = $config->trainingModule;
+        $difficulty = $this->resolveDifficultyForModule($module);
+        $config->difficulty = $difficulty;
         $sourceLocale = $this->localeService->resolveLocale(
             $config->generation_language ?? $this->localeService->defaultLanguage(),
         );
@@ -40,7 +65,7 @@ class AiScenarioTrainingService
 
         $result = $this->gemini->generateTrainingScenarioQuiz(
             $module,
-            $config->difficulty,
+            $difficulty,
             $config->number_of_questions,
             $sourceLocale,
             $hazardContext,

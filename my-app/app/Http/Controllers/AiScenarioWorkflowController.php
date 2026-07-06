@@ -243,6 +243,34 @@ class AiScenarioWorkflowController extends Controller
         return $this->versionResponse('Version duplicated.', $config, $copy);
     }
 
+    public function destroy(AiScenarioConfig $config, AiScenarioAssessmentVersion $version)
+    {
+        $this->authorizeAdmin();
+        $this->assertVersionBelongsToConfig($version, $config);
+
+        try {
+            $this->workflowService->destroyVersion($version);
+            $this->logAction('Deleted AI scenario version '.$version->version_number, $config, $version);
+
+            $config = $config->fresh([
+                'trainingModule',
+                'currentVersion.creator',
+                'publishedVersion',
+                'versions' => fn ($q) => $q->with(['creator', 'approver'])->orderByDesc('version_number'),
+            ]);
+
+            return response()->json([
+                'message' => 'Assessment deleted.',
+                'config' => $this->serializeConfig($config),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Delete failed.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+    }
+
     protected function versionResponse(string $message, AiScenarioConfig $config, AiScenarioAssessmentVersion $version)
     {
         $config = $config->fresh([

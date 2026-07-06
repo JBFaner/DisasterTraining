@@ -49,10 +49,13 @@ class AiScenarioConfigController extends Controller
 
         $data = $request->validated();
 
+        $module = TrainingModule::with('contents')->findOrFail($data['training_module_id']);
+        $difficulty = $this->trainingService->resolveDifficultyForModule($module);
+
         $config = AiScenarioConfig::updateOrCreate(
             ['training_module_id' => $data['training_module_id']],
             [
-                'difficulty' => $data['difficulty'],
+                'difficulty' => $difficulty,
                 'number_of_questions' => $data['number_of_questions'],
                 'generation_language' => $data['generation_language'] ?? 'en',
                 'is_enabled' => $request->boolean('is_enabled'),

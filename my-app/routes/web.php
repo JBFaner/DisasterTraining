@@ -225,6 +225,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
                 ->name('admin.ai-scenario-workflow.restore');
             Route::post('/duplicate', [AiScenarioWorkflowController::class, 'duplicate'])
                 ->name('admin.ai-scenario-workflow.duplicate');
+            Route::delete('/', [AiScenarioWorkflowController::class, 'destroy'])
+                ->name('admin.ai-scenario-workflow.destroy');
         });
 
         // Scenarios

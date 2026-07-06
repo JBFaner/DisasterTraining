@@ -522,7 +522,7 @@ Training Module Title: {$module->title}
 Module Description: {$module->description}
 Learning Objectives: {$objectives}
 Module Difficulty Level: {$module->difficulty}
-Assessment Difficulty: {$difficultyLabel}
+Assessment Difficulty (auto-selected from module and lesson depth): {$difficultyLabel}
 Lesson Titles and Content Summaries:
 {$lessonLines}
 

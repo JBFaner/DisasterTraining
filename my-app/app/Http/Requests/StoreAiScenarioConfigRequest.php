@@ -19,7 +19,6 @@ class StoreAiScenarioConfigRequest extends FormRequest
     {
         return [
             'training_module_id' => ['required', 'integer', 'exists:training_modules,id'],
-            'difficulty' => ['required', Rule::in(AiScenarioConfig::DIFFICULTIES)],
             'number_of_questions' => ['required', Rule::in(AiScenarioConfig::QUESTION_COUNTS)],
             'generation_language' => ['sometimes', Rule::in(AiScenarioConfig::LANGUAGES)],
             'is_enabled' => ['sometimes', 'boolean'],
