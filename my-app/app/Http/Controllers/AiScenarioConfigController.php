@@ -4,17 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAiScenarioConfigRequest;
 use App\Models\AiScenarioConfig;
+use App\Models\AiScenarioGenerationJob;
 use App\Models\TrainingModule;
+use App\Services\AiScenarioGenerationProcessor;
 use App\Services\AiScenarioTrainingService;
 use App\Services\AuditLogger;
 use App\Support\AiScenarioAdminSerializer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class AiScenarioConfigController extends Controller
 {
     public function __construct(
         private readonly AiScenarioTrainingService $trainingService,
+        private readonly AiScenarioGenerationProcessor $generationProcessor,
     ) {}
 
     public function index()
@@ -33,7 +36,7 @@ class AiScenarioConfigController extends Controller
             ->map(fn (AiScenarioConfig $config) => AiScenarioAdminSerializer::serializeConfig($config));
 
         return view('app', [
-            'section' => 'ai_scenario_training',
+            'section' => 'ai_scenario_final_assessment',
             'ai_scenario_modules' => $modules,
             'ai_scenario_configs' => $configs,
         ]);
@@ -69,7 +72,7 @@ class AiScenarioConfigController extends Controller
 
         AuditLogger::log([
             'action' => 'Updated AI scenario configuration',
-            'module' => 'AI Scenario Training',
+            'module' => 'Final AI Scenario Assessment',
             'status' => 'success',
             'description' => 'Module ID: '.$config->training_module_id,
         ]);
@@ -92,30 +95,33 @@ class AiScenarioConfigController extends Controller
     {
         $this->authorizeAdmin();
 
-        set_time_limit((int) config('ai_scenario.generation_max_execution_seconds', 300));
+        $user = portal_user();
+        if (! $user) {
+            abort(403);
+        }
 
         try {
-            $config = $this->trainingService->generateForConfig($config);
+            $job = $this->generationProcessor->queueGeneration($config, $user);
 
             AuditLogger::log([
-                'action' => 'Generated AI scenario quiz',
-                'module' => 'AI Scenario Training',
+                'action' => 'Queued AI scenario assessment generation',
+                'module' => 'Final AI Scenario Assessment',
                 'status' => 'success',
-                'description' => $config->scenario_title,
+                'description' => 'Config ID: '.$config->id.'; Job ID: '.$job->id,
             ]);
 
             if ($request->expectsJson()) {
-                $fresh = $config->fresh(AiScenarioAdminSerializer::configRelations());
-
                 return response()->json([
-                    'message' => 'Scenario and quiz generated successfully.',
-                    'config' => AiScenarioAdminSerializer::serializeConfig($fresh),
-                ]);
+                    'message' => 'AI Scenario generation has started. You may continue using the system.',
+                    'generation_job' => $this->generationProcessor->serializeJob($job),
+                ], 202);
             }
 
             return redirect()
                 ->route('admin.ai-scenario-config.index')
-                ->with('status', 'AI scenario and quiz generated successfully.');
+                ->with('status', 'AI Scenario generation has started. You may continue using the system.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 422);
@@ -125,6 +131,34 @@ class AiScenarioConfigController extends Controller
                 ->back()
                 ->withErrors(['ai_generation' => $e->getMessage()]);
         }
+    }
+
+    public function generationStatus(AiScenarioGenerationJob $generationJob)
+    {
+        $this->authorizeAdmin();
+
+        $user = portal_user();
+        if (! $user || (int) $generationJob->requested_by !== (int) $user->id) {
+            abort(403);
+        }
+
+        $generationJob->loadMissing('version');
+
+        $payload = [
+            'generation_job' => $this->generationProcessor->serializeJob($generationJob),
+        ];
+
+        if ($generationJob->status === AiScenarioGenerationJob::STATUS_COMPLETED) {
+            $config = $generationJob->config()
+                ->with(AiScenarioAdminSerializer::configRelations())
+                ->first();
+
+            if ($config) {
+                $payload['config'] = AiScenarioAdminSerializer::serializeConfig($config);
+            }
+        }
+
+        return response()->json($payload);
     }
 
     protected function authorizeAdmin(): void

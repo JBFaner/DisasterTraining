@@ -1,6 +1,4 @@
 import React from 'react';
-import Swal from 'sweetalert2';
-import { getLogoutUrl } from '../utils/portalAuth';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
 import {
     LayoutDashboard,
@@ -13,7 +11,6 @@ import {
     Award,
     ShieldCheck,
     ClipboardCheck,
-    LogOut,
     UserCircle,
     ChevronLeft,
     ChevronRight,
@@ -93,34 +90,6 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     const openRightDrawer = () => {
         setIsLeftDrawerOpen(false);
         setIsRightDrawerOpen(true);
-    };
-
-    const handleLogoutClick = (event) => {
-        event.preventDefault();
-
-        const form = event.currentTarget.form;
-        if (!form) return;
-
-        Swal.fire({
-            title: 'Logout',
-            text: 'Are you sure you want to log out?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, logout',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            reverseButtons: true,
-            customClass: {
-                popup: 'rounded-xl',
-                confirmButton: 'rounded-md text-sm font-medium',
-                cancelButton: 'rounded-md text-sm font-medium',
-            },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        });
     };
 
     return (
@@ -267,21 +236,6 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         <Settings className="w-5 h-5 text-emerald-400" />
                         <span className="text-sm font-medium">Account Settings</span>
                     </a>
-                    <div className="border-t border-slate-800 my-2"></div>
-                    <form method="POST" action={getLogoutUrl()} className="w-full">
-                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                        <button
-                            type="submit"
-                            onClick={(e) => {
-                                setIsRightDrawerOpen(false);
-                                handleLogoutClick(e);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-slate-800/80 hover:text-rose-400 transition-colors"
-                        >
-                            <LogOut className="w-5 h-5 text-rose-400" />
-                            <span className="text-sm font-medium">Logout</span>
-                        </button>
-                    </form>
                 </div>
             </aside>
 
@@ -333,38 +287,6 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         <ScrollArea.Thumb className="flex-1 rounded-full bg-slate-700" />
                     </ScrollArea.Scrollbar>
                 </ScrollArea.Root>
-
-                {/* User footer */}
-                <div className={`border-t border-slate-800 px-4 py-3 flex items-center justify-between gap-2 text-xs shrink-0 ${isCollapsed ? 'flex-col gap-3' : ''}`}>
-                    {!isCollapsed && (
-                        <div className="flex items-center gap-2 min-w-0">
-                            <img src="/logo.svg" alt="LGU Logo" className="h-5 w-auto opacity-80 shrink-0" />
-                            <div className="truncate">
-                                <span className="text-slate-400">
-                                    {role === 'LGU_ADMIN' && 'LGU Admin'}
-                                    {role === 'LGU_TRAINER' && 'Trainer'}
-                                    {role === 'STAFF' && 'Staff'}
-                                    {role === 'PARTICIPANT' && 'Viewer'}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-                    {isCollapsed && (
-                        <img src="/logo.svg" alt="LGU Logo" className="h-5 w-auto opacity-80 mx-auto" />
-                    )}
-                    <form method="POST" action={getLogoutUrl()} className={isCollapsed ? 'w-full flex justify-center' : ''}>
-                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                        <button
-                            type="submit"
-                            onClick={handleLogoutClick}
-                            className={`inline-flex items-center gap-1.5 text-slate-400 hover:text-rose-400 transition-colors shrink-0 ${isCollapsed ? 'justify-center' : ''}`}
-                            title="Logout"
-                        >
-                            <LogOut className="w-4 h-4" />
-                            {!isCollapsed && <span className="hidden xl:inline">Logout</span>}
-                        </button>
-                    </form>
-                </div>
             </aside>
 
             {/* Main content */}
@@ -514,13 +436,25 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />
-                    <NavItem
+                    <NavGroup
                         icon={Sparkles}
                         label="AI Scenario Training"
-                        href="/admin/ai-scenario-training"
-                        active={currentSection === 'ai_scenario_training'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
+                        items={[
+                            {
+                                label: 'Lesson Quiz Generator',
+                                href: '/admin/ai-scenario-training/lesson-quiz-generator',
+                                icon: BookOpen,
+                                active: currentSection === 'lesson_quiz_generator',
+                            },
+                            {
+                                label: 'Final AI Scenario Assessment',
+                                href: '/admin/ai-scenario-training/final-assessment',
+                                icon: Sparkles,
+                                active: currentSection === 'ai_scenario_final_assessment' || currentSection === 'ai_scenario_training' || currentSection === 'ai_scenario_config',
+                            },
+                        ]}
                     />
                     <NavItem
                         icon={ClipboardList}

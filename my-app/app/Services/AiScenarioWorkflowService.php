@@ -197,6 +197,44 @@ class AiScenarioWorkflowService
         return $version->fresh();
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    public function bulkUpdateQuestions(AiScenarioAssessmentVersion $version, array $items): AiScenarioAssessmentVersion
+    {
+        $version = $this->resolveEditableVersion($version, 'Questions bulk saved by administrator');
+
+        $questions = $version->generated_questions ?? [];
+
+        foreach ($items as $item) {
+            $questionNumber = (int) ($item['number'] ?? 0);
+            if ($questionNumber < 1) {
+                continue;
+            }
+
+            foreach ($questions as $index => $question) {
+                if ((int) ($question['number'] ?? 0) !== $questionNumber) {
+                    continue;
+                }
+
+                $questions[$index] = array_merge($question, $this->buildQuestionRecord(
+                    array_merge($question, $item),
+                    $questionNumber,
+                    (bool) ($question['is_manual'] ?? false),
+                ));
+                $questions[$index]['status'] = AiScenarioAssessmentVersion::QUESTION_STATUS_UNDER_REVIEW;
+                break;
+            }
+        }
+
+        $version->generated_questions = $questions;
+        $version->status = AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW;
+        $this->touchDraftEdit($version);
+        $version->save();
+
+        return $version->fresh();
+    }
+
     public function deleteQuestion(AiScenarioAssessmentVersion $version, int $questionNumber): AiScenarioAssessmentVersion
     {
         $version = $this->resolveEditableVersion($version, 'Question removed');

@@ -111,6 +111,57 @@ export function AdminSecondaryButton({
     );
 }
 
+export function AdminNumberInput({
+    value,
+    onChange,
+    min,
+    max,
+    placeholder,
+    className = '',
+    error,
+    id,
+    disabled = false,
+}) {
+    const handleFocus = (event) => {
+        event.target.select();
+    };
+
+    const handleChange = (event) => {
+        const raw = event.target.value;
+        if (raw === '') {
+            onChange('');
+            return;
+        }
+
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed)) {
+            return;
+        }
+
+        onChange(parsed);
+    };
+
+    return (
+        <div>
+            <input
+                id={id}
+                type="number"
+                min={min}
+                max={max}
+                value={value === '' || value === null || value === undefined ? '' : value}
+                onChange={handleChange}
+                onFocus={handleFocus}
+                placeholder={placeholder}
+                disabled={disabled}
+                className={`${adminCompactInputClass} ${
+                    error ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : ''
+                } ${className}`.trim()}
+            />
+            {error ? <p className="text-xs text-red-600 mt-1">{error}</p> : null}
+        </div>
+    );
+}
+
 export function AdminSearchInput({
     value,
     onChange,

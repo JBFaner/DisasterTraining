@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Utf8Sanitizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -418,6 +419,12 @@ Important:
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
         }
 
+        $prompt = Utf8Sanitizer::clean($prompt);
+
+        if ($prompt === '') {
+            throw new \Exception('Prompt is empty after UTF-8 sanitization.');
+        }
+
         if ($this->availableModels === []) {
             $this->resolveAvailableModels();
         }
@@ -484,6 +491,71 @@ Important:
         throw new \Exception('Gemini API failed: '.($lastError ?? 'Unknown error').$hint);
     }
 
+    public function extractTextFromImageFile(string $absolutePath, string $mimeType): string
+    {
+        if ($this->apiKey === '') {
+            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
+        }
+
+        if (! is_file($absolutePath)) {
+            throw new \Exception('Image file not found for OCR.');
+        }
+
+        $mimeType = str_starts_with($mimeType, 'image/') ? $mimeType : 'image/jpeg';
+        $imageData = base64_encode((string) file_get_contents($absolutePath));
+
+        if ($this->availableModels === []) {
+            $this->resolveAvailableModels();
+        }
+
+        $prompt = 'Extract all readable text from this disaster preparedness training image. '
+            .'Preserve headings, bullet lists, labels, and official terminology. '
+            .'Return plain text only without commentary.';
+
+        $apiVersion = $this->currentApiVersion ?: 'v1beta';
+        $modelsToTry = $this->getModelsToTry();
+        $lastError = null;
+
+        foreach ($modelsToTry as $model) {
+            $url = $this->baseUrl.'/'.$apiVersion.'/models/'.$model.':generateContent?key='.$this->apiKey;
+
+            try {
+                $response = Http::timeout(120)->post($url, [
+                    'contents' => [[
+                        'parts' => [
+                            ['text' => $prompt],
+                            [
+                                'inline_data' => [
+                                    'mime_type' => $mimeType,
+                                    'data' => $imageData,
+                                ],
+                            ],
+                        ],
+                    ]],
+                ]);
+
+                if ($response->successful()) {
+                    $text = $response->json('candidates.0.content.parts.0.text') ?? '';
+                    $text = Utf8Sanitizer::clean(trim($text));
+                    if ($text !== '') {
+                        $this->modelName = $model;
+
+                        return $text;
+                    }
+
+                    $lastError = 'Empty OCR response from Gemini API';
+                    continue;
+                }
+
+                $lastError = $response->json('error.message') ?? $response->body();
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+            }
+        }
+
+        throw new \Exception('Gemini image OCR failed: '.($lastError ?? 'Unknown error'));
+    }
+
     private function buildTrainingScenarioQuizPrompt(
         \App\Models\TrainingModule $module,
         string $difficulty,
@@ -497,12 +569,17 @@ Important:
 
         $lessonLines = $module->contents
             ->sortBy('sort_order')
-            ->map(function ($content, $index) {
-                $summary = $content->body
-                    ? mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags($content->body)) ?? ''), 0, 300)
-                    : strtoupper($content->content_type).' content';
+            ->map(function ($lesson, $index) {
+                $lesson->loadMissing('resources');
+                $resourceSummary = $lesson->resources
+                    ->map(fn ($resource) => $resource->title.' ('.$resource->resource_type.')')
+                    ->implode('; ');
 
-                return ($index + 1).'. '.$content->title.' — '.$summary;
+                if ($resourceSummary === '') {
+                    $resourceSummary = 'No learning resources';
+                }
+
+                return ($index + 1).'. '.$lesson->title.' — '.$resourceSummary;
             })
             ->implode("\n");
 
@@ -701,5 +778,87 @@ PROMPT;
         $text = $this->generateContentText($prompt);
 
         return $this->parseSingleQuizQuestionFromText($text, $questionNumber);
+    }
+
+    /**
+     * @return array{questions: array<int, array<string, mixed>>}
+     */
+    public function generateLessonQuizBank(
+        \App\Models\TrainingContent $content,
+        string $lessonSourceText,
+        int $questionCount = 30,
+        string $language = 'en',
+    ): array {
+        if (! $this->apiKey) {
+            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
+        }
+
+        $questionCount = max(5, min(30, $questionCount));
+        $language = in_array($language, ['en', 'fil'], true) ? $language : 'en';
+        $languageLabel = $language === 'fil' ? 'Filipino' : 'English';
+        $lessonTitle = Utf8Sanitizer::clean($content->title);
+        $lessonSourceText = Utf8Sanitizer::clean($lessonSourceText);
+
+        $prompt = <<<PROMPT
+You are a disaster preparedness training expert for Local Government Units (LGUs) in the Philippines.
+
+Using ONLY the lesson content below, generate exactly {$questionCount} multiple-choice quiz questions for a lesson question bank.
+
+Write ALL output in {$languageLabel}.
+
+Lesson Title: {$lessonTitle}
+Lesson Content (merged from all processed learning resources):
+{$lessonSourceText}
+
+Requirements:
+- Base every question strictly on the lesson content provided.
+- If a YouTube transcript is included, prioritize it over generic video assumptions.
+- Generate exactly {$questionCount} questions numbered 1 through {$questionCount}.
+- Each question must have exactly four choices labeled A, B, C, and D.
+- Each question must have one correct answer and a brief explanation.
+- Each question must include a "competency" field: one of "knowledge", "decision_making", "emergency_response", or "safety_awareness".
+
+Return ONLY valid JSON (no markdown, no code fences):
+{
+  "questions": [
+    {
+      "number": 1,
+      "competency": "knowledge",
+      "question": "Question text",
+      "choices": {"A": "...", "B": "...", "C": "...", "D": "..."},
+      "correct_answer": "B",
+      "explanation": "Brief explanation"
+    }
+  ]
+}
+PROMPT;
+
+        $generatedText = $this->generateContentText($prompt);
+        $cleanText = preg_replace('/```json\s*/i', '', $generatedText);
+        $cleanText = preg_replace('/```\s*/', '', $cleanText ?? '');
+        $cleanText = trim($cleanText ?? '');
+
+        if (! preg_match('/\{[\s\S]*\}/', $cleanText, $matches)) {
+            throw new \Exception('Could not extract JSON from AI response.');
+        }
+
+        $json = json_decode($matches[0], true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('Invalid JSON in AI response: '.json_last_error_msg());
+        }
+
+        $questions = $json['questions'] ?? [];
+        if (! is_array($questions) || count($questions) < 1) {
+            throw new \Exception('AI response did not include questions.');
+        }
+
+        $normalized = [];
+        foreach ($questions as $index => $question) {
+            $normalized[] = $this->normalizeQuizQuestionRecord($question, $index, $questionCount);
+        }
+
+        usort($normalized, fn ($a, $b) => $a['number'] <=> $b['number']);
+
+        return ['questions' => array_values(array_slice($normalized, 0, $questionCount))];
     }
 }

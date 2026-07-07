@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TrainingModule extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'title',
@@ -152,14 +154,19 @@ class TrainingModule extends Model
             $this->load('contents');
         }
 
+        $progression = app(\App\Services\LessonQuizProgressionService::class);
         $completedIds = array_flip($this->participantCompletedContentIds($userId));
 
-        $this->contents->transform(function ($content, $index) use ($completedIds) {
+        $this->contents->transform(function ($content, $index) use ($completedIds, $progression, $userId) {
             $contentId = (int) $content->id;
-            $isCompleted = isset($completedIds[$contentId]);
+            $isCompleted = $progression->participantHasCompletedLesson($this, $userId, $content)
+                || isset($completedIds[$contentId]);
             $isUnlocked = $index === 0
                 || $isCompleted
-                || ($index > 0 && isset($completedIds[(int) $this->contents[$index - 1]->id]));
+                || ($index > 0 && (
+                    $progression->participantHasCompletedLesson($this, $userId, $this->contents[$index - 1])
+                    || isset($completedIds[(int) $this->contents[$index - 1]->id])
+                ));
 
             $content->is_completed = $isCompleted;
             $content->is_unlocked = $isUnlocked;
@@ -172,19 +179,29 @@ class TrainingModule extends Model
 
     public function participantHasCompletedAllContents(int $userId): bool
     {
-        $contentIds = $this->contentIds();
+        return app(\App\Services\LessonQuizProgressionService::class)
+            ->participantHasPassedAllRequiredLessonQuizzes($this, $userId);
+    }
 
-        if (empty($contentIds)) {
-            return false;
+    public function hasParticipantLearningRecords(): bool
+    {
+        if (LessonCompletion::query()->where('training_module_id', $this->id)->exists()) {
+            return true;
         }
 
-        $completedCount = LessonCompletion::query()
-            ->where('user_id', $userId)
-            ->where('training_module_id', $this->id)
-            ->whereIn('training_content_id', $contentIds)
-            ->count();
+        if (LessonQuizAttempt::query()->where('training_module_id', $this->id)->exists()) {
+            return true;
+        }
 
-        return $completedCount >= count($contentIds);
+        if (AiScenarioAttempt::query()->where('training_module_id', $this->id)->exists()) {
+            return true;
+        }
+
+        if (EvaluationResult::query()->where('training_module_id', $this->id)->exists()) {
+            return true;
+        }
+
+        return Certificate::query()->where('training_module_id', $this->id)->exists();
     }
 
     public function getThumbnailUrlAttribute(): ?string

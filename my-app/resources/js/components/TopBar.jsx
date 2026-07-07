@@ -1,7 +1,8 @@
 import React from 'react';
 import Swal from 'sweetalert2';
 import { getLogoutUrl } from '../utils/portalAuth';
-import { Bell, ChevronDown, User, Settings, LogOut, Clock, PanelLeft } from 'lucide-react';
+import { ChevronDown, User, Settings, LogOut, Clock, PanelLeft } from 'lucide-react';
+import { NotificationCenter } from './NotificationCenter';
 
 export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSidebarCollapsed }) {
     const [currentTime, setCurrentTime] = React.useState(new Date());
@@ -139,7 +140,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
     };
 
     return (
-        <div className="no-print bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 w-full max-w-full overflow-x-hidden">
+        <div className="no-print bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 w-full max-w-full overflow-visible">
             <div className="px-6 py-2 w-full max-w-full">
                 <div className="flex items-center justify-between min-h-[3rem] w-full max-w-full">
                     {/* Left Section: Sidebar Toggle, Module Name */}
@@ -166,7 +167,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                     </div>
 
                     {/* Right Section: Time, Notifications, Profile - Centered */}
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 shrink-0 relative">
                         {/* Time/Date/Day - Hidden on mobile */}
                         <div className="hidden lg:flex flex-col items-center text-xs">
                             <div className="flex items-center gap-1 text-slate-700 font-medium">
@@ -178,15 +179,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                             </div>
                         </div>
 
-                        {/* Notification Icon - Always visible */}
-                        <button
-                            className="relative p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors flex items-center justify-center"
-                            title="Notifications"
-                        >
-                            <Bell className="w-4 h-4 drop-shadow-sm" />
-                            {/* Notification badge - can be added later */}
-                            {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
-                        </button>
+                        <NotificationCenter user={user} />
 
                         {/* Profile Dropdown - Hidden on mobile */}
                         <div className="relative hidden md:block">

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Utf8Sanitizer;
 use Illuminate\Support\Facades\Log;
 
 class AiScenarioTranslationService
@@ -63,7 +64,10 @@ class AiScenarioTranslationService
      */
     protected function buildTranslationPrompt(array $payload, string $fromLabel, string $toLabel): string
     {
-        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $json = json_encode(
+            Utf8Sanitizer::cleanArray($payload),
+            JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT,
+        );
 
         return <<<PROMPT
 You are a professional translator for disaster preparedness training materials used by Local Government Units (LGUs) in the Philippines.

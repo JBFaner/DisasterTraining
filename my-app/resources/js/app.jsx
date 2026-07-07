@@ -19,7 +19,14 @@ import { RoleEditPage } from './pages/RoleEditPage';
 import { PermissionEditPage } from './pages/PermissionEditPage';
 import { TrainingModuleDetail } from './pages/TrainingModuleDetail';
 import { AiScenarioTrainingModule } from './components/AiScenarioTrainingModule';
+import { LessonQuizGeneratorModule } from './components/LessonQuizGeneratorModule';
 import { AiScenarioTrainingPage, AiScenarioTrainingUnlock } from './pages/AiScenarioTrainingPage';
+import { LessonQuizAttemptPage, LessonQuizUnlock } from './pages/LessonQuizAttemptPage';
+import {
+    AdminTrainingModuleCard,
+    AdminTrainingModuleListRow,
+    ParticipantTrainingModuleCard,
+} from './components/TrainingModuleCard';
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
 import AttendanceQrScanner from './components/AttendanceQrScanner';
@@ -52,6 +59,10 @@ import {
     participantLessonCompletion,
     adminAiScenarioConfig,
 } from './utils/trainingModuleRoutes';
+import {
+    handleTrainingModuleDelete,
+    trainingModuleManageUrl,
+} from './utils/trainingModuleDelete';
 import {
     simulationEventsIndex,
     evaluationsIndex,
@@ -120,6 +131,7 @@ import {
     GraduationCap,
     TrendingUp,
     AlertTriangle,
+    AlertCircle,
     MapPin,
     BarChart3,
     Calendar,
@@ -673,6 +685,9 @@ if (rootElement) {
     const aiScenarioModulesJson = rootElement.getAttribute('data-ai-scenario-modules');
     const aiScenarioConfigsJson = rootElement.getAttribute('data-ai-scenario-configs');
     const aiScenarioAttemptJson = rootElement.getAttribute('data-ai-scenario-attempt');
+    const lessonQuizModulesJson = rootElement.getAttribute('data-lesson-quiz-modules');
+    const lessonQuizConfigsJson = rootElement.getAttribute('data-lesson-quiz-configs');
+    const lessonQuizAttemptJson = rootElement.getAttribute('data-lesson-quiz-attempt');
     const evaluationResultsJson = rootElement.getAttribute('data-evaluation-results');
     const evaluationResultsPaginationJson = rootElement.getAttribute('data-evaluation-results-pagination');
     const evaluationAnalyticsJson = rootElement.getAttribute('data-evaluation-analytics');
@@ -817,6 +832,9 @@ if (rootElement) {
     let aiScenarioModules = [];
     let aiScenarioConfigs = [];
     let aiScenarioAttempt = null;
+    let lessonQuizModules = [];
+    let lessonQuizConfigs = [];
+    let lessonQuizAttempt = null;
     let evaluationResults = [];
     let evaluationResultsPagination = null;
     let evaluationAnalytics = null;
@@ -907,6 +925,27 @@ if (rootElement) {
             aiScenarioAttempt = JSON.parse(aiScenarioAttemptJson);
         } catch (e) {
             console.error('Failed to parse AI scenario attempt JSON', e);
+        }
+    }
+    if (lessonQuizModulesJson) {
+        try {
+            lessonQuizModules = JSON.parse(lessonQuizModulesJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz modules JSON', e);
+        }
+    }
+    if (lessonQuizConfigsJson) {
+        try {
+            lessonQuizConfigs = JSON.parse(lessonQuizConfigsJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz configs JSON', e);
+        }
+    }
+    if (lessonQuizAttemptJson) {
+        try {
+            lessonQuizAttempt = JSON.parse(lessonQuizAttemptJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz attempt JSON', e);
         }
     }
     if (evaluationResultsJson) {
@@ -1051,7 +1090,8 @@ if (rootElement) {
 
     const navSection =
         sectionAttr.startsWith('training') ? 'training' :
-            sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config' ? 'ai_scenario_training' :
+            sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config' || sectionAttr === 'ai_scenario_final_assessment' ? 'ai_scenario_final_assessment' :
+                sectionAttr === 'lesson_quiz_generator' ? 'lesson_quiz_generator' :
                 sectionAttr.startsWith('ai_scenario') ? 'training' :
             sectionAttr.startsWith('scenario') ? 'scenario' :
                 sectionAttr.startsWith('simulation') ? 'simulation' :
@@ -1087,7 +1127,10 @@ if (rootElement) {
         if (sectionAttr === 'training') {
             return [];
         }
-        if (sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config') {
+        if (sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config' || sectionAttr === 'ai_scenario_final_assessment') {
+            return [];
+        }
+        if (sectionAttr === 'lesson_quiz_generator') {
             return [];
         }
         if (sectionAttr === 'ai_scenario_attempt') {
@@ -1358,6 +1401,8 @@ if (rootElement) {
             'audit_logs',
             'ai_scenario_training',
             'ai_scenario_config',
+            'ai_scenario_final_assessment',
+            'lesson_quiz_generator',
         ]);
         if (indexSections.has(sectionAttr)) {
             return '';
@@ -1419,11 +1464,19 @@ if (rootElement) {
         }
 
         if (sectionAttr === 'ai_scenario_attempt') {
-            return 'AI Scenario Training';
+            return 'Final AI Scenario Assessment';
+        }
+
+        if (sectionAttr === 'lesson_quiz_attempt') {
+            return 'Lesson Quiz';
         }
 
         if (sectionAttr === 'evaluation_result_detail') {
             return 'Evaluation Report';
+        }
+
+        if (breadcrumbs.length === 0) {
+            return '';
         }
 
         if (breadcrumbs.length === 1) {
@@ -1500,12 +1553,20 @@ if (rootElement) {
                             )
                         )}
 
-                        {(sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config') && (
+                        {(sectionAttr === 'ai_scenario_training' || sectionAttr === 'ai_scenario_config' || sectionAttr === 'ai_scenario_final_assessment') && (
                             <AiScenarioTrainingModule modules={aiScenarioModules} configs={aiScenarioConfigs} />
+                        )}
+
+                        {sectionAttr === 'lesson_quiz_generator' && (
+                            <LessonQuizGeneratorModule modules={lessonQuizModules} configs={lessonQuizConfigs} />
                         )}
 
                         {sectionAttr === 'ai_scenario_attempt' && aiScenarioAttempt && (
                             <AiScenarioTrainingPage attempt={aiScenarioAttempt} module={currentModule} />
+                        )}
+
+                        {sectionAttr === 'lesson_quiz_attempt' && lessonQuizAttempt && (
+                            <LessonQuizAttemptPage attempt={lessonQuizAttempt} module={currentModule} />
                         )}
 
                         {sectionAttr === 'scenario' && (
@@ -1970,6 +2031,8 @@ if (rootElement) {
                 {flashStatus && (
                     <StatusToast message={flashStatus} />
                 )}
+
+                <PortalToastListener />
 
                 <Toast.Viewport className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 outline-none" />
             </Toast.Provider>
@@ -2499,9 +2562,9 @@ function DashboardOverview({ modules, events, participants, role, dashboardStats
                                 <BookOpen className="w-10 h-10 text-emerald-600" />
                                 <span className="text-sm font-medium text-slate-700">+ Module</span>
                             </a>
-                            <a href="/admin/ai-scenario-training" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
+                            <a href="/admin/ai-scenario-training/final-assessment" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                                 <Sparkles className="w-10 h-10 text-emerald-600" />
-                                <span className="text-sm font-medium text-slate-700">AI Scenario</span>
+                                <span className="text-sm font-medium text-slate-700">Final Assessment</span>
                             </a>
                             <a href="/admin/simulation-events/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
                                 <CalendarClock className="w-10 h-10 text-emerald-600" />
@@ -2580,7 +2643,6 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchQuery, setSearchQuery] = React.useState('');
     const [filterStatus, setFilterStatus] = React.useState('');
-    const [filterDifficulty, setFilterDifficulty] = React.useState('');
     const [filterDisasterType, setFilterDisasterType] = React.useState('');
     const [currentPage, setCurrentPage] = React.useState(modulesPagination?.current_page || 1);
     const [modulesData, setModulesData] = React.useState(modules || []);
@@ -2618,17 +2680,14 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
         const url = buildModulesUrl(page);
         const search = overrides.search ?? searchQuery;
         const status = overrides.status ?? filterStatus;
-        const difficulty = overrides.difficulty ?? filterDifficulty;
         const category = overrides.category ?? filterDisasterType;
 
         url.searchParams.delete('search');
         url.searchParams.delete('status');
-        url.searchParams.delete('difficulty');
         url.searchParams.delete('category');
 
         if (search.trim()) url.searchParams.set('search', search.trim());
         if (status) url.searchParams.set('status', status);
-        if (difficulty) url.searchParams.set('difficulty', difficulty);
         if (category) url.searchParams.set('category', category);
 
         setIsPageLoading(true);
@@ -2655,7 +2714,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
             fetchModulesWithFilters(1);
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType]);
+    }, [searchQuery, filterStatus, filterDisasterType]);
 
     // Filter modules (client-side refinement on current page data)
     const filteredModules = (modulesData || []).filter((module) => {
@@ -2663,10 +2722,9 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
             module.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (module.description && module.description.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesStatus = !filterStatus || module.status === filterStatus;
-        const matchesDifficulty = !filterDifficulty || module.difficulty === filterDifficulty;
         const matchesDisasterType = !filterDisasterType || module.category === filterDisasterType;
 
-        return matchesSearch && matchesStatus && matchesDifficulty && matchesDisasterType;
+        return matchesSearch && matchesStatus && matchesDisasterType;
     });
 
     // Pagination (backend-aware)
@@ -2683,7 +2741,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
         if (!effectivePagination) {
             setCurrentPage(1);
         }
-    }, [searchQuery, filterStatus, filterDifficulty, filterDisasterType, effectivePagination]);
+    }, [searchQuery, filterStatus, filterDisasterType, effectivePagination]);
 
     const handlePageChange = async (page) => {
         if (effectivePagination) {
@@ -2691,27 +2749,6 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
             return;
         }
         setCurrentPage(page);
-    };
-
-    const formatCreatedDate = (dateString) => {
-        if (!dateString) return '—';
-        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    };
-    const formatUpdatedDate = (dateString) => {
-        if (!dateString) return null;
-        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    };
-    const statusStyle = (status) => {
-        if (status === 'published') return 'text-emerald-600';
-        if (status === 'draft') return 'text-blue-600';
-        if (status === 'archived') return 'text-slate-500';
-        return 'text-slate-600';
-    };
-    const statusDotStyle = (status) => {
-        if (status === 'published') return 'bg-emerald-500';
-        if (status === 'draft') return 'bg-blue-500';
-        if (status === 'archived') return 'bg-slate-400';
-        return 'bg-slate-400';
     };
 
     return (
@@ -2732,10 +2769,9 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                 searchValue={searchQuery}
                 onSearchChange={(e) => setSearchQuery(e.target.value)}
                 searchPlaceholder="Search modules..."
-                hasActiveFilters={Boolean(filterStatus || filterDifficulty || filterDisasterType)}
+                hasActiveFilters={Boolean(filterStatus || filterDisasterType)}
                 onClearFilters={() => {
                     setFilterStatus('');
-                    setFilterDifficulty('');
                     setFilterDisasterType('');
                 }}
                 trailing={<AdminViewToggle viewMode={viewMode} onChange={setViewMode} />}
@@ -2747,14 +2783,8 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                     <option value="unpublished">Unpublished</option>
                     <option value="archived">Archived</option>
                 </AdminFilterSelect>
-                <AdminFilterSelect label="Difficulty" value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)}>
-                    <option value="">All Difficulties</option>
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                </AdminFilterSelect>
                 {disasterTypes.length > 0 && (
-                    <AdminFilterSelect label="Disaster Type" value={filterDisasterType} onChange={(e) => setFilterDisasterType(e.target.value)}>
+                    <AdminFilterSelect label="Hazard Category" value={filterDisasterType} onChange={(e) => setFilterDisasterType(e.target.value)}>
                         <option value="">All Types</option>
                         {disasterTypes.map((type) => (
                             <option key={type} value={type}>{type}</option>
@@ -2789,7 +2819,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                                 <p className="text-slate-600 text-sm mb-4">Try adjusting search or filter criteria.</p>
                                 <button
                                     type="button"
-                                    onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterDifficulty(''); setFilterDisasterType(''); }}
+                                    onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterDisasterType(''); }}
                                     className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all duration-200"
                                 >
                                     Clear filters
@@ -2802,86 +2832,26 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
                     <ul className="divide-y divide-slate-200">
                         {paginatedModules.map((module) => (
-                            <li key={module.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors">
-                                <div className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-slate-100">
-                                    {module.thumbnail_url ? (
-                                        <img src={module.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center"><BookOpen className="w-5 h-5 text-slate-600" /></div>
-                                    )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="font-semibold text-slate-900 truncate">{module.title || 'Untitled Module'}</h3>
-                                    <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
-                                    <p className="text-xs text-slate-400 mt-1">Created: {formatCreatedDate(module.created_at)}{formatUpdatedDate(module.updated_at) ? ` • Updated: ${formatUpdatedDate(module.updated_at)}` : ''}</p>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
-                                        {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
-                                    </span>
-                                    <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
-                                        <button
-                                            type="button"
-                                            data-manage-button
-                                            onClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
-                                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                                        >
-                                            Manage <ChevronDown className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </li>
+                            <AdminTrainingModuleListRow
+                                key={module.id}
+                                module={module}
+                                manageButtonRef={openManageId === module.id ? manageMenuRef : null}
+                                onManageClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
+                            />
                         ))}
                     </ul>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {paginatedModules.map((module, index) => (
-                        <div
+                        <AdminTrainingModuleCard
                             key={module.id}
-                            className={`training-module-card-enter bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 relative ${openManageId === module.id ? 'z-[100]' : ''}`}
+                            module={module}
+                            isManageOpen={openManageId === module.id}
+                            manageButtonRef={openManageId === module.id ? manageMenuRef : null}
+                            onManageClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
                             style={{ animationDelay: `${index * 0.06}s` }}
-                        >
-                            <div className="p-4">
-                                {module.thumbnail_url && (
-                                    <img src={module.thumbnail_url} alt="" className="w-full h-32 object-cover rounded-xl mb-3 border border-slate-200" />
-                                )}
-                                <div className="flex items-start gap-3 mb-2">
-                                    {!module.thumbnail_url && (
-                                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                                        <BookOpen className="w-5 h-5 text-slate-600" />
-                                    </div>
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="font-semibold text-slate-900 truncate" title={module.title}>
-                                            {module.title || 'Untitled Module'}
-                                        </h3>
-                                        <p className="text-sm text-slate-500 mt-0.5">{module.category ?? '—'} • {module.difficulty ?? '—'}</p>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-slate-400 mb-2">
-                                    Created: {formatCreatedDate(module.created_at)}
-                                    {formatUpdatedDate(module.updated_at) && ` • Updated: ${formatUpdatedDate(module.updated_at)}`}
-                                </p>
-                                <div className="flex items-center justify-between gap-2 mb-3">
-                                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusStyle(module.status)}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotStyle(module.status)}`} />
-                                        Status: {module.status ? module.status.charAt(0).toUpperCase() + module.status.slice(1) : '—'}
-                                    </span>
-                                </div>
-                                <div className="relative" ref={openManageId === module.id ? manageMenuRef : null}>
-                                    <button
-                                        type="button"
-                                        data-manage-button
-                                        onClick={() => setOpenManageId(openManageId === module.id ? null : module.id)}
-                                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-medium hover:bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
-                                    >
-                                        Manage <ChevronDown className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        />
                     ))}
                 </div>
             )}
@@ -2896,149 +2866,27 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         className="py-1 w-44 min-w-[11rem] rounded-xl border border-slate-200 bg-white shadow-xl z-[300] transition-opacity duration-150 ease-out"
                         style={{ position: 'fixed', top: manageFloatingStyles.top, left: manageFloatingStyles.left }}
                     >
-                        <a href={`/admin/training-modules/${openModule.id}`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Eye className="w-4 h-4" /> View</a>
-                        <a href={`/admin/training-modules/${openModule.id}/edit`} onClick={close} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil className="w-4 h-4" /> Edit</a>
-                        {openModule.status === 'draft' && (
-                            <form
-                                method="POST"
-                                action={`/admin/training-modules/${openModule.id}/publish`}
-                                onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    const form = e.currentTarget;
-                                    const ok = await Swal.fire({
-                                        title: 'Publish?',
-                                        text: 'Publish this training module?',
-                                        icon: 'question',
-                                        showCancelButton: true,
-                                    });
-                                    if (!ok.isConfirmed) return;
-                                    try {
-                                        const res = await fetch(form.action, {
-                                            method: 'POST',
-                                            body: new FormData(form),
-                                            headers: {
-                                                'Accept': 'application/json',
-                                                'X-Requested-With': 'XMLHttpRequest',
-                                            },
-                                        });
-
-                                        if (!res.ok) {
-                                            let message = 'Failed to publish module. Please try again.';
-                                            try {
-                                                const data = await res.json();
-                                                if (data?.errors?.length) {
-                                                    message = data.errors.join(', ');
-                                                } else if (data?.message) {
-                                                    message = data.message;
-                                                }
-                                            } catch {
-                                                // ignore JSON parse errors
-                                            }
-                                            await Swal.fire({
-                                                icon: 'error',
-                                                title: 'Cannot publish',
-                                                text: message,
-                                            });
-                                            return;
-                                        }
-
-                                        await Swal.fire({
-                                            icon: 'success',
-                                            title: 'Module published',
-                                            text: 'This training module is now available for use.',
-                                        });
-                                        window.location.href = '/admin/training-modules';
-                                    } catch (_) {
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Error',
-                                            text: 'Failed to publish module. Please try again.',
-                                        });
-                                    } finally {
-                                        close();
-                                    }
-                                }}
-                            >
-                                <input type="hidden" name="_token" value={csrf} />
-                                <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                                    <Send className="w-4 h-4" /> Publish
-                                </button>
-                            </form>
-                        )}
-                        <form
-                            method="POST"
-                            action={`/admin/training-modules/${openModule.id}/archive`}
-                            onSubmit={async (e) => {
-                                e.preventDefault();
-                                const form = e.currentTarget;
-                                const ok = await Swal.fire({
-                                    title: 'Archive?',
-                                    text: 'Archive this module?',
-                                    icon: 'warning',
-                                    showCancelButton: true,
-                                });
-                                if (!ok.isConfirmed) return;
-                                try {
-                                    const res = await fetch(form.action, {
-                                        method: 'POST',
-                                        body: new FormData(form),
-                                    });
-                                    if (!res.ok) throw new Error('Request failed');
-                                    window.location.href = '/admin/training-modules';
-                                } catch (_) {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error',
-                                        text: 'Failed to archive module. Please try again.',
-                                    });
-                                } finally {
+                        <a
+                            href={trainingModuleManageUrl(openModule.id)}
+                            onClick={close}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                            <Settings className="w-4 h-4" />
+                            Manage
+                        </a>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const deleted = await handleTrainingModuleDelete(openModule, csrf);
+                                if (deleted) {
                                     close();
                                 }
                             }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
                         >
-                            <input type="hidden" name="_token" value={csrf} />
-                            <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                                <Archive className="w-4 h-4" /> Archive
-                            </button>
-                        </form>
-                        <form
-                            method="POST"
-                            action={`/admin/training-modules/${openModule.id}`}
-                            onSubmit={async (e) => {
-                                e.preventDefault();
-                                const form = e.currentTarget;
-                                const ok = await Swal.fire({
-                                    title: 'Delete?',
-                                    text: 'Permanently delete this module?',
-                                    icon: 'warning',
-                                    showCancelButton: true,
-                                    confirmButtonColor: '#dc2626',
-                                });
-                                if (!ok.isConfirmed) return;
-                                try {
-                                    const res = await fetch(form.action, {
-                                        method: 'POST',
-                                        body: new FormData(form),
-                                    });
-                                    if (!res.ok) throw new Error('Request failed');
-                                    window.location.href = '/admin/training-modules';
-                                } catch (_) {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error',
-                                        text: 'Failed to delete module. Please try again.',
-                                    });
-                                } finally {
-                                    close();
-                                }
-                            }}
-                        >
-                            <input type="hidden" name="_token" value={csrf} />
-                            <input type="hidden" name="_method" value="DELETE" />
-                            <button type="submit" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
-                                <Trash2 className="w-4 h-4" /> Delete
-                            </button>
-                        </form>
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                        </button>
                     </div>,
                     document.body
                 );
@@ -3118,32 +2966,13 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
                     No training modules are available yet. Please check back later.
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {publishedModules.map((module) => (
-                        <a
+                        <ParticipantTrainingModuleCard
                             key={module.id}
+                            module={module}
                             href={`/participant/training-modules/${module.id}`}
-                            className="group rounded-xl bg-white border border-slate-200 shadow-sm p-4 flex flex-col gap-2 hover:border-emerald-400 hover:shadow-md transition-all"
-                        >
-                            <h3 className="text-sm font-semibold text-slate-800 group-hover:text-emerald-700">
-                                {module.title}
-                            </h3>
-                            {module.description && (
-                                <p className="text-xs text-slate-600 line-clamp-3 whitespace-pre-line">
-                                    {module.description}
-                                </p>
-                            )}
-                            <div className="mt-auto flex items-center justify-between text-[0.7rem] text-slate-500 pt-1">
-                                <span>
-                                    Difficulty: {module.difficulty || '—'}
-                                </span>
-                                {module.category && (
-                                    <span>
-                                        Disaster type: {module.category}
-                                    </span>
-                                )}
-                            </div>
-                        </a>
+                        />
                     ))}
                 </div>
             )}
@@ -3490,12 +3319,9 @@ function ParticipantTrainingLessonView({ module }) {
                         </p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-[0.7rem] text-slate-600">
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                            Difficulty: {module.difficulty || '—'}
-                        </span>
                         {module.category && (
                             <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                                Disaster type: {module.category}
+                                {module.category}
                             </span>
                         )}
                     </div>
@@ -3603,11 +3429,11 @@ function ParticipantTrainingLessonView({ module }) {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    {(lesson.body || lesson.description) && (
+                                                    {(lesson.description) && (
                                                         <p className={`mt-1 text-xs line-clamp-2 ${
                                                             isLocked ? 'text-slate-400' : 'text-slate-600'
                                                         }`}>
-                                                            {lesson.body || lesson.description}
+                                                            {lesson.description}
                                                         </p>
                                                     )}
                                                     {isLocked && (
@@ -3618,25 +3444,29 @@ function ParticipantTrainingLessonView({ module }) {
                                                 </div>
                                             </div>
                                             <div className="mt-2 flex items-center justify-between text-[0.7rem] text-slate-500">
-                                                <label
-                                                    className={`inline-flex items-center gap-1 ${
-                                                        isLocked && !isCompleted
-                                                            ? 'cursor-not-allowed opacity-60'
-                                                            : 'cursor-pointer'
-                                                    }`}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isCompleted}
-                                                        disabled={isLocked && !isCompleted}
-                                                        onChange={() => {
-                                                            toggleCompleted(lesson.id);
-                                                        }}
-                                                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed"
-                                                    />
-                                                    <span>Mark as completed</span>
-                                                </label>
+                                                {lesson.lesson_quiz?.has_published_quiz ? (
+                                                    <span>Complete the lesson quiz to unlock the next lesson.</span>
+                                                ) : (
+                                                    <label
+                                                        className={`inline-flex items-center gap-1 ${
+                                                            isLocked && !isCompleted
+                                                                ? 'cursor-not-allowed opacity-60'
+                                                                : 'cursor-pointer'
+                                                        }`}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isCompleted}
+                                                            disabled={isLocked && !isCompleted}
+                                                            onChange={() => {
+                                                                toggleCompleted(lesson.id);
+                                                            }}
+                                                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed"
+                                                        />
+                                                        <span>Mark as completed</span>
+                                                    </label>
+                                                )}
                                             </div>
                                         </li>
                                     );
@@ -3657,29 +3487,36 @@ function ParticipantTrainingLessonView({ module }) {
                                 <h3 className="text-lg font-semibold text-slate-800">
                                     {selectedLesson.title}
                                 </h3>
-                                {(selectedLesson.body || selectedLesson.description) && (
+                                {(selectedLesson.description) && (
                                     <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">
-                                        {selectedLesson.body || selectedLesson.description}
+                                        {selectedLesson.description}
                                     </p>
                                 )}
                             </div>
 
                             <div className="space-y-4">
-                                {selectedLesson.content_type === 'text' && !selectedLesson.body && !selectedLesson.description && (
-                                    <p className="text-sm text-slate-500">No text content available.</p>
+                                {(selectedLesson.resources || []).length === 0 && !selectedLesson.description && (
+                                    <p className="text-sm text-slate-500">No learning resources available for this lesson.</p>
                                 )}
-                                {selectedLesson.content_type && selectedLesson.content_type !== 'text' && (
-                                    <div className="border border-slate-200 rounded-lg p-3 space-y-2">
-                                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                                            {selectedLesson.content_type}
+                                {(selectedLesson.resources || [])
+                                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                                    .map((resource) => (
+                                        <div key={resource.id} className="border border-slate-200 rounded-lg p-3 space-y-2">
+                                            <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                                                {resource.resource_type || 'Resource'}
+                                            </div>
+                                            <h4 className="text-sm font-semibold text-slate-800">{resource.title}</h4>
+                                            {resource.resource_type === 'text' && resource.body ? (
+                                                <p className="text-sm text-slate-700 whitespace-pre-line">{resource.body}</p>
+                                            ) : (
+                                                renderMaterial({
+                                                    type: resource.resource_type,
+                                                    path: resource.display_url || resource.file_path || resource.external_url,
+                                                    label: resource.title,
+                                                })
+                                            )}
                                         </div>
-                                        {renderMaterial({
-                                            type: selectedLesson.content_type,
-                                            path: selectedLesson.display_url || selectedLesson.file_path || selectedLesson.external_url,
-                                            label: selectedLesson.title,
-                                        })}
-                                    </div>
-                                )}
+                                    ))}
                                 {selectedLesson.materials &&
                                     selectedLesson.materials.map((mat) => (
                                         <div
@@ -3693,6 +3530,8 @@ function ParticipantTrainingLessonView({ module }) {
                                         </div>
                                     ))}
                             </div>
+
+                            <LessonQuizUnlock module={module} lesson={selectedLesson} lessonQuiz={selectedLesson.lesson_quiz} />
                         </div>
                     ) : selectedLesson && selectedLesson.is_locked ? (
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm text-sm text-slate-500 space-y-2">
@@ -3737,6 +3576,55 @@ function StatusToast({ message }) {
     );
 }
 
+function PortalToastListener() {
+    const [toast, setToast] = React.useState(null);
+
+    React.useEffect(() => {
+        const handleToast = (event) => {
+            setToast(event.detail || null);
+        };
+
+        window.addEventListener('portal-toast', handleToast);
+        return () => window.removeEventListener('portal-toast', handleToast);
+    }, []);
+
+    if (!toast) return null;
+
+    const isSuccess = toast.variant !== 'error';
+
+    return (
+        <Toast.Root
+            open
+            duration={6000}
+            onOpenChange={(open) => {
+                if (!open) setToast(null);
+            }}
+            className={`rounded-lg shadow-lg border px-4 py-3 text-sm flex items-start gap-3 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:slide-in-from-top-2 ${
+                isSuccess
+                    ? 'bg-slate-900 text-slate-50 border-emerald-500/50'
+                    : 'bg-slate-900 text-slate-50 border-red-500/50'
+            }`}
+        >
+            <div className="mt-0.5">
+                {isSuccess ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                ) : (
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                )}
+            </div>
+            <div className="flex-1">
+                <div className="font-semibold text-[0.9rem]">{toast.title}</div>
+                {toast.description && (
+                    <div className="text-[0.8rem] text-slate-300 mt-0.5">{toast.description}</div>
+                )}
+            </div>
+            <Toast.Close className="text-slate-400 hover:text-slate-200 text-xs font-medium">
+                Close
+            </Toast.Close>
+        </Toast.Root>
+    );
+}
+
 const QUICK_TEMPLATES = [
     {
         name: 'Basic Earthquake Drill',
@@ -3770,7 +3658,6 @@ function TrainingModuleCreateForm({ barangayProfile }) {
 
     const [title, setTitle] = React.useState('');
     const [description, setDescription] = React.useState('');
-    const [difficulty, setDifficulty] = React.useState('Beginner');
     const [category, setCategory] = React.useState('');
     const [showObjectives, setShowObjectives] = React.useState(true);
     const [objectives, setObjectives] = React.useState(['']);
@@ -3794,7 +3681,6 @@ function TrainingModuleCreateForm({ barangayProfile }) {
     const applyTemplate = (t) => {
         setTitle(t.title);
         setDescription(t.description);
-        setDifficulty(t.difficulty);
         setCategory(t.category);
         setObjectives(t.objectives && t.objectives.length > 0 ? [...t.objectives] : ['']);
         setShowObjectives(true);
@@ -3813,7 +3699,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
         try {
             const formData = new FormData();
             formData.append('title', trimmedTitle);
-            formData.append('difficulty', difficulty || '');
+            formData.append('difficulty', 'Beginner');
             formData.append('category', category || '');
             formData.append('_token', csrf);
 
@@ -3924,6 +3810,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                     >
                         <input type="hidden" name="_token" value={csrf} />
                         <input type="hidden" name="status" value="draft" />
+                        <input type="hidden" name="difficulty" value="Beginner" />
 
                         <div>
                             <div className="flex items-center justify-between mb-1">
@@ -4023,24 +3910,8 @@ function TrainingModuleCreateForm({ barangayProfile }) {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className={labelClass} htmlFor="difficulty">
-                                    Difficulty
-                                </label>
-                                <select
-                                    id="difficulty"
-                                    name="difficulty"
-                                    value={difficulty}
-                                    onChange={(e) => setDifficulty(e.target.value)}
-                                    className={inputClass}
-                                >
-                                    <option value="Beginner">Beginner</option>
-                                    <option value="Intermediate">Intermediate</option>
-                                    <option value="Advanced">Advanced</option>
-                                </select>
-                            </div>
-                            <div>
                                 <label className={labelClass} htmlFor="category">
-                                    Disaster category <span className="text-red-500">*</span>
+                                    Hazard category <span className="text-red-500">*</span>
                                 </label>
                                 {useCategorySelect ? (
                                     <select
@@ -4150,7 +4021,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
-                                <span>Match difficulty to target participants</span>
+                                <span>Choose a hazard category that matches your barangay risk profile</span>
                             </li>
                         </ul>
                     </div>
@@ -4192,9 +4063,6 @@ function TrainingModuleEditForm({ module }) {
     const [title, setTitle] = React.useState(module.title || '');
     const [description, setDescription] = React.useState(
         module.description || '',
-    );
-    const [difficulty, setDifficulty] = React.useState(
-        module.difficulty || 'Beginner',
     );
     const [category, setCategory] = React.useState(module.category || '');
     const [visibility, setVisibility] = React.useState(
@@ -4242,7 +4110,6 @@ function TrainingModuleEditForm({ module }) {
     const applyTemplate = (t) => {
         setTitle(t.title);
         setDescription(t.description);
-        setDifficulty(t.difficulty);
         setCategory(t.category);
         setObjectives(
             t.objectives && t.objectives.length > 0
@@ -4292,6 +4159,11 @@ function TrainingModuleEditForm({ module }) {
                             type="hidden"
                             name="status"
                             value={module.status}
+                        />
+                        <input
+                            type="hidden"
+                            name="difficulty"
+                            value={module.difficulty || 'Beginner'}
                         />
 
                         <div>
@@ -4399,32 +4271,9 @@ function TrainingModuleEditForm({ module }) {
                             <div>
                                 <label
                                     className={labelClass}
-                                    htmlFor="difficulty"
-                                >
-                                    Difficulty
-                                </label>
-                                <select
-                                    id="difficulty"
-                                    name="difficulty"
-                                    value={difficulty}
-                                    onChange={(e) =>
-                                        setDifficulty(e.target.value)
-                                    }
-                                    className={inputClass}
-                                >
-                                    <option value="Beginner">Beginner</option>
-                                    <option value="Intermediate">
-                                        Intermediate
-                                    </option>
-                                    <option value="Advanced">Advanced</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label
-                                    className={labelClass}
                                     htmlFor="category"
                                 >
-                                    Disaster category <span className="text-red-500">*</span>
+                                    Hazard category <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     id="category"
@@ -4559,7 +4408,7 @@ function TrainingModuleEditForm({ module }) {
                                     •
                                 </span>
                                 <span>
-                                    Match difficulty to target participants
+                                    Choose a hazard category that matches your barangay risk profile
                                 </span>
                             </li>
                         </ul>

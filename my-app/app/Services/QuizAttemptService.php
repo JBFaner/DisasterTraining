@@ -121,7 +121,7 @@ class QuizAttemptService
 
         if (! ($meta['is_unlocked'] ?? false)) {
             throw ValidationException::withMessages([
-                'ai_scenario' => 'Complete all lessons before starting AI scenario training.',
+                'ai_scenario' => 'Complete all lesson quizzes before starting the Final AI Scenario Assessment.',
             ]);
         }
 

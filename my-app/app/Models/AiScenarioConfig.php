@@ -6,6 +6,7 @@ use App\Services\AiScenarioLocaleService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AiScenarioConfig extends Model
 {
@@ -98,6 +99,16 @@ class AiScenarioConfig extends Model
     public function versions(): HasMany
     {
         return $this->hasMany(AiScenarioAssessmentVersion::class)->orderByDesc('version_number');
+    }
+
+    public function generationJobs(): HasMany
+    {
+        return $this->hasMany(AiScenarioGenerationJob::class)->orderByDesc('created_at');
+    }
+
+    public function latestGenerationJob(): HasOne
+    {
+        return $this->hasOne(AiScenarioGenerationJob::class)->latestOfMany();
     }
 
     public function isReady(): bool

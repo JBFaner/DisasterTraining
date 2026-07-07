@@ -70,3 +70,22 @@ export function persistLanguage(attemptId, locale) {
         // ignore storage errors
     }
 }
+
+export const LESSON_QUIZ_PREFERRED_LANGUAGE_KEY = 'lesson_quiz_preferred_language';
+
+export function loadLessonQuizPreferredLanguage(fallback = AI_SCENARIO_DEFAULT_LANGUAGE) {
+    try {
+        const stored = localStorage.getItem(LESSON_QUIZ_PREFERRED_LANGUAGE_KEY);
+        return resolveAiScenarioLanguage(stored || fallback);
+    } catch {
+        return resolveAiScenarioLanguage(fallback);
+    }
+}
+
+export function persistLessonQuizPreferredLanguage(locale) {
+    try {
+        localStorage.setItem(LESSON_QUIZ_PREFERRED_LANGUAGE_KEY, resolveAiScenarioLanguage(locale));
+    } catch {
+        // ignore storage errors
+    }
+}

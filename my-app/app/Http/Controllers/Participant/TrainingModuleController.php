@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Participant;
 
 use App\Http\Controllers\Controller;
 use App\Models\TrainingModule;
+use App\Services\TrainingModuleCardStatsService;
 use Illuminate\Http\Request;
 
 class TrainingModuleController extends Controller
@@ -13,6 +14,7 @@ class TrainingModuleController extends Controller
         $perPage = 9;
 
         $query = TrainingModule::query()
+            ->withCount('contents as lesson_count')
             ->where('status', 'published')
             ->orderByDesc('updated_at');
 
@@ -27,16 +29,16 @@ class TrainingModuleController extends Controller
             }
         }
 
-        if ($request->filled('difficulty')) {
-            $query->where('difficulty', $request->string('difficulty'));
-        }
-
         if ($request->filled('category')) {
             $query->where('category', $request->string('category'));
         }
 
         $paginator = $query->paginate($perPage)->withQueryString();
-        $modules = $paginator->items();
+        $modules = collect($paginator->items());
+        $user = portal_user();
+        if ($user) {
+            app(TrainingModuleCardStatsService::class)->enrichParticipantModules($modules, (int) $user->id);
+        }
 
         $modulesPagination = [
             'current_page' => $paginator->currentPage(),
@@ -49,19 +51,18 @@ class TrainingModuleController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'modules' => $modules,
+                'modules' => $modules->values()->all(),
                 'pagination' => $modulesPagination,
             ]);
         }
 
         return view('app', [
             'section' => 'training',
-            'modules' => $modules,
+            'modules' => $modules->values()->all(),
             'modulesPagination' => $modulesPagination,
             'trainingFilters' => [
                 'search' => $request->string('search')->toString(),
                 'status' => '',
-                'difficulty' => $request->string('difficulty')->toString(),
                 'category' => $request->string('category')->toString(),
             ],
         ]);
@@ -76,11 +77,18 @@ class TrainingModuleController extends Controller
             abort(403);
         }
 
-        $trainingModule->load(['contents', 'owner']);
+        $trainingModule->load(['contents.resources', 'owner']);
         $trainingModule->applyParticipantProgression($user->id);
 
         $trainingService = app(\App\Services\AiScenarioTrainingService::class);
+        $attemptService = app(\App\Services\LessonQuizAttemptService::class);
         $trainingModule->ai_training = $trainingService->buildParticipantMeta($trainingModule, $user);
+
+        $trainingModule->contents->transform(function ($content) use ($trainingModule, $user, $attemptService) {
+            $content->lesson_quiz = $attemptService->getParticipantMeta($trainingModule, $content, $user);
+
+            return $content;
+        });
 
         return view('app', [
             'section' => 'training_detail',

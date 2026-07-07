@@ -31,6 +31,10 @@ use App\Http\Controllers\CentralizedLoginController;
 use App\Http\Controllers\AiScenarioConfigController;
 use App\Http\Controllers\AiScenarioWorkflowController;
 use App\Http\Controllers\AiScenarioAttemptController;
+use App\Http\Controllers\LessonQuizGeneratorController;
+use App\Http\Controllers\PortalNotificationController;
+use App\Http\Controllers\LessonQuizWorkflowController;
+use App\Http\Controllers\LessonQuizAttemptController;
 use App\Http\Controllers\Admin\Group6IntegrationController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
@@ -187,15 +191,82 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.training-modules.contents.destroy');
         Route::post('/training-modules/{trainingModule}/contents/reorder', [AdminTrainingModuleController::class, 'reorderContents'])
             ->name('admin.training-modules.contents.reorder');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/resources', [AdminTrainingModuleController::class, 'storeResource'])
+            ->name('admin.training-modules.resources.store');
+        Route::put('/training-modules/{trainingModule}/contents/{content}/resources/{resource}', [AdminTrainingModuleController::class, 'updateResource'])
+            ->name('admin.training-modules.resources.update');
+        Route::delete('/training-modules/{trainingModule}/contents/{content}/resources/{resource}', [AdminTrainingModuleController::class, 'destroyResource'])
+            ->name('admin.training-modules.resources.destroy');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/resources/reorder', [AdminTrainingModuleController::class, 'reorderResources'])
+            ->name('admin.training-modules.resources.reorder');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/resources/{resource}/reprocess', [AdminTrainingModuleController::class, 'reprocessResource'])
+            ->name('admin.training-modules.resources.reprocess');
 
-        Route::get('/ai-scenario-training', [AiScenarioConfigController::class, 'index'])
+        Route::get('/ai-scenario-training/final-assessment', [AiScenarioConfigController::class, 'index'])
+            ->name('admin.ai-scenario-training.final-assessment');
+        Route::get('/ai-scenario-training/lesson-quiz-generator', [LessonQuizGeneratorController::class, 'index'])
+            ->name('admin.ai-scenario-training.lesson-quiz-generator');
+        Route::get('/ai-scenario-training/lesson-quiz-generator/modules/{trainingModule}/lessons/{content}/resources', [LessonQuizGeneratorController::class, 'lessonResources'])
+            ->name('admin.lesson-quiz-generator.lesson-resources');
+        Route::get('/ai-scenario-training', fn () => redirect()->route('admin.ai-scenario-training.final-assessment'))
             ->name('admin.ai-scenario-training.index');
-        Route::get('/ai-scenario-config', fn () => redirect()->route('admin.ai-scenario-training.index'))
+        Route::get('/lesson-quiz-generator', fn () => redirect()->route('admin.ai-scenario-training.lesson-quiz-generator'))
+            ->name('admin.lesson-quiz-generator.index');
+        Route::post('/lesson-quiz-config', [LessonQuizGeneratorController::class, 'store'])
+            ->name('admin.lesson-quiz-config.store');
+        Route::post('/lesson-quiz-config/{config}/generate', [LessonQuizGeneratorController::class, 'generate'])
+            ->name('admin.lesson-quiz-config.generate');
+        Route::get('/lesson-quiz-generation-jobs/{generationJob}', [LessonQuizGeneratorController::class, 'generationStatus'])
+            ->name('admin.lesson-quiz-generation-jobs.show');
+
+        Route::get('/notifications', [PortalNotificationController::class, 'index'])
+            ->name('admin.notifications.index');
+        Route::get('/notifications/unread-count', [PortalNotificationController::class, 'unreadCount'])
+            ->name('admin.notifications.unread-count');
+        Route::post('/notifications/{notification}/read', [PortalNotificationController::class, 'markRead'])
+            ->name('admin.notifications.read');
+        Route::post('/notifications/read-all', [PortalNotificationController::class, 'markAllRead'])
+            ->name('admin.notifications.read-all');
+
+        Route::prefix('lesson-quiz-config/{config}/versions/{version}')->group(function () {
+            Route::get('/', [LessonQuizWorkflowController::class, 'show'])
+                ->name('admin.lesson-quiz-workflow.show');
+            Route::patch('/questions/{questionNumber}', [LessonQuizWorkflowController::class, 'updateQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.lesson-quiz-workflow.questions.update');
+            Route::delete('/questions/{questionNumber}', [LessonQuizWorkflowController::class, 'destroyQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.lesson-quiz-workflow.questions.destroy');
+            Route::post('/questions/bulk-save', [LessonQuizWorkflowController::class, 'bulkSaveQuestions'])
+                ->name('admin.lesson-quiz-workflow.questions.bulk-save');
+            Route::post('/questions/{questionNumber}/duplicate', [LessonQuizWorkflowController::class, 'duplicateQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.lesson-quiz-workflow.questions.duplicate');
+            Route::post('/questions/{questionNumber}/regenerate', [LessonQuizWorkflowController::class, 'regenerateQuestion'])
+                ->whereNumber('questionNumber')
+                ->name('admin.lesson-quiz-workflow.questions.regenerate');
+            Route::post('/save-draft', [LessonQuizWorkflowController::class, 'saveDraft'])
+                ->name('admin.lesson-quiz-workflow.save-draft');
+            Route::post('/approve', [LessonQuizWorkflowController::class, 'approve'])
+                ->name('admin.lesson-quiz-workflow.approve');
+            Route::post('/publish', [LessonQuizWorkflowController::class, 'publish'])
+                ->name('admin.lesson-quiz-workflow.publish');
+            Route::post('/translate', [LessonQuizWorkflowController::class, 'translate'])
+                ->name('admin.lesson-quiz-workflow.translate');
+            Route::post('/publish-translation', [LessonQuizWorkflowController::class, 'publishTranslation'])
+                ->name('admin.lesson-quiz-workflow.publish-translation');
+            Route::delete('/translation', [LessonQuizWorkflowController::class, 'deleteTranslation'])
+                ->name('admin.lesson-quiz-workflow.delete-translation');
+        });
+
+        Route::get('/ai-scenario-config', fn () => redirect()->route('admin.ai-scenario-training.final-assessment'))
             ->name('admin.ai-scenario-config.index');
         Route::post('/ai-scenario-config', [AiScenarioConfigController::class, 'store'])
             ->name('admin.ai-scenario-config.store');
         Route::post('/ai-scenario-config/{config}/generate', [AiScenarioConfigController::class, 'generate'])
             ->name('admin.ai-scenario-config.generate');
+        Route::get('/ai-scenario-generation-jobs/{generationJob}', [AiScenarioConfigController::class, 'generationStatus'])
+            ->name('admin.ai-scenario-generation-jobs.show');
 
         Route::prefix('ai-scenario-config/{config}/versions/{version}')->group(function () {
             Route::get('/', [AiScenarioWorkflowController::class, 'show'])
@@ -210,6 +281,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             Route::delete('/questions/{questionNumber}', [AiScenarioWorkflowController::class, 'destroyQuestion'])
                 ->whereNumber('questionNumber')
                 ->name('admin.ai-scenario-workflow.questions.destroy');
+            Route::post('/questions/bulk-save', [AiScenarioWorkflowController::class, 'bulkSaveQuestions'])
+                ->name('admin.ai-scenario-workflow.questions.bulk-save');
             Route::post('/questions/{questionNumber}/duplicate', [AiScenarioWorkflowController::class, 'duplicateQuestion'])
                 ->whereNumber('questionNumber')
                 ->name('admin.ai-scenario-workflow.questions.duplicate');
@@ -473,6 +546,15 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('participant.ai-scenario-attempts.save-progress');
         Route::post('/ai-scenario-attempts/{attempt}/submit', [AiScenarioAttemptController::class, 'submit'])
             ->name('participant.ai-scenario-attempts.submit');
+
+        Route::get('/training-modules/{trainingModule}/contents/{content}/lesson-quiz/status', [LessonQuizAttemptController::class, 'status'])
+            ->name('participant.lesson-quiz.status');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/lesson-quiz/start', [LessonQuizAttemptController::class, 'start'])
+            ->name('participant.lesson-quiz.start');
+        Route::get('/lesson-quiz-attempts/{attempt}', [LessonQuizAttemptController::class, 'show'])
+            ->name('participant.lesson-quiz-attempts.show');
+        Route::post('/lesson-quiz-attempts/{attempt}/submit', [LessonQuizAttemptController::class, 'submit'])
+            ->name('participant.lesson-quiz-attempts.submit');
 
         // Simulation Events (participant browse & register)
         Route::get('/simulation-events', [SimulationEventController::class, 'index'])->name('participant.simulation-events.index');

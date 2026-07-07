@@ -203,19 +203,21 @@ class AiScenarioTrainingService
 
     protected function summarizeContent(TrainingContent $content): string
     {
-        if ($content->content_type === TrainingContent::TYPE_TEXT && $content->body) {
-            $text = trim(preg_replace('/\s+/', ' ', strip_tags($content->body)) ?? '');
+        if ($content->description) {
+            $text = trim(preg_replace('/\s+/', ' ', strip_tags($content->description)) ?? '');
 
             return mb_strlen($text) > 400 ? mb_substr($text, 0, 400).'…' : $text;
         }
 
-        return match ($content->content_type) {
-            TrainingContent::TYPE_PDF => 'PDF lesson material.',
-            TrainingContent::TYPE_VIDEO => 'Video lesson material.',
-            TrainingContent::TYPE_IMAGE => 'Image-based lesson material.',
-            TrainingContent::TYPE_YOUTUBE => 'YouTube video lesson.',
-            default => 'Learning content.',
-        };
+        $content->loadMissing('resources');
+        $resourceCount = $content->resources->count();
+        if ($resourceCount > 0) {
+            $types = $content->resources->pluck('resource_type')->unique()->implode(', ');
+
+            return "Lesson package with {$resourceCount} resource(s): {$types}.";
+        }
+
+        return 'Learning lesson.';
     }
 }
 

@@ -19,7 +19,7 @@ class UpdateTrainingModuleRequest extends FormRequest
             'learning_objectives' => ['required', 'array', 'min:1'],
             'learning_objectives.*' => ['required', 'string', 'max:500'],
             'estimated_duration_minutes' => ['nullable', 'integer', 'min:1', 'max:10080'],
-            'difficulty' => ['required', 'string', 'in:Beginner,Intermediate,Advanced'],
+            'difficulty' => ['nullable', 'string', 'in:Beginner,Intermediate,Advanced'],
             'category' => ['required', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:draft,published,archived,unpublished,deprecated'],
             'visibility' => ['required', 'string', 'in:all,group,staff_only'],
@@ -33,7 +33,6 @@ class UpdateTrainingModuleRequest extends FormRequest
         return [
             'title.required' => 'Module title is required.',
             'category.required' => 'Disaster category is required.',
-            'difficulty.required' => 'Difficulty level is required.',
             'status.required' => 'Status is required.',
             'learning_objectives.required' => 'At least one learning objective is required.',
         ];

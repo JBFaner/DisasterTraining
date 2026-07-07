@@ -236,6 +236,15 @@
             @isset($ai_scenario_configs)
                 data-ai-scenario-configs='@json($ai_scenario_configs)'
             @endisset
+            @isset($lesson_quiz_modules)
+                data-lesson-quiz-modules='@json($lesson_quiz_modules)'
+            @endisset
+            @isset($lesson_quiz_configs)
+                data-lesson-quiz-configs='@json($lesson_quiz_configs)'
+            @endisset
+            @isset($lesson_quiz_attempt)
+                data-lesson-quiz-attempt='@json($lesson_quiz_attempt)'
+            @endisset
             @isset($ai_scenario_attempt)
                 data-ai-scenario-attempt='@json($ai_scenario_attempt)'
             @endisset

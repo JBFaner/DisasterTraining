@@ -612,7 +612,7 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                                 {trainingModule.title}
                             </div>
                             <div className="mt-1 text-xs text-slate-600">
-                                {lessons.length} lesson{lessons.length !== 1 ? 's' : ''}{trainingModule.difficulty ? ` • ${trainingModule.difficulty}` : ''}
+                                {lessons.length} lesson{lessons.length !== 1 ? 's' : ''}
                             </div>
                             <div className="mt-3 flex gap-2">
                             <a

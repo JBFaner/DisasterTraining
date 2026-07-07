@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\LessonResource;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Models\User;
@@ -36,15 +37,28 @@ class TrainingModuleSeeder extends Seeder
                 'contents' => [
                     [
                         'title' => 'Understanding Fire Behavior',
-                        'content_type' => 'text',
-                        'body' => 'Learn how fires start, spread, and behave in residential and community settings.',
+                        'description' => 'Core concepts for community fire safety.',
                         'sort_order' => 1,
+                        'resources' => [
+                            [
+                                'title' => 'Introduction',
+                                'resource_type' => 'text',
+                                'body' => 'Learn how fires start, spread, and behave in residential and community settings.',
+                                'sort_order' => 1,
+                            ],
+                        ],
                     ],
                     [
                         'title' => 'Evacuation Procedures',
-                        'content_type' => 'text',
-                        'body' => 'Step-by-step guide for safe evacuation during fire emergencies.',
                         'sort_order' => 2,
+                        'resources' => [
+                            [
+                                'title' => 'Evacuation Guide',
+                                'resource_type' => 'text',
+                                'body' => 'Step-by-step guide for safe evacuation during fire emergencies.',
+                                'sort_order' => 1,
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -65,9 +79,15 @@ class TrainingModuleSeeder extends Seeder
                 'contents' => [
                     [
                         'title' => 'Reading Flood Advisories',
-                        'content_type' => 'text',
-                        'body' => 'How to interpret PAGASA and local flood warning levels.',
                         'sort_order' => 1,
+                        'resources' => [
+                            [
+                                'title' => 'Flood Advisory Basics',
+                                'resource_type' => 'text',
+                                'body' => 'How to interpret PAGASA and local flood warning levels.',
+                                'sort_order' => 1,
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -88,9 +108,15 @@ class TrainingModuleSeeder extends Seeder
                 'contents' => [
                     [
                         'title' => 'Drop, Cover, and Hold',
-                        'content_type' => 'text',
-                        'body' => 'Practice the correct drop-cover-hold technique during seismic events.',
                         'sort_order' => 1,
+                        'resources' => [
+                            [
+                                'title' => 'Earthquake Drill Steps',
+                                'resource_type' => 'text',
+                                'body' => 'Practice the correct drop-cover-hold technique during seismic events.',
+                                'sort_order' => 1,
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -106,11 +132,21 @@ class TrainingModuleSeeder extends Seeder
             );
 
             if ($module->contents()->count() === 0) {
-                foreach ($contents as $content) {
-                    TrainingContent::create([
+                foreach ($contents as $contentData) {
+                    $resources = $contentData['resources'] ?? [];
+                    unset($contentData['resources']);
+
+                    $lesson = TrainingContent::create([
                         'training_module_id' => $module->id,
-                        ...$content,
+                        ...$contentData,
                     ]);
+
+                    foreach ($resources as $resourceData) {
+                        LessonResource::create([
+                            'training_content_id' => $lesson->id,
+                            ...$resourceData,
+                        ]);
+                    }
                 }
             }
         }

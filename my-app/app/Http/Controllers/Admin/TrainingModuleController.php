@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\ManagesTrainingModuleAssets;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ReorderLessonResourcesRequest;
 use App\Http\Requests\ReorderTrainingContentsRequest;
-use App\Http\Requests\StoreTrainingContentRequest;
-use App\Http\Requests\StoreTrainingModuleRequest;
-use App\Http\Requests\UpdateTrainingContentRequest;
-use App\Http\Requests\UpdateTrainingModuleRequest;
+use App\Http\Requests\StoreLessonResourceRequest;
+use App\Http\Requests\StoreTrainingLessonRequest;
+use App\Http\Requests\UpdateLessonResourceRequest;
+use App\Http\Requests\UpdateTrainingLessonRequest;
+use App\Models\LessonResource;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Services\AuditLogger;
 use App\Services\GeminiService;
+use App\Services\LessonResourceProcessingService;
+use App\Services\TrainingModuleCardStatsService;
 use Illuminate\Http\Request;
 
 class TrainingModuleController extends Controller
@@ -24,6 +28,7 @@ class TrainingModuleController extends Controller
         $perPage = 9;
 
         $query = TrainingModule::with('owner')
+            ->withCount('contents as lesson_count')
             ->orderByDesc('updated_at');
 
         if ($request->filled('search')) {
@@ -41,16 +46,13 @@ class TrainingModuleController extends Controller
             $query->where('status', $request->string('status'));
         }
 
-        if ($request->filled('difficulty')) {
-            $query->where('difficulty', $request->string('difficulty'));
-        }
-
         if ($request->filled('category')) {
             $query->where('category', $request->string('category'));
         }
 
         $paginator = $query->paginate($perPage)->withQueryString();
-        $modules = $paginator->items();
+        $modules = collect($paginator->items());
+        app(TrainingModuleCardStatsService::class)->enrichAdminModules($modules);
 
         $modulesPagination = [
             'current_page' => $paginator->currentPage(),
@@ -63,19 +65,18 @@ class TrainingModuleController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'modules' => $modules,
+                'modules' => $modules->values()->all(),
                 'pagination' => $modulesPagination,
             ]);
         }
 
         return view('app', [
             'section' => 'training',
-            'modules' => $modules,
+            'modules' => $modules->values()->all(),
             'modulesPagination' => $modulesPagination,
             'trainingFilters' => [
                 'search' => $request->string('search')->toString(),
                 'status' => $request->string('status')->toString(),
-                'difficulty' => $request->string('difficulty')->toString(),
                 'category' => $request->string('category')->toString(),
             ],
         ]);
@@ -105,6 +106,7 @@ class TrainingModuleController extends Controller
         $data = $request->validated();
         $data['owner_id'] = portal_id();
         $data['status'] = 'draft';
+        $data['difficulty'] = $data['difficulty'] ?? 'Beginner';
         $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
         if (empty($data['learning_objectives'])) {
@@ -136,7 +138,7 @@ class TrainingModuleController extends Controller
     public function show(TrainingModule $trainingModule)
     {
         $this->authorizeOwner($trainingModule);
-        $trainingModule->load(['contents', 'owner']);
+        $trainingModule->load(['contents.resources', 'owner']);
 
         return view('app', [
             'section' => 'training_detail',
@@ -159,6 +161,7 @@ class TrainingModuleController extends Controller
         $this->authorizeOwner($trainingModule);
 
         $data = $request->validated();
+        $data['difficulty'] = $data['difficulty'] ?? $trainingModule->difficulty ?? 'Beginner';
         $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
         if (empty($data['learning_objectives'])) {
@@ -277,15 +280,22 @@ class TrainingModuleController extends Controller
             ->with('status', 'Training module archived.');
     }
 
-    public function destroy(TrainingModule $trainingModule)
+    public function destroy(Request $request, TrainingModule $trainingModule)
     {
         $this->authorizeOwner($trainingModule);
 
-        $snapshot = $trainingModule->toArray();
+        if ($trainingModule->hasParticipantLearningRecords()) {
+            $message = 'This training module cannot be deleted because participant learning records already exist.';
 
-        if ($trainingModule->thumbnail_path) {
-            $this->deleteLocalFile($trainingModule->thumbnail_path);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return redirect()->route('admin.training-modules.index')
+                ->withErrors(['training_module' => $message]);
         }
+
+        $snapshot = $trainingModule->toArray();
 
         $trainingModule->delete();
 
@@ -297,48 +307,36 @@ class TrainingModuleController extends Controller
             'old_values' => $snapshot,
         ]);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Training module deleted successfully.',
+            ]);
+        }
+
         return redirect()->route('admin.training-modules.index')
-            ->with('status', 'Training module deleted permanently.');
+            ->with('status', 'Training module deleted successfully.');
     }
 
-    public function storeContent(StoreTrainingContentRequest $request, TrainingModule $trainingModule)
+    public function storeContent(StoreTrainingLessonRequest $request, TrainingModule $trainingModule)
     {
         $this->authorizeOwner($trainingModule);
 
         $data = $request->validated();
         $sortOrder = ($trainingModule->contents()->max('sort_order') ?? 0) + 1;
 
-        $payload = [
+        TrainingContent::create([
             'training_module_id' => $trainingModule->id,
             'title' => $data['title'],
-            'content_type' => $data['content_type'],
-            'body' => $data['body'] ?? null,
-            'external_url' => $data['external_url'] ?? null,
+            'description' => $data['description'] ?? null,
             'sort_order' => $sortOrder,
-        ];
-
-        if ($request->hasFile('file')) {
-            try {
-                $payload['file_path'] = $this->storeContentFile(
-                    $request->file('file'),
-                    $data['content_type'],
-                    $data['storage_target'] ?? 'auto',
-                );
-            } catch (\Throwable $e) {
-                return redirect()->back()
-                    ->withErrors(['file' => $e->getMessage()])
-                    ->withInput();
-            }
-        }
-
-        TrainingContent::create($payload);
+        ]);
 
         return redirect()->route('admin.training-modules.show', $trainingModule)
-            ->with('status', 'Learning content added to module.');
+            ->with('status', 'Lesson added to module.');
     }
 
     public function updateContent(
-        UpdateTrainingContentRequest $request,
+        UpdateTrainingLessonRequest $request,
         TrainingModule $trainingModule,
         TrainingContent $content,
     ) {
@@ -347,28 +345,13 @@ class TrainingModuleController extends Controller
 
         $data = $request->validated();
 
-        $payload = [
+        $content->update([
             'title' => $data['title'],
-            'content_type' => $data['content_type'],
-            'body' => $data['body'] ?? null,
-            'external_url' => $data['external_url'] ?? null,
-        ];
-
-        if ($request->hasFile('file')) {
-            $this->deleteStoredContentFile($content->file_path);
-            $payload['file_path'] = $this->storeContentFile(
-                $request->file('file'),
-                $data['content_type'],
-                $data['storage_target'] ?? 'auto',
-            );
-        } elseif ($data['content_type'] === TrainingContent::TYPE_YOUTUBE) {
-            $payload['file_path'] = null;
-        }
-
-        $content->update($payload);
+            'description' => $data['description'] ?? null,
+        ]);
 
         return redirect()->route('admin.training-modules.show', $trainingModule)
-            ->with('status', 'Learning content updated successfully.');
+            ->with('status', 'Lesson updated successfully.');
     }
 
     public function destroyContent(
@@ -378,11 +361,161 @@ class TrainingModuleController extends Controller
         $this->authorizeOwner($trainingModule);
         $this->assertContentBelongsToModule($trainingModule, $content);
 
-        $this->deleteStoredContentFile($content->file_path);
+        $content->load('resources');
+        foreach ($content->resources as $resource) {
+            $this->deleteStoredContentFile($resource->file_path);
+        }
+
         $content->delete();
 
         return redirect()->route('admin.training-modules.show', $trainingModule)
-            ->with('status', 'Learning content removed from module.');
+            ->with('status', 'Lesson removed from module.');
+    }
+
+    public function storeResource(
+        StoreLessonResourceRequest $request,
+        TrainingModule $trainingModule,
+        TrainingContent $content,
+    ) {
+        $this->authorizeOwner($trainingModule);
+        $this->assertContentBelongsToModule($trainingModule, $content);
+
+        $data = $request->validated();
+        $sortOrder = ($content->resources()->max('sort_order') ?? 0) + 1;
+
+        $payload = [
+            'training_content_id' => $content->id,
+            'title' => $data['title'],
+            'resource_type' => $data['resource_type'],
+            'body' => $data['body'] ?? null,
+            'external_url' => $data['external_url'] ?? null,
+            'sort_order' => $sortOrder,
+        ];
+
+        if ($request->hasFile('file')) {
+            try {
+                $payload['file_path'] = $this->storeContentFile(
+                    $request->file('file'),
+                    $data['resource_type'],
+                    $data['storage_target'] ?? 'auto',
+                );
+            } catch (\Throwable $e) {
+                return redirect()->back()
+                    ->withErrors(['file' => $e->getMessage()])
+                    ->withInput();
+            }
+        }
+
+        $resource = LessonResource::create($payload);
+        app(LessonResourceProcessingService::class)->afterResourceSaved($resource);
+
+        return redirect()->route('admin.training-modules.show', $trainingModule)
+            ->with('status', 'Learning resource added to lesson.');
+    }
+
+    public function updateResource(
+        UpdateLessonResourceRequest $request,
+        TrainingModule $trainingModule,
+        TrainingContent $content,
+        LessonResource $resource,
+    ) {
+        $this->authorizeOwner($trainingModule);
+        $this->assertContentBelongsToModule($trainingModule, $content);
+        $this->assertResourceBelongsToLesson($content, $resource);
+
+        $data = $request->validated();
+
+        $payload = [
+            'title' => $data['title'],
+            'resource_type' => $data['resource_type'],
+            'body' => $data['body'] ?? null,
+            'external_url' => $data['external_url'] ?? null,
+        ];
+
+        if ($request->hasFile('file')) {
+            $this->deleteStoredContentFile($resource->file_path);
+            $payload['file_path'] = $this->storeContentFile(
+                $request->file('file'),
+                $data['resource_type'],
+                $data['storage_target'] ?? 'auto',
+            );
+        } elseif ($data['resource_type'] === LessonResource::TYPE_YOUTUBE) {
+            $payload['file_path'] = null;
+        }
+
+        $resource->update($payload);
+        $resource->refresh();
+
+        if ($request->hasFile('file')
+            || $resource->wasChanged(['resource_type', 'body', 'file_path', 'external_url'])) {
+            app(LessonResourceProcessingService::class)->afterResourceSaved($resource);
+        }
+
+        return redirect()->route('admin.training-modules.show', $trainingModule)
+            ->with('status', 'Learning resource updated successfully.');
+    }
+
+    public function destroyResource(
+        TrainingModule $trainingModule,
+        TrainingContent $content,
+        LessonResource $resource,
+    ) {
+        $this->authorizeOwner($trainingModule);
+        $this->assertContentBelongsToModule($trainingModule, $content);
+        $this->assertResourceBelongsToLesson($content, $resource);
+
+        $this->deleteStoredContentFile($resource->file_path);
+        $resource->delete();
+
+        return redirect()->route('admin.training-modules.show', $trainingModule)
+            ->with('status', 'Learning resource removed.');
+    }
+
+    public function reprocessResource(
+        TrainingModule $trainingModule,
+        TrainingContent $content,
+        LessonResource $resource,
+    ) {
+        $this->authorizeOwner($trainingModule);
+        $this->assertContentBelongsToModule($trainingModule, $content);
+        $this->assertResourceBelongsToLesson($content, $resource);
+
+        app(LessonResourceProcessingService::class)->reprocess($resource);
+
+        return redirect()->route('admin.training-modules.show', $trainingModule)
+            ->with('status', 'Learning resource reprocessing started.');
+    }
+
+    public function reorderResources(
+        ReorderLessonResourcesRequest $request,
+        TrainingModule $trainingModule,
+        TrainingContent $content,
+    ) {
+        $this->authorizeOwner($trainingModule);
+        $this->assertContentBelongsToModule($trainingModule, $content);
+
+        $order = $request->validated()['order'];
+        $resourceIds = $content->resources()->pluck('id')->all();
+
+        foreach ($order as $index => $resourceId) {
+            if (! in_array($resourceId, $resourceIds, true)) {
+                continue;
+            }
+
+            LessonResource::where('id', $resourceId)
+                ->where('training_content_id', $content->id)
+                ->update(['sort_order' => $index + 1]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Resource order updated.',
+            ]);
+        }
+
+        return redirect()->route('admin.training-modules.show', $trainingModule)
+            ->with('status', 'Resource order updated.');
     }
 
     public function reorderContents(

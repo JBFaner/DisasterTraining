@@ -135,6 +135,35 @@ class AiScenarioWorkflowController extends Controller
         return $this->versionResponse('Question deleted.', $config, $version);
     }
 
+    public function bulkSaveQuestions(Request $request, AiScenarioConfig $config, AiScenarioAssessmentVersion $version)
+    {
+        $this->authorizeAdmin();
+        $this->assertVersionBelongsToConfig($version, $config);
+
+        $data = $request->validate([
+            'questions' => ['required', 'array', 'min:1'],
+            'questions.*.number' => ['required', 'integer', 'min:1'],
+            'questions.*.question_en' => ['sometimes', 'string'],
+            'questions.*.question_fil' => ['sometimes', 'string'],
+            'questions.*.choice_a_en' => ['sometimes', 'string'],
+            'questions.*.choice_b_en' => ['sometimes', 'string'],
+            'questions.*.choice_c_en' => ['sometimes', 'string'],
+            'questions.*.choice_d_en' => ['sometimes', 'string'],
+            'questions.*.choice_a_fil' => ['sometimes', 'string'],
+            'questions.*.choice_b_fil' => ['sometimes', 'string'],
+            'questions.*.choice_c_fil' => ['sometimes', 'string'],
+            'questions.*.choice_d_fil' => ['sometimes', 'string'],
+            'questions.*.explanation_en' => ['nullable', 'string'],
+            'questions.*.explanation_fil' => ['nullable', 'string'],
+            'questions.*.correct_answer' => ['sometimes', Rule::in(['A', 'B', 'C', 'D', 'a', 'b', 'c', 'd'])],
+        ]);
+
+        $version = $this->workflowService->bulkUpdateQuestions($version, $data['questions']);
+        $this->logAction('Bulk saved AI scenario questions', $config, $version);
+
+        return $this->versionResponse('Changes saved.', $config, $version);
+    }
+
     public function duplicateQuestion(
         AiScenarioConfig $config,
         AiScenarioAssessmentVersion $version,
@@ -287,7 +316,7 @@ class AiScenarioWorkflowController extends Controller
     {
         AuditLogger::log([
             'action' => $action,
-            'module' => 'AI Scenario Training',
+            'module' => 'Final AI Scenario Assessment',
             'status' => 'success',
             'description' => 'Module ID: '.$config->training_module_id.' · Version '.$version->version_number,
         ]);

@@ -31,6 +31,7 @@ class AiScenarioAdminSerializer
             'currentVersion' => fn ($query) => $query->with(self::versionRelations()),
             'publishedVersion' => fn ($query) => $query->with(self::versionRelations()),
             'versions' => fn ($query) => $query->with(self::versionRelations())->orderByDesc('version_number'),
+            'latestGenerationJob',
         ];
     }
 
@@ -66,6 +67,8 @@ class AiScenarioAdminSerializer
             'versions' => $config->versions?->map(fn ($version) => self::serializeVersion($version, $config))->values() ?? [],
             'generated_at' => $config->generated_at,
             'updated_at' => $config->updated_at,
+            'latest_generation_job' => app(\App\Services\AiScenarioGenerationProcessor::class)
+                ->serializeJob($config->latestGenerationJob),
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Models\LessonResource;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use Cloudinary\Cloudinary;
@@ -75,9 +76,9 @@ trait ManagesTrainingModuleAssets
         }
 
         $folder = match ($contentType) {
-            TrainingContent::TYPE_PDF => 'training-contents/pdf',
-            TrainingContent::TYPE_VIDEO => 'training-contents/video',
-            TrainingContent::TYPE_IMAGE => 'training-contents/images',
+            LessonResource::TYPE_PDF => 'training-contents/pdf',
+            LessonResource::TYPE_VIDEO => 'training-contents/video',
+            LessonResource::TYPE_IMAGE => 'training-contents/images',
             default => 'training-contents',
         };
 
@@ -119,6 +120,13 @@ trait ManagesTrainingModuleAssets
     protected function assertContentBelongsToModule(TrainingModule $module, TrainingContent $content): void
     {
         if ($content->training_module_id !== $module->id) {
+            abort(404);
+        }
+    }
+
+    protected function assertResourceBelongsToLesson(TrainingContent $lesson, LessonResource $resource): void
+    {
+        if ($resource->training_content_id !== $lesson->id) {
             abort(404);
         }
     }

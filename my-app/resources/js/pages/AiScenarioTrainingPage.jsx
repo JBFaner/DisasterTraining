@@ -426,8 +426,8 @@ export function AiScenarioTrainingPage({ attempt, module }) {
 
             <AdminPageHeader
                 icon={Sparkles}
-                title="AI Scenario-Based Training"
-                description={scenarioTitle || 'Disaster scenario assessment'}
+                title="Final AI Scenario Assessment"
+                description={scenarioTitle || 'Final scenario-based assessment'}
                 actions={
                     step === 'quiz' && !isCompleted ? (
                         <div className="inline-flex items-center gap-2 text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
@@ -733,7 +733,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
             <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-sm font-semibold text-slate-900">AI Scenario-Based Training</h3>
+                <h3 className="text-sm font-semibold text-slate-900">Final AI Scenario Assessment</h3>
             </div>
             <p className="text-xs text-slate-600">
                 Complete all lessons to unlock a Gemini-generated disaster scenario and assessment quiz.
@@ -747,7 +747,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                     </div>
                     <p className="text-xs text-sky-900">
                         Your administrator has approved a new training attempt.
-                        Please complete all lessons again before taking the AI Scenario Assessment.
+                        Please complete all lesson quizzes before taking the Final AI Scenario Assessment.
                     </p>
                     {lessonProgress.length > 0 && (
                         <div className="pt-2 border-t border-sky-200 space-y-2">
@@ -761,7 +761,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                                 </div>
                             ))}
                             <div className="flex items-center justify-between gap-2 text-xs pt-1">
-                                <span className="text-sky-900 font-medium">AI Scenario</span>
+                                <span className="text-sky-900 font-medium">Final Assessment</span>
                                 <span className="inline-flex items-center rounded-full px-2 py-0.5 font-semibold bg-slate-200 text-slate-600">
                                     Locked
                                 </span>
@@ -779,7 +779,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                     </div>
                     <p className="text-xs text-amber-900">
                         You did not achieve the required passing score of {passingScore}%.
-                        Please complete all lessons again before attempting the AI Scenario Assessment.
+                        Please complete all lesson quizzes again before attempting the Final AI Scenario Assessment.
                     </p>
                     <div className="flex justify-between text-xs text-amber-900">
                         <span>Attempts Remaining</span>
@@ -797,7 +797,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                                 </div>
                             ))}
                             <div className="flex items-center justify-between gap-2 text-xs pt-1">
-                                <span className="text-amber-900 font-medium">AI Scenario</span>
+                                <span className="text-amber-900 font-medium">Final Assessment</span>
                                 <span className="inline-flex items-center rounded-full px-2 py-0.5 font-semibold bg-slate-200 text-slate-600">
                                     Locked
                                 </span>
@@ -816,7 +816,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
 
             {meta.all_lessons_completed && !meta.is_configured && (
                 <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                    Your administrator has not enabled AI scenario training for this module yet.
+                    Your administrator has not enabled the Final AI Scenario Assessment for this module yet.
                 </div>
             )}
 

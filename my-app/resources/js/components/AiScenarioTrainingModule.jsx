@@ -9,12 +9,11 @@ import {
     Eye,
     Pencil,
     Trash2,
-    RefreshCw,
-    Plus,
     Save,
     Send,
     ChevronDown,
     X,
+    Plus,
 } from 'lucide-react';
 import {
     AdminPageShell,
@@ -26,14 +25,17 @@ import {
     adminCompactInputClass,
 } from '../components/admin/AdminLayout';
 import { AdminDataTable, AdminTableActionButton } from '../components/admin/AdminDataTable';
-import { AiScenarioLanguageSwitcher } from '../components/AiScenarioLanguageSwitcher';
+import {
+    LessonQuizQuestionBankReview,
+    confirmUnsavedQuestionBankChanges,
+} from './LessonQuizQuestionBankReview';
 import {
     AI_SCENARIO_DEFAULT_LANGUAGE,
     resolveLearningObjectives,
-    resolveQuestionForLocale,
     resolveScenarioDescription,
     resolveScenarioTitle,
 } from '../utils/aiScenarioLocale';
+import { showPortalToast } from '../utils/portalToast';
 
 const QUESTION_COUNTS = [10, 15, 20];
 
@@ -149,12 +151,137 @@ function VersionAuditPanel({ version }) {
     );
 }
 
+function ScenarioReadOnlyPanel({ version }) {
+    const titleEn = resolveScenarioTitle(version, 'en');
+    const titleFil = resolveScenarioTitle(version, 'fil');
+    const descriptionEn = resolveScenarioDescription(version, 'en');
+    const descriptionFil = resolveScenarioDescription(version, 'fil');
+    const objectivesEn = resolveLearningObjectives(version, 'en');
+    const objectivesFil = resolveLearningObjectives(version, 'fil');
+
+    return (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4 mb-6">
+            <h4 className="text-sm font-semibold text-slate-800">Scenario Content</h4>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">English</p>
+                    <h5 className="text-base font-semibold text-slate-900">{titleEn}</h5>
+                    <p className="text-sm text-slate-700 whitespace-pre-line">{descriptionEn}</p>
+                    {objectivesEn && (
+                        <ul className="list-disc list-inside text-sm text-slate-600">
+                            {objectivesEn.split('\n').filter(Boolean).map((item) => (
+                                <li key={`en-${item}`}>{item}</li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+                <div className="space-y-3 lg:border-l lg:border-slate-100 lg:pl-6">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Filipino</p>
+                    <h5 className="text-base font-semibold text-slate-900">{titleFil}</h5>
+                    <p className="text-sm text-slate-700 whitespace-pre-line">{descriptionFil}</p>
+                    {objectivesFil && (
+                        <ul className="list-disc list-inside text-sm text-slate-600">
+                            {objectivesFil.split('\n').filter(Boolean).map((item) => (
+                                <li key={`fil-${item}`}>{item}</li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </div>
+            {version.disaster_type && (
+                <p className="text-xs text-slate-500 pt-2 border-t border-slate-100">
+                    Disaster type: <span className="font-medium text-slate-700">{version.disaster_type}</span>
+                    {version.difficulty && (
+                        <> · Difficulty: <span className="capitalize font-medium">{version.difficulty}</span></>
+                    )}
+                </p>
+            )}
+        </div>
+    );
+}
+
+function ScenarioEditorSection({
+    version,
+    scenarioDraft,
+    onScenarioDraftChange,
+    onSaveScenario,
+    onAddQuestion,
+    workflowBusy,
+}) {
+    if (!scenarioDraft) return null;
+
+    return (
+        <div className="space-y-4 mb-6">
+            <h4 className="text-sm font-semibold text-slate-800">Edit Scenario</h4>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Title (English)</label>
+                        <input className={adminCompactInputClass} value={scenarioDraft.title_en} onChange={(e) => onScenarioDraftChange({ ...scenarioDraft, title_en: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Title (Filipino)</label>
+                        <input className={adminCompactInputClass} value={scenarioDraft.title_fil} onChange={(e) => onScenarioDraftChange({ ...scenarioDraft, title_fil: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
+                        <input className={adminCompactInputClass} value={scenarioDraft.disaster_type} onChange={(e) => onScenarioDraftChange({ ...scenarioDraft, disaster_type: e.target.value })} />
+                    </div>
+                    {version?.difficulty && (
+                        <p className="text-xs text-slate-500">
+                            AI-determined difficulty: <span className="capitalize font-medium">{version.difficulty}</span>
+                        </p>
+                    )}
+                </div>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Description (English)</label>
+                        <textarea rows={4} className={adminCompactInputClass} value={scenarioDraft.description_en} onChange={(e) => onScenarioDraftChange({ ...scenarioDraft, description_en: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Description (Filipino)</label>
+                        <textarea rows={4} className={adminCompactInputClass} value={scenarioDraft.description_fil} onChange={(e) => onScenarioDraftChange({ ...scenarioDraft, description_fil: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Learning Objectives (English)</label>
+                        <textarea rows={3} className={adminCompactInputClass} value={scenarioDraft.learning_objectives_en} onChange={(e) => onScenarioDraftChange({ ...scenarioDraft, learning_objectives_en: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Learning Objectives (Filipino)</label>
+                        <textarea rows={3} className={adminCompactInputClass} value={scenarioDraft.learning_objectives_fil} onChange={(e) => onScenarioDraftChange({ ...scenarioDraft, learning_objectives_fil: e.target.value })} />
+                    </div>
+                </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+                <AdminPrimaryButton type="button" onClick={onSaveScenario} disabled={workflowBusy}>
+                    <Save className="w-4 h-4" /> Save Scenario
+                </AdminPrimaryButton>
+                <AdminPrimaryButton type="button" onClick={onAddQuestion} disabled={workflowBusy}>
+                    <Plus className="w-4 h-4" /> Add Question
+                </AdminPrimaryButton>
+            </div>
+        </div>
+    );
+}
+
 function workflowUrl(configId, versionId, suffix = '') {
     return `/admin/ai-scenario-config/${configId}/versions/${versionId}${suffix}`;
 }
 
 function serializeConfigPayload(payload) {
     return JSON.stringify(payload);
+}
+
+function buildScenarioDraft(version) {
+    return {
+        title_en: version.title_en || '',
+        title_fil: version.title_fil || '',
+        description_en: version.description_en || '',
+        description_fil: version.description_fil || '',
+        learning_objectives_en: version.learning_objectives_en || '',
+        learning_objectives_fil: version.learning_objectives_fil || '',
+        disaster_type: version.disaster_type || '',
+    };
 }
 
 export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
@@ -176,15 +303,18 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
     const [configSynced, setConfigSynced] = React.useState(false);
     const [savedPayloadKey, setSavedPayloadKey] = React.useState('');
 
-    const [displayLanguage, setDisplayLanguage] = React.useState(AI_SCENARIO_DEFAULT_LANGUAGE);
     const [saving, setSaving] = React.useState(false);
     const [generating, setGenerating] = React.useState(false);
     const [workflowBusy, setWorkflowBusy] = React.useState(false);
+    const [activeGenerationJob, setActiveGenerationJob] = React.useState(null);
+    const [questionBankDirty, setQuestionBankDirty] = React.useState(false);
 
     const [activeVersion, setActiveVersion] = React.useState(null);
     const [panelMode, setPanelMode] = React.useState(null);
-    const [editingQuestion, setEditingQuestion] = React.useState(null);
     const [scenarioDraft, setScenarioDraft] = React.useState(null);
+
+    const deepLinkHandled = React.useRef(false);
+    const versionDeepLinkHandled = React.useRef(false);
 
     const [questionCount, setQuestionCount] = React.useState(10);
     const [generationLanguage, setGenerationLanguage] = React.useState(AI_SCENARIO_DEFAULT_LANGUAGE);
@@ -251,6 +381,42 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
     }, []);
 
     React.useEffect(() => {
+        if (deepLinkHandled.current) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const moduleId = params.get('module');
+
+        if (!moduleId) return;
+
+        if (modules.some((module) => String(module.id) === String(moduleId))) {
+            setSelectedModuleId(String(moduleId));
+        }
+
+        deepLinkHandled.current = true;
+    }, [modules]);
+
+    React.useEffect(() => {
+        if (versionDeepLinkHandled.current) return;
+
+        const versionId = new URLSearchParams(window.location.search).get('version');
+        if (!versionId || !selectedConfig) return;
+
+        const version = (selectedConfig.versions || []).find((item) => String(item.id) === String(versionId));
+        if (!version) return;
+
+        setActiveVersion(version);
+        setPanelMode('view');
+        setQuestionBankDirty(false);
+        versionDeepLinkHandled.current = true;
+    }, [selectedConfig]);
+
+    React.useEffect(() => {
+        setActiveGenerationJob(selectedConfig?.latest_generation_job?.is_active
+            ? selectedConfig.latest_generation_job
+            : null);
+    }, [selectedConfig?.id, selectedConfig?.latest_generation_job]);
+
+    React.useEffect(() => {
         const existing = configByModuleId[Number(selectedModuleId)];
         hydrateConfigForm(existing);
         if (existing) {
@@ -309,10 +475,13 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
             const others = prev.filter((c) => c.training_module_id !== config.training_module_id);
             return [...others, config];
         });
-    };
-
-    const refreshAllConfigs = (updatedConfig) => {
-        refreshConfig(updatedConfig);
+        if (config.latest_generation_job?.is_active) {
+            setActiveGenerationJob(config.latest_generation_job);
+        } else if (config.latest_generation_job) {
+            setActiveGenerationJob((prev) => (
+                prev && prev.ai_scenario_config_id === config.id ? config.latest_generation_job : prev
+            ));
+        }
     };
 
     const findVersionContext = (versionRow) => {
@@ -364,11 +533,11 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
     };
 
     const handleGenerate = async () => {
-        if (!selectedConfig?.id || !configSynced) return;
+        if (!selectedConfig?.id || !configSynced || activeGenerationJob?.is_active) return;
 
         const result = await Swal.fire({
             title: 'Generate AI Scenario & Questions?',
-            html: 'Gemini will determine difficulty from the training module and generate the assessment as a draft.',
+            html: 'Gemini will determine difficulty from the training module and generate the assessment as a draft in the background.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Generate',
@@ -378,13 +547,12 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
 
         setGenerating(true);
         try {
-            const genData = await apiFetch(`/admin/ai-scenario-config/${selectedConfig.id}/generate`, { method: 'POST' });
-            refreshConfig(genData.config);
+            const data = await apiFetch(`/admin/ai-scenario-config/${selectedConfig.id}/generate`, { method: 'POST' });
+            setActiveGenerationJob(data.generation_job);
             setConfigExpanded(false);
-            Swal.fire({
-                icon: 'success',
-                title: 'Generated',
-                text: 'Review the new assessment in the table below.',
+            showPortalToast({
+                title: 'AI Scenario generation has started.',
+                description: 'You may continue using the system while the AI processes your assessment.',
             });
         } catch (err) {
             Swal.fire({ icon: 'error', title: 'Generation failed', text: err.message });
@@ -392,6 +560,49 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
             setGenerating(false);
         }
     };
+
+    React.useEffect(() => {
+        if (!activeGenerationJob?.id || !activeGenerationJob?.is_active) return undefined;
+
+        let cancelled = false;
+
+        const pollStatus = async () => {
+            try {
+                const data = await apiFetch(`/admin/ai-scenario-generation-jobs/${activeGenerationJob.id}`);
+                if (cancelled) return;
+
+                const job = data.generation_job;
+                setActiveGenerationJob(job);
+
+                if (data.config) {
+                    refreshConfig(data.config);
+                }
+
+                if (job?.status === 'completed') {
+                    setActiveGenerationJob(null);
+                    window.dispatchEvent(new CustomEvent('portal-notifications-refresh'));
+                    showPortalToast({
+                        title: 'AI Scenario generation completed.',
+                        description: 'Review the new draft assessment when you are ready.',
+                    });
+                }
+
+                if (job?.status === 'failed') {
+                    setActiveGenerationJob(null);
+                    window.dispatchEvent(new CustomEvent('portal-notifications-refresh'));
+                }
+            } catch {
+                // keep polling on transient errors
+            }
+        };
+
+        pollStatus();
+        const timer = window.setInterval(pollStatus, 5000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+        };
+    }, [activeGenerationJob?.id, activeGenerationJob?.is_active]);
 
     const runWorkflow = async (configId, versionId, suffix, { method = 'POST', body, successTitle, successText } = {}) => {
         if (!configId || !versionId) return null;
@@ -402,7 +613,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                 body: body ? JSON.stringify(body) : undefined,
             });
             if (data.config) {
-                refreshAllConfigs(data.config);
+                refreshConfig(data.config);
             }
             if (successTitle) {
                 Swal.fire({ icon: 'success', title: successTitle, text: successText || data.message, timer: 2500, showConfirmButton: false });
@@ -419,34 +630,33 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
     const openViewPanel = (row) => {
         const { version } = findVersionContext(row);
         setActiveVersion(version);
-        setDisplayLanguage(version.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
         setPanelMode('view');
+        setQuestionBankDirty(false);
     };
 
     const openEditPanel = (row) => {
         const { version } = findVersionContext(row);
         setActiveVersion(version);
-        setDisplayLanguage(version.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
-        setScenarioDraft({
-            title_en: version.title_en || '',
-            title_fil: version.title_fil || '',
-            description_en: version.description_en || '',
-            description_fil: version.description_fil || '',
-            learning_objectives_en: version.learning_objectives_en || '',
-            learning_objectives_fil: version.learning_objectives_fil || '',
-            disaster_type: version.disaster_type || '',
-        });
+        setScenarioDraft(buildScenarioDraft(version));
         setPanelMode('edit');
+        setQuestionBankDirty(false);
     };
 
     const closePanel = () => {
+        if (!confirmUnsavedQuestionBankChanges(questionBankDirty)) {
+            return;
+        }
         setPanelMode(null);
         setActiveVersion(null);
         setScenarioDraft(null);
-        setEditingQuestion(null);
+        setQuestionBankDirty(false);
     };
 
     const handlePublish = async (row) => {
+        if (questionBankDirty && !confirmUnsavedQuestionBankChanges(questionBankDirty)) {
+            return;
+        }
+
         const { config, version } = findVersionContext(row);
         if (!config?.id || !version?.id) return;
 
@@ -496,132 +706,81 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
             const updated = data.config.versions?.find((v) => v.id === activeVersion.id);
             if (updated) {
                 setActiveVersion(updated);
-                setScenarioDraft({
-                    title_en: updated.title_en || '',
-                    title_fil: updated.title_fil || '',
-                    description_en: updated.description_en || '',
-                    description_fil: updated.description_fil || '',
-                    learning_objectives_en: updated.learning_objectives_en || '',
-                    learning_objectives_fil: updated.learning_objectives_fil || '',
-                    disaster_type: updated.disaster_type || '',
-                });
+                setScenarioDraft(buildScenarioDraft(updated));
             }
         }
     };
 
-    const handleDeleteQuestion = async (questionNumber) => {
+    const handleAddQuestion = async () => {
         if (!activeVersion) return;
         const { config } = findVersionContext(activeVersion);
-        const confirm = await Swal.fire({
-            title: 'Delete question?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
+
+        const data = await runWorkflow(config.id, activeVersion.id, '/questions', {
+            method: 'POST',
+            body: {
+                question_en: 'New scenario question',
+                choice_a_en: 'Option A',
+                choice_b_en: 'Option B',
+                choice_c_en: 'Option C',
+                choice_d_en: 'Option D',
+                correct_answer: 'A',
+                explanation_en: '',
+                competency: 'knowledge',
+            },
+            successTitle: 'Question added',
         });
-        if (!confirm.isConfirmed) return;
-
-        const data = await runWorkflow(config.id, activeVersion.id, `/questions/${questionNumber}`, {
-            method: 'DELETE',
-            successTitle: 'Deleted',
-        });
-        if (data?.config) {
-            const updated = data.config.versions?.find((v) => v.id === activeVersion.id);
-            if (updated) setActiveVersion(updated);
-        }
-    };
-
-    const handleRegenerateQuestion = async (questionNumber) => {
-        if (!activeVersion) return;
-        const { config } = findVersionContext(activeVersion);
-        const confirm = await Swal.fire({
-            title: 'Regenerate this question?',
-            icon: 'question',
-            showCancelButton: true,
-        });
-        if (!confirm.isConfirmed) return;
-
-        const data = await runWorkflow(config.id, activeVersion.id, `/questions/${questionNumber}/regenerate`, {
-            successTitle: 'Regenerated',
-        });
-        if (data?.config) {
-            const updated = data.config.versions?.find((v) => v.id === activeVersion.id);
-            if (updated) setActiveVersion(updated);
-        }
-    };
-
-    const openManualQuestion = () => {
-        setEditingQuestion({
-            isNew: true,
-            question_en: '',
-            question_fil: '',
-            choice_a_en: '',
-            choice_b_en: '',
-            choice_c_en: '',
-            choice_d_en: '',
-            choice_a_fil: '',
-            choice_b_fil: '',
-            choice_c_fil: '',
-            choice_d_fil: '',
-            correct_answer: 'A',
-            explanation_en: '',
-            explanation_fil: '',
-            competency: 'knowledge',
-        });
-    };
-
-    const openEditQuestion = (question) => {
-        setEditingQuestion({
-            isNew: false,
-            number: question.number,
-            question_en: question.question_en || '',
-            question_fil: question.question_fil || '',
-            choice_a_en: question.choice_a_en || question.choices?.A || '',
-            choice_b_en: question.choice_b_en || question.choices?.B || '',
-            choice_c_en: question.choice_c_en || question.choices?.C || '',
-            choice_d_en: question.choice_d_en || question.choices?.D || '',
-            choice_a_fil: question.choice_a_fil || '',
-            choice_b_fil: question.choice_b_fil || '',
-            choice_c_fil: question.choice_c_fil || '',
-            choice_d_fil: question.choice_d_fil || '',
-            correct_answer: question.correct_answer || 'A',
-            explanation_en: question.explanation_en || '',
-            explanation_fil: question.explanation_fil || '',
-            competency: question.competency || 'knowledge',
-        });
-    };
-
-    const saveQuestion = async () => {
-        if (!editingQuestion || !activeVersion) return;
-        const { config } = findVersionContext(activeVersion);
-        const payload = { ...editingQuestion };
-        delete payload.isNew;
-        delete payload.number;
-
-        setWorkflowBusy(true);
-        try {
-            const suffix = editingQuestion.isNew
-                ? '/questions'
-                : `/questions/${editingQuestion.number}`;
-            const method = editingQuestion.isNew ? 'POST' : 'PATCH';
-            const data = await apiFetch(workflowUrl(config.id, activeVersion.id, suffix), {
-                method,
-                body: JSON.stringify(payload),
-            });
-            refreshAllConfigs(data.config);
-            const updated = data.config.versions?.find((v) => v.id === activeVersion.id);
-            if (updated) setActiveVersion(updated);
-            setEditingQuestion(null);
-            Swal.fire({ icon: 'success', title: 'Saved', timer: 1500, showConfirmButton: false });
-        } catch (err) {
-            Swal.fire({ icon: 'error', title: 'Error', text: err.message });
-        } finally {
-            setWorkflowBusy(false);
+        if (data?.version) {
+            setActiveVersion(data.version);
         }
     };
 
     const activeVersionEditable = activeVersion
         && activeVersion.status !== 'published'
         && activeVersion.status !== 'archived';
+
+    const renderAssessmentReview = (version, { readOnly = false } = {}) => {
+        const { config } = findVersionContext(version);
+        if (!config?.id || !version?.id) return null;
+
+        return (
+            <LessonQuizQuestionBankReview
+                version={version}
+                lessonTitle={selectedModule?.title}
+                quizQuestionCount={config.number_of_questions}
+                readOnly={readOnly}
+                editable={!readOnly && activeVersionEditable}
+                workflowBusy={workflowBusy}
+                prependContent={readOnly ? (
+                    <>
+                        <VersionAuditPanel version={version} />
+                        <ScenarioReadOnlyPanel version={version} />
+                    </>
+                ) : (
+                    <ScenarioEditorSection
+                        version={version}
+                        scenarioDraft={scenarioDraft}
+                        onScenarioDraftChange={setScenarioDraft}
+                        onSaveScenario={handleSaveScenario}
+                        onAddQuestion={handleAddQuestion}
+                        workflowBusy={workflowBusy}
+                    />
+                )}
+                workflowUrl={(suffix) => workflowUrl(config.id, version.id, suffix)}
+                apiFetch={apiFetch}
+                onDirtyChange={setQuestionBankDirty}
+                onVersionUpdated={(updatedVersion, updatedConfig) => {
+                    if (updatedConfig) {
+                        refreshConfig(updatedConfig);
+                    }
+                    setActiveVersion(updatedVersion);
+                    if (!readOnly) {
+                        setScenarioDraft(buildScenarioDraft(updatedVersion));
+                    }
+                    setQuestionBankDirty(false);
+                }}
+            />
+        );
+    };
 
     const scenarioColumns = [
         {
@@ -658,93 +817,19 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
         },
     ];
 
-    const renderScenarioContent = (version, { readOnly = false } = {}) => {
-        const snapshot = version;
-        const title = resolveScenarioTitle(snapshot, displayLanguage);
-        const description = resolveScenarioDescription(snapshot, displayLanguage);
-        const objectives = resolveLearningObjectives(snapshot, displayLanguage);
-        const questions = (version.generated_questions || []).filter((q) => (q.status || '') !== 'archived');
-
-        return (
-            <div className="space-y-6">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Version {version.version_number}
-                                {version.difficulty && (
-                                    <> · Difficulty: <span className="capitalize">{version.difficulty}</span></>
-                                )}
-                            </p>
-                        </div>
-                        <AiScenarioLanguageSwitcher value={displayLanguage} onChange={setDisplayLanguage} />
-                    </div>
-                    <p className="text-sm text-slate-700 whitespace-pre-line">{description}</p>
-                    {objectives && (
-                        <ul className="list-disc list-inside text-sm text-slate-600">
-                            {objectives.split('\n').filter(Boolean).map((item) => (
-                                <li key={item}>{item}</li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-
-                <div>
-                    <h4 className="text-sm font-semibold text-slate-800 mb-3">Questions ({questions.length})</h4>
-                    <div className="space-y-4">
-                        {questions.map((question) => {
-                            const q = resolveQuestionForLocale(question, displayLanguage, { includeAnswers: true });
-                            return (
-                                <div key={q.number} className="rounded-lg border border-slate-200 p-4 bg-white">
-                                    <p className="font-medium text-slate-900 mb-2">Q{q.number}. {q.question}</p>
-                                    <ul className="text-sm space-y-1 mb-2">
-                                        {['A', 'B', 'C', 'D'].map((letter) => (
-                                            <li
-                                                key={letter}
-                                                className={letter === q.correct_answer ? 'text-emerald-700 font-semibold' : 'text-slate-600'}
-                                            >
-                                                {letter}. {q.choices[letter]}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    {q.explanation && (
-                                        <p className="text-sm text-slate-600 pt-2 border-t border-slate-100">
-                                            <span className="font-medium">Explanation:</span> {q.explanation}
-                                        </p>
-                                    )}
-                                    {!readOnly && activeVersionEditable && (
-                                        <div className="flex gap-1 mt-3 pt-3 border-t border-slate-100">
-                                            <AdminTableActionButton icon={Pencil} title="Edit" variant="edit" onClick={() => openEditQuestion(question)} />
-                                            <AdminTableActionButton icon={RefreshCw} title="Regenerate" variant="warning" onClick={() => handleRegenerateQuestion(q.number)} disabled={workflowBusy} />
-                                            <AdminTableActionButton icon={Trash2} title="Delete" variant="danger" onClick={() => handleDeleteQuestion(q.number)} disabled={workflowBusy} />
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <AdminPageShell>
             <AdminPageHeader
                 icon={Sparkles}
-                title="AI Scenario Training"
-                description="Configure, generate, review, edit, and publish AI assessments for participant training."
+                title="Final AI Scenario Assessment"
+                description="Configure, generate, review, edit, and publish the final scenario-based assessment after all lessons are completed."
                 actions={(
                     <select
                         className={adminSelectClass}
                         value={selectedModuleId}
                         onChange={(e) => {
                             setSelectedModuleId(e.target.value);
-                            setPanelMode(null);
-                            setActiveVersion(null);
-                            setScenarioDraft(null);
-                            setEditingQuestion(null);
+                            closePanel();
                         }}
                     >
                         <option value="">Select module…</option>
@@ -832,10 +917,22 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                 </label>
                             </div>
 
-                            {selectedModule?.difficulty && (
+                            {selectedModule && (
                                 <p className="text-xs text-slate-500">
-                                    AI difficulty is determined automatically from the training module ({selectedModule.difficulty}).
+                                    Assessment difficulty is determined automatically from the selected training module. Generation runs in the background so you can continue working.
                                 </p>
+                            )}
+
+                            {activeGenerationJob?.is_active && (
+                                <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900 flex items-start gap-3">
+                                    <Loader2 className="w-4 h-4 animate-spin mt-0.5 shrink-0" />
+                                    <div>
+                                        <p className="font-medium">AI generation in progress</p>
+                                        <p className="text-violet-800/90 mt-1">
+                                            {activeGenerationJob.status_label || 'Processing'}
+                                        </p>
+                                    </div>
+                                </div>
                             )}
 
                             <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -846,7 +943,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                 <AdminPrimaryButton
                                     type="button"
                                     onClick={handleGenerate}
-                                    disabled={generating || !configSynced || !selectedConfig?.id}
+                                    disabled={generating || !configSynced || !selectedConfig?.id || activeGenerationJob?.is_active}
                                     className="bg-violet-600 hover:bg-violet-700"
                                 >
                                     {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -908,7 +1005,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
 
             {panelMode && activeVersion && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[92vh] flex flex-col min-h-0">
                         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900">
@@ -918,6 +1015,12 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                     Version {activeVersion.version_number}
                                     <AssessmentStatusBadge status={activeVersion.status} />
                                     {activeVersion.is_current && <CurrentVersionBadge />}
+                                    {questionBankDirty && (
+                                        <span className="inline-flex items-center gap-1 text-amber-700">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                            Unsaved Changes
+                                        </span>
+                                    )}
                                 </p>
                             </div>
                             <button type="button" onClick={closePanel} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
@@ -925,68 +1028,8 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                             </button>
                         </div>
 
-                        <div className="overflow-y-auto flex-1 px-5 py-4">
-                            {panelMode === 'view' && (
-                                <>
-                                    <VersionAuditPanel version={activeVersion} />
-                                    {renderScenarioContent(activeVersion, { readOnly: true })}
-                                </>
-                            )}
-
-                            {panelMode === 'edit' && scenarioDraft && (
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                        <div className="space-y-3">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Title (English)</label>
-                                                <input className={adminCompactInputClass} value={scenarioDraft.title_en} onChange={(e) => setScenarioDraft({ ...scenarioDraft, title_en: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Title (Filipino)</label>
-                                                <input className={adminCompactInputClass} value={scenarioDraft.title_fil} onChange={(e) => setScenarioDraft({ ...scenarioDraft, title_fil: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Disaster Type</label>
-                                                <input className={adminCompactInputClass} value={scenarioDraft.disaster_type} onChange={(e) => setScenarioDraft({ ...scenarioDraft, disaster_type: e.target.value })} />
-                                            </div>
-                                            {activeVersion.difficulty && (
-                                                <p className="text-xs text-slate-500">
-                                                    AI-determined difficulty: <span className="capitalize font-medium">{activeVersion.difficulty}</span>
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Description (English)</label>
-                                                <textarea rows={4} className={adminCompactInputClass} value={scenarioDraft.description_en} onChange={(e) => setScenarioDraft({ ...scenarioDraft, description_en: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Description (Filipino)</label>
-                                                <textarea rows={4} className={adminCompactInputClass} value={scenarioDraft.description_fil} onChange={(e) => setScenarioDraft({ ...scenarioDraft, description_fil: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Learning Objectives (English)</label>
-                                                <textarea rows={3} className={adminCompactInputClass} value={scenarioDraft.learning_objectives_en} onChange={(e) => setScenarioDraft({ ...scenarioDraft, learning_objectives_en: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Learning Objectives (Filipino)</label>
-                                                <textarea rows={3} className={adminCompactInputClass} value={scenarioDraft.learning_objectives_fil} onChange={(e) => setScenarioDraft({ ...scenarioDraft, learning_objectives_fil: e.target.value })} />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-2">
-                                        <AdminPrimaryButton onClick={handleSaveScenario} disabled={workflowBusy}>
-                                            <Save className="w-4 h-4" /> Save Scenario
-                                        </AdminPrimaryButton>
-                                        <AdminPrimaryButton onClick={openManualQuestion} disabled={workflowBusy}>
-                                            <Plus className="w-4 h-4" /> Add Question
-                                        </AdminPrimaryButton>
-                                    </div>
-
-                                    {renderScenarioContent(activeVersion)}
-                                </div>
-                            )}
+                        <div className="flex flex-1 min-h-0 flex-col">
+                            {renderAssessmentReview(activeVersion, { readOnly: panelMode === 'view' })}
                         </div>
 
                         {panelMode === 'edit' && activeVersionEditable && (
@@ -997,52 +1040,6 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                 </AdminPrimaryButton>
                             </div>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {editingQuestion && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5 space-y-4">
-                        <h3 className="text-lg font-semibold text-slate-900">
-                            {editingQuestion.isNew ? 'Add Question' : `Edit Question #${editingQuestion.number}`}
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {['question', 'explanation'].map((field) => (
-                                <React.Fragment key={field}>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1 capitalize">{field} (EN)</label>
-                                        <textarea rows={field === 'question' ? 3 : 2} className={adminCompactInputClass} value={editingQuestion[`${field}_en`]} onChange={(e) => setEditingQuestion({ ...editingQuestion, [`${field}_en`]: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1 capitalize">{field} (FIL)</label>
-                                        <textarea rows={field === 'question' ? 3 : 2} className={adminCompactInputClass} value={editingQuestion[`${field}_fil`]} onChange={(e) => setEditingQuestion({ ...editingQuestion, [`${field}_fil`]: e.target.value })} />
-                                    </div>
-                                </React.Fragment>
-                            ))}
-                            {['a', 'b', 'c', 'd'].map((letter) => (
-                                <React.Fragment key={letter}>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Choice {letter.toUpperCase()} (EN)</label>
-                                        <input className={adminCompactInputClass} value={editingQuestion[`choice_${letter}_en`]} onChange={(e) => setEditingQuestion({ ...editingQuestion, [`choice_${letter}_en`]: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Choice {letter.toUpperCase()} (FIL)</label>
-                                        <input className={adminCompactInputClass} value={editingQuestion[`choice_${letter}_fil`]} onChange={(e) => setEditingQuestion({ ...editingQuestion, [`choice_${letter}_fil`]: e.target.value })} />
-                                    </div>
-                                </React.Fragment>
-                            ))}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Correct Answer</label>
-                                <select className={adminCompactInputClass} value={editingQuestion.correct_answer} onChange={(e) => setEditingQuestion({ ...editingQuestion, correct_answer: e.target.value })}>
-                                    {['A', 'B', 'C', 'D'].map((l) => <option key={l} value={l}>{l}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <AdminSecondaryButton onClick={() => setEditingQuestion(null)}>Cancel</AdminSecondaryButton>
-                            <AdminPrimaryButton onClick={saveQuestion} disabled={workflowBusy}>Save Question</AdminPrimaryButton>
-                        </div>
                     </div>
                 </div>
             )}

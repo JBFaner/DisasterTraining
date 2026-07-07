@@ -4,42 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class TrainingContent extends Model
 {
     use HasFactory;
 
-    public const TYPE_TEXT = 'text';
-
-    public const TYPE_PDF = 'pdf';
-
-    public const TYPE_YOUTUBE = 'youtube';
-
-    public const TYPE_VIDEO = 'video';
-
-    public const TYPE_IMAGE = 'image';
-
-    public const TYPES = [
-        self::TYPE_TEXT,
-        self::TYPE_PDF,
-        self::TYPE_YOUTUBE,
-        self::TYPE_VIDEO,
-        self::TYPE_IMAGE,
-    ];
-
     protected $fillable = [
         'training_module_id',
         'title',
-        'content_type',
-        'body',
-        'file_path',
-        'external_url',
+        'description',
         'sort_order',
-    ];
-
-    protected $appends = [
-        'display_url',
     ];
 
     public function module()
@@ -47,29 +21,42 @@ class TrainingContent extends Model
         return $this->belongsTo(TrainingModule::class, 'training_module_id');
     }
 
-    public function getDisplayUrlAttribute(): ?string
+    public function resources()
     {
-        if ($this->content_type === self::TYPE_YOUTUBE && $this->external_url) {
-            return $this->external_url;
-        }
-
-        if (! $this->file_path) {
-            return $this->external_url;
-        }
-
-        if (str_starts_with($this->file_path, 'http://') || str_starts_with($this->file_path, 'https://')) {
-            return $this->file_path;
-        }
-
-        if (str_starts_with($this->file_path, '/storage/')) {
-            return $this->file_path;
-        }
-
-        return Storage::url($this->file_path);
+        return $this->hasMany(LessonResource::class)->orderBy('sort_order');
     }
 
-    public function isYouTube(): bool
+    public function lessonQuizConfig()
     {
-        return $this->content_type === self::TYPE_YOUTUBE;
+        return $this->hasOne(LessonQuizConfig::class, 'training_content_id');
+    }
+
+    public function hasReadableAiContent(): bool
+    {
+        if ($this->relationLoaded('resources')) {
+            return $this->resources->contains(fn (LessonResource $resource) => $resource->hasReadableAiContent());
+        }
+
+        return $this->resources()
+            ->where('ai_processing_status', LessonResource::AI_STATUS_READY)
+            ->whereNotNull('ai_processed_text')
+            ->where('ai_processed_text', '!=', '')
+            ->exists();
+    }
+
+    public function supportsAiQuestionGeneration(): bool
+    {
+        if ($this->relationLoaded('resources')) {
+            return $this->resources->contains(fn (LessonResource $resource) => $resource->supportsAiQuestionGeneration());
+        }
+
+        return $this->resources()
+            ->whereIn('resource_type', [
+                LessonResource::TYPE_TEXT,
+                LessonResource::TYPE_PDF,
+                LessonResource::TYPE_IMAGE,
+                LessonResource::TYPE_YOUTUBE,
+            ])
+            ->exists();
     }
 }
