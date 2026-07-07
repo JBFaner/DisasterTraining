@@ -46,6 +46,8 @@ import {
     ResourceBudgetProposalForm,
     ResourceBudgetProposalDetail,
 } from './components/ResourceBudgetProposalModule';
+import { CertificateTemplateDesigner } from './components/CertificateTemplateDesigner';
+import { parseCertificateDesign } from './utils/certificateDesign';
 import {
     trainingModulesIndex,
     trainingModuleShow,
@@ -8015,50 +8017,37 @@ function SimulationEventEditForm({ event, scenarios, trainingModules = [], train
     );
 }
 
-// Template Editor Modal for Certification (supports template_content with {name}, {date}, etc. and background upload)
-const DEFAULT_TEMPLATE_CONTENT = `<div class="certificate" style="font-family:serif; max-width:800px; margin:0 auto; padding:40px; border:2px solid #16a34a; text-align:center;">
-<h1 style="color:#16a34a;">Certificate of Completion</h1>
-<p style="font-size:18px; margin-top:30px;">This is to certify that</p>
-<p style="font-size:24px; font-weight:bold; margin:15px 0;">{name}</p>
-<p style="font-size:16px;">has successfully completed</p>
-<p style="font-size:18px; font-weight:bold;">{training_type}</p>
-<p style="font-size:14px; margin-top:20px;">Event: {event} &nbsp;|&nbsp; Date: {date}</p>
-<p style="font-size:14px;">Certificate No: {certificate_number} &nbsp;|&nbsp; Score: {score}%</p>
-</div>`;
-
+// Template Editor Modal for Certification (visual designer + optional background upload)
 function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
     const isEdit = !!template;
     const [paperSize, setPaperSize] = React.useState(template?.paper_size || 'a4');
+    const [design, setDesign] = React.useState(() => parseCertificateDesign(template?.design_json));
+    const [backgroundOpacity, setBackgroundOpacity] = React.useState(template?.background_opacity ?? 0.35);
+    const backgroundPreviewUrl = isEdit && template?.background_path
+        ? `/admin/certification/templates/${template.id}/background?v=${template.updated_at ? new Date(template.updated_at).getTime() : Date.now()}`
+        : null;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         const form = e.target;
         const fileInput = form.querySelector('input[name="background"]');
         const hasFile = fileInput?.files?.length > 0;
-        // When uploading a file, use POST (not PUT) so PHP populates $_FILES reliably
         const url = hasFile && isEdit
             ? `/admin/certification/templates/${template.id}/update`
             : isEdit ? `/admin/certification/templates/${template.id}` : '/admin/certification/templates';
 
         if (hasFile) {
-            // Ensure form has enctype for file uploads
             form.setAttribute('action', url);
             form.setAttribute('method', 'post');
             form.setAttribute('enctype', 'multipart/form-data');
-            // Add _method field if using PUT route (for consistency)
-            if (isEdit && url.includes('/update')) {
-                // POST route, no _method needed
-            } else if (isEdit) {
-                // Add _method=PUT for Laravel
-                let methodInput = form.querySelector('input[name="_method"]');
-                if (!methodInput) {
-                    methodInput = document.createElement('input');
-                    methodInput.type = 'hidden';
-                    methodInput.name = '_method';
-                    form.appendChild(methodInput);
-                }
-                methodInput.value = 'PUT';
+            let designInput = form.querySelector('input[name="design_json"]');
+            if (!designInput) {
+                designInput = document.createElement('input');
+                designInput.type = 'hidden';
+                designInput.name = 'design_json';
+                form.appendChild(designInput);
             }
-            // Close modal before submit to prevent stale data
+            designInput.value = JSON.stringify(design);
             onClose();
             form.submit();
             return;
@@ -8068,7 +8057,7 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
             name: form.name?.value,
             type: form.type?.value || 'completion',
             title_text: form.title_text?.value || null,
-            template_content: form.template_content?.value || null,
+            design_json: design,
             certificate_number_format: form.certificate_number_format?.value || null,
             status: form.status?.value || 'active',
             background_opacity: form.background_opacity?.value ? parseFloat(form.background_opacity.value) : 0.35,
@@ -8092,24 +8081,28 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
             Swal.fire({ icon: 'error', text: 'Request failed.' });
         }
     };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 overflow-y-auto py-6" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-6 my-auto" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">{isEdit ? 'Edit Template' : 'Add Template'}</h3>
+            <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full mx-4 p-6 my-auto max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold text-slate-800 mb-1">{isEdit ? 'Edit Template' : 'Add Template'}</h3>
+                <p className="text-sm text-slate-500 mb-4">Design your certificate visually. Drag text and placeholders; use live preview to see sample participant data.</p>
                 <form onSubmit={handleSubmit} encType="multipart/form-data">
                     <input type="hidden" name="_token" value={csrf} />
                     <input type="hidden" name="paper_size" value={paperSize} />
-                    <div className="space-y-3 mb-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Template Name</label>
-                            <input type="text" name="name" required defaultValue={template?.name} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. Default Completion" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Type</label>
-                            <select name="type" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" defaultValue={template?.type || 'completion'}>
-                                <option value="completion">Completion</option>
-                                <option value="participation">Participation</option>
-                            </select>
+                    <div className="space-y-4 mb-4">
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Template Name</label>
+                                <input type="text" name="name" required defaultValue={template?.name} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. Default Completion" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Type</label>
+                                <select name="type" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" defaultValue={template?.type || 'completion'}>
+                                    <option value="completion">Completion</option>
+                                    <option value="participation">Participation</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Print size</label>
@@ -8117,43 +8110,48 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
                                 <button type="button" onClick={() => setPaperSize('a4')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'a4' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>A4</button>
                                 <button type="button" onClick={() => setPaperSize('letter')} className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${paperSize === 'letter' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>Letter</button>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">Choose paper size for a clean print or PDF. A4: 210×297mm · Letter: 8.5×11 in.</p>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate content (HTML with placeholders)</label>
-                            <p className="text-xs text-slate-500 mb-1">Use <code className="bg-slate-100 px-1 rounded">{'{name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{event}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{certificate_number}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{score}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{training_type}'}</code> — the system will replace these with the participant data.</p>
-                            <textarea name="template_content" rows={10} defaultValue={template?.template_content ?? DEFAULT_TEMPLATE_CONTENT} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono" placeholder="HTML with {name}, {date}, etc." />
+                            <label className="block text-xs font-semibold text-slate-600 mb-2">Certificate design</label>
+                            <CertificateTemplateDesigner
+                                value={design}
+                                onChange={setDesign}
+                                backgroundPreviewUrl={backgroundPreviewUrl}
+                                backgroundOpacity={backgroundOpacity}
+                            />
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Background image (optional)</label>
-                            {isEdit && template?.background_path && (
-                                <p className="text-xs text-emerald-700 mb-1">Current: {template.background_path.replace(/^.*[/\\]/, '')}</p>
-                            )}
-                            <input type="file" name="background" accept="image/*,.pdf" className="w-full text-sm text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-emerald-50 file:text-emerald-700" />
-                            <p className="text-xs text-slate-500 mt-1">Uploaded image is shown behind the certificate text with reduced opacity so text stays readable.</p>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Background image (optional)</label>
+                                {isEdit && template?.background_path && (
+                                    <p className="text-xs text-emerald-700 mb-1">Current: {template.background_path.replace(/^.*[/\\]/, '')}</p>
+                                )}
+                                <input type="file" name="background" accept="image/*,.pdf" className="w-full text-sm text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-emerald-50 file:text-emerald-700" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Background opacity</label>
+                                <input type="number" name="background_opacity" min="0.1" max="0.8" step="0.05" defaultValue={template?.background_opacity ?? 0.35} onChange={(event) => setBackgroundOpacity(parseFloat(event.target.value) || 0.35)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Background opacity</label>
-                            <input type="number" name="background_opacity" min="0.1" max="0.8" step="0.05" defaultValue={template?.background_opacity ?? 0.35} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-                            <p className="text-xs text-slate-500 mt-1">0.1 = very faint, 0.35 = default (readable text), 0.8 = stronger. Lower = more readable text.</p>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Title Text</label>
-                            <input type="text" name="title_text" defaultValue={template?.title_text} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Certificate of Completion" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate Number Format</label>
-                            <input type="text" name="certificate_number_format" defaultValue={template?.certificate_number_format} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="CERT-{YEAR}-{SEQ}" />
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Title Text</label>
+                                <input type="text" name="title_text" defaultValue={template?.title_text} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Certificate of Completion" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Certificate Number Format</label>
+                                <input type="text" name="certificate_number_format" defaultValue={template?.certificate_number_format} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="CERT-{YEAR}-{SEQ}" />
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                            <select name="status" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" defaultValue={template?.status || 'active'}>
+                            <select name="status" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm md:w-48" defaultValue={template?.status || 'active'}>
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
                         </div>
                     </div>
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex gap-2 justify-end sticky bottom-0 bg-white pt-3 border-t border-slate-100">
                         <button type="button" onClick={onClose} className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
                         <button type="submit" className="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2">{isEdit ? 'Update' : 'Create'}</button>
                     </div>

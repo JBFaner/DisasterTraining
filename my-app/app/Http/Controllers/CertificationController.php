@@ -8,6 +8,7 @@ use App\Models\CertificationSetting;
 use App\Models\Evaluation;
 use App\Models\ParticipantEvaluation;
 use App\Models\SimulationEvent;
+use App\Services\CertificateDesignRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -262,7 +263,7 @@ class CertificationController extends Controller
             'template_background_path' => $snapshotBackgroundPath ?? $template?->background_path,
             'template_background_opacity' => $template?->background_opacity,
             'template_paper_size' => $template?->paper_size,
-            'template_content' => $template ? ($template->template_content ?? $template->defaultTemplateContent()) : null,
+            'template_content' => $template ? $template->getSnapshotContent() : null,
             'certificate_number' => $certNumber,
             'qr_verification_token' => bin2hex(random_bytes(32)),
             'type' => $data['type'],
@@ -331,6 +332,7 @@ class CertificationController extends Controller
             'type' => ['required', 'string', 'in:completion,participation'],
             'title_text' => ['nullable', 'string', 'max:500'],
             'template_content' => ['nullable', 'string'],
+            'design_json' => ['nullable'],
             'certificate_number_format' => ['nullable', 'string', 'max:100'],
             'font_style' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'string', 'in:active,inactive'],
@@ -344,6 +346,11 @@ class CertificationController extends Controller
         unset($data['background']);
         if ($request->hasFile('background')) {
             $data['background_path'] = $request->file('background')->store('certificate-templates', 'public');
+        }
+        $this->applyDesignToTemplateData($data);
+        if (empty($data['design_json']) && empty($data['template_content'])) {
+            $data['design_json'] = app(CertificateDesignRenderer::class)->defaultDesign();
+            $data['template_content'] = app(CertificateDesignRenderer::class)->renderWithPlaceholders($data['design_json']);
         }
         CertificateTemplate::create($data);
         if ($request->expectsJson()) {
@@ -360,6 +367,7 @@ class CertificationController extends Controller
             'type' => ['sometimes', 'string', 'in:completion,participation'],
             'title_text' => ['nullable', 'string', 'max:500'],
             'template_content' => ['nullable', 'string'],
+            'design_json' => ['nullable'],
             'certificate_number_format' => ['nullable', 'string', 'max:100'],
             'font_style' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'string', 'in:active,inactive'],
@@ -384,6 +392,7 @@ class CertificationController extends Controller
             }
             $data['background_path'] = $request->file('background')->store('certificate-templates', 'public');
         }
+        $this->applyDesignToTemplateData($data);
         $template->update($data);
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Template updated.']);
@@ -624,6 +633,43 @@ class CertificationController extends Controller
     {
         $t = new CertificateTemplate();
         return $t->mergeContent($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function applyDesignToTemplateData(array &$data): void
+    {
+        if (! array_key_exists('design_json', $data)) {
+            return;
+        }
+
+        $design = $this->normalizeDesignJson($data['design_json']);
+        $data['design_json'] = $design;
+
+        if ($design) {
+            $data['template_content'] = app(CertificateDesignRenderer::class)->renderWithPlaceholders($design);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function normalizeDesignJson(mixed $value): ?array
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = json_decode($value, true);
+        }
+
+        if (! is_array($value) || empty($value['elements']) || ! is_array($value['elements'])) {
+            return null;
+        }
+
+        return $value;
     }
 
     public function destroyTemplate(CertificateTemplate $template)
