@@ -57,7 +57,7 @@ class TrainingCertificateService
             'template_background_path' => $snapshotBackgroundPath ?? $template->background_path,
             'template_background_opacity' => $template->background_opacity,
             'template_paper_size' => $template->paper_size,
-            'template_content' => $template->template_content ?? $template->defaultTemplateContent(),
+            'template_content' => $template->getSnapshotContent(),
             'certificate_number' => $certNumber,
             'type' => 'completion',
             'training_type' => $attempt->trainingModule?->title ?? 'AI Scenario Training',

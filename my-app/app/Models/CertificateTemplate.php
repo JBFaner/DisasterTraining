@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CertificateDesignRenderer;
 use Illuminate\Database\Eloquent\Model;
 
 class CertificateTemplate extends Model
@@ -11,6 +12,7 @@ class CertificateTemplate extends Model
         'type',
         'title_text',
         'template_content',
+        'design_json',
         'logo_path',
         'signature_path',
         'background_path',
@@ -34,14 +36,37 @@ class CertificateTemplate extends Model
      */
     public function mergeContent(array $data): string
     {
-        $content = $this->template_content ?? $this->defaultTemplateContent();
-        if (!isset($data['background_image']) && $this->background_path) {
+        if (! isset($data['background_image']) && $this->background_path) {
             $data['background_image'] = \Illuminate\Support\Facades\Storage::disk('public')->url($this->background_path);
         }
+
+        $design = $this->design_json;
+        if (is_array($design) && ! empty($design['elements'])) {
+            $renderer = app(CertificateDesignRenderer::class);
+            $design = $renderer->applyDataToDesign($design, $data);
+
+            return $renderer->render($design, $data);
+        }
+
+        $content = $this->template_content ?? $this->defaultTemplateContent();
         foreach (self::placeholders() as $key) {
             $content = str_replace('{' . $key . '}', (string) ($data[$key] ?? ''), $content);
         }
+
         return $content;
+    }
+
+    /**
+     * HTML snapshot with placeholders preserved (for issued certificate history).
+     */
+    public function getSnapshotContent(): string
+    {
+        $design = $this->design_json;
+        if (is_array($design) && ! empty($design['elements'])) {
+            return app(CertificateDesignRenderer::class)->renderWithPlaceholders($design);
+        }
+
+        return $this->template_content ?? $this->defaultTemplateContent();
     }
 
     public function defaultTemplateContent(): string
@@ -58,6 +83,7 @@ class CertificateTemplate extends Model
     }
 
     protected $casts = [
+        'design_json' => 'array',
         'last_used_at' => 'datetime',
     ];
 
