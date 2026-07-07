@@ -23,6 +23,7 @@ use App\Http\Controllers\LessonCompletionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ResourceController;
+use App\Http\Controllers\ResourceBudgetProposalController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\EvaluationResultController;
 use App\Http\Controllers\SessionController;
@@ -324,6 +325,30 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/resources/{resource}/complete-maintenance', [ResourceController::class, 'completeMaintenance'])->name('admin.resources.complete-maintenance');
         Route::get('/resources/{resource}/maintenance-logs', [ResourceController::class, 'maintenanceLogs'])->name('admin.resources.maintenance-logs');
         Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])->name('admin.resources.destroy');
+
+        // Resource Budget Proposals
+        Route::get('/api/resource-budget-proposals', [ResourceBudgetProposalController::class, 'apiIndex'])
+            ->name('admin.api.resource-budget-proposals.index');
+        Route::get('/resource-budget-proposals', [ResourceBudgetProposalController::class, 'index'])
+            ->name('admin.resource-budget-proposals.index');
+        Route::get('/resource-budget-proposals/create', [ResourceBudgetProposalController::class, 'create'])
+            ->name('admin.resource-budget-proposals.create');
+        Route::post('/resource-budget-proposals', [ResourceBudgetProposalController::class, 'store'])
+            ->name('admin.resource-budget-proposals.store');
+        Route::get('/resource-budget-proposals/{resourceBudgetProposal}', [ResourceBudgetProposalController::class, 'show'])
+            ->name('admin.resource-budget-proposals.show');
+        Route::get('/resource-budget-proposals/{resourceBudgetProposal}/edit', [ResourceBudgetProposalController::class, 'edit'])
+            ->name('admin.resource-budget-proposals.edit');
+        Route::put('/resource-budget-proposals/{resourceBudgetProposal}', [ResourceBudgetProposalController::class, 'update'])
+            ->name('admin.resource-budget-proposals.update');
+        Route::delete('/resource-budget-proposals/{resourceBudgetProposal}', [ResourceBudgetProposalController::class, 'destroy'])
+            ->name('admin.resource-budget-proposals.destroy');
+        Route::post('/resource-budget-proposals/{resourceBudgetProposal}/submit', [ResourceBudgetProposalController::class, 'submit'])
+            ->name('admin.resource-budget-proposals.submit');
+        Route::post('/resource-budget-proposals/{resourceBudgetProposal}/approve', [ResourceBudgetProposalController::class, 'approve'])
+            ->name('admin.resource-budget-proposals.approve');
+        Route::post('/resource-budget-proposals/{resourceBudgetProposal}/reject', [ResourceBudgetProposalController::class, 'reject'])
+            ->name('admin.resource-budget-proposals.reject');
 
         // Evaluation & Scoring System (AI scenario results)
         Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('admin.evaluations.index');

@@ -8,6 +8,7 @@ import {
     CalendarClock,
     Users,
     Box,
+    Wallet,
     ClipboardList,
     Award,
     ShieldCheck,
@@ -542,6 +543,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         label="Resource & Equipment Inventory"
                         href="/admin/resources"
                         active={currentSection === 'resources'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={Wallet}
+                        label="Resource Budget Proposals"
+                        href="/admin/resource-budget-proposals"
+                        active={currentSection === 'resource_budget_proposal'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

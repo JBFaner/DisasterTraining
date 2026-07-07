@@ -170,6 +170,18 @@
             @isset($hazard_intelligence)
                 data-hazard-intelligence='@json($hazard_intelligence)'
             @endisset
+            @isset($budget_proposals)
+                data-budget-proposals='@json($budget_proposals)'
+            @endisset
+            @isset($budget_proposal)
+                data-budget-proposal='@json($budget_proposal)'
+            @endisset
+            @isset($budget_proposal_summary)
+                data-budget-proposal-summary='@json($budget_proposal_summary)'
+            @endisset
+            @isset($budget_proposal_options)
+                data-budget-proposal-options='@json($budget_proposal_options)'
+            @endisset
             @isset($scores)
                 data-scores='@json($scores)'
             @endisset

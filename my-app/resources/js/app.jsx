@@ -35,6 +35,11 @@ import {
     HazardAssessmentIntelligencePanel,
 } from './components/HazardAssessmentModule';
 import {
+    ResourceBudgetProposalList,
+    ResourceBudgetProposalForm,
+    ResourceBudgetProposalDetail,
+} from './components/ResourceBudgetProposalModule';
+import {
     trainingModulesIndex,
     trainingModuleShow,
     trainingModuleCreate,
@@ -661,6 +666,10 @@ if (rootElement) {
     const hazardAssessmentSummaryJson = rootElement.getAttribute('data-hazard-assessment-summary');
     const hazardAssessmentOptionsJson = rootElement.getAttribute('data-hazard-assessment-options');
     const hazardIntelligenceJson = rootElement.getAttribute('data-hazard-intelligence');
+    const budgetProposalsJson = rootElement.getAttribute('data-budget-proposals');
+    const budgetProposalJson = rootElement.getAttribute('data-budget-proposal');
+    const budgetProposalSummaryJson = rootElement.getAttribute('data-budget-proposal-summary');
+    const budgetProposalOptionsJson = rootElement.getAttribute('data-budget-proposal-options');
     const aiScenarioModulesJson = rootElement.getAttribute('data-ai-scenario-modules');
     const aiScenarioConfigsJson = rootElement.getAttribute('data-ai-scenario-configs');
     const aiScenarioAttemptJson = rootElement.getAttribute('data-ai-scenario-attempt');
@@ -801,6 +810,10 @@ if (rootElement) {
     let hazardAssessmentSummary = null;
     let hazardAssessmentOptions = {};
     let hazardIntelligence = null;
+    let budgetProposals = [];
+    let budgetProposal = null;
+    let budgetProposalSummary = null;
+    let budgetProposalOptions = {};
     let aiScenarioModules = [];
     let aiScenarioConfigs = [];
     let aiScenarioAttempt = null;
@@ -845,6 +858,34 @@ if (rootElement) {
             hazardIntelligence = JSON.parse(hazardIntelligenceJson);
         } catch (e) {
             console.error('Failed to parse hazard intelligence JSON', e);
+        }
+    }
+    if (budgetProposalsJson) {
+        try {
+            budgetProposals = JSON.parse(budgetProposalsJson);
+        } catch (e) {
+            console.error('Failed to parse budget proposals JSON', e);
+        }
+    }
+    if (budgetProposalJson) {
+        try {
+            budgetProposal = JSON.parse(budgetProposalJson);
+        } catch (e) {
+            console.error('Failed to parse budget proposal JSON', e);
+        }
+    }
+    if (budgetProposalSummaryJson) {
+        try {
+            budgetProposalSummary = JSON.parse(budgetProposalSummaryJson);
+        } catch (e) {
+            console.error('Failed to parse budget proposal summary JSON', e);
+        }
+    }
+    if (budgetProposalOptionsJson) {
+        try {
+            budgetProposalOptions = JSON.parse(budgetProposalOptionsJson);
+        } catch (e) {
+            console.error('Failed to parse budget proposal options JSON', e);
         }
     }
     if (aiScenarioModulesJson) {
@@ -982,6 +1023,10 @@ if (rootElement) {
             title: 'Resource & Equipment Inventory',
             description: 'Track and assign equipment, PPE, rescue tools, and their usage during simulations.',
         },
+        resource_budget_proposal: {
+            title: 'Resource Budget Proposals',
+            description: 'Document and justify funding requests for disaster preparedness equipment and supplies.',
+        },
         evaluation: {
             title: 'Evaluation & Scoring System',
             description: 'Record performance scores, timings, and feedback for participants and teams.',
@@ -1018,6 +1063,7 @@ if (rootElement) {
                                         sectionAttr === 'evaluation_result_detail' ? 'evaluation' :
                                         sectionAttr.startsWith('certification_participant') ? 'certification' :
                                             sectionAttr.startsWith('resources') ? 'resources' :
+                                                sectionAttr.startsWith('resource_budget_proposal') ? 'resource_budget_proposal' :
                                                 sectionAttr.startsWith('evaluation') ? 'evaluation' :
                                                     sectionAttr.startsWith('hazard_assessment_profile') ? 'hazard_assessment_profile' :
                                                     sectionAttr.startsWith('barangay_profile') ? 'hazard_assessment_profile' :
@@ -1200,6 +1246,27 @@ if (rootElement) {
         if (sectionAttr === 'hazard_assessment_profile' || sectionAttr === 'barangay_profile') {
             return [];
         }
+        if (sectionAttr === 'resource_budget_proposal') {
+            return [];
+        }
+        if (sectionAttr === 'resource_budget_proposal_create') {
+            return [
+                { label: 'Resource Budget Proposals', href: '/admin/resource-budget-proposals' },
+                { label: 'Create', href: null },
+            ];
+        }
+        if (sectionAttr === 'resource_budget_proposal_show') {
+            return [
+                { label: 'Resource Budget Proposals', href: '/admin/resource-budget-proposals' },
+                { label: budgetProposal?.reference_number || 'View', href: null },
+            ];
+        }
+        if (sectionAttr === 'resource_budget_proposal_edit') {
+            return [
+                { label: 'Resource Budget Proposals', href: '/admin/resource-budget-proposals' },
+                { label: 'Edit', href: null },
+            ];
+        }
         if (sectionAttr === 'hazard_assessment_profile_create' || sectionAttr === 'barangay_profile_create') {
             return [
                 { label: 'Hazard Assessment Profile', href: '/admin/hazard-assessment-profiles' },
@@ -1286,6 +1353,7 @@ if (rootElement) {
             'certification',
             'hazard_assessment_profile',
             'barangay_profile',
+            'resource_budget_proposal',
             'admin_users_index',
             'audit_logs',
             'ai_scenario_training',
@@ -1324,6 +1392,16 @@ if (rootElement) {
             if (sectionAttr.endsWith('_create')) return 'Create Hazard Assessment Profile';
             if (sectionAttr.endsWith('_edit')) return 'Edit Hazard Assessment Profile';
             return barangayProfile?.barangay_name || 'Hazard Assessment Profile';
+        }
+
+        if (
+            sectionAttr === 'resource_budget_proposal_create' ||
+            sectionAttr === 'resource_budget_proposal_show' ||
+            sectionAttr === 'resource_budget_proposal_edit'
+        ) {
+            if (sectionAttr.endsWith('_create')) return 'Create Budget Proposal';
+            if (sectionAttr.endsWith('_edit')) return 'Edit Budget Proposal';
+            return budgetProposal?.reference_number || 'Budget Proposal';
         }
 
         if (sectionAttr === 'profile') {
@@ -1776,6 +1854,23 @@ if (rootElement) {
 
                         {sectionAttr === 'resources' && (
                             <ResourceInventory />
+                        )}
+
+                        {sectionAttr === 'resource_budget_proposal' && (
+                            <ResourceBudgetProposalList
+                                proposals={budgetProposals}
+                                summary={budgetProposalSummary}
+                                options={budgetProposalOptions}
+                            />
+                        )}
+                        {sectionAttr === 'resource_budget_proposal_create' && (
+                            <ResourceBudgetProposalForm options={budgetProposalOptions} />
+                        )}
+                        {sectionAttr === 'resource_budget_proposal_show' && budgetProposal && (
+                            <ResourceBudgetProposalDetail proposal={budgetProposal} options={budgetProposalOptions} role={role} />
+                        )}
+                        {sectionAttr === 'resource_budget_proposal_edit' && budgetProposal && (
+                            <ResourceBudgetProposalForm proposal={budgetProposal} options={budgetProposalOptions} />
                         )}
 
                         {sectionAttr === 'event_registrations' && currentEvent && registrations && (
