@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\SimulationEvent;
+use App\Models\EventRegistration;
 use App\Mail\ParticipantVerificationEmail;
 use App\Mail\AdminLoginOtpEmail;
 use App\Services\SmsService;
 use App\Services\AuditLogger;
+use App\Services\DatabaseBackupService;
 use App\Services\LoginAttemptService;
 use App\Support\MaskedEmail;
 use App\Support\PortalAuth;
@@ -18,6 +21,56 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     private const ADMIN_OTP_EXPIRY_MINUTES = 2;
+    private const CAMPAIGN_REGISTRATION_SOURCE = 'campaign_planning_scheduling';
+
+    private function createCampaignEventRegistrationIfNeeded(User $user, ?array $campaignContext): void
+    {
+        $eventId = $campaignContext['campaign_event_id'] ?? null;
+        if (! $eventId) {
+            return;
+        }
+
+        $event = SimulationEvent::query()
+            ->whereKey($eventId)
+            ->where('status', 'published')
+            ->first();
+
+        if (! $event) {
+            return;
+        }
+
+        // Mirror the capacity logic from SimulationEventController::register()
+        if ($event->max_participants) {
+            $currentCount = $event->registrations()->where('status', 'approved')->count();
+            if ($currentCount >= $event->max_participants) {
+                return;
+            }
+        }
+
+        if (! $event->self_registration_enabled) {
+            return;
+        }
+
+        if ($event->registration_deadline && now()->greaterThan($event->registration_deadline)) {
+            return;
+        }
+
+        $autoApprovalEnabled = \App\Models\Setting::get('event_auto_approval_enabled', false);
+        $status = $autoApprovalEnabled ? 'approved' : 'pending';
+        $approvedAt = $autoApprovalEnabled ? now() : null;
+
+        EventRegistration::firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'simulation_event_id' => $event->id,
+            ],
+            [
+                'status' => $status,
+                'registered_at' => now(),
+                'approved_at' => $approvedAt,
+            ],
+        );
+    }
 
     public function showLogin(Request $request)
     {
@@ -281,9 +334,36 @@ class AuthController extends Controller
         return redirect()->intended('/dashboard');
     }
 
-    public function showParticipantRegister()
+    public function showParticipantRegister(Request $request)
     {
-        return view('auth.participant-register');
+        $campaignEventId = $request->query('campaign_event');
+        $campaignContext = null;
+
+        if ($campaignEventId) {
+            $event = SimulationEvent::query()
+                ->with('scenario.trainingModule')
+                ->whereKey($campaignEventId)
+                ->where('status', 'published')
+                ->first();
+
+            if ($event) {
+                $campaignContext = [
+                    'campaign_event_id' => $event->id,
+                    'training_module_id' => $event->training_module_id,
+                    'training_title' => $event->scenario?->trainingModule?->title ?? $event->title,
+                    'scheduled_date' => optional($event->event_date)->toDateString(),
+                    'start_time' => $event->start_time,
+                    'end_time' => $event->end_time,
+                    'venue' => $event->venue ?: $event->location,
+                ];
+
+                $request->session()->put('campaign_registration_context', $campaignContext);
+            }
+        }
+
+        return view('auth.participant-register', [
+            'campaign_context' => $campaignContext,
+        ]);
     }
 
     /**
@@ -293,6 +373,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'organization' => ['nullable', 'string', 'max:255'],
             'email' => [
                 'nullable',
                 'email',
@@ -324,6 +405,8 @@ class AuthController extends Controller
             'email.unique' => 'This email is already registered. Please log in or use a different one.',
             'phone.unique' => 'This phone number is already registered. Please log in or use a different one.',
         ]);
+
+        $campaignContext = $request->session()->get('campaign_registration_context');
 
         // Check if email or phone already exists with friendly message
         if (isset($data['email']) && User::where('email', $data['email'])->exists()) {
@@ -375,6 +458,7 @@ class AuthController extends Controller
             'name' => $data['name'],
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
+            'organization' => $data['organization'] ?? null,
             'philippine_barangay_id' => $data['philippine_barangay_id'],
             'region' => $data['region'],
             'province' => $data['province'],
@@ -387,6 +471,7 @@ class AuthController extends Controller
             'verification_method' => $verificationMethod,
             'verification_code' => $verificationCode,
             'expires_at' => now()->addMinutes(15),
+            'campaign_context' => $campaignContext,
         ]);
 
         return redirect()->route('participant.register.verify')
@@ -539,6 +624,7 @@ class AuthController extends Controller
             'name' => $registrationData['name'],
             'email' => $registrationData['email'],
             'phone' => $registrationData['phone'],
+            'organization' => $registrationData['organization'] ?? null,
             'philippine_barangay_id' => $registrationData['philippine_barangay_id'] ?? null,
             'barangay_id' => $hazardProfile?->id,
             'province' => $registrationData['province'] ?? null,
@@ -550,6 +636,10 @@ class AuthController extends Controller
             'participant_id' => $participantId,
             'status' => 'active',
             'registered_at' => now(),
+            'registration_source' => ! empty($registrationData['campaign_context']) ? self::CAMPAIGN_REGISTRATION_SOURCE : 'direct_registration',
+            'registration_campaign_id' => ! empty($registrationData['campaign_context']['campaign_event_id']) ? (string) $registrationData['campaign_context']['campaign_event_id'] : null,
+            'registration_campaign_title' => ! empty($registrationData['campaign_context']['training_title']) ? (string) $registrationData['campaign_context']['training_title'] : null,
+            'registration_campaign_registered_at' => ! empty($registrationData['campaign_context']) ? now() : null,
         ]);
 
         if ($verificationMethod === 'email' && ! empty($registrationData['email'])) {
@@ -564,9 +654,14 @@ class AuthController extends Controller
 
         // Clear session
         $request->session()->forget('participant_registration');
+        $request->session()->forget('campaign_registration_context');
 
         PortalAuth::login($user);
         $request->session()->put('last_activity', now()->timestamp);
+
+        $this->createCampaignEventRegistrationIfNeeded($user, $registrationData['campaign_context'] ?? null);
+
+        app(DatabaseBackupService::class)->queueAfterCommit('participant_registered');
 
         return redirect('/dashboard')
             ->with('status', 'Registration successful! Welcome to the training platform.');
@@ -614,6 +709,7 @@ class AuthController extends Controller
             'name' => $registrationData['name'],
             'email' => $registrationData['email'],
             'phone' => $registrationData['phone'],
+            'organization' => $registrationData['organization'] ?? null,
             'philippine_barangay_id' => $registrationData['philippine_barangay_id'] ?? null,
             'barangay_id' => $hazardProfile?->id,
             'province' => $registrationData['province'] ?? null,
@@ -626,13 +722,22 @@ class AuthController extends Controller
             'status' => 'active',
             'registered_at' => now(),
             'email_verified_at' => now(),
+            'registration_source' => ! empty($registrationData['campaign_context']) ? self::CAMPAIGN_REGISTRATION_SOURCE : 'direct_registration',
+            'registration_campaign_id' => ! empty($registrationData['campaign_context']['campaign_event_id']) ? (string) $registrationData['campaign_context']['campaign_event_id'] : null,
+            'registration_campaign_title' => ! empty($registrationData['campaign_context']['training_title']) ? (string) $registrationData['campaign_context']['training_title'] : null,
+            'registration_campaign_registered_at' => ! empty($registrationData['campaign_context']) ? now() : null,
         ]);
 
         // Clear session
         $request->session()->forget('participant_registration');
+        $request->session()->forget('campaign_registration_context');
 
         PortalAuth::login($user);
         $request->session()->put('last_activity', now()->timestamp);
+
+        $this->createCampaignEventRegistrationIfNeeded($user, $registrationData['campaign_context'] ?? null);
+
+        app(DatabaseBackupService::class)->queueAfterCommit('participant_registered');
 
         return redirect('/dashboard')
             ->with('status', 'Registration successful! Welcome to the training platform.');

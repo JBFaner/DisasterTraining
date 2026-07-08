@@ -13,6 +13,7 @@
             id="participant-register-root"
             data-errors='@json($errors->getMessages() ?: [])'
             data-old-values='@json(old())'
+            data-campaign-context='@json($campaign_context ?? null)'
         ></div>
     </body>
 </html>

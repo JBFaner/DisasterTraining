@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Services\DatabaseBackupService;
 
 class CampaignRequest extends Model
 {
@@ -32,6 +33,15 @@ class CampaignRequest extends Model
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'submitted_by_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::updated(function (CampaignRequest $request) {
+            if ($request->wasChanged('status') && $request->status === 'approved') {
+                app(DatabaseBackupService::class)->queueAfterCommit('campaign_request_approved');
+            }
+        });
     }
 }
 

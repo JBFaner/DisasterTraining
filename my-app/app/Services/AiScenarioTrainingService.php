@@ -8,6 +8,7 @@ use App\Models\AiScenarioConfig;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Models\User;
+use App\Services\DatabaseBackupService;
 use Illuminate\Support\Facades\DB;
 
 class AiScenarioTrainingService
@@ -170,6 +171,8 @@ class AiScenarioTrainingService
             } else {
                 app(TrainingRetakePolicyService::class)->handleFailedAttempt($freshAttempt);
             }
+
+            app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
 
             return $freshAttempt->fresh();
         });

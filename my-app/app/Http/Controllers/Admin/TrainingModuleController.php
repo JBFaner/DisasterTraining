@@ -13,10 +13,12 @@ use App\Http\Requests\UpdateTrainingLessonRequest;
 use App\Http\Requests\StoreTrainingModuleRequest;
 use App\Http\Requests\UpdateTrainingModuleRequest;
 use App\Models\LessonResource;
+use App\Models\BarangayProfile;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Models\QualifiedTrainer;
 use App\Services\AuditLogger;
+use App\Services\DatabaseBackupService;
 use App\Services\GeminiService;
 use App\Services\HazardAssessment\HazardTrainingRecommendationService;
 use App\Services\LessonResourceProcessingService;
@@ -181,6 +183,21 @@ class TrainingModuleController extends Controller
             ->map(fn ($id) => $trainingModule->qualified_trainers->firstWhere('id', (int) $id))
             ->filter()
             ->values();
+        $trainingModule->community_options = BarangayProfile::query()
+            ->orderBy('barangay_name')
+            ->get([
+                'id',
+                'barangay_name',
+                'municipality_city',
+                'province',
+            ])
+            ->map(fn (BarangayProfile $profile) => [
+                'barangay_profile_id' => $profile->id,
+                'barangay_name' => $profile->barangay_name,
+                'municipality_city' => $profile->municipality_city,
+                'province' => $profile->province,
+            ])
+            ->values();
 
         return view('app', [
             'section' => 'training_detail',
@@ -286,6 +303,8 @@ class TrainingModuleController extends Controller
         $trainingModule->update([
             'status' => 'published',
         ]);
+
+        app(DatabaseBackupService::class)->queueAfterCommit('training_module_published');
 
         AuditLogger::log([
             'action' => 'Published training module',
@@ -674,16 +693,33 @@ class TrainingModuleController extends Controller
         return collect($entries)
             ->filter(fn ($entry) => is_array($entry))
             ->map(function (array $entry) {
+                $deliveryMethod = trim((string) ($entry['delivery_method'] ?? 'in_person'));
+                if (! in_array($deliveryMethod, ['in_person', 'online'], true)) {
+                    $deliveryMethod = 'in_person';
+                }
+
                 return [
                     'title' => trim((string) ($entry['title'] ?? '')),
                     'date' => trim((string) ($entry['date'] ?? '')),
                     'start_time' => trim((string) ($entry['start_time'] ?? '')),
                     'end_time' => trim((string) ($entry['end_time'] ?? '')),
-                    'venue' => trim((string) ($entry['venue'] ?? '')),
+                    'delivery_method' => $deliveryMethod,
+                    'venue' => $deliveryMethod === 'in_person' ? trim((string) ($entry['venue'] ?? '')) : '',
+                    'online_platform' => $deliveryMethod === 'online' ? trim((string) ($entry['online_platform'] ?? '')) : '',
+                    'meeting_link' => $deliveryMethod === 'online' ? trim((string) ($entry['meeting_link'] ?? '')) : '',
                     'maximum_participants' => isset($entry['maximum_participants']) ? (int) $entry['maximum_participants'] : null,
                 ];
             })
-            ->filter(fn (array $entry) => $entry['date'] !== '' && $entry['start_time'] !== '' && $entry['end_time'] !== '' && $entry['maximum_participants'] !== null)
+            ->filter(fn (array $entry) => (
+                $entry['date'] !== ''
+                && $entry['start_time'] !== ''
+                && $entry['end_time'] !== ''
+                && $entry['maximum_participants'] !== null
+                && (
+                    ($entry['delivery_method'] === 'in_person' && $entry['venue'] !== '')
+                    || ($entry['delivery_method'] === 'online' && $entry['online_platform'] !== '' && $entry['meeting_link'] !== '')
+                )
+            ))
             ->values()
             ->all();
     }

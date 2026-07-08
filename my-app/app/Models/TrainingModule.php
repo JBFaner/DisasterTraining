@@ -308,7 +308,17 @@ class TrainingModule extends Model
             'short_description' => $this->short_description
                 ?: Str::limit((string) ($this->description ?? ''), 220, ''),
             'related_hazards' => $this->related_hazard ?: $this->category,
-            'recommended_communities' => $this->recommended_communities['communities'] ?? [],
+            'recommended_communities' => is_array($this->recommended_communities ?? null)
+                ? $this->recommended_communities
+                : [
+                    'summary' => [
+                        'total_communities' => 0,
+                        'high_priority' => 0,
+                        'medium_priority' => 0,
+                        'low_priority' => 0,
+                    ],
+                    'communities' => [],
+                ],
             'recommended_audience' => $this->target_audience ?: $this->recommended_audience,
             'estimated_duration_minutes' => $this->totalEstimatedLearningTimeMinutes(),
             'total_lessons' => (int) ($this->lesson_count ?? $this->contents()->count()),

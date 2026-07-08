@@ -27,6 +27,9 @@ import {
     X,
     CheckCircle2,
     AlertCircle,
+    Building2,
+    Info,
+    MapPin,
 } from 'lucide-react';
 import { getCsrfHeaders, getCsrfToken, pingSessionActivity } from '../utils/csrf';
 import { AdminContentCard } from '../components/admin/AdminLayout';
@@ -62,9 +65,48 @@ const DELIVERY_METHOD_LABELS = {
     online: 'Online',
 };
 
+function parseDateValue(value) {
+    if (!value) return null;
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    const normalized = String(value).trim();
+    if (!normalized) return null;
+
+    const dateOnlyMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch;
+        const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseTimeValue(value) {
+    if (!value) return null;
+
+    const normalized = String(value).trim();
+    if (!normalized) return null;
+
+    const timeMatch = normalized.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (timeMatch) {
+        const [, hours = '0', minutes = '0', seconds = '0'] = timeMatch;
+        const date = new Date();
+        date.setHours(Number(hours), Number(minutes), Number(seconds), 0);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function formatDate(dateString) {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const date = parseDateValue(dateString);
+    if (!date) return '—';
+    return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -72,10 +114,8 @@ function formatDate(dateString) {
 }
 
 function formatTime(timeString) {
-    if (!timeString) return '—';
-    const [hours = '00', minutes = '00'] = String(timeString).split(':');
-    const date = new Date();
-    date.setHours(Number(hours), Number(minutes), 0, 0);
+    const date = parseTimeValue(timeString);
+    if (!date) return '—';
     return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -108,14 +148,194 @@ function getLessonStatus(lesson) {
 }
 
 function formatDateTime(dateString) {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleString('en-US', {
+    const date = parseDateValue(dateString);
+    if (!date) return '—';
+    return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
     });
+}
+
+function formatDateTimeParts(dateString) {
+    const date = parseDateValue(dateString);
+    if (!date) return { date: '—', time: '—' };
+
+    return {
+        date: formatDate(date),
+        time: date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+        }),
+    };
+}
+
+function formatTimeRange(startTime, endTime) {
+    const start = formatTime(startTime);
+    const end = formatTime(endTime);
+
+    if (start === '—' && end === '—') return '—';
+    if (start !== '—' && end !== '—') return `${start} – ${end}`;
+    return start !== '—' ? start : end;
+}
+
+function isTrainingSessionPartiallyFilled(session) {
+    const maxParticipants = Number(session.maximum_participants);
+
+    return Boolean(
+        String(session.title || '').trim()
+        || String(session.date || '').trim()
+        || String(session.start_time || '').trim()
+        || String(session.end_time || '').trim()
+        || String(session.venue || '').trim()
+        || String(session.online_platform || '').trim()
+        || String(session.meeting_link || '').trim()
+        || (Number.isFinite(maxParticipants) && maxParticipants > 0),
+    );
+}
+
+function validateTrainingSessionFields(session) {
+    const errors = {};
+
+    if (!String(session.date || '').trim()) {
+        errors.date = 'Date is required.';
+    }
+    if (!String(session.start_time || '').trim()) {
+        errors.start_time = 'Start time is required.';
+    }
+    if (!String(session.end_time || '').trim()) {
+        errors.end_time = 'End time is required.';
+    } else if (String(session.start_time || '').trim() && session.end_time <= session.start_time) {
+        errors.end_time = 'End time must be after start time.';
+    }
+
+    const deliveryMethod = session.delivery_method || 'in_person';
+    if (deliveryMethod === 'in_person') {
+        if (!String(session.venue || '').trim()) {
+            errors.venue = 'Venue is required for face-to-face sessions.';
+        }
+    } else if (deliveryMethod === 'online') {
+        if (!String(session.online_platform || '').trim()) {
+            errors.online_platform = 'Platform is required for online sessions.';
+        }
+        if (!String(session.meeting_link || '').trim()) {
+            errors.meeting_link = 'Meeting link is required for online sessions.';
+        }
+    }
+
+    const maxParticipants = Number(session.maximum_participants);
+    if (!Number.isInteger(maxParticipants) || maxParticipants < 1 || maxParticipants > 500) {
+        errors.maximum_participants = 'Enter a number from 1 to 500.';
+    }
+
+    return errors;
+}
+
+function computeTrainingSessionFieldErrors(sessions) {
+    const errorsByIndex = {};
+
+    sessions.forEach((session, index) => {
+        if (!isTrainingSessionPartiallyFilled(session)) {
+            return;
+        }
+
+        const fieldErrors = validateTrainingSessionFields(session);
+        if (Object.keys(fieldErrors).length > 0) {
+            errorsByIndex[index] = fieldErrors;
+        }
+    });
+
+    return errorsByIndex;
+}
+
+function trainingSessionInputClass(hasError) {
+    return [
+        'w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2',
+        hasError
+            ? 'border-rose-400 bg-rose-50/60 text-rose-900 focus:border-rose-500 focus:ring-rose-500/20'
+            : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20',
+    ].join(' ');
+}
+
+function SessionFieldError({ message }) {
+    if (!message) return null;
+
+    return <p className="mt-1 text-xs text-rose-600">{message}</p>;
+}
+
+function RequiredFieldLabel({ children }) {
+    return (
+        <label className="block text-xs text-slate-500 mb-1">
+            {children}
+            {' '}
+            <span className="text-rose-500">*</span>
+        </label>
+    );
+}
+
+function CampaignRequestProposedSessionsCell({ request }) {
+    const sessions = Array.isArray(request?.proposed_sessions) ? request.proposed_sessions : [];
+
+    if (sessions.length === 0) {
+        if (!request?.proposed_session_label) {
+            return <div className="text-slate-700">—</div>;
+        }
+
+        return <div className="text-slate-700">{request.proposed_session_label}</div>;
+    }
+
+    const maxVisible = 2;
+    const visibleSessions = sessions.slice(0, maxVisible);
+    const hiddenCount = sessions.length - visibleSessions.length;
+
+    return (
+        <div className="space-y-1">
+            {visibleSessions.map((session, idx) => (
+                <div key={`${session.label}-${idx}`} className="leading-tight">
+                    <div className="font-medium text-slate-900">{session.label}</div>
+                    {session.date ? (
+                        <div className="text-xs text-slate-700">
+                            {session.date}
+                        </div>
+                    ) : null}
+                    {session.time ? (
+                        <div className="text-[0.7rem] text-slate-500">
+                            {session.time}
+                        </div>
+                    ) : null}
+                </div>
+            ))}
+            {hiddenCount > 0 ? (
+                <div className="text-xs font-medium text-emerald-700">+{hiddenCount} more</div>
+            ) : null}
+        </div>
+    );
+}
+
+function getRecommendedCommunityEntries(value) {
+    if (value && Array.isArray(value.communities)) {
+        return value.communities.filter((item) => item && typeof item === 'object');
+    }
+    if (Array.isArray(value)) {
+        return value.filter((item) => item && typeof item === 'object');
+    }
+
+    return [];
+}
+
+function getRiskBadgeClass(level) {
+    const normalized = String(level || '').toLowerCase();
+    if (normalized === 'high') return 'border-rose-200 bg-rose-50 text-rose-700';
+    if (normalized === 'medium' || normalized === 'moderate') return 'border-amber-200 bg-amber-50 text-amber-700';
+    return 'border-slate-200 bg-slate-100 text-slate-700';
+}
+
+function getPriorityBadgeClass(level) {
+    if (level === 'Priority 1') return 'border-rose-200 bg-rose-50 text-rose-700';
+    if (level === 'Priority 2') return 'border-amber-200 bg-amber-50 text-amber-700';
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700';
 }
 
 function formatDuration(minutes) {
@@ -410,6 +630,7 @@ export function TrainingModuleDetail({ module }) {
     const [showAddResource, setShowAddResource] = React.useState(false);
     const [showAddLessonModal, setShowAddLessonModal] = React.useState(false);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
+    const [isCampaignDescriptionExpanded, setIsCampaignDescriptionExpanded] = React.useState(false);
     const [draggedId, setDraggedId] = React.useState(null);
     const [lessonForm, setLessonForm] = React.useState({ title: '', description: '' });
     const [resourceForm, setResourceForm] = React.useState({ title: '', body: '', external_url: '', resource_type: 'text' });
@@ -421,7 +642,16 @@ export function TrainingModuleDetail({ module }) {
     });
     const shortDescription = module.short_description || '';
     const [relatedHazard, setRelatedHazard] = React.useState(module.related_hazard || module.category || '');
-    const [deliveryMethod, setDeliveryMethod] = React.useState(module.delivery_method || 'in_person');
+    const DELIVERY_METHOD_OPTIONS = React.useMemo(() => ([
+        { value: 'in_person', label: 'Face-to-Face' },
+        { value: 'online', label: 'Online' },
+    ]), []);
+    const ONLINE_PLATFORM_OPTIONS = React.useMemo(() => ([
+        { value: 'google_meet', label: 'Google Meet' },
+        { value: 'zoom', label: 'Zoom' },
+        { value: 'microsoft_teams', label: 'Microsoft Teams' },
+        { value: 'other', label: 'Other' },
+    ]), []);
     const [targetAudience, setTargetAudience] = React.useState(Array.isArray(module.target_audience) ? module.target_audience : []);
     const [profileObjectives, setProfileObjectives] = React.useState(
         Array.isArray(module.learning_objectives) && module.learning_objectives.length > 0
@@ -437,20 +667,64 @@ export function TrainingModuleDetail({ module }) {
             ? module.assigned_qualified_trainer_ids.map((id) => String(id))
             : (module.lead_qualified_trainer_id ? [String(module.lead_qualified_trainer_id)] : []),
     );
-    const [trainingSessions, setTrainingSessions] = React.useState(
+    const [trainingSessions, setTrainingSessions] = React.useState(() => (
         Array.isArray(module.available_training_sessions) && module.available_training_sessions.length > 0
-            ? module.available_training_sessions
-            : [],
-    );
-    const [isSavingProfile, setIsSavingProfile] = React.useState(false);
-    const [isSubmittingCampaign, setIsSubmittingCampaign] = React.useState(false);
+            ? module.available_training_sessions.map((item) => ({
+                title: item?.title || '',
+                date: item?.date || '',
+                start_time: item?.start_time || '',
+                end_time: item?.end_time || '',
+                delivery_method: item?.delivery_method || item?.deliveryMethod || 'in_person',
+                venue: item?.venue || '',
+                online_platform: item?.online_platform || item?.platform || 'google_meet',
+                meeting_link: item?.meeting_link || item?.meetingLink || '',
+                maximum_participants: item?.maximum_participants ?? item?.maximumParticipants ?? 20,
+            }))
+            : []
+    ));
+    const [sessionFieldErrors, setSessionFieldErrors] = React.useState({});
+    const [sessionValidationActive, setSessionValidationActive] = React.useState(false);
+    const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false);
     const [campaignRequests, setCampaignRequests] = React.useState([]);
     const [isLoadingCampaignRequests, setIsLoadingCampaignRequests] = React.useState(false);
     const [selectedCampaignRequest, setSelectedCampaignRequest] = React.useState(null);
     const [isCampaignRequestDialogOpen, setIsCampaignRequestDialogOpen] = React.useState(false);
+    const [additionalCommunityQuery, setAdditionalCommunityQuery] = React.useState('');
+    const [additionalCommunities, setAdditionalCommunities] = React.useState(() => (
+        Array.isArray(module.additional_communities) ? module.additional_communities : []
+    ));
 
     const thumbnailUrl = module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null);
     const recommendations = module.recommended_communities || null;
+    const recommendedCommunityEntries = React.useMemo(
+        () => getRecommendedCommunityEntries(recommendations),
+        [recommendations],
+    );
+    const recommendedCommunityIds = React.useMemo(
+        () => new Set(recommendedCommunityEntries.map((item) => Number(item.barangay_profile_id)).filter(Number.isFinite)),
+        [recommendedCommunityEntries],
+    );
+    const availableCommunityOptions = React.useMemo(
+        () => (Array.isArray(module.community_options) ? module.community_options : []),
+        [module.community_options],
+    );
+    const filteredCommunityOptions = React.useMemo(() => {
+        const selectedIds = new Set(additionalCommunities.map((item) => Number(item.barangay_profile_id)));
+        const q = additionalCommunityQuery.trim().toLowerCase();
+
+        return availableCommunityOptions
+            .filter((item) => !selectedIds.has(Number(item.barangay_profile_id)))
+            .filter((item) => !recommendedCommunityIds.has(Number(item.barangay_profile_id)))
+            .filter((item) => {
+                if (!q) return true;
+                return [
+                    item.barangay_name,
+                    item.municipality_city,
+                    item.province,
+                ].join(' ').toLowerCase().includes(q);
+            })
+            .slice(0, 8);
+    }, [availableCommunityOptions, additionalCommunities, additionalCommunityQuery, recommendedCommunityIds]);
     const hazardTokens = React.useMemo(() => parseHazardTokens(relatedHazard || module.category), [relatedHazard, module.category]);
     const activeTrainerOptions = React.useMemo(
         () => trainerOptions.filter((trainer) => String(trainer.status || '').toLowerCase() === 'active'),
@@ -604,14 +878,42 @@ export function TrainingModuleDetail({ module }) {
         setAssignedTrainerIds((current) => current.filter((id) => String(id) !== String(trainerId)));
     };
 
-    const addTrainingSession = () => setTrainingSessions((current) => [
-        ...current,
-        { title: '', date: '', start_time: '', end_time: '', venue: '', maximum_participants: 30 },
-    ]);
+    const addTrainingSession = () => setTrainingSessions((current) => {
+        const baseTitle = String(module.title || 'Training').trim() || 'Training';
+        const nextIndex = current.length + 1;
+        return [
+            ...current,
+            {
+                title: `${baseTitle} - Session ${nextIndex}`,
+                date: '',
+                start_time: '',
+                end_time: '',
+                delivery_method: 'in_person',
+                venue: '',
+                online_platform: 'google_meet',
+                meeting_link: '',
+                maximum_participants: 30,
+            },
+        ];
+    });
     const updateTrainingSession = (index, field, value) => setTrainingSessions((current) => (
         current.map((item, idx) => idx === index ? { ...item, [field]: value } : item)
     ));
     const removeTrainingSession = (index) => setTrainingSessions((current) => current.filter((_, idx) => idx !== index));
+    const addAdditionalCommunity = (community) => {
+        if (!community || !community.barangay_profile_id) return;
+        setAdditionalCommunities((current) => (
+            current.some((item) => Number(item.barangay_profile_id) === Number(community.barangay_profile_id))
+                ? current
+                : [...current, community]
+        ));
+        setAdditionalCommunityQuery('');
+    };
+    const removeAdditionalCommunity = (barangayProfileId) => {
+        setAdditionalCommunities((current) => (
+            current.filter((item) => Number(item.barangay_profile_id) !== Number(barangayProfileId))
+        ));
+    };
 
     const loadCampaignRequests = async () => {
         setIsLoadingCampaignRequests(true);
@@ -641,54 +943,28 @@ export function TrainingModuleDetail({ module }) {
     };
 
     const handleSubmitToCampaign = async () => {
-        const confirm = await Swal.fire({
-            icon: 'question',
-            title: 'Submit to Campaign?',
-            text: 'Submit this Training Intelligence Profile to the Public Safety Campaign Management System for review.',
-            showCancelButton: true,
-            confirmButtonText: 'Submit',
-            cancelButtonText: 'Cancel',
+        const response = await fetch(`/admin/training-modules/${module.id}/campaign-requests`, {
+            method: 'POST',
+            body: (() => {
+                const formData = new FormData();
+                formData.append('_token', getCsrfToken());
+                return formData;
+            })(),
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
         });
 
-        if (!confirm.isConfirmed) return;
-
-        setIsSubmittingCampaign(true);
-        try {
-            const formData = new FormData();
-            formData.append('_token', getCsrfToken());
-
-            const response = await fetch(`/admin/training-modules/${module.id}/campaign-requests`, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
-            });
-
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Could not submit Training Intelligence Profile.');
-            }
-
-            await Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Submitted',
-                text: 'Training Intelligence Profile submitted successfully. You can monitor its progress under Campaign Requests.',
-                showConfirmButton: false,
-                timer: 4500,
-            });
-
-            setActiveTab('campaign_requests');
-        } catch (e) {
-            await Swal.fire({ icon: 'error', title: 'Submission failed', text: e?.message || 'Could not submit.' });
-        } finally {
-            setIsSubmittingCampaign(false);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Could not submit Training Intelligence Profile.');
         }
+
+        return data;
     };
 
     const handleViewCampaignRequest = async (requestId) => {
         setSelectedCampaignRequest(null);
+        setIsCampaignDescriptionExpanded(false);
         setIsCampaignRequestDialogOpen(true);
 
         try {
@@ -720,111 +996,186 @@ export function TrainingModuleDetail({ module }) {
         }
     }, [activeTab]);
 
-    const handleSaveProfile = async () => {
+    React.useEffect(() => {
+        if (!sessionValidationActive) {
+            return;
+        }
+
+        setSessionFieldErrors(computeTrainingSessionFieldErrors(trainingSessions));
+    }, [trainingSessions, sessionValidationActive]);
+
+    const activateSessionValidation = () => setSessionValidationActive(true);
+
+    const getSessionFieldError = (index, field) => (
+        sessionValidationActive ? sessionFieldErrors[index]?.[field] : undefined
+    );
+
+    const getNormalizedTrainingSessions = () => trainingSessions
+        .map((item) => ({
+            title: item.title || '',
+            date: item.date || '',
+            start_time: item.start_time || '',
+            end_time: item.end_time || '',
+            delivery_method: item.delivery_method || 'in_person',
+            venue: item.venue || '',
+            online_platform: item.online_platform || '',
+            meeting_link: item.meeting_link || '',
+            maximum_participants: Number(item.maximum_participants),
+        }))
+        .filter((item) => isTrainingSessionPartiallyFilled(item));
+
+    const validateIntelligenceProfile = () => {
         const cleanedObjectives = profileObjectives.map((item) => item.trim()).filter(Boolean);
         if (cleanedObjectives.length === 0) {
-            await Swal.fire({ icon: 'warning', title: 'Missing objectives', text: 'Please add at least one training objective.' });
-            return;
+            return {
+                ok: false,
+                title: 'Missing objectives',
+                text: 'Please add at least one training objective.',
+            };
         }
 
         if (!String(relatedHazard || '').trim()) {
-            await Swal.fire({ icon: 'warning', title: 'Missing related hazard', text: 'Please enter at least one Related Hazard(s).' });
+            return {
+                ok: false,
+                title: 'Missing related hazard',
+                text: 'Please enter at least one Related Hazard(s).',
+            };
+        }
+
+        const normalizedSessions = getNormalizedTrainingSessions();
+        if (normalizedSessions.length === 0) {
+            return {
+                ok: false,
+                title: 'No training sessions',
+                text: 'Add at least one complete training session before saving and submitting to Campaign.',
+                activateSessionValidation: true,
+            };
+        }
+
+        const nextSessionFieldErrors = computeTrainingSessionFieldErrors(trainingSessions);
+        if (Object.keys(nextSessionFieldErrors).length > 0) {
+            return {
+                ok: false,
+                title: 'Incomplete training session',
+                text: 'Please fill in all required session fields highlighted in red.',
+                activateSessionValidation: true,
+                sessionFieldErrors: nextSessionFieldErrors,
+            };
+        }
+
+        return { ok: true, cleanedObjectives, normalizedSessions };
+    };
+
+    const persistIntelligenceProfile = async ({ cleanedObjectives, normalizedSessions }) => {
+        const formData = new FormData();
+        formData.append('_token', getCsrfToken());
+        formData.append('_method', 'PUT');
+        formData.append('title', module.title || '');
+        formData.append('description', module.description || '');
+        formData.append('short_description', shortDescription);
+        formData.append('category', module.category || '');
+        formData.append('related_hazard', relatedHazard);
+        formData.append('estimated_duration_minutes', String(module.estimated_duration_minutes || ''));
+        formData.append('visibility', module.visibility || 'all');
+        formData.append('status', module.status || 'draft');
+        formData.append('difficulty', module.difficulty || 'Beginner');
+        cleanedObjectives.forEach((item, index) => formData.append(`learning_objectives[${index}]`, item));
+        targetAudience.forEach((item, index) => formData.append(`target_audience[${index}]`, item));
+        assignedTrainerIds.forEach((item, index) => formData.append(`assigned_qualified_trainer_ids[${index}]`, item));
+        normalizedSessions.forEach((item, index) => {
+            formData.append(`available_training_sessions[${index}][title]`, item.title);
+            formData.append(`available_training_sessions[${index}][date]`, item.date);
+            formData.append(`available_training_sessions[${index}][start_time]`, item.start_time);
+            formData.append(`available_training_sessions[${index}][end_time]`, item.end_time);
+            formData.append(`available_training_sessions[${index}][delivery_method]`, item.delivery_method);
+            formData.append(`available_training_sessions[${index}][venue]`, item.delivery_method === 'in_person' ? item.venue : '');
+            formData.append(`available_training_sessions[${index}][online_platform]`, item.delivery_method === 'online' ? item.online_platform : '');
+            formData.append(`available_training_sessions[${index}][meeting_link]`, item.delivery_method === 'online' ? item.meeting_link : '');
+            formData.append(`available_training_sessions[${index}][maximum_participants]`, String(item.maximum_participants));
+        });
+
+        const response = await fetch(`/admin/training-modules/${module.id}`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            const message = data.message || Object.values(data.errors || {}).flat()[0] || 'Could not save profile.';
+            throw new Error(message);
+        }
+
+        return true;
+    };
+
+    const handleSaveAndSubmitProfile = async () => {
+        const validation = validateIntelligenceProfile();
+        if (!validation.ok) {
+            if (validation.activateSessionValidation) {
+                setSessionValidationActive(true);
+                setSessionFieldErrors(validation.sessionFieldErrors || computeTrainingSessionFieldErrors(trainingSessions));
+            }
+
+            await Swal.fire({
+                icon: 'warning',
+                title: validation.title,
+                text: validation.text,
+            });
             return;
         }
 
-        if (!['in_person', 'online'].includes(String(deliveryMethod))) {
-            await Swal.fire({ icon: 'warning', title: 'Invalid delivery method', text: 'Please choose a valid delivery method.' });
-            return;
-        }
+        setSessionValidationActive(false);
+        setSessionFieldErrors({});
 
-        const normalizedSessions = trainingSessions
-            .map((item) => ({
-                title: item.title || '',
-                date: item.date || '',
-                start_time: item.start_time || '',
-                end_time: item.end_time || '',
-                venue: item.venue || '',
-                maximum_participants: Number(item.maximum_participants),
-            }))
-            .filter((item) => item.title || item.date || item.start_time || item.end_time || item.venue || item.maximum_participants);
-        const invalidSession = normalizedSessions.find((item) => (
-            !item.date
-            || !item.start_time
-            || !item.end_time
-            || item.end_time <= item.start_time
-            || !Number.isInteger(item.maximum_participants)
-            || item.maximum_participants < 1
-            || item.maximum_participants > 500
-        ));
-        if (invalidSession) {
-            await Swal.fire({ icon: 'warning', title: 'Invalid training session', text: 'Each proposed session needs a date, valid time range, and maximum participants between 1 and 500.' });
-            return;
-        }
+        const publishNote = String(module.status || '').toLowerCase() !== 'published'
+            ? '<p class="mt-3 text-sm text-amber-700">Only published modules are available to the Campaign Management System.</p>'
+            : '';
 
         const confirm = await Swal.fire({
             icon: 'question',
-            title: 'Confirm save?',
-            text: 'Your changes will be saved for this Training Intelligence Profile.',
+            title: 'Save and submit to Campaign?',
+            html: `
+                <p class="text-sm text-slate-600">Your Training Intelligence Profile will be saved, then submitted to the Public Safety Campaign Management System for review.</p>
+                ${publishNote}
+            `,
             showCancelButton: true,
-            confirmButtonText: 'Yes, save',
+            confirmButtonText: 'Yes, save & submit',
             cancelButtonText: 'Cancel',
+            confirmButtonColor: '#059669',
         });
 
         if (!confirm.isConfirmed) return;
 
-        setIsSavingProfile(true);
+        setIsSubmittingProfile(true);
         try {
-            const formData = new FormData();
-            formData.append('_token', getCsrfToken());
-            formData.append('_method', 'PUT');
-            formData.append('title', module.title || '');
-            formData.append('description', module.description || '');
-            formData.append('short_description', shortDescription);
-            formData.append('category', module.category || '');
-            formData.append('related_hazard', relatedHazard);
-            formData.append('delivery_method', deliveryMethod);
-            formData.append('estimated_duration_minutes', String(module.estimated_duration_minutes || ''));
-            formData.append('visibility', module.visibility || 'all');
-            formData.append('status', module.status || 'draft');
-            formData.append('difficulty', module.difficulty || 'Beginner');
-            cleanedObjectives.forEach((item, index) => formData.append(`learning_objectives[${index}]`, item));
-            targetAudience.forEach((item, index) => formData.append(`target_audience[${index}]`, item));
-            assignedTrainerIds.forEach((item, index) => formData.append(`assigned_qualified_trainer_ids[${index}]`, item));
-            normalizedSessions.forEach((item, index) => {
-                formData.append(`available_training_sessions[${index}][title]`, item.title);
-                formData.append(`available_training_sessions[${index}][date]`, item.date);
-                formData.append(`available_training_sessions[${index}][start_time]`, item.start_time);
-                formData.append(`available_training_sessions[${index}][end_time]`, item.end_time);
-                formData.append(`available_training_sessions[${index}][venue]`, item.venue);
-                formData.append(`available_training_sessions[${index}][maximum_participants]`, String(item.maximum_participants));
+            await persistIntelligenceProfile({
+                cleanedObjectives: validation.cleanedObjectives,
+                normalizedSessions: validation.normalizedSessions,
             });
 
-            const response = await fetch(`/admin/training-modules/${module.id}`, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                const message = data.message || Object.values(data.errors || {}).flat()[0] || 'Could not save profile.';
-                await Swal.fire({ icon: 'error', title: 'Save failed', text: message });
-                return;
-            }
+            await handleSubmitToCampaign();
 
             await Swal.fire({
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: 'Saved',
-                text: 'Training Intelligence Profile saved successfully.',
+                title: 'Saved & submitted',
+                text: 'Training Intelligence Profile saved and submitted to Campaign. Track progress under Campaign Requests.',
                 showConfirmButton: false,
-                timer: 2000,
+                timer: 4500,
             });
-            window.location.assign(`/admin/training-modules/${module.id}#intelligence`);
+
+            window.location.assign(`/admin/training-modules/${module.id}#campaign_requests`);
+        } catch (e) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Could not complete',
+                text: e?.message || 'Save or campaign submission failed.',
+            });
         } finally {
-            setIsSavingProfile(false);
+            setIsSubmittingProfile(false);
         }
     };
 
@@ -874,9 +1225,25 @@ export function TrainingModuleDetail({ module }) {
                             </div>
                         )}
                         <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                            {module.category && <span className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 font-medium">{module.category}</span>}
-                            <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700">{lessons.length} {lessons.length === 1 ? 'Lesson' : 'Lessons'}</span>
-                            <span className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 font-medium capitalize">{module.status}</span>
+                            {module.category && (
+                                <span className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 font-medium">
+                                    {module.category}
+                                </span>
+                            )}
+                            <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+                                {lessons.length} {lessons.length === 1 ? 'Lesson' : 'Lessons'}
+                            </span>
+                            <span className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 font-medium capitalize">
+                                {module.status}
+                            </span>
+                            {formatDuration(module.estimated_duration_minutes) && (
+                                <span className="rounded-lg bg-slate-50 text-slate-800 border border-slate-200 px-2.5 py-1 font-medium">
+                                    Estimated: {formatDuration(module.estimated_duration_minutes)}
+                                </span>
+                            )}
+                            <span className="rounded-lg bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1 font-medium capitalize">
+                                Visibility: {module.visibility || 'All'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -910,25 +1277,6 @@ export function TrainingModuleDetail({ module }) {
 
             {activeTab === 'intelligence' && (
                 <div className="space-y-4">
-                    <AdminContentCard className="p-5">
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">Training Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs text-slate-500 mb-1">Related Hazard(s)</label>
-                                <input value={relatedHazard} onChange={(e) => setRelatedHazard(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                            </div>
-                            <div><p className="text-xs text-slate-500">Estimated Duration</p><p className="text-sm font-medium text-slate-800">{formatDuration(module.estimated_duration_minutes) || '—'}</p></div>
-                            <div>
-                                <label className="block text-xs text-slate-500 mb-1">Delivery Method</label>
-                                <select value={deliveryMethod} onChange={(e) => setDeliveryMethod(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
-                                    <option value="in_person">Face-to-Face</option>
-                                    <option value="online">Online</option>
-                                </select>
-                            </div>
-                            <div><p className="text-xs text-slate-500">Total Lessons</p><p className="text-sm font-medium text-slate-800">{lessons.length}</p></div>
-                        </div>
-                    </AdminContentCard>
-
                     <AdminContentCard className="p-5">
                         <div className="flex items-center gap-2 mb-3"><Users className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Target Audience</h3></div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -1029,7 +1377,7 @@ export function TrainingModuleDetail({ module }) {
                         <div className="flex items-center justify-between gap-3 mb-4">
                             <div>
                                 <h3 className="text-sm font-semibold text-slate-800">Available Training Sessions</h3>
-                                <p className="text-xs text-slate-500 mt-1">Proposed schedules only. Campaign Management will choose from these later.</p>
+                                <p className="text-xs text-slate-500 mt-1">Proposed schedules only. Campaign Management will choose from these later. Fields marked with <span className="text-rose-500">*</span> are required.</p>
                             </div>
                             <button type="button" onClick={addTrainingSession} className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"><Plus className="w-3.5 h-3.5" /> Add Session</button>
                         </div>
@@ -1040,32 +1388,122 @@ export function TrainingModuleDetail({ module }) {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {trainingSessions.map((session, index) => (
-                                    <div key={`session-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                {trainingSessions.map((session, index) => {
+                                    const sessionHasErrors = sessionValidationActive
+                                        && sessionFieldErrors[index]
+                                        && Object.keys(sessionFieldErrors[index]).length > 0;
+
+                                    return (
+                                    <div
+                                        key={`session-${index}`}
+                                        className={`rounded-2xl border p-4 ${sessionHasErrors ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
+                                    >
                                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                             <div>
                                                 <label className="block text-xs text-slate-500 mb-1">Session Title</label>
-                                                <input type="text" value={session.title || ''} onChange={(e) => updateTrainingSession(index, 'title', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Optional session title" />
+                                                <input type="text" value={session.title || ''} onChange={(e) => updateTrainingSession(index, 'title', e.target.value)} className={trainingSessionInputClass(false)} placeholder="Session title" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Date</label>
-                                                <input type="date" value={session.date || ''} onChange={(e) => updateTrainingSession(index, 'date', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                                <RequiredFieldLabel>Date</RequiredFieldLabel>
+                                                <input
+                                                    type="date"
+                                                    value={session.date || ''}
+                                                    onChange={(e) => updateTrainingSession(index, 'date', e.target.value)}
+                                                    onBlur={activateSessionValidation}
+                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'date')))}
+                                                />
+                                                <SessionFieldError message={getSessionFieldError(index, 'date')} />
                                             </div>
                                             <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Venue</label>
-                                                <input type="text" value={session.venue || ''} onChange={(e) => updateTrainingSession(index, 'venue', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Optional venue" />
+                                                <RequiredFieldLabel>Delivery Method</RequiredFieldLabel>
+                                                <select
+                                                    value={session.delivery_method || 'in_person'}
+                                                    onChange={(e) => updateTrainingSession(index, 'delivery_method', e.target.value)}
+                                                    onBlur={activateSessionValidation}
+                                                    className={trainingSessionInputClass(false)}
+                                                >
+                                                    {DELIVERY_METHOD_OPTIONS.map((opt) => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                             <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Start Time</label>
-                                                <input type="time" value={session.start_time || ''} onChange={(e) => updateTrainingSession(index, 'start_time', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                                <RequiredFieldLabel>Start Time</RequiredFieldLabel>
+                                                <input
+                                                    type="time"
+                                                    value={session.start_time || ''}
+                                                    onChange={(e) => updateTrainingSession(index, 'start_time', e.target.value)}
+                                                    onBlur={activateSessionValidation}
+                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'start_time')))}
+                                                />
+                                                <SessionFieldError message={getSessionFieldError(index, 'start_time')} />
                                             </div>
                                             <div>
-                                                <label className="block text-xs text-slate-500 mb-1">End Time</label>
-                                                <input type="time" value={session.end_time || ''} onChange={(e) => updateTrainingSession(index, 'end_time', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                                <RequiredFieldLabel>End Time</RequiredFieldLabel>
+                                                <input
+                                                    type="time"
+                                                    value={session.end_time || ''}
+                                                    onChange={(e) => updateTrainingSession(index, 'end_time', e.target.value)}
+                                                    onBlur={activateSessionValidation}
+                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'end_time')))}
+                                                />
+                                                <SessionFieldError message={getSessionFieldError(index, 'end_time')} />
                                             </div>
+                                            {String(session.delivery_method || 'in_person') === 'in_person' ? (
+                                                <div>
+                                                    <RequiredFieldLabel>Venue</RequiredFieldLabel>
+                                                    <input
+                                                        type="text"
+                                                        value={session.venue || ''}
+                                                        onChange={(e) => updateTrainingSession(index, 'venue', e.target.value)}
+                                                        onBlur={activateSessionValidation}
+                                                        className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'venue')))}
+                                                        placeholder="Venue"
+                                                    />
+                                                    <SessionFieldError message={getSessionFieldError(index, 'venue')} />
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div>
+                                                        <RequiredFieldLabel>Platform</RequiredFieldLabel>
+                                                        <select
+                                                            value={session.online_platform || 'google_meet'}
+                                                            onChange={(e) => updateTrainingSession(index, 'online_platform', e.target.value)}
+                                                            onBlur={activateSessionValidation}
+                                                            className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'online_platform')))}
+                                                        >
+                                                            {ONLINE_PLATFORM_OPTIONS.map((opt) => (
+                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            ))}
+                                                        </select>
+                                                        <SessionFieldError message={getSessionFieldError(index, 'online_platform')} />
+                                                    </div>
+                                                    <div className="xl:col-span-2">
+                                                        <RequiredFieldLabel>Meeting Link</RequiredFieldLabel>
+                                                        <input
+                                                            type="url"
+                                                            value={session.meeting_link || ''}
+                                                            onChange={(e) => updateTrainingSession(index, 'meeting_link', e.target.value)}
+                                                            onBlur={activateSessionValidation}
+                                                            className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'meeting_link')))}
+                                                            placeholder="https://..."
+                                                        />
+                                                        <SessionFieldError message={getSessionFieldError(index, 'meeting_link')} />
+                                                    </div>
+                                                </>
+                                            )}
                                             <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Maximum Participants</label>
-                                                <input type="number" min="1" max="500" value={session.maximum_participants ?? 30} onChange={(e) => updateTrainingSession(index, 'maximum_participants', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                                <RequiredFieldLabel>Maximum Participants</RequiredFieldLabel>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="500"
+                                                    value={session.maximum_participants ?? 30}
+                                                    onChange={(e) => updateTrainingSession(index, 'maximum_participants', e.target.value)}
+                                                    onBlur={activateSessionValidation}
+                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'maximum_participants')))}
+                                                />
+                                                <SessionFieldError message={getSessionFieldError(index, 'maximum_participants')} />
                                             </div>
                                         </div>
                                         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -1086,7 +1524,8 @@ export function TrainingModuleDetail({ module }) {
                                             <button type="button" onClick={() => removeTrainingSession(index)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Delete Session</button>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </AdminContentCard>
@@ -1190,7 +1629,6 @@ export function TrainingModuleDetail({ module }) {
                         </ul>
                         <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
                             <p><span className="font-semibold text-slate-700">Assigned Trainers:</span> {assignedTrainers.length > 0 ? assignedTrainers.map((trainer) => trainer.name).join(', ') : 'Not assigned'}</p>
-                            <p><span className="font-semibold text-slate-700">Delivery Method:</span> {DELIVERY_METHOD_LABELS[deliveryMethod] || '—'}</p>
                             <p><span className="font-semibold text-slate-700">Proposed Sessions:</span> {trainingSessions.length}</p>
                         </div>
                         <p className="mt-2 text-xs font-semibold text-amber-700">Only Published modules will be available to the Campaign Management System.</p>
@@ -1199,16 +1637,12 @@ export function TrainingModuleDetail({ module }) {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-end">
                         <button
                             type="button"
-                            onClick={handleSubmitToCampaign}
-                            disabled={isSubmittingCampaign}
-                            className="inline-flex items-center gap-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold px-4 py-2.5 disabled:opacity-60"
+                            onClick={handleSaveAndSubmitProfile}
+                            disabled={isSubmittingProfile}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 disabled:opacity-60 w-full sm:w-auto"
                         >
-                            {isSubmittingCampaign ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                            Submit to Campaign
-                        </button>
-                        <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 disabled:opacity-60">
-                            {isSavingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                            Save Training Intelligence Profile
+                            {isSubmittingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                            Save &amp; Submit to Campaign
                         </button>
                     </div>
                 </div>
@@ -1257,23 +1691,7 @@ export function TrainingModuleDetail({ module }) {
                                                     <div className="font-medium text-slate-900">{req.training_module?.title || '—'}</div>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {req.proposed_session_label ? (
-                                                        (() => {
-                                                            const parts = req.proposed_session_label.split(' • ').filter(Boolean);
-                                                            const timePart = parts.length >= 1 ? parts[parts.length - 1] : null;
-                                                            const datePart = parts.length >= 2 ? parts[parts.length - 2] : null;
-                                                            const titlePart = parts.length > 2 ? parts.slice(0, -2).join(' • ') : null;
-                                                            return (
-                                                                <div>
-                                                                    {titlePart ? <div className="font-medium text-slate-900">{titlePart}</div> : null}
-                                                                    {datePart ? <div className="text-slate-700">{datePart}</div> : null}
-                                                                    {timePart ? <div className="text-xs text-slate-500 mt-0.5">{timePart}</div> : null}
-                                                                </div>
-                                                            );
-                                                        })()
-                                                    ) : (
-                                                        <div className="text-slate-700">—</div>
-                                                    )}
+                                                    <CampaignRequestProposedSessionsCell request={req} />
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="text-slate-700">{req.submitted_to || '—'}</div>
@@ -1281,8 +1699,8 @@ export function TrainingModuleDetail({ module }) {
                                                 <td className="px-4 py-3 whitespace-nowrap">
                                                     {req.submitted_at ? (
                                                         <>
-                                                            <div className="text-slate-900">{new Date(req.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                                            <div className="text-xs text-slate-500 mt-0.5">{new Date(req.submitted_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                                                            <div className="text-slate-900">{formatDate(req.submitted_at)}</div>
+                                                            <div className="text-xs text-slate-500 mt-0.5">{formatDateTimeParts(req.submitted_at).time}</div>
                                                         </>
                                                     ) : (
                                                         '—'
@@ -1308,150 +1726,246 @@ export function TrainingModuleDetail({ module }) {
                         )}
                     </AdminContentCard>
 
-                    <Dialog.Root open={isCampaignRequestDialogOpen} onOpenChange={setIsCampaignRequestDialogOpen}>
+                    <Dialog.Root
+                        open={isCampaignRequestDialogOpen}
+                        onOpenChange={(open) => {
+                            setIsCampaignRequestDialogOpen(open);
+                            if (!open) {
+                                setIsCampaignDescriptionExpanded(false);
+                            }
+                        }}
+                    >
                         <Dialog.Portal>
                             {/* Keep the table visible — use a right-side slide-over drawer */}
                             <div className="fixed inset-0 z-40 pointer-events-none" />
-                            <Dialog.Content className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-lg z-50 overflow-auto flex flex-col border-l border-slate-200">
-                                <div className="flex items-center justify-between p-6">
-                                    <div>
-                                        <Dialog.Title className="text-lg font-semibold text-slate-800">Campaign Request {selectedCampaignRequest ? `#${selectedCampaignRequest.id}` : ''}</Dialog.Title>
-                                        <p className="text-xs text-slate-500 mt-1">{selectedCampaignRequest?.training_module?.title || ''}</p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        {selectedCampaignRequest ? <CampaignRequestStatusBadge status={selectedCampaignRequest.status} /> : null}
-                                        <Dialog.Close asChild>
-                                            <button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100" aria-label="Close">
-                                                <X className="w-4 h-4 mx-auto" />
-                                            </button>
-                                        </Dialog.Close>
+                            <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col overflow-auto border-l border-slate-200 bg-slate-50 shadow-2xl sm:w-[42vw] sm:min-w-[620px] sm:max-w-[760px]">
+                                <div className="border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <Dialog.Title className="text-lg font-semibold text-slate-900">Campaign Request {selectedCampaignRequest ? `#${selectedCampaignRequest.id}` : ''}</Dialog.Title>
+                                            <p className="mt-1 truncate text-sm text-slate-500">{selectedCampaignRequest?.training_module?.title || 'Training campaign request details'}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            {selectedCampaignRequest ? <CampaignRequestStatusBadge status={selectedCampaignRequest.status} /> : null}
+                                            <Dialog.Close asChild>
+                                                <button type="button" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" aria-label="Close">
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            </Dialog.Close>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="flex-1 p-6 space-y-6">
+                                <div className="flex-1 space-y-4 p-4 sm:p-5 lg:p-6">
                                     {!selectedCampaignRequest ? (
-                                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">Loading request details…</div>
+                                        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">Loading request details…</div>
                                     ) : (
                                         <>
-                                            {/* Top summary */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Request ID</p>
-                                                    <div className="text-sm font-medium text-slate-900">#{selectedCampaignRequest.id}</div>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Submitted</p>
-                                                    {selectedCampaignRequest.submitted_at ? (
-                                                        <>
-                                                            <div className="text-sm text-slate-900">{new Date(selectedCampaignRequest.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                                            <div className="text-xs text-slate-500 mt-0.5">{new Date(selectedCampaignRequest.submitted_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
-                                                        </>
-                                                    ) : (
-                                                        <div className="text-sm text-slate-700">—</div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Submitted By</p>
-                                                    <div className="text-sm text-slate-900">{selectedCampaignRequest.submitted_by?.name || '—'}</div>
-                                                </div>
-                                            </div>
-
-                                            {/* Training Description (truncated) */}
-                                            <div>
-                                                <p className="text-xs text-slate-500">Training Description</p>
-                                                <div className="text-sm text-slate-700">
-                                                    {(() => {
-                                                        const desc = selectedCampaignRequest.payload?.short_description || '';
-                                                        if (!desc) return '—';
-                                                        if (!isDescriptionExpanded && desc.length > 240) {
-                                                            return (
-                                                                <>
-                                                                    <div>{desc.slice(0, 240)}…</div>
-                                                                    <button type="button" onClick={() => setIsDescriptionExpanded(true)} className="mt-2 text-xs text-emerald-600">Read more</button>
-                                                                </>
-                                                            );
-                                                        }
-                                                        return (
-                                                            <>
-                                                                <div>{desc}</div>
-                                                                {desc.length > 240 ? (
-                                                                    <button type="button" onClick={() => setIsDescriptionExpanded(false)} className="mt-2 text-xs text-emerald-600">Show less</button>
-                                                                ) : null}
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </div>
-
-                                            {/* Key metadata row */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Related Hazard</p>
-                                                    <div className="text-sm text-slate-900">{Array.isArray(selectedCampaignRequest.payload?.related_hazards) ? selectedCampaignRequest.payload.related_hazards.join(', ') : (selectedCampaignRequest.payload?.related_hazards || '—')}</div>
-                                                </div>
-
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Lead Trainer(s)</p>
-                                                    <div className="text-sm text-slate-900">{Array.isArray(selectedCampaignRequest.payload?.assigned_trainers) ? selectedCampaignRequest.payload.assigned_trainers.map(t => t.name).join(', ') : '—'}</div>
-                                                </div>
-
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Recommended Communities</p>
-                                                    <div className="flex flex-wrap gap-2 mt-2">
-                                                        {(() => {
-                                                            const rc = selectedCampaignRequest.payload?.recommended_communities;
-                                                            let list = [];
-                                                            if (Array.isArray(rc)) {
-                                                                list = rc.map(c => (typeof c === 'string' ? c : (c?.name || c?.label || JSON.stringify(c))));
-                                                            } else if (rc && Array.isArray(rc.communities)) {
-                                                                list = rc.communities.map(c => (typeof c === 'string' ? c : (c?.name || c?.label || JSON.stringify(c))));
-                                                            }
-                                                            if (list.length === 0) return <div className="text-sm text-slate-700">—</div>;
-                                                            return list.map((c, i) => (
-                                                                <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-xs text-slate-700">{c}</span>
-                                                            ));
-                                                        })()}
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                        <FileText className="h-3.5 w-3.5" />
+                                                        Request ID
                                                     </div>
+                                                    <div className="mt-2 text-base font-semibold text-slate-900">#{selectedCampaignRequest.id}</div>
+                                                    <p className="mt-1 text-xs text-slate-500">Operational reference</p>
+                                                </div>
+
+                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                        <CalendarDays className="h-3.5 w-3.5" />
+                                                        Submitted
+                                                    </div>
+                                                    <div className="mt-2 text-sm font-semibold text-slate-900">{formatDate(selectedCampaignRequest.submitted_at)}</div>
+                                                    <p className="mt-1 text-xs text-slate-500">{formatDateTimeParts(selectedCampaignRequest.submitted_at).time}</p>
+                                                </div>
+
+                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                        <UserRound className="h-3.5 w-3.5" />
+                                                        Submitted By
+                                                    </div>
+                                                    <div className="mt-2 text-sm font-semibold text-slate-900">{selectedCampaignRequest.submitted_by?.name || '—'}</div>
+                                                    <p className="mt-1 text-xs text-slate-500">Request owner</p>
+                                                </div>
+
+                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                        <Building2 className="h-3.5 w-3.5" />
+                                                        Submitted To
+                                                    </div>
+                                                    <div className="mt-2 text-sm font-semibold text-slate-900">{selectedCampaignRequest.submitted_to || '—'}</div>
+                                                    <p className="mt-1 text-xs text-slate-500">Destination system</p>
                                                 </div>
                                             </div>
 
-                                            {/* Proposed Sessions */}
-                                            <div>
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Proposed Sessions</p>
-                                                <div className="grid grid-cols-1 gap-3">
-                                                    {(() => {
-                                                        const sessions = selectedCampaignRequest.payload?.available_training_sessions || [];
-                                                        if (!sessions.length) return <div className="text-sm text-slate-700">No sessions provided.</div>;
-                                                        return sessions.map((s, idx) => {
-                                                            const date = s?.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
-                                                            const start = s?.start_time ? new Date(s.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-                                                            const end = s?.end_time ? new Date(s.end_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-                                                            const timeRange = start && end ? `${start} – ${end}` : (start || '—');
-                                                            const maxParts = s?.maximum_participants ?? s?.maximumParticipants ?? null;
+                                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
+                                                <section className="space-y-4">
+                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                            <Info className="h-3.5 w-3.5" />
+                                                            Request Overview
+                                                        </div>
+                                                        <div className="mt-4 space-y-4">
+                                                            <div>
+                                                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Proposed Session Summary</div>
+                                                                <div className="mt-1 text-sm font-medium text-slate-900">{selectedCampaignRequest.proposed_session_label || '—'}</div>
+                                                            </div>
 
-                                                            return (
-                                                                <div key={idx} className="border border-slate-200 rounded-lg p-4 bg-white">
-                                                                    {s?.title ? <div className="font-medium text-slate-900">{s.title}</div> : null}
-                                                                    <div className="mt-2 text-sm text-slate-700">
-                                                                        {date ? <div className="flex items-center gap-2"><span className="text-slate-400">📅</span><span>{date}</span></div> : null}
-                                                                        {timeRange ? <div className="flex items-center gap-2 mt-1"><span className="text-slate-400">🕙</span><span className="text-xs text-slate-500">{timeRange}</span></div> : null}
+                                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                                <div>
+                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Related Hazards</div>
+                                                                    <div className="mt-1 text-sm text-slate-900">
+                                                                        {Array.isArray(selectedCampaignRequest.payload?.related_hazards)
+                                                                            ? selectedCampaignRequest.payload.related_hazards.join(', ')
+                                                                            : (selectedCampaignRequest.payload?.related_hazards || '—')}
                                                                     </div>
-                                                                    <div className="mt-3 text-sm text-slate-700">{maxParts ? `${maxParts} Participants` : '—'}</div>
                                                                 </div>
-                                                            );
-                                                        });
-                                                    })()}
-                                                </div>
-                                            </div>
+                                                                <div>
+                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lead Trainers</div>
+                                                                    <div className="mt-1 text-sm text-slate-900">
+                                                                        {Array.isArray(selectedCampaignRequest.payload?.assigned_trainers)
+                                                                            ? selectedCampaignRequest.payload.assigned_trainers.map((trainer) => trainer.name).filter(Boolean).join(', ')
+                                                                            : '—'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
-                                            {/* Remarks */}
-                                            <div>
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Campaign Remarks</p>
-                                                {selectedCampaignRequest.remarks ? (
-                                                    <pre className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 overflow-auto">{JSON.stringify(selectedCampaignRequest.remarks, null, 2)}</pre>
-                                                ) : (
-                                                    <p className="text-sm text-slate-600">No remarks yet.</p>
-                                                )}
+                                                            <div>
+                                                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Training Description</div>
+                                                                <div className="mt-2 text-sm leading-6 text-slate-700">
+                                                                    {(() => {
+                                                                        const desc = selectedCampaignRequest.payload?.short_description || '';
+                                                                        if (!desc) return '—';
+                                                                        if (!isCampaignDescriptionExpanded && desc.length > 220) {
+                                                                            return (
+                                                                                <>
+                                                                                    <div>{desc.slice(0, 220)}…</div>
+                                                                                    <button type="button" onClick={() => setIsCampaignDescriptionExpanded(true)} className="mt-2 text-xs font-medium text-emerald-700 hover:text-emerald-800">
+                                                                                        Read more
+                                                                                    </button>
+                                                                                </>
+                                                                            );
+                                                                        }
+
+                                                                        return (
+                                                                            <>
+                                                                                <div>{desc}</div>
+                                                                                {desc.length > 220 ? (
+                                                                                    <button type="button" onClick={() => setIsCampaignDescriptionExpanded(false)} className="mt-2 text-xs font-medium text-emerald-700 hover:text-emerald-800">
+                                                                                        Show less
+                                                                                    </button>
+                                                                                ) : null}
+                                                                            </>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                                <CalendarDays className="h-3.5 w-3.5" />
+                                                                Proposed Sessions
+                                                            </div>
+                                                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                                {(selectedCampaignRequest.payload?.available_training_sessions || []).length} total
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+                                                            {(() => {
+                                                                const sessions = selectedCampaignRequest.payload?.available_training_sessions || [];
+                                                                if (!sessions.length) {
+                                                                    return <div className="bg-slate-50 px-4 py-6 text-sm text-slate-600">No sessions provided.</div>;
+                                                                }
+
+                                                                return (
+                                                                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                                                        <thead className="bg-slate-50">
+                                                                            <tr>
+                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Session Name</th>
+                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
+                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Time</th>
+                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Max Participants</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-slate-100 bg-white">
+                                                                            {sessions.map((session, idx) => {
+                                                                                const maxParticipants = session?.maximum_participants ?? session?.maximumParticipants ?? '—';
+
+                                                                                return (
+                                                                                    <tr key={`${session?.title || 'session'}-${idx}`} className="align-top">
+                                                                                        <td className="px-4 py-3 font-medium text-slate-900">{session?.title || '—'}</td>
+                                                                                        <td className="px-4 py-3 text-slate-700">{formatDate(session?.date)}</td>
+                                                                                        <td className="px-4 py-3 text-slate-700">{formatTimeRange(session?.start_time, session?.end_time)}</td>
+                                                                                        <td className="px-4 py-3 text-slate-700">{maxParticipants}</td>
+                                                                                    </tr>
+                                                                                );
+                                                                            })}
+                                                                        </tbody>
+                                                                    </table>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                </section>
+
+                                                <aside className="space-y-4">
+                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                            <MapPin className="h-3.5 w-3.5" />
+                                                            Recommended Communities
+                                                        </div>
+                                                        <div className="mt-4 flex flex-wrap gap-2">
+                                                            {(() => {
+                                                                const communities = getRecommendedCommunitiesList(selectedCampaignRequest.payload?.recommended_communities);
+                                                                if (!communities.length) {
+                                                                    return <p className="text-sm text-slate-600">No recommended communities.</p>;
+                                                                }
+
+                                                                return communities.map((community, index) => (
+                                                                    <span key={`${community}-${index}`} className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
+                                                                        {community}
+                                                                    </span>
+                                                                ));
+                                                            })()}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                            <Workflow className="h-3.5 w-3.5" />
+                                                            Audit Trail
+                                                        </div>
+                                                        <dl className="mt-4 space-y-3">
+                                                            <div>
+                                                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created</dt>
+                                                                <dd className="mt-1 text-sm text-slate-900">{formatDateTime(selectedCampaignRequest.created_at)}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Updated</dt>
+                                                                <dd className="mt-1 text-sm text-slate-900">{formatDateTime(selectedCampaignRequest.updated_at)}</dd>
+                                                            </div>
+                                                        </dl>
+                                                    </div>
+
+                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                            <ShieldCheck className="h-3.5 w-3.5" />
+                                                            Campaign Remarks
+                                                        </div>
+                                                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                                                            {selectedCampaignRequest.remarks ? (
+                                                                <pre className="overflow-auto whitespace-pre-wrap wrap-break-word font-sans">{JSON.stringify(selectedCampaignRequest.remarks, null, 2)}</pre>
+                                                            ) : (
+                                                                <p>No remarks yet.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </aside>
                                             </div>
                                         </>
                                     )}

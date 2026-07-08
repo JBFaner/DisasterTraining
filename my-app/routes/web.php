@@ -50,6 +50,10 @@ Route::view('/terms', 'terms')->name('terms');
 Route::view('/data-protection', 'data-protection')->name('data.protection');
 Route::view('/accessibility', 'accessibility')->name('accessibility');
 
+// Public campaign landing pages (live campaigns are published Simulation Events)
+Route::get('/campaigns/{simulationEvent}', [SimulationEventController::class, 'publicCampaignShow'])
+    ->name('campaigns.show');
+
 // Public certificate verification (QR code links here)
 Route::get('/certificates/verify/{token}', [\App\Http\Controllers\CertificateVerificationController::class, 'show'])->name('certificates.verify');
 Route::get('/api/certificates/verify/{token}', [\App\Http\Controllers\CertificateVerificationController::class, 'verifyApi'])->name('api.certificates.verify');
@@ -430,8 +434,9 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/resource-budget-proposals/{resourceBudgetProposal}/reject', [ResourceBudgetProposalController::class, 'reject'])
             ->name('admin.resource-budget-proposals.reject');
 
-        // Evaluation & Scoring System (AI scenario results)
-        Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('admin.evaluations.index');
+        // Evaluation & Scoring System (simulation event scoring dashboard)
+        Route::get('/evaluations', [EvaluationController::class, 'index'])->name('admin.evaluations.index');
+        Route::get('/evaluations/training-results', [EvaluationResultController::class, 'index'])->name('admin.evaluation-results.index');
         Route::post('/evaluations/reset-bulk', [EvaluationResultController::class, 'bulkReset'])->name('admin.evaluations.reset-bulk');
         Route::get('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'show'])->name('admin.evaluation-results.show');
         Route::post('/evaluations/results/{evaluationResult}/reset', [EvaluationResultController::class, 'reset'])->name('admin.evaluation-results.reset');
@@ -606,6 +611,11 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     Route::get('/scenarios', [LegacyPortalRedirectController::class, 'scenarios'])->name('legacy.scenarios');
     Route::get('/simulation-events', [LegacyPortalRedirectController::class, 'simulationEvents'])->name('legacy.simulation-events');
     Route::get('/simulation-events/{simulationEvent}', [LegacyPortalRedirectController::class, 'simulationEventShow'])->name('legacy.simulation-events.show');
+    Route::get('/simulation-events/{simulationEvent}/evaluation', [LegacyPortalRedirectController::class, 'simulationEventEvaluation'])->name('legacy.simulation-events.evaluation');
+    Route::get('/simulation-events/{simulationEvent}/evaluation/summary', [LegacyPortalRedirectController::class, 'simulationEventEvaluationSummary'])->name('legacy.simulation-events.evaluation.summary');
+    Route::get('/simulation-events/{simulationEvent}/evaluation/{userId}', [LegacyPortalRedirectController::class, 'simulationEventEvaluationParticipant'])
+        ->whereNumber('userId')
+        ->name('legacy.simulation-events.evaluation.participant');
     Route::get('/resources', [LegacyPortalRedirectController::class, 'resources'])->name('legacy.resources');
     Route::get('/resources/{resource}', [LegacyPortalRedirectController::class, 'resources'])->name('legacy.resources.show');
     Route::get('/participants', [LegacyPortalRedirectController::class, 'participants'])->name('legacy.participants');

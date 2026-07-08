@@ -44,6 +44,24 @@ class LegacyPortalRedirectController extends Controller
         );
     }
 
+    public function simulationEventEvaluation(Request $request, \App\Models\SimulationEvent $simulationEvent)
+    {
+        return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent);
+    }
+
+    public function simulationEventEvaluationSummary(Request $request, \App\Models\SimulationEvent $simulationEvent)
+    {
+        return redirect()->route('admin.simulation-events.evaluation.summary', $simulationEvent);
+    }
+
+    public function simulationEventEvaluationParticipant(Request $request, \App\Models\SimulationEvent $simulationEvent, int $userId)
+    {
+        return redirect()->route('admin.simulation-events.evaluation.evaluate', [
+            'simulationEvent' => $simulationEvent->id,
+            'userId' => $userId,
+        ]);
+    }
+
     public function resources(Request $request)
     {
         return redirect()->route('admin.resources.index', $request->query());

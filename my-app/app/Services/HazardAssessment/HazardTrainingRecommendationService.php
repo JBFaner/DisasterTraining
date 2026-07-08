@@ -245,7 +245,7 @@ class HazardTrainingRecommendationService
             ];
         }
 
-        $riskLevels = ['Moderate', 'High', 'Very High'];
+        $riskLevels = ['Low', 'Moderate', 'High', 'Very High'];
 
         $hazards = BarangayHazard::query()
             ->with('barangayProfile')
@@ -280,9 +280,16 @@ class HazardTrainingRecommendationService
                 continue;
             }
 
-            $priorityBucket = match ($best->risk_level) {
-                'High', 'Very High' => 'high',
-                'Moderate' => 'medium',
+            $normalizedRiskLevel = match ($best->risk_level) {
+                'Very High', 'High' => 'High',
+                'Moderate' => 'Medium',
+                'Low' => 'Low',
+                default => 'Low',
+            };
+
+            $priorityBucket = match ($normalizedRiskLevel) {
+                'High' => 'high',
+                'Medium' => 'medium',
                 default => 'low',
             };
 
@@ -300,8 +307,12 @@ class HazardTrainingRecommendationService
                 'municipality_city' => $profile->municipality_city,
                 'province' => $profile->province,
                 'related_hazard' => $best->hazard_type,
-                'risk_level' => $best->risk_level,
+                'risk_level' => $normalizedRiskLevel,
+                'priority_level' => $priorityBucket === 'high'
+                    ? 'Priority 1'
+                    : ($priorityBucket === 'medium' ? 'Priority 2' : 'Priority 3'),
                 'priority_score' => (int) $best->risk_score,
+                'recommendation_reason' => $this->buildTrainingRecommendationText($module, $best),
                 'recommendation' => $this->buildTrainingRecommendationText($module, $best),
             ];
         }

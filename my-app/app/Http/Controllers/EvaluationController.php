@@ -8,6 +8,7 @@ use App\Models\EvaluationScore;
 use App\Models\SimulationEvent;
 use App\Models\Attendance;
 use App\Models\Scenario;
+use App\Services\DatabaseBackupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -403,6 +404,8 @@ class EvaluationController extends Controller
                         'completed_at' => now(),
                         'updated_by' => portal_id(),
                     ]);
+
+                    app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
                 }
             }
         });
@@ -449,6 +452,10 @@ class EvaluationController extends Controller
         }
 
         $evaluation->update($updateData);
+
+        if ($data['status'] === 'completed') {
+            app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
+        }
 
         return back()->with('status', 'Evaluation status updated successfully.');
     }

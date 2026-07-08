@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\ParticipantEvaluation;
 use App\Models\SimulationEvent;
 use App\Services\CertificateDesignRenderer;
+use App\Services\DatabaseBackupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -277,6 +278,8 @@ class CertificationController extends Controller
         if ($template) {
             $template->update(['last_used_at' => now()]);
         }
+
+        app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
 
         if ($request->expectsJson()) {
             return response()->json([

@@ -1,10 +1,30 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, AlertCircle, UserPlus, ArrowRight, Phone } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, ArrowRight, Phone, CalendarDays, MapPin, Clock3, Building2 } from 'lucide-react';
 import { PhilippineLocationSelect } from './PhilippineLocationSelect';
 
-export function ParticipantRegister({ errors = {}, oldValues = {} }) {
+function formatDate(dateString) {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatTime(timeString) {
+    if (!timeString) return '—';
+    const normalized = String(timeString);
+    const match = normalized.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return '—';
+    const hour = Number(match[1]);
+    const minute = match[2];
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute} ${ampm}`;
+}
+
+export function ParticipantRegister({ errors = {}, oldValues = {}, campaignContext = null }) {
     const [formData, setFormData] = useState({
         name: oldValues.name || '',
+        organization: oldValues.organization || '',
         email: oldValues.email || '',
         countryCode: oldValues.countryCode || '+63',
         mobileNumber: oldValues.mobileNumber || '',
@@ -199,6 +219,61 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                 <form method="POST" action="/participant/register/start" onSubmit={handleSubmit} className="space-y-4">
                     <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
                     <input type="hidden" name="phone" />
+                    {campaignContext?.campaign_event_id ? (
+                        <input type="hidden" name="campaign_event" value={campaignContext.campaign_event_id} />
+                    ) : null}
+
+                    {campaignContext?.campaign_event_id ? (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Campaign Registration</div>
+                                    <div className="mt-1 text-sm font-semibold text-slate-900">
+                                        {campaignContext.training_title || 'Training Event'}
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-600">
+                                        You are registering through Campaign Planning &amp; Scheduling. Details below are read-only.
+                                    </div>
+                                </div>
+                                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
+                                    Campaign #{campaignContext.campaign_event_id}
+                                </span>
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
+                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                                        <CalendarDays className="h-3.5 w-3.5 text-emerald-600" />
+                                        Scheduled Date
+                                    </div>
+                                    <div className="mt-1 text-sm font-medium text-slate-900">{formatDate(campaignContext.scheduled_date)}</div>
+                                </div>
+                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
+                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                                        <Clock3 className="h-3.5 w-3.5 text-emerald-600" />
+                                        Time
+                                    </div>
+                                    <div className="mt-1 text-sm font-medium text-slate-900">
+                                        {formatTime(campaignContext.start_time)} – {formatTime(campaignContext.end_time)}
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 sm:col-span-2">
+                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                                        <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                                        Venue
+                                    </div>
+                                    <div className="mt-1 text-sm font-medium text-slate-900">{campaignContext.venue || '—'}</div>
+                                </div>
+                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 sm:col-span-2">
+                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                                        <Building2 className="h-3.5 w-3.5 text-emerald-600" />
+                                        Training Module ID
+                                    </div>
+                                    <div className="mt-1 text-sm font-medium text-slate-900">{campaignContext.training_module_id || '—'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
 
                     <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="name">
@@ -221,6 +296,24 @@ export function ParticipantRegister({ errors = {}, oldValues = {} }) {
                         </div>
                         {getFieldError('name') && (
                             <p className="mt-1 text-xs text-rose-600">{getFieldError('name')}</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="organization">
+                            Organization (optional)
+                        </label>
+                        <input
+                            id="organization"
+                            name="organization"
+                            type="text"
+                            placeholder="Agency, school, organization"
+                            value={formData.organization}
+                            onChange={handleChange}
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463]"
+                        />
+                        {getFieldError('organization') && (
+                            <p className="mt-1 text-xs text-rose-600">{getFieldError('organization')}</p>
                         )}
                     </div>
 

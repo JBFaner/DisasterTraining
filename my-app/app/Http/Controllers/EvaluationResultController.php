@@ -214,7 +214,7 @@ class EvaluationResultController extends Controller
 
         return view('app', [
 
-            'section' => $user->role === 'PARTICIPANT' ? 'evaluation_results_participant' : 'evaluation_dashboard',
+            'section' => $user->role === 'PARTICIPANT' ? 'evaluation_results_participant' : 'training_evaluation_results',
 
             'evaluation_results' => $resultItems,
 

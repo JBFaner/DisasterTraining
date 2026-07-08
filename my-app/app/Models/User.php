@@ -32,10 +32,15 @@ class User extends Authenticatable
         'city',
         'barangay',
         'street',
+        'organization',
         'participant_id',
         'status',
         'registered_at',
         'group6_external_id',
+        'registration_source',
+        'registration_campaign_id',
+        'registration_campaign_title',
+        'registration_campaign_registered_at',
         'last_synced_at',
         'profile_picture',
         'barangay_id',
@@ -68,6 +73,7 @@ class User extends Authenticatable
             'last_synced_at' => 'datetime',
             'last_login' => 'datetime',
             'last_activity' => 'datetime',
+            'registration_campaign_registered_at' => 'datetime',
         ];
     }
 

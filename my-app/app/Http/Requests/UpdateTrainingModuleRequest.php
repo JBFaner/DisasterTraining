@@ -36,7 +36,10 @@ class UpdateTrainingModuleRequest extends FormRequest
             'available_training_sessions.*.date' => ['required', 'date'],
             'available_training_sessions.*.start_time' => ['required', 'date_format:H:i'],
             'available_training_sessions.*.end_time' => ['required', 'date_format:H:i'],
+            'available_training_sessions.*.delivery_method' => ['required', 'string', 'in:in_person,online'],
             'available_training_sessions.*.venue' => ['nullable', 'string', 'max:255'],
+            'available_training_sessions.*.online_platform' => ['nullable', 'string', 'max:100'],
+            'available_training_sessions.*.meeting_link' => ['nullable', 'url', 'max:500'],
             'available_training_sessions.*.maximum_participants' => ['required', 'integer', 'min:1', 'max:500'],
             'status' => ['required', 'string', 'in:draft,published,archived,unpublished,deprecated'],
             'visibility' => ['required', 'string', 'in:all,group,staff_only'],
@@ -59,6 +62,7 @@ class UpdateTrainingModuleRequest extends FormRequest
     {
         $validator->after(function (Validator $validator) {
             $this->validateTimeRanges($validator, 'available_training_sessions', 'session');
+            $this->validateSessionDeliveryFields($validator, 'available_training_sessions');
         });
     }
 
@@ -74,6 +78,24 @@ class UpdateTrainingModuleRequest extends FormRequest
 
             if (strtotime($end) <= strtotime($start)) {
                 $validator->errors()->add("{$field}.{$index}.end_time", ucfirst($label).' end time must be after the start time.');
+            }
+        }
+    }
+
+    private function validateSessionDeliveryFields(Validator $validator, string $field): void
+    {
+        foreach ((array) $this->input($field, []) as $index => $entry) {
+            $method = (string) ($entry['delivery_method'] ?? '');
+            if ($method === 'in_person' && trim((string) ($entry['venue'] ?? '')) === '') {
+                $validator->errors()->add("{$field}.{$index}.venue", 'Venue is required for face-to-face sessions.');
+            }
+            if ($method === 'online') {
+                if (trim((string) ($entry['online_platform'] ?? '')) === '') {
+                    $validator->errors()->add("{$field}.{$index}.online_platform", 'Platform is required for online sessions.');
+                }
+                if (trim((string) ($entry['meeting_link'] ?? '')) === '') {
+                    $validator->errors()->add("{$field}.{$index}.meeting_link", 'Meeting link is required for online sessions.');
+                }
             }
         }
     }

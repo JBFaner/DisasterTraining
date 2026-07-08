@@ -58,6 +58,30 @@ class QualifiedTrainerSeeder extends Seeder
                 'qualified_at' => now()->subMonths(18),
                 'last_synced_at' => now()->subMonths(2),
             ],
+            [
+                'group6_external_id' => 'G6-TR-REYMON',
+                'name' => 'Reymon',
+                'email' => 'brogada.reymon09@gmail.com',
+                'phone' => '09633405152',
+                'specialization' => 'Fire Safety and Emergency Response',
+                'barangay' => 'Caloocan City',
+                'certifications' => ['LGU DRRM Trainer', 'Fire Safety Instructor'],
+                'status' => 'active',
+                'qualified_at' => now()->subMonths(8),
+                'last_synced_at' => now(),
+            ],
+            [
+                'group6_external_id' => 'G6-TR-JB',
+                'name' => 'JB',
+                'email' => 'jbcursor@gmail.com',
+                'phone' => '09170000001',
+                'specialization' => 'Disaster Simulation Facilitation',
+                'barangay' => 'Quezon City',
+                'certifications' => ['Simulation Drill Facilitator'],
+                'status' => 'active',
+                'qualified_at' => now()->subMonths(4),
+                'last_synced_at' => now(),
+            ],
         ];
 
         foreach ($trainers as $trainer) {
@@ -66,5 +90,7 @@ class QualifiedTrainerSeeder extends Seeder
                 $trainer,
             );
         }
+
+        $this->command?->info('Qualified trainers seeded ('.count($trainers).' records).');
     }
 }

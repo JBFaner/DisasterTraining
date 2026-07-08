@@ -273,7 +273,7 @@ export function ParticipantSimulationEventsList({ events }) {
                                             href={`/participant/simulation-events/${event.id}`}
                                             className="w-full py-2 rounded-md bg-emerald-600 text-white text-sm font-medium text-center hover:bg-emerald-700 transition-colors"
                                         >
-                                            Register
+                                            Register Now
                                         </a>
                                     )}
                                 </div>
@@ -358,6 +358,15 @@ export function ParticipantSimulationEventDetail({ event, role }) {
     const durationLabel = formatDurationFromTimes(event.start_time, event.end_time);
     const difficulty = scenario?.difficulty || '—';
     const severity = scenario?.severity_level || '—';
+
+    const approvedCount = Number.isFinite(Number(event?.approved_registrations_count))
+        ? Number(event.approved_registrations_count)
+        : (event.registrations || []).filter((r) => r?.status === 'approved').length;
+    const maxParticipants = event?.max_participants ? Number(event.max_participants) : null;
+    const remainingSlots = Number.isFinite(Number(event?.remaining_slots))
+        ? Number(event.remaining_slots)
+        : (maxParticipants ? Math.max(0, maxParticipants - approvedCount) : null);
+    const campaignRegistrationStatus = String(event?.registration_status || '').toLowerCase() || (canRegister ? 'open' : 'closed');
 
     const quickActions = role !== 'PARTICIPANT'
         ? [
@@ -483,7 +492,7 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                                             type="submit"
                                             className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold shadow-sm transition-colors"
                                         >
-                                            Register
+                                            Register Now
                                         </button>
                                     </form>
                                 )}
@@ -499,6 +508,15 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                                     </form>
                                 )}
                             </>
+                        )}
+
+                        {role === 'GUEST' && (
+                            <a
+                                href={`/participant/register?campaign_event=${event.id}`}
+                                className="inline-flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold shadow-sm transition-colors"
+                            >
+                                Register Now
+                            </a>
                         )}
                     </div>
                 </div>
@@ -516,6 +534,25 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
                         <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">Severity</div>
                         <div className="mt-0.5 text-sm font-semibold text-slate-900">{severity}</div>
+                    </div>
+                </div>
+
+                {/* Campaign registration KPI (public + participant) */}
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">Max participants</div>
+                        <div className="mt-0.5 text-sm font-semibold text-slate-900">{maxParticipants || '—'}</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">Registered (approved)</div>
+                        <div className="mt-0.5 text-sm font-semibold text-slate-900">{approvedCount}</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">Remaining slots</div>
+                        <div className="mt-0.5 text-sm font-semibold text-slate-900">{remainingSlots ?? '—'}</div>
+                        <div className="mt-1 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                            Registration {campaignRegistrationStatus === 'open' ? 'Open' : 'Closed'}
+                        </div>
                     </div>
                 </div>
             </div>

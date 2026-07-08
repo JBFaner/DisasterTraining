@@ -6,6 +6,7 @@ use App\Models\AiScenarioAttempt;
 use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\EvaluationResult;
+use App\Services\DatabaseBackupService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,6 +30,8 @@ class TrainingCertificateService
                     'completion_date' => $evaluation->completed_at?->toDateString() ?? now()->toDateString(),
                     'issued_at' => now(),
                 ]);
+
+                app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
             }
 
             return $existing;
@@ -68,6 +71,8 @@ class TrainingCertificateService
         ]);
 
         $template->update(['last_used_at' => now()]);
+
+        app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
 
         return $certificate;
     }

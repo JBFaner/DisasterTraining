@@ -17,7 +17,7 @@
     <body class="bg-slate-100 text-slate-900">
         <div
             id="app"
-            data-role="{{ portal_check() ? (portal_user()->role ?? 'PARTICIPANT') : 'PARTICIPANT' }}"
+            data-role="{{ portal_check() ? (portal_user()->role ?? 'PARTICIPANT') : (($section ?? 'dashboard') === 'campaign_public' ? 'GUEST' : 'PARTICIPANT') }}"
             data-auth-guard="{{ portal_check() ? (\App\Support\PortalAuth::activeGuard() ?? '') : '' }}"
             data-section="{{ $section ?? 'dashboard' }}"
             data-session-timeout-minutes="{{ config('security.session_timeout_minutes', 10) }}"

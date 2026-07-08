@@ -1103,6 +1103,7 @@ if (rootElement) {
                             sectionAttr.startsWith('event_attendance') ? 'participants' :
                                 sectionAttr.startsWith('my_attendance') ? 'participants' :
                                     sectionAttr.startsWith('evaluation_results_participant') ? 'evaluation' :
+                                        sectionAttr === 'training_evaluation_results' ? 'evaluation' :
                                         sectionAttr === 'evaluation_result_detail' ? 'evaluation' :
                                         sectionAttr.startsWith('certification_participant') ? 'certification' :
                                             sectionAttr.startsWith('resources') ? 'resources' :
@@ -1395,6 +1396,7 @@ if (rootElement) {
             'participants',
             'resources',
             'evaluation_dashboard',
+            'training_evaluation_results',
             'evaluation_results_participant',
             'certification',
             'hazard_assessment_profile',
@@ -1630,6 +1632,10 @@ if (rootElement) {
                                     role={role}
                                 />
                             )
+                        )}
+
+                        {sectionAttr === 'campaign_public' && currentEvent && (
+                            <ParticipantSimulationEventDetail event={currentEvent} role="GUEST" />
                         )}
 
                         {sectionAttr === 'participants' && (
@@ -1946,6 +1952,10 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'evaluation_dashboard' && (
+                            <EvaluationDashboard events={events} />
+                        )}
+
+                        {sectionAttr === 'training_evaluation_results' && (
                             <EvaluationResultsIndex
                                 results={evaluationResults}
                                 pagination={evaluationResultsPagination}

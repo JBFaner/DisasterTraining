@@ -10,6 +10,7 @@ use App\Models\Scenario;
 use App\Models\TrainingModule;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\DatabaseBackupService;
 use App\Services\SimulationEventLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -214,6 +215,8 @@ class SimulationEventController extends Controller
         if ($data['status'] === 'published') {
             $this->autoAssignResources($event);
         }
+
+        app(DatabaseBackupService::class)->queueAfterCommit('simulation_event_created');
 
         $redirectTo = $request->input('return_to');
 
@@ -811,6 +814,40 @@ class SimulationEventController extends Controller
     }
 
     /**
+     * Public campaign landing page (no auth required).
+     *
+     * Campaign Planning & Scheduling serves as entry point only; participant records
+     * remain owned by the Participant Registration & Attendance module.
+     */
+    public function publicCampaignShow(Request $request, SimulationEvent $simulationEvent)
+    {
+        if (! in_array($simulationEvent->status, ['published', 'ongoing'], true)) {
+            abort(404);
+        }
+
+        $simulationEvent->load([
+            'scenario.trainingModule',
+        ]);
+
+        $approvedCount = $simulationEvent->registrations()->where('status', 'approved')->count();
+        $maxParticipants = $simulationEvent->max_participants;
+        $remainingSlots = $maxParticipants ? max(0, (int) $maxParticipants - (int) $approvedCount) : null;
+        $isClosed = ! $simulationEvent->self_registration_enabled
+            || ($simulationEvent->registration_deadline && now()->greaterThan($simulationEvent->registration_deadline))
+            || ($maxParticipants && $approvedCount >= $maxParticipants);
+
+        // Attach computed fields for the front-end (read-only summaries only).
+        $simulationEvent->approved_registrations_count = $approvedCount;
+        $simulationEvent->remaining_slots = $remainingSlots;
+        $simulationEvent->registration_status = $isClosed ? 'closed' : 'open';
+
+        return view('app', [
+            'section' => 'campaign_public',
+            'event' => $simulationEvent,
+        ]);
+    }
+
+    /**
      * Register participant for an event
      */
     public function register(Request $request, SimulationEvent $simulationEvent)
@@ -840,6 +877,10 @@ class SimulationEventController extends Controller
         // Check if self-registration is enabled
         if (!$simulationEvent->self_registration_enabled) {
             return back()->with('status', 'Self-registration is not allowed for this event.');
+        }
+
+        if ($simulationEvent->registration_deadline && now()->greaterThan($simulationEvent->registration_deadline)) {
+            return back()->with('status', 'Registration is closed. The registration deadline has passed.');
         }
 
         // Check if already registered
