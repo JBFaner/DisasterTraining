@@ -141,6 +141,7 @@ import {
     LayoutGrid,
     List,
     UserCircle,
+    Brain,
     Sparkles,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -2875,6 +2876,14 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                         >
                             <Settings className="w-4 h-4" />
                             Manage
+                        </a>
+                        <a
+                            href={`${trainingModuleManageUrl(openModule.id)}#intelligence`}
+                            onClick={close}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                            <Brain className="w-4 h-4" />
+                            Training Intelligence Profile
                         </a>
                         <button
                             type="button"

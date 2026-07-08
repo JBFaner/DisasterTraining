@@ -2,9 +2,11 @@ import React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import Swal from 'sweetalert2';
 import {
+    CircleDashed,
     ChevronDown,
     ChevronLeft,
     ChevronUp,
+    Database,
     Eye,
     FileText,
     GripVertical,
@@ -13,8 +15,12 @@ import {
     Pencil,
     Plus,
     RefreshCw,
+    ShieldCheck,
+    Target,
     Trash2,
+    Users,
     Video,
+    Workflow,
     X,
     CheckCircle2,
     AlertCircle,
@@ -35,6 +41,17 @@ const RESOURCE_GROUPS = [
     { key: 'pdf', label: 'PDF Documents' },
     { key: 'image', label: 'Images' },
     { key: 'youtube', label: 'YouTube Videos' },
+];
+
+const AUDIENCE_OPTIONS = [
+    { value: 'residents', label: 'Residents' },
+    { value: 'barangay_officials', label: 'Barangay Officials' },
+    { value: 'emergency_responders', label: 'Emergency Responders' },
+    { value: 'volunteers', label: 'Volunteers' },
+    { value: 'students', label: 'Students' },
+    { value: 'employees', label: 'Employees' },
+    { value: 'community_leaders', label: 'Community Leaders' },
+    { value: 'others', label: 'Others' },
 ];
 
 function formatDate(dateString) {
@@ -348,8 +365,34 @@ export function TrainingModuleDetail({ module }) {
     const [draggedId, setDraggedId] = React.useState(null);
     const [lessonForm, setLessonForm] = React.useState({ title: '', description: '' });
     const [resourceForm, setResourceForm] = React.useState({ title: '', body: '', external_url: '', resource_type: 'text' });
+    const [activeTab, setActiveTab] = React.useState(window.location.hash === '#intelligence' ? 'intelligence' : 'lessons');
+    const [shortDescription, setShortDescription] = React.useState(module.short_description || '');
+    const [relatedHazard, setRelatedHazard] = React.useState(module.related_hazard || module.category || '');
+    const [deliveryMethod, setDeliveryMethod] = React.useState(module.delivery_method || 'in_person');
+    const [targetAudience, setTargetAudience] = React.useState(Array.isArray(module.target_audience) ? module.target_audience : []);
+    const [profileObjectives, setProfileObjectives] = React.useState(
+        Array.isArray(module.learning_objectives) && module.learning_objectives.length > 0
+            ? module.learning_objectives
+            : [''],
+    );
+    const [isSavingProfile, setIsSavingProfile] = React.useState(false);
 
     const thumbnailUrl = module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null);
+    const lessonQuizAvailable = lessons.some((lesson) => {
+        const config = lesson.lesson_quiz_config || lesson.lessonQuizConfig;
+        return Boolean(config?.is_enabled && config?.published_version_id);
+    });
+    const finalScenarioAvailable = Boolean(module.ai_scenario_config?.is_enabled && module.ai_scenario_config?.published_version_id);
+
+    React.useEffect(() => {
+        if (activeTab === 'intelligence') {
+            window.location.hash = 'intelligence';
+            return;
+        }
+        if (window.location.hash === '#intelligence') {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+    }, [activeTab]);
 
     const handleDragStart = (id) => setDraggedId(id);
 
@@ -427,6 +470,71 @@ export function TrainingModuleDetail({ module }) {
         await submitTrainingForm(e.currentTarget, module.id);
     };
 
+    const toggleAudience = (value) => {
+        setTargetAudience((current) => (
+            current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
+        ));
+    };
+
+    const addObjective = () => setProfileObjectives((current) => [...current, '']);
+    const updateObjective = (index, value) => setProfileObjectives((current) => current.map((item, idx) => idx === index ? value : item));
+    const removeObjective = (index) => setProfileObjectives((current) => {
+        const next = current.filter((_, idx) => idx !== index);
+        return next.length > 0 ? next : [''];
+    });
+    const moveObjective = (index, direction) => setProfileObjectives((current) => {
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= current.length) return current;
+        const next = [...current];
+        [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+        return next;
+    });
+
+    const handleSaveProfile = async () => {
+        const cleanedObjectives = profileObjectives.map((item) => item.trim()).filter(Boolean);
+        if (cleanedObjectives.length === 0) {
+            await Swal.fire({ icon: 'warning', title: 'Missing objectives', text: 'Please add at least one training objective.' });
+            return;
+        }
+
+        setIsSavingProfile(true);
+        try {
+            const formData = new FormData();
+            formData.append('_token', getCsrfToken());
+            formData.append('_method', 'PUT');
+            formData.append('title', module.title || '');
+            formData.append('description', module.description || '');
+            formData.append('short_description', shortDescription);
+            formData.append('category', module.category || '');
+            formData.append('related_hazard', relatedHazard);
+            formData.append('delivery_method', deliveryMethod);
+            formData.append('estimated_duration_minutes', String(module.estimated_duration_minutes || ''));
+            formData.append('visibility', module.visibility || 'all');
+            formData.append('status', module.status || 'draft');
+            formData.append('difficulty', module.difficulty || 'Beginner');
+            cleanedObjectives.forEach((item, index) => formData.append(`learning_objectives[${index}]`, item));
+            targetAudience.forEach((item, index) => formData.append(`target_audience[${index}]`, item));
+
+            const response = await fetch(`/admin/training-modules/${module.id}`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                const message = data.message || Object.values(data.errors || {}).flat()[0] || 'Could not save profile.';
+                await Swal.fire({ icon: 'error', title: 'Save failed', text: message });
+                return;
+            }
+
+            window.location.assign(`/admin/training-modules/${module.id}#intelligence`);
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
+
     const groupedResources = React.useMemo(() => {
         if (!selectedLesson?.resources) return {};
         return RESOURCE_GROUPS.reduce((acc, group) => {
@@ -481,6 +589,138 @@ export function TrainingModuleDetail({ module }) {
                 </div>
             </div>
 
+            <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('lessons')}
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'lessons' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                    >
+                        Lesson Management
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('intelligence')}
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'intelligence' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                    >
+                        Training Intelligence Profile
+                    </button>
+                </div>
+            </div>
+
+            {activeTab === 'intelligence' && (
+                <div className="space-y-4">
+                    <AdminContentCard className="p-5">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">Training Overview</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><p className="text-xs text-slate-500">Training Module Title</p><p className="text-sm font-medium text-slate-800">{module.title}</p></div>
+                            <div><p className="text-xs text-slate-500">Current Status</p><p className="text-sm font-medium text-slate-800 capitalize">{module.status}</p></div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs text-slate-500 mb-1">Short Description</label>
+                                <textarea value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                            </div>
+                        </div>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-3">Training Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><p className="text-xs text-slate-500">Training Category</p><p className="text-sm font-medium text-slate-800">{module.category || '—'}</p></div>
+                            <div><p className="text-xs text-slate-500">Estimated Duration</p><p className="text-sm font-medium text-slate-800">{formatDuration(module.estimated_duration_minutes) || '—'}</p></div>
+                            <div><p className="text-xs text-slate-500">Total Lessons</p><p className="text-sm font-medium text-slate-800">{lessons.length}</p></div>
+                            <div>
+                                <label className="block text-xs text-slate-500 mb-1">Related Hazard(s)</label>
+                                <input value={relatedHazard} onChange={(e) => setRelatedHazard(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 mb-1">Delivery Method</label>
+                                <select value={deliveryMethod} onChange={(e) => setDeliveryMethod(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                                    <option value="in_person">In-person</option>
+                                    <option value="online">Online</option>
+                                    <option value="blended">Blended</option>
+                                    <option value="self_paced">Self-paced</option>
+                                </select>
+                            </div>
+                            <div><p className="text-xs text-slate-500">Estimated Learning Time</p><p className="text-sm font-medium text-slate-800">{formatDuration(module.estimated_duration_minutes) || '—'}</p></div>
+                        </div>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center gap-2 mb-3"><Users className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Target Audience</h3></div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {AUDIENCE_OPTIONS.map((option) => (
+                                <label key={option.value} className={`rounded-xl border px-3 py-2 text-sm cursor-pointer ${targetAudience.includes(option.value) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>
+                                    <input type="checkbox" className="mr-2" checked={targetAudience.includes(option.value)} onChange={() => toggleAudience(option.value)} />
+                                    {option.label}
+                                </label>
+                            ))}
+                        </div>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center gap-2 mb-3"><Target className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Training Objectives</h3></div>
+                        <div className="space-y-2">
+                            {profileObjectives.map((objective, index) => (
+                                <div key={`${index}-${objective}`} className="flex items-center gap-2">
+                                    <button type="button" onClick={() => moveObjective(index, 'up')} className="rounded-lg border border-slate-300 p-2"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                    <button type="button" onClick={() => moveObjective(index, 'down')} className="rounded-lg border border-slate-300 p-2"><ChevronDown className="w-3.5 h-3.5" /></button>
+                                    <input value={objective} onChange={(e) => updateObjective(index, e.target.value)} className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                    <button type="button" onClick={() => removeObjective(index)} className="rounded-lg border border-rose-200 p-2 text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                            ))}
+                        </div>
+                        <button type="button" onClick={addObjective} className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"><Plus className="w-3.5 h-3.5" /> Add Objective</button>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-2">Recommended Communities</h3>
+                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                            No Hazard Assessment data connected. Future integration: recommended communities will automatically appear here based on Hazard Assessment risk classifications.
+                        </div>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center gap-2 mb-3"><ShieldCheck className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Training Capabilities</h3></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                            {[
+                                { label: 'Lesson Quiz Available', enabled: lessonQuizAvailable },
+                                { label: 'Final AI Scenario Assessment Available', enabled: finalScenarioAvailable },
+                                { label: 'Evaluation & Scoring Available', enabled: lessons.length > 0 },
+                                { label: 'Certification Available', enabled: lessons.length > 0 },
+                            ].map((item) => (
+                                <div key={item.label} className="rounded-xl border border-slate-200 px-3 py-2 flex items-center justify-between">
+                                    <span>{item.label}</span>
+                                    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${item.enabled ? 'text-emerald-700' : 'text-slate-600'}`}>{item.enabled ? <CheckCircle2 className="w-3.5 h-3.5" /> : <CircleDashed className="w-3.5 h-3.5" />}{item.enabled ? 'Yes' : 'No'}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center gap-2 mb-2"><Workflow className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Integration Preview</h3></div>
+                        <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Hazard Assessment Profile → Recommended Communities → Campaign Planning & Scheduling → Participant Registration → Training Management → Final AI Scenario Assessment → Simulation Event Planning → Evaluation & Certification</p>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center gap-2 mb-2"><Database className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Campaign Integration Preview</h3></div>
+                        <p className="text-sm text-slate-700 mb-2">Future Data to Share:</p>
+                        <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
+                            <li>Training Module ID</li><li>Training Title</li><li>Training Category</li><li>Related Hazard(s)</li><li>Recommended Audience</li><li>Estimated Duration</li><li>Total Lessons</li><li>Current Status</li>
+                        </ul>
+                        <p className="mt-2 text-xs font-semibold text-amber-700">Only Published modules will be available to the Campaign Management System.</p>
+                    </AdminContentCard>
+
+                    <div className="flex justify-end">
+                        <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 disabled:opacity-60">
+                            {isSavingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                            Save Training Intelligence Profile
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'lessons' && (
+            <>
             <AdminContentCard className="overflow-hidden">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 border-b border-slate-200 bg-slate-50/60">
                     <div>
@@ -769,6 +1009,8 @@ export function TrainingModuleDetail({ module }) {
                     </Dialog.Content>
                 </Dialog.Portal>
             </Dialog.Root>
+            </>
+            )}
         </div>
     );
 }
