@@ -10,14 +10,19 @@ use App\Http\Requests\StoreLessonResourceRequest;
 use App\Http\Requests\StoreTrainingLessonRequest;
 use App\Http\Requests\UpdateLessonResourceRequest;
 use App\Http\Requests\UpdateTrainingLessonRequest;
+use App\Http\Requests\StoreTrainingModuleRequest;
+use App\Http\Requests\UpdateTrainingModuleRequest;
 use App\Models\LessonResource;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
+use App\Models\QualifiedTrainer;
 use App\Services\AuditLogger;
 use App\Services\GeminiService;
+use App\Services\HazardAssessment\HazardTrainingRecommendationService;
 use App\Services\LessonResourceProcessingService;
 use App\Services\TrainingModuleCardStatsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class TrainingModuleController extends Controller
 {
@@ -36,8 +41,10 @@ class TrainingModuleController extends Controller
             if ($search !== '') {
                 $query->where(function ($builder) use ($search) {
                     $builder->where('title', 'like', "%{$search}%")
+                        ->orWhere('short_description', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%")
-                        ->orWhere('category', 'like', "%{$search}%");
+                        ->orWhere('category', 'like', "%{$search}%")
+                        ->orWhere('related_hazard', 'like', "%{$search}%");
                 });
             }
         }
@@ -107,6 +114,12 @@ class TrainingModuleController extends Controller
         $data['owner_id'] = portal_id();
         $data['status'] = 'draft';
         $data['difficulty'] = $data['difficulty'] ?? 'Beginner';
+        $data['short_description'] = $data['short_description'] ?? Str::limit((string) ($data['description'] ?? ''), 500, '');
+        $data['related_hazard'] = $data['related_hazard'] ?? ($data['category'] ?? null);
+        $data['delivery_method'] = $data['delivery_method'] ?? 'in_person';
+        $data['target_audience'] = array_values(array_filter($data['target_audience'] ?? []));
+        $data['assigned_qualified_trainer_ids'] = $this->normalizeTrainerIds($data['assigned_qualified_trainer_ids'] ?? []);
+        $data['available_training_sessions'] = $this->normalizeTrainingSessions($data['available_training_sessions'] ?? []);
         $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
         if (empty($data['learning_objectives'])) {
@@ -138,7 +151,36 @@ class TrainingModuleController extends Controller
     public function show(TrainingModule $trainingModule)
     {
         $this->authorizeOwner($trainingModule);
-        $trainingModule->load(['contents.resources', 'owner']);
+        $trainingModule->load([
+            'contents.resources',
+            'contents.lessonQuizConfig',
+            'owner',
+            'aiScenarioConfig',
+            'leadQualifiedTrainer',
+        ]);
+        $hazardRecommendations = app(HazardTrainingRecommendationService::class)
+            ->recommendCommunitiesForTraining($trainingModule);
+        $trainingModule->recommended_communities = $hazardRecommendations;
+
+        // Source of trainer information for the Training Intelligence Profile (Participant Registration & Attendance module).
+        $trainingModule->qualified_trainers = QualifiedTrainer::query()
+            ->active()
+            ->get([
+                'id',
+                'name',
+                'email',
+                'specialization',
+                'status',
+                'certifications',
+            ]);
+        $assignedTrainerIds = $trainingModule->assigned_qualified_trainer_ids ?? [];
+        if ($assignedTrainerIds === [] && $trainingModule->lead_qualified_trainer_id) {
+            $assignedTrainerIds = [(int) $trainingModule->lead_qualified_trainer_id];
+        }
+        $trainingModule->assigned_trainers = collect($assignedTrainerIds)
+            ->map(fn ($id) => $trainingModule->qualified_trainers->firstWhere('id', (int) $id))
+            ->filter()
+            ->values();
 
         return view('app', [
             'section' => 'training_detail',
@@ -162,6 +204,14 @@ class TrainingModuleController extends Controller
 
         $data = $request->validated();
         $data['difficulty'] = $data['difficulty'] ?? $trainingModule->difficulty ?? 'Beginner';
+        $data['short_description'] = $data['short_description']
+            ?? $trainingModule->short_description
+            ?? Str::limit((string) ($data['description'] ?? $trainingModule->description ?? ''), 500, '');
+        $data['related_hazard'] = $data['related_hazard'] ?? ($data['category'] ?? $trainingModule->category);
+        $data['delivery_method'] = $data['delivery_method'] ?? $trainingModule->delivery_method ?? 'in_person';
+        $data['target_audience'] = array_values(array_filter($data['target_audience'] ?? $trainingModule->target_audience ?? []));
+        $data['assigned_qualified_trainer_ids'] = $this->normalizeTrainerIds($data['assigned_qualified_trainer_ids'] ?? $trainingModule->assigned_qualified_trainer_ids ?? []);
+        $data['available_training_sessions'] = $this->normalizeTrainingSessions($data['available_training_sessions'] ?? $trainingModule->available_training_sessions ?? []);
         $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
         if (empty($data['learning_objectives'])) {
@@ -579,5 +629,62 @@ class TrainingModuleController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * @param  array<int, mixed>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeTrainerAvailability(array $entries): array
+    {
+        return collect($entries)
+            ->filter(fn ($entry) => is_array($entry))
+            ->map(function (array $entry) {
+                return [
+                    'date' => trim((string) ($entry['date'] ?? '')),
+                    'start_time' => trim((string) ($entry['start_time'] ?? '')),
+                    'end_time' => trim((string) ($entry['end_time'] ?? '')),
+                ];
+            })
+            ->filter(fn (array $entry) => $entry['date'] !== '' && $entry['start_time'] !== '' && $entry['end_time'] !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, mixed>  $entries
+     * @return list<int>
+     */
+    private function normalizeTrainerIds(array $entries): array
+    {
+        return collect($entries)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, mixed>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeTrainingSessions(array $entries): array
+    {
+        return collect($entries)
+            ->filter(fn ($entry) => is_array($entry))
+            ->map(function (array $entry) {
+                return [
+                    'title' => trim((string) ($entry['title'] ?? '')),
+                    'date' => trim((string) ($entry['date'] ?? '')),
+                    'start_time' => trim((string) ($entry['start_time'] ?? '')),
+                    'end_time' => trim((string) ($entry['end_time'] ?? '')),
+                    'venue' => trim((string) ($entry['venue'] ?? '')),
+                    'maximum_participants' => isset($entry['maximum_participants']) ? (int) $entry['maximum_participants'] : null,
+                ];
+            })
+            ->filter(fn (array $entry) => $entry['date'] !== '' && $entry['start_time'] !== '' && $entry['end_time'] !== '' && $entry['maximum_participants'] !== null)
+            ->values()
+            ->all();
     }
 }

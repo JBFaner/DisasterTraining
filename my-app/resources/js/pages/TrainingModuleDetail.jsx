@@ -3,9 +3,11 @@ import * as Dialog from '@radix-ui/react-dialog';
 import Swal from 'sweetalert2';
 import {
     CircleDashed,
+    CalendarDays,
     ChevronDown,
     ChevronLeft,
     ChevronUp,
+    Clock3,
     Database,
     Eye,
     FileText,
@@ -18,6 +20,7 @@ import {
     ShieldCheck,
     Target,
     Trash2,
+    UserRound,
     Users,
     Video,
     Workflow,
@@ -54,6 +57,11 @@ const AUDIENCE_OPTIONS = [
     { value: 'others', label: 'Others' },
 ];
 
+const DELIVERY_METHOD_LABELS = {
+    in_person: 'Face-to-Face',
+    online: 'Online',
+};
+
 function formatDate(dateString) {
     if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -61,6 +69,24 @@ function formatDate(dateString) {
         day: 'numeric',
         year: 'numeric',
     });
+}
+
+function formatTime(timeString) {
+    if (!timeString) return '—';
+    const [hours = '00', minutes = '00'] = String(timeString).split(':');
+    const date = new Date();
+    date.setHours(Number(hours), Number(minutes), 0, 0);
+    return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
+function parseHazardTokens(value) {
+    return String(value || '')
+        .split(/[,&/]+/)
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean);
 }
 
 function getLessonStatus(lesson) {
@@ -164,6 +190,28 @@ function ResourceStatusBadge({ resource }) {
                 )}
             </div>
         </div>
+    );
+}
+
+function CampaignRequestStatusBadge({ status }) {
+    const normalized = String(status || '').toLowerCase();
+
+    const map = {
+        draft: { label: 'Draft', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
+        submitted: { label: 'Submitted', cls: 'border-sky-200 bg-sky-50 text-sky-700' },
+        waiting_for_approval: { label: 'Waiting for Approval', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
+        approved: { label: 'Approved', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+        scheduled: { label: 'Scheduled', cls: 'border-violet-200 bg-violet-50 text-violet-700' },
+        completed: { label: 'Completed', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+        rejected: { label: 'Rejected', cls: 'border-rose-200 bg-rose-50 text-rose-700' },
+    };
+
+    const item = map[normalized] || { label: status || '—', cls: 'border-slate-200 bg-slate-50 text-slate-700' };
+
+    return (
+        <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${item.cls}`}>
+            {item.label}
+        </span>
     );
 }
 
@@ -365,8 +413,13 @@ export function TrainingModuleDetail({ module }) {
     const [draggedId, setDraggedId] = React.useState(null);
     const [lessonForm, setLessonForm] = React.useState({ title: '', description: '' });
     const [resourceForm, setResourceForm] = React.useState({ title: '', body: '', external_url: '', resource_type: 'text' });
-    const [activeTab, setActiveTab] = React.useState(window.location.hash === '#intelligence' ? 'intelligence' : 'lessons');
-    const [shortDescription, setShortDescription] = React.useState(module.short_description || '');
+    const [activeTab, setActiveTab] = React.useState(() => {
+        const hash = String(window.location.hash || '').replace('#', '');
+        if (hash === 'intelligence') return 'intelligence';
+        if (hash === 'campaign_requests') return 'campaign_requests';
+        return 'lessons';
+    });
+    const shortDescription = module.short_description || '';
     const [relatedHazard, setRelatedHazard] = React.useState(module.related_hazard || module.category || '');
     const [deliveryMethod, setDeliveryMethod] = React.useState(module.delivery_method || 'in_person');
     const [targetAudience, setTargetAudience] = React.useState(Array.isArray(module.target_audience) ? module.target_audience : []);
@@ -375,9 +428,54 @@ export function TrainingModuleDetail({ module }) {
             ? module.learning_objectives
             : [''],
     );
+    const trainerOptions = React.useMemo(() => (
+        Array.isArray(module.qualified_trainers) ? module.qualified_trainers : []
+    ), [module.qualified_trainers]);
+    const [selectedTrainerId, setSelectedTrainerId] = React.useState('');
+    const [assignedTrainerIds, setAssignedTrainerIds] = React.useState(
+        Array.isArray(module.assigned_qualified_trainer_ids) && module.assigned_qualified_trainer_ids.length > 0
+            ? module.assigned_qualified_trainer_ids.map((id) => String(id))
+            : (module.lead_qualified_trainer_id ? [String(module.lead_qualified_trainer_id)] : []),
+    );
+    const [trainingSessions, setTrainingSessions] = React.useState(
+        Array.isArray(module.available_training_sessions) && module.available_training_sessions.length > 0
+            ? module.available_training_sessions
+            : [],
+    );
     const [isSavingProfile, setIsSavingProfile] = React.useState(false);
+    const [isSubmittingCampaign, setIsSubmittingCampaign] = React.useState(false);
+    const [campaignRequests, setCampaignRequests] = React.useState([]);
+    const [isLoadingCampaignRequests, setIsLoadingCampaignRequests] = React.useState(false);
+    const [selectedCampaignRequest, setSelectedCampaignRequest] = React.useState(null);
+    const [isCampaignRequestDialogOpen, setIsCampaignRequestDialogOpen] = React.useState(false);
 
     const thumbnailUrl = module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null);
+    const recommendations = module.recommended_communities || null;
+    const hazardTokens = React.useMemo(() => parseHazardTokens(relatedHazard || module.category), [relatedHazard, module.category]);
+    const activeTrainerOptions = React.useMemo(
+        () => trainerOptions.filter((trainer) => String(trainer.status || '').toLowerCase() === 'active'),
+        [trainerOptions],
+    );
+    const recommendedTrainerOptions = React.useMemo(() => {
+        if (hazardTokens.length === 0) {
+            return activeTrainerOptions;
+        }
+        return activeTrainerOptions.filter((trainer) => {
+            const specialization = String(trainer.specialization || '').toLowerCase();
+            return hazardTokens.some((token) => specialization.includes(token));
+        });
+    }, [activeTrainerOptions, hazardTokens]);
+    const fallbackTrainerOptions = React.useMemo(() => {
+        if (recommendedTrainerOptions.length > 0) {
+            return recommendedTrainerOptions;
+        }
+        return activeTrainerOptions;
+    }, [recommendedTrainerOptions, activeTrainerOptions]);
+    const assignedTrainers = React.useMemo(() => (
+        assignedTrainerIds
+            .map((id) => trainerOptions.find((trainer) => String(trainer.id) === String(id)))
+            .filter(Boolean)
+    ), [assignedTrainerIds, trainerOptions]);
     const lessonQuizAvailable = lessons.some((lesson) => {
         const config = lesson.lesson_quiz_config || lesson.lessonQuizConfig;
         return Boolean(config?.is_enabled && config?.published_version_id);
@@ -389,7 +487,11 @@ export function TrainingModuleDetail({ module }) {
             window.location.hash = 'intelligence';
             return;
         }
-        if (window.location.hash === '#intelligence') {
+        if (activeTab === 'campaign_requests') {
+            window.location.hash = 'campaign_requests';
+            return;
+        }
+        if (window.location.hash === '#intelligence' || window.location.hash === '#campaign_requests') {
             history.replaceState(null, '', window.location.pathname + window.location.search);
         }
     }, [activeTab]);
@@ -490,12 +592,185 @@ export function TrainingModuleDetail({ module }) {
         return next;
     });
 
+    const addAssignedTrainer = () => {
+        if (!selectedTrainerId) return;
+        setAssignedTrainerIds((current) => (
+            current.includes(String(selectedTrainerId)) ? current : [...current, String(selectedTrainerId)]
+        ));
+        setSelectedTrainerId('');
+    };
+
+    const removeAssignedTrainer = (trainerId) => {
+        setAssignedTrainerIds((current) => current.filter((id) => String(id) !== String(trainerId)));
+    };
+
+    const addTrainingSession = () => setTrainingSessions((current) => [
+        ...current,
+        { title: '', date: '', start_time: '', end_time: '', venue: '', maximum_participants: 30 },
+    ]);
+    const updateTrainingSession = (index, field, value) => setTrainingSessions((current) => (
+        current.map((item, idx) => idx === index ? { ...item, [field]: value } : item)
+    ));
+    const removeTrainingSession = (index) => setTrainingSessions((current) => current.filter((_, idx) => idx !== index));
+
+    const loadCampaignRequests = async () => {
+        setIsLoadingCampaignRequests(true);
+        setCampaignRequests([]);
+        try {
+            const response = await fetch(`/admin/training-modules/${module.id}/campaign-requests`, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'Could not load campaign requests.');
+            }
+
+            setCampaignRequests(Array.isArray(data.requests) ? data.requests : []);
+        } catch (e) {
+            await Swal.fire({ icon: 'error', title: 'Load failed', text: e?.message || 'Could not load campaign requests.' });
+        } finally {
+            setIsLoadingCampaignRequests(false);
+        }
+    };
+
+    const handleSubmitToCampaign = async () => {
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'Submit to Campaign?',
+            text: 'Submit this Training Intelligence Profile to the Public Safety Campaign Management System for review.',
+            showCancelButton: true,
+            confirmButtonText: 'Submit',
+            cancelButtonText: 'Cancel',
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        setIsSubmittingCampaign(true);
+        try {
+            const formData = new FormData();
+            formData.append('_token', getCsrfToken());
+
+            const response = await fetch(`/admin/training-modules/${module.id}/campaign-requests`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Could not submit Training Intelligence Profile.');
+            }
+
+            await Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Submitted',
+                text: 'Training Intelligence Profile submitted successfully. You can monitor its progress under Campaign Requests.',
+                showConfirmButton: false,
+                timer: 4500,
+            });
+
+            setActiveTab('campaign_requests');
+        } catch (e) {
+            await Swal.fire({ icon: 'error', title: 'Submission failed', text: e?.message || 'Could not submit.' });
+        } finally {
+            setIsSubmittingCampaign(false);
+        }
+    };
+
+    const handleViewCampaignRequest = async (requestId) => {
+        setSelectedCampaignRequest(null);
+        setIsCampaignRequestDialogOpen(true);
+
+        try {
+            const response = await fetch(`/admin/campaign-requests/${requestId}`, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'Could not load request details.');
+            }
+
+            setSelectedCampaignRequest(data.request || null);
+        } catch (e) {
+            setIsCampaignRequestDialogOpen(false);
+            await Swal.fire({ icon: 'error', title: 'Load failed', text: e?.message || 'Could not load request details.' });
+        }
+    };
+
+    React.useEffect(() => {
+        if (activeTab === 'campaign_requests') {
+            loadCampaignRequests();
+        }
+    }, [activeTab]);
+
     const handleSaveProfile = async () => {
         const cleanedObjectives = profileObjectives.map((item) => item.trim()).filter(Boolean);
         if (cleanedObjectives.length === 0) {
             await Swal.fire({ icon: 'warning', title: 'Missing objectives', text: 'Please add at least one training objective.' });
             return;
         }
+
+        if (!String(relatedHazard || '').trim()) {
+            await Swal.fire({ icon: 'warning', title: 'Missing related hazard', text: 'Please enter at least one Related Hazard(s).' });
+            return;
+        }
+
+        if (!['in_person', 'online'].includes(String(deliveryMethod))) {
+            await Swal.fire({ icon: 'warning', title: 'Invalid delivery method', text: 'Please choose a valid delivery method.' });
+            return;
+        }
+
+        const normalizedSessions = trainingSessions
+            .map((item) => ({
+                title: item.title || '',
+                date: item.date || '',
+                start_time: item.start_time || '',
+                end_time: item.end_time || '',
+                venue: item.venue || '',
+                maximum_participants: Number(item.maximum_participants),
+            }))
+            .filter((item) => item.title || item.date || item.start_time || item.end_time || item.venue || item.maximum_participants);
+        const invalidSession = normalizedSessions.find((item) => (
+            !item.date
+            || !item.start_time
+            || !item.end_time
+            || item.end_time <= item.start_time
+            || !Number.isInteger(item.maximum_participants)
+            || item.maximum_participants < 1
+            || item.maximum_participants > 500
+        ));
+        if (invalidSession) {
+            await Swal.fire({ icon: 'warning', title: 'Invalid training session', text: 'Each proposed session needs a date, valid time range, and maximum participants between 1 and 500.' });
+            return;
+        }
+
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'Confirm save?',
+            text: 'Your changes will be saved for this Training Intelligence Profile.',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save',
+            cancelButtonText: 'Cancel',
+        });
+
+        if (!confirm.isConfirmed) return;
 
         setIsSavingProfile(true);
         try {
@@ -514,6 +789,15 @@ export function TrainingModuleDetail({ module }) {
             formData.append('difficulty', module.difficulty || 'Beginner');
             cleanedObjectives.forEach((item, index) => formData.append(`learning_objectives[${index}]`, item));
             targetAudience.forEach((item, index) => formData.append(`target_audience[${index}]`, item));
+            assignedTrainerIds.forEach((item, index) => formData.append(`assigned_qualified_trainer_ids[${index}]`, item));
+            normalizedSessions.forEach((item, index) => {
+                formData.append(`available_training_sessions[${index}][title]`, item.title);
+                formData.append(`available_training_sessions[${index}][date]`, item.date);
+                formData.append(`available_training_sessions[${index}][start_time]`, item.start_time);
+                formData.append(`available_training_sessions[${index}][end_time]`, item.end_time);
+                formData.append(`available_training_sessions[${index}][venue]`, item.venue);
+                formData.append(`available_training_sessions[${index}][maximum_participants]`, String(item.maximum_participants));
+            });
 
             const response = await fetch(`/admin/training-modules/${module.id}`, {
                 method: 'POST',
@@ -529,6 +813,15 @@ export function TrainingModuleDetail({ module }) {
                 return;
             }
 
+            await Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Saved',
+                text: 'Training Intelligence Profile saved successfully.',
+                showConfirmButton: false,
+                timer: 2000,
+            });
             window.location.assign(`/admin/training-modules/${module.id}#intelligence`);
         } finally {
             setIsSavingProfile(false);
@@ -605,43 +898,34 @@ export function TrainingModuleDetail({ module }) {
                     >
                         Training Intelligence Profile
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('campaign_requests')}
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'campaign_requests' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                    >
+                        Campaign Requests
+                    </button>
                 </div>
             </div>
 
             {activeTab === 'intelligence' && (
                 <div className="space-y-4">
                     <AdminContentCard className="p-5">
-                        <h3 className="text-sm font-semibold text-slate-800 mb-3">Training Overview</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><p className="text-xs text-slate-500">Training Module Title</p><p className="text-sm font-medium text-slate-800">{module.title}</p></div>
-                            <div><p className="text-xs text-slate-500">Current Status</p><p className="text-sm font-medium text-slate-800 capitalize">{module.status}</p></div>
-                            <div className="md:col-span-2">
-                                <label className="block text-xs text-slate-500 mb-1">Short Description</label>
-                                <textarea value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                            </div>
-                        </div>
-                    </AdminContentCard>
-
-                    <AdminContentCard className="p-5">
                         <h3 className="text-sm font-semibold text-slate-800 mb-3">Training Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><p className="text-xs text-slate-500">Training Category</p><p className="text-sm font-medium text-slate-800">{module.category || '—'}</p></div>
-                            <div><p className="text-xs text-slate-500">Estimated Duration</p><p className="text-sm font-medium text-slate-800">{formatDuration(module.estimated_duration_minutes) || '—'}</p></div>
-                            <div><p className="text-xs text-slate-500">Total Lessons</p><p className="text-sm font-medium text-slate-800">{lessons.length}</p></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs text-slate-500 mb-1">Related Hazard(s)</label>
                                 <input value={relatedHazard} onChange={(e) => setRelatedHazard(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
                             </div>
+                            <div><p className="text-xs text-slate-500">Estimated Duration</p><p className="text-sm font-medium text-slate-800">{formatDuration(module.estimated_duration_minutes) || '—'}</p></div>
                             <div>
                                 <label className="block text-xs text-slate-500 mb-1">Delivery Method</label>
                                 <select value={deliveryMethod} onChange={(e) => setDeliveryMethod(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
-                                    <option value="in_person">In-person</option>
+                                    <option value="in_person">Face-to-Face</option>
                                     <option value="online">Online</option>
-                                    <option value="blended">Blended</option>
-                                    <option value="self_paced">Self-paced</option>
                                 </select>
                             </div>
-                            <div><p className="text-xs text-slate-500">Estimated Learning Time</p><p className="text-sm font-medium text-slate-800">{formatDuration(module.estimated_duration_minutes) || '—'}</p></div>
+                            <div><p className="text-xs text-slate-500">Total Lessons</p><p className="text-sm font-medium text-slate-800">{lessons.length}</p></div>
                         </div>
                     </AdminContentCard>
 
@@ -673,10 +957,197 @@ export function TrainingModuleDetail({ module }) {
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">Recommended Communities</h3>
-                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                            No Hazard Assessment data connected. Future integration: recommended communities will automatically appear here based on Hazard Assessment risk classifications.
+                        <div className="flex items-center gap-2 mb-4"><UserRound className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Assigned Trainers</h3></div>
+                        <div className="space-y-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                                <div className="flex-1">
+                                    <label className="block text-xs text-slate-500 mb-1">Assign Trainer</label>
+                                    <select
+                                        value={selectedTrainerId}
+                                        onChange={(e) => setSelectedTrainerId(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    >
+                                        <option value="">Select a recommended trainer</option>
+                                        {fallbackTrainerOptions.map((trainer) => {
+                                            const isRecommended = recommendedTrainerOptions.some((item) => item.id === trainer.id);
+                                            return (
+                                                <option key={trainer.id} value={trainer.id}>
+                                                    {`${isRecommended ? '⭐ ' : ''}${trainer.name} • ${trainer.specialization || 'General'}`}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                    {recommendedTrainerOptions.length === 0 && (
+                                        <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                            No qualified trainer is currently available for this training specialization.
+                                        </p>
+                                    )}
+                                </div>
+                                <button type="button" onClick={addAssignedTrainer} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+                                    <Plus className="w-4 h-4" /> Assign Trainer
+                                </button>
+                            </div>
+
+                            {assignedTrainers.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                                    No trainers assigned yet.
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {assignedTrainers.map((trainer) => (
+                                        <div key={trainer.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="space-y-2">
+                                                    <p className="text-sm font-semibold text-slate-900">{trainer.name}</p>
+                                                    <p className="text-xs text-slate-500">Role</p>
+                                                    <p className="text-sm text-slate-700">Trainer</p>
+                                                    <p className="text-xs text-slate-500">Specialization</p>
+                                                    <p className="text-sm text-slate-700">{trainer.specialization || '—'}</p>
+                                                    <p className="text-xs text-slate-500">Status</p>
+                                                    <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${String(trainer.status).toLowerCase() === 'active' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700'}`}>
+                                                        {trainer.status || 'Inactive'}
+                                                    </span>
+                                                    <p className="text-xs text-slate-500">Certifications</p>
+                                                    <p className="text-sm text-slate-700">
+                                                        {Array.isArray(trainer.certifications) && trainer.certifications.length > 0
+                                                            ? trainer.certifications.join(', ')
+                                                            : '—'}
+                                                    </p>
+                                                </div>
+                                                <button type="button" onClick={() => removeAssignedTrainer(trainer.id)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h3 className="text-sm font-semibold text-slate-800">Available Training Sessions</h3>
+                                <p className="text-xs text-slate-500 mt-1">Proposed schedules only. Campaign Management will choose from these later.</p>
+                            </div>
+                            <button type="button" onClick={addTrainingSession} className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"><Plus className="w-3.5 h-3.5" /> Add Session</button>
+                        </div>
+
+                        {trainingSessions.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                                No proposed training sessions have been added yet.
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {trainingSessions.map((session, index) => (
+                                    <div key={`session-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                            <div>
+                                                <label className="block text-xs text-slate-500 mb-1">Session Title</label>
+                                                <input type="text" value={session.title || ''} onChange={(e) => updateTrainingSession(index, 'title', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Optional session title" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-500 mb-1">Date</label>
+                                                <input type="date" value={session.date || ''} onChange={(e) => updateTrainingSession(index, 'date', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-500 mb-1">Venue</label>
+                                                <input type="text" value={session.venue || ''} onChange={(e) => updateTrainingSession(index, 'venue', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Optional venue" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-500 mb-1">Start Time</label>
+                                                <input type="time" value={session.start_time || ''} onChange={(e) => updateTrainingSession(index, 'start_time', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-500 mb-1">End Time</label>
+                                                <input type="time" value={session.end_time || ''} onChange={(e) => updateTrainingSession(index, 'end_time', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-500 mb-1">Maximum Participants</label>
+                                                <input type="number" min="1" max="500" value={session.maximum_participants ?? 30} onChange={(e) => updateTrainingSession(index, 'maximum_participants', e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-slate-700 border border-slate-200">
+                                                    <CalendarDays className="w-3.5 h-3.5" /> {formatDate(session.date)}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-slate-700 border border-slate-200">
+                                                    <Clock3 className="w-3.5 h-3.5" /> {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700 border border-emerald-200">
+                                                    Capacity: {session.maximum_participants || '—'}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 border border-slate-200">
+                                                    Remaining slots: future placeholder
+                                                </span>
+                                            </div>
+                                            <button type="button" onClick={() => removeTrainingSession(index)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Delete Session</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </AdminContentCard>
+
+                    <AdminContentCard className="p-5">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-2">Recommended Communities</h3>
+                        {recommendations && recommendations.summary.total_communities > 0 ? (
+                            <>
+                                <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                        <p className="text-xs text-slate-500">Communities Found</p>
+                                        <p className="text-lg font-semibold text-slate-900">{recommendations.summary.total_communities}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                                        <p className="text-xs text-emerald-700">High Priority</p>
+                                        <p className="text-lg font-semibold text-emerald-800">{recommendations.summary.high_priority}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                        <p className="text-xs text-amber-700">Medium Priority</p>
+                                        <p className="text-lg font-semibold text-amber-800">{recommendations.summary.medium_priority}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                        <p className="text-xs text-slate-500">Low Priority</p>
+                                        <p className="text-lg font-semibold text-slate-800">{recommendations.summary.low_priority}</p>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Barangay</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Related Hazard</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Risk Level</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Priority Score</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Recommendation</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {recommendations.communities.map((row) => (
+                                                <tr key={row.barangay_profile_id}>
+                                                    <td className="px-4 py-2">
+                                                        <div className="font-medium text-slate-900">{row.barangay_name}</div>
+                                                        <div className="text-xs text-slate-500">
+                                                            {row.municipality_city}{row.province ? `, ${row.province}` : ''}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-sm text-slate-700">{row.related_hazard}</td>
+                                                    <td className="px-4 py-2 text-sm text-slate-700">{row.risk_level}</td>
+                                                    <td className="px-4 py-2 text-sm font-semibold text-slate-900">{row.priority_score}</td>
+                                                    <td className="px-4 py-2 text-xs text-slate-700">{row.recommendation}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                                No communities currently match the selected hazard classification.
+                            </div>
+                        )}
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
@@ -705,17 +1176,190 @@ export function TrainingModuleDetail({ module }) {
                         <div className="flex items-center gap-2 mb-2"><Database className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Campaign Integration Preview</h3></div>
                         <p className="text-sm text-slate-700 mb-2">Future Data to Share:</p>
                         <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
-                            <li>Training Module ID</li><li>Training Title</li><li>Training Category</li><li>Related Hazard(s)</li><li>Recommended Audience</li><li>Estimated Duration</li><li>Total Lessons</li><li>Current Status</li>
+                            <li>Training Module ID</li>
+                            <li>Training Title</li>
+                            <li>Short Description</li>
+                            <li>Related Hazard(s)</li>
+                            <li>Recommended Communities</li>
+                            <li>Recommended Audience</li>
+                            <li>Estimated Duration</li>
+                            <li>Total Lessons</li>
+                            <li>Assigned Trainers</li>
+                            <li>Available Training Sessions</li>
+                            <li>Maximum Participants</li>
                         </ul>
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
+                            <p><span className="font-semibold text-slate-700">Assigned Trainers:</span> {assignedTrainers.length > 0 ? assignedTrainers.map((trainer) => trainer.name).join(', ') : 'Not assigned'}</p>
+                            <p><span className="font-semibold text-slate-700">Delivery Method:</span> {DELIVERY_METHOD_LABELS[deliveryMethod] || '—'}</p>
+                            <p><span className="font-semibold text-slate-700">Proposed Sessions:</span> {trainingSessions.length}</p>
+                        </div>
                         <p className="mt-2 text-xs font-semibold text-amber-700">Only Published modules will be available to the Campaign Management System.</p>
                     </AdminContentCard>
 
-                    <div className="flex justify-end">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-end">
+                        <button
+                            type="button"
+                            onClick={handleSubmitToCampaign}
+                            disabled={isSubmittingCampaign}
+                            className="inline-flex items-center gap-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold px-4 py-2.5 disabled:opacity-60"
+                        >
+                            {isSubmittingCampaign ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                            Submit to Campaign
+                        </button>
                         <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 disabled:opacity-60">
                             {isSavingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                             Save Training Intelligence Profile
                         </button>
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'campaign_requests' && (
+                <div className="space-y-4">
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h3 className="text-sm font-semibold text-slate-800">Campaign Requests</h3>
+                                <p className="text-xs text-slate-500 mt-1">Submission tracking for Training Intelligence Profiles.</p>
+                            </div>
+                            <div className="text-xs text-slate-500">
+                                {isLoadingCampaignRequests ? 'Loading…' : `${campaignRequests.length} request${campaignRequests.length === 1 ? '' : 's'}`}
+                            </div>
+                        </div>
+
+                        {isLoadingCampaignRequests ? (
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                                Loading campaign requests…
+                            </div>
+                        ) : campaignRequests.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                                No campaign requests yet.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Request ID</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Training Module</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Proposed Session</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Submitted To</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Submitted Date</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {campaignRequests.map((req) => (
+                                            <tr key={req.id}>
+                                                <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-900">{req.id}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="font-medium text-slate-900">{req.training_module?.title || '—'}</div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="text-slate-700">{req.proposed_session_label || '—'}</div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="text-slate-700">{req.submitted_to || '—'}</div>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-slate-700">
+                                                    {req.submitted_at ? new Date(req.submitted_at).toLocaleDateString('en-US') : '—'}
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <CampaignRequestStatusBadge status={req.status} />
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleViewCampaignRequest(req.id)}
+                                                        className="rounded-lg px-3 py-1.5 text-xs bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                    >
+                                                        View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </AdminContentCard>
+
+                    <Dialog.Root open={isCampaignRequestDialogOpen} onOpenChange={setIsCampaignRequestDialogOpen}>
+                        <Dialog.Portal>
+                            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+                            <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl max-h-[90vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col">
+                                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                                    <Dialog.Title className="text-lg font-semibold text-slate-800">
+                                        Campaign Request {selectedCampaignRequest ? `#${selectedCampaignRequest.id}` : ''}
+                                    </Dialog.Title>
+                                    <Dialog.Close asChild>
+                                        <button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100" aria-label="Close">
+                                            <X className="w-4 h-4 mx-auto" />
+                                        </button>
+                                    </Dialog.Close>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                    {!selectedCampaignRequest ? (
+                                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                                            Loading request details…
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="md:col-span-2">
+                                                    <p className="text-xs text-slate-500">Training Module</p>
+                                                    <p className="text-sm font-semibold text-slate-900">{selectedCampaignRequest.training_module?.title || '—'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Status</p>
+                                                    <div className="mt-1">
+                                                        <CampaignRequestStatusBadge status={selectedCampaignRequest.status} />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Proposed Session</p>
+                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.proposed_session_label || '—'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Submitted To</p>
+                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.submitted_to || '—'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Submitted Date</p>
+                                                    <p className="text-sm text-slate-700">
+                                                        {selectedCampaignRequest.submitted_at ? new Date(selectedCampaignRequest.submitted_at).toLocaleString('en-US') : '—'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Campaign Remarks</p>
+                                                {selectedCampaignRequest.remarks ? (
+                                                    <pre className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700 overflow-auto">
+                                                        {JSON.stringify(selectedCampaignRequest.remarks, null, 2)}
+                                                    </pre>
+                                                ) : (
+                                                    <p className="text-sm text-slate-600">No remarks yet.</p>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Submission Payload (Snapshot)</p>
+                                                <pre className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700 overflow-auto">
+                                                    {JSON.stringify(selectedCampaignRequest.payload || {}, null, 2)}
+                                                </pre>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </Dialog.Content>
+                        </Dialog.Portal>
+                    </Dialog.Root>
                 </div>
             )}
 

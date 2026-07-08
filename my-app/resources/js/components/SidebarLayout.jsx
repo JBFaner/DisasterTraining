@@ -457,18 +457,18 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         ]}
                     />
                     <NavItem
-                        icon={ClipboardList}
-                        label="Evaluation & Scoring System"
-                        href="/admin/evaluations"
-                        active={currentSection === 'evaluation'}
-                        isCollapsed={isCollapsed}
-                        onNavigate={onNavigate}
-                    />
-                    <NavItem
                         icon={CalendarClock}
                         label="Simulation Event Planning"
                         href="/admin/simulation-events"
                         active={currentSection === 'simulation'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={Users}
+                        label="Participant Registration & Attendance"
+                        href="/admin/participants"
+                        active={currentSection === 'participants'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />
@@ -481,18 +481,10 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         onNavigate={onNavigate}
                     />
                     <NavItem
-                        icon={Wallet}
-                        label="Resource Budget Proposals"
-                        href="/admin/resource-budget-proposals"
-                        active={currentSection === 'resource_budget_proposal'}
-                        isCollapsed={isCollapsed}
-                        onNavigate={onNavigate}
-                    />
-                    <NavItem
-                        icon={Users}
-                        label="Participant Registration & Attendance"
-                        href="/admin/participants"
-                        active={currentSection === 'participants'}
+                        icon={ClipboardList}
+                        label="Evaluation & Scoring System"
+                        href="/admin/evaluations"
+                        active={currentSection === 'evaluation'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />
@@ -514,6 +506,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         label="Hazard Assessment Profile"
                         href="/admin/hazard-assessment-profiles"
                         active={currentSection === 'hazard_assessment_profile' || currentSection?.startsWith('hazard_assessment_profile')}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={Wallet}
+                        label="Resource Budget Proposals"
+                        href="/admin/resource-budget-proposals"
+                        active={currentSection === 'resource_budget_proposal'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

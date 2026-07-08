@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class TrainingModule extends Model
 {
@@ -13,12 +15,22 @@ class TrainingModule extends Model
 
     protected $fillable = [
         'title',
+        'short_description',
         'description',
         'learning_objectives',
         'estimated_duration_minutes',
         'thumbnail_path',
         'difficulty',
         'category',
+        'related_hazard',
+        'delivery_method',
+        'target_audience',
+        'recommended_audience',
+        'lead_qualified_trainer_id',
+        'assigned_qualified_trainer_ids',
+        'lead_trainer_id',
+        'trainer_availability',
+        'available_training_sessions',
         'status',
         'visibility',
         'owner_id',
@@ -26,6 +38,10 @@ class TrainingModule extends Model
 
     protected $casts = [
         'learning_objectives' => 'array',
+        'target_audience' => 'array',
+        'assigned_qualified_trainer_ids' => 'array',
+        'trainer_availability' => 'array',
+        'available_training_sessions' => 'array',
         'estimated_duration_minutes' => 'integer',
     ];
 
@@ -46,6 +62,50 @@ class TrainingModule extends Model
     public function owner()
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function leadTrainer()
+    {
+        return $this->belongsTo(User::class, 'lead_trainer_id');
+    }
+
+    public function leadQualifiedTrainer()
+    {
+        return $this->belongsTo(QualifiedTrainer::class, 'lead_qualified_trainer_id');
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, QualifiedTrainer>
+     */
+    public function assignedQualifiedTrainers()
+    {
+        $ids = collect($this->assigned_qualified_trainer_ids ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($ids === [] && $this->lead_qualified_trainer_id) {
+            $ids = [(int) $this->lead_qualified_trainer_id];
+        }
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        $trainers = QualifiedTrainer::query()
+            ->whereIn('id', $ids)
+            ->get(['id', 'name', 'email', 'specialization', 'status', 'certifications']);
+
+        return collect($ids)
+            ->map(fn ($id) => $trainers->firstWhere('id', $id))
+            ->filter()
+            ->values();
+    }
+
+    public function scopePublishedForIntegration(Builder $query): Builder
+    {
+        return $query->where('status', 'published');
     }
 
     public function aiScenarioConfig()
@@ -202,6 +262,76 @@ class TrainingModule extends Model
         }
 
         return Certificate::query()->where('training_module_id', $this->id)->exists();
+    }
+
+    public function hasPublishedLessonQuiz(): bool
+    {
+        return LessonQuizConfig::query()
+            ->where('is_enabled', true)
+            ->whereNotNull('published_version_id')
+            ->whereHas('trainingContent', function ($query) {
+                $query->where('training_module_id', $this->id);
+            })
+            ->exists();
+    }
+
+    public function hasPublishedFinalScenarioAssessment(): bool
+    {
+        if (! $this->relationLoaded('aiScenarioConfig')) {
+            $this->load('aiScenarioConfig');
+        }
+
+        return (bool) $this->aiScenarioConfig
+            && (bool) $this->aiScenarioConfig->is_enabled
+            && ! empty($this->aiScenarioConfig->published_version_id);
+    }
+
+    public function totalEstimatedLearningTimeMinutes(): int
+    {
+        return max(0, (int) ($this->estimated_duration_minutes ?? 0));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toIntegrationArray(): array
+    {
+        $sessions = collect($this->available_training_sessions ?? []);
+        $assignedTrainers = isset($this->assigned_trainers) && is_iterable($this->assigned_trainers)
+            ? collect($this->assigned_trainers)
+            : $this->assignedQualifiedTrainers();
+
+        return [
+            'id' => (int) $this->id,
+            'training_module_id' => (int) $this->id,
+            'training_title' => $this->title,
+            'short_description' => $this->short_description
+                ?: Str::limit((string) ($this->description ?? ''), 220, ''),
+            'related_hazards' => $this->related_hazard ?: $this->category,
+            'recommended_communities' => $this->recommended_communities['communities'] ?? [],
+            'recommended_audience' => $this->target_audience ?: $this->recommended_audience,
+            'estimated_duration_minutes' => $this->totalEstimatedLearningTimeMinutes(),
+            'total_lessons' => (int) ($this->lesson_count ?? $this->contents()->count()),
+            'assigned_trainers' => $assignedTrainers
+                ->map(fn ($trainer) => [
+                    'id' => $trainer->id,
+                    'name' => $trainer->name,
+                    'role' => 'Trainer',
+                    'specialization' => $trainer->specialization,
+                    'contact_email' => $trainer->email,
+                    'status' => $trainer->status,
+                    'certifications' => $trainer->certifications ?? [],
+                ])
+                ->values()
+                ->all(),
+            'available_training_sessions' => $sessions->values()->all(),
+            'maximum_participants' => $sessions
+                ->pluck('maximum_participants')
+                ->filter(fn ($value) => $value !== null && $value !== '')
+                ->map(fn ($value) => (int) $value)
+                ->values()
+                ->all(),
+        ];
     }
 
     public function getThumbnailUrlAttribute(): ?string

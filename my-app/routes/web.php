@@ -36,6 +36,7 @@ use App\Http\Controllers\PortalNotificationController;
 use App\Http\Controllers\LessonQuizWorkflowController;
 use App\Http\Controllers\LessonQuizAttemptController;
 use App\Http\Controllers\Admin\Group6IntegrationController;
+use App\Http\Controllers\Admin\CampaignRequestController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
 
@@ -173,6 +174,12 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.training-modules.store');
         Route::get('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'show'])
             ->name('admin.training-modules.show');
+        Route::get('/training-modules/{trainingModule}/campaign-requests', [CampaignRequestController::class, 'index'])
+            ->name('admin.campaign-requests.index');
+        Route::post('/training-modules/{trainingModule}/campaign-requests', [CampaignRequestController::class, 'store'])
+            ->name('admin.campaign-requests.store');
+        Route::get('/campaign-requests/{campaignRequest}', [CampaignRequestController::class, 'show'])
+            ->name('admin.campaign-requests.show');
         Route::get('/training-modules/{trainingModule}/edit', [AdminTrainingModuleController::class, 'edit'])
             ->name('admin.training-modules.edit');
         Route::put('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'update'])

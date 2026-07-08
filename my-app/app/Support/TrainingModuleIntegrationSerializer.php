@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\TrainingModule;
+use App\Services\HazardAssessment\HazardTrainingRecommendationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -31,7 +32,7 @@ class TrainingModuleIntegrationSerializer
         $collection = $modules instanceof Collection ? $modules : collect($modules);
 
         return $collection
-            ->map(fn (TrainingModule $module) => $module->toIntegrationArray())
+            ->map(fn (TrainingModule $module) => self::serializeOne($module))
             ->values()
             ->all();
     }
@@ -48,6 +49,13 @@ class TrainingModuleIntegrationSerializer
         if (! isset($module->lesson_count)) {
             $module->loadCount('contents as lesson_count');
         }
+
+        if (! isset($module->recommended_communities)) {
+            $module->recommended_communities = app(HazardTrainingRecommendationService::class)
+                ->recommendCommunitiesForTraining($module);
+        }
+
+        $module->assigned_trainers = $module->assignedQualifiedTrainers();
 
         return $module->toIntegrationArray();
     }

@@ -225,6 +225,145 @@ class HazardTrainingRecommendationService
     }
 
     /**
+     * Recommend communities (barangays) for a given training module based on related hazards.
+     *
+     * @return array<string, mixed>
+     */
+    public function recommendCommunitiesForTraining(TrainingModule $module): array
+    {
+        $hazardTypes = $this->normalizedTrainingHazards($module);
+
+        if ($hazardTypes === []) {
+            return [
+                'summary' => [
+                    'total_communities' => 0,
+                    'high_priority' => 0,
+                    'medium_priority' => 0,
+                    'low_priority' => 0,
+                ],
+                'communities' => [],
+            ];
+        }
+
+        $riskLevels = ['Moderate', 'High', 'Very High'];
+
+        $hazards = BarangayHazard::query()
+            ->with('barangayProfile')
+            ->whereIn('hazard_type', $hazardTypes)
+            ->whereIn('risk_level', $riskLevels)
+            ->get();
+
+        if ($hazards->isEmpty()) {
+            return [
+                'summary' => [
+                    'total_communities' => 0,
+                    'high_priority' => 0,
+                    'medium_priority' => 0,
+                    'low_priority' => 0,
+                ],
+                'communities' => [],
+            ];
+        }
+
+        $byBarangay = $hazards->groupBy('barangay_profile_id');
+
+        $communities = [];
+        $high = 0;
+        $medium = 0;
+        $low = 0;
+
+        foreach ($byBarangay as $barangayId => $records) {
+            /** @var \Illuminate\Support\Collection<int, BarangayHazard> $records */
+            $best = $records->sortByDesc('risk_score')->first();
+            $profile = $best->barangayProfile;
+            if (! $profile) {
+                continue;
+            }
+
+            $priorityBucket = match ($best->risk_level) {
+                'High', 'Very High' => 'high',
+                'Moderate' => 'medium',
+                default => 'low',
+            };
+
+            if ($priorityBucket === 'high') {
+                $high++;
+            } elseif ($priorityBucket === 'medium') {
+                $medium++;
+            } else {
+                $low++;
+            }
+
+            $communities[] = [
+                'barangay_profile_id' => (int) $barangayId,
+                'barangay_name' => $profile->barangay_name,
+                'municipality_city' => $profile->municipality_city,
+                'province' => $profile->province,
+                'related_hazard' => $best->hazard_type,
+                'risk_level' => $best->risk_level,
+                'priority_score' => (int) $best->risk_score,
+                'recommendation' => $this->buildTrainingRecommendationText($module, $best),
+            ];
+        }
+
+        usort($communities, fn ($a, $b) => $b['priority_score'] <=> $a['priority_score']);
+
+        return [
+            'summary' => [
+                'total_communities' => count($communities),
+                'high_priority' => $high,
+                'medium_priority' => $medium,
+                'low_priority' => $low,
+            ],
+            'communities' => $communities,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function normalizedTrainingHazards(TrainingModule $module): array
+    {
+        $raw = (string) ($module->related_hazard ?? $module->category ?? '');
+        if ($raw === '') {
+            return [];
+        }
+
+        $tokens = preg_split('/[,&\/]+/', $raw) ?: [];
+        $tokens = array_map(static fn ($value) => trim((string) $value), $tokens);
+        $tokens = array_filter($tokens, static fn ($value) => $value !== '');
+
+        if ($tokens === []) {
+            return [];
+        }
+
+        $validTypes = config('hazard_assessment.hazard_types', []);
+        $normalized = [];
+
+        foreach ($tokens as $token) {
+            foreach ($validTypes as $type) {
+                if (strcasecmp($token, $type) === 0) {
+                    $normalized[$type] = true;
+                    continue 2;
+                }
+            }
+        }
+
+        return array_keys($normalized);
+    }
+
+    private function buildTrainingRecommendationText(TrainingModule $module, BarangayHazard $hazard): string
+    {
+        $base = $module->category ?: $hazard->hazard_type.' Preparedness Training';
+
+        return match ($hazard->risk_level) {
+            'High', 'Very High' => "Highly recommended for {$base}.",
+            'Moderate' => "Recommended for {$base}.",
+            default => "Suitable for {$base}.",
+        };
+    }
+
+    /**
      * @param  Collection<int, BarangayHazard>  $hazards
      * @return array<int, array{keyword: string, reason: string}>
      */
