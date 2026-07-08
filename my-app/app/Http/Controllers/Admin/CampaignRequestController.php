@@ -57,6 +57,7 @@ class CampaignRequestController extends Controller
         $this->authorizeOwner($trainingModule);
 
         $campaignRequests = CampaignRequest::query()
+            ->with('submittedBy')
             ->where('training_module_id', $trainingModule->id)
             ->orderByDesc('submitted_at')
             ->orderByDesc('id')
@@ -75,6 +76,7 @@ class CampaignRequestController extends Controller
                     'submitted_at' => $item->submitted_at?->toIso8601String(),
                     'status' => $item->status,
                     'remarks' => $item->remarks,
+                    'submitted_by' => $item->submittedBy ? ['id' => $item->submittedBy->id, 'name' => $item->submittedBy->name] : null,
                 ];
             })->values(),
         ]);
@@ -95,6 +97,7 @@ class CampaignRequestController extends Controller
             'status' => 'waiting_for_approval',
             'payload' => $payload,
             'remarks' => null,
+            'submitted_by_id' => $request->user()?->id,
         ]);
 
         return response()->json([
@@ -108,7 +111,7 @@ class CampaignRequestController extends Controller
 
     public function show(Request $request, CampaignRequest $campaignRequest)
     {
-        $campaignRequest->load('trainingModule');
+        $campaignRequest->load('trainingModule', 'submittedBy');
         $this->authorizeOwner($campaignRequest->trainingModule);
 
         return response()->json([
@@ -126,6 +129,7 @@ class CampaignRequestController extends Controller
                 'remarks' => $campaignRequest->remarks,
                 'created_at' => $campaignRequest->created_at?->toIso8601String(),
                 'updated_at' => $campaignRequest->updated_at?->toIso8601String(),
+                'submitted_by' => $campaignRequest->submittedBy ? ['id' => $campaignRequest->submittedBy->id, 'name' => $campaignRequest->submittedBy->name] : null,
             ],
         ]);
     }

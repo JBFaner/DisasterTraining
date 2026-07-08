@@ -15,6 +15,7 @@ class CampaignRequest extends Model
         'status',
         'payload',
         'remarks',
+        'submitted_by_id',
     ];
 
     protected $casts = [
@@ -26,6 +27,11 @@ class CampaignRequest extends Model
     public function trainingModule(): BelongsTo
     {
         return $this->belongsTo(TrainingModule::class, 'training_module_id');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'submitted_by_id');
     }
 }
 

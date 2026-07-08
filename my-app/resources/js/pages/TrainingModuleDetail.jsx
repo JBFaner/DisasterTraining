@@ -1257,13 +1257,36 @@ export function TrainingModuleDetail({ module }) {
                                                     <div className="font-medium text-slate-900">{req.training_module?.title || '—'}</div>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <div className="text-slate-700">{req.proposed_session_label || '—'}</div>
+                                                    {req.proposed_session_label ? (
+                                                        (() => {
+                                                            const parts = req.proposed_session_label.split(' • ').filter(Boolean);
+                                                            const timePart = parts.length >= 1 ? parts[parts.length - 1] : null;
+                                                            const datePart = parts.length >= 2 ? parts[parts.length - 2] : null;
+                                                            const titlePart = parts.length > 2 ? parts.slice(0, -2).join(' • ') : null;
+                                                            return (
+                                                                <div>
+                                                                    {titlePart ? <div className="font-medium text-slate-900">{titlePart}</div> : null}
+                                                                    {datePart ? <div className="text-slate-700">{datePart}</div> : null}
+                                                                    {timePart ? <div className="text-xs text-slate-500 mt-0.5">{timePart}</div> : null}
+                                                                </div>
+                                                            );
+                                                        })()
+                                                    ) : (
+                                                        <div className="text-slate-700">—</div>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="text-slate-700">{req.submitted_to || '—'}</div>
                                                 </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-slate-700">
-                                                    {req.submitted_at ? new Date(req.submitted_at).toLocaleDateString('en-US') : '—'}
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    {req.submitted_at ? (
+                                                        <>
+                                                            <div className="text-slate-900">{new Date(req.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                                            <div className="text-xs text-slate-500 mt-0.5">{new Date(req.submitted_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                                                        </>
+                                                    ) : (
+                                                        '—'
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap">
                                                     <CampaignRequestStatusBadge status={req.status} />
@@ -1322,18 +1345,64 @@ export function TrainingModuleDetail({ module }) {
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div>
-                                                    <p className="text-xs text-slate-500">Proposed Session</p>
-                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.proposed_session_label || '—'}</p>
+                                                    <p className="text-xs text-slate-500">Request ID</p>
+                                                    <p className="text-sm text-slate-700">#{selectedCampaignRequest.id}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs text-slate-500">Submitted To</p>
-                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.submitted_to || '—'}</p>
+                                                    <p className="text-xs text-slate-500">Submitted By</p>
+                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.submitted_by?.name || '—'}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-xs text-slate-500">Submitted Date</p>
-                                                    <p className="text-sm text-slate-700">
-                                                        {selectedCampaignRequest.submitted_at ? new Date(selectedCampaignRequest.submitted_at).toLocaleString('en-US') : '—'}
-                                                    </p>
+                                                    {selectedCampaignRequest.submitted_at ? (
+                                                        <>
+                                                            <div className="text-sm text-slate-900">{new Date(selectedCampaignRequest.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                                            <div className="text-xs text-slate-500 mt-0.5">{new Date(selectedCampaignRequest.submitted_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-sm text-slate-700">—</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Training Description</p>
+                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.payload?.short_description || '—'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Related Hazard(s)</p>
+                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.related_hazards) ? selectedCampaignRequest.payload.related_hazards.join(', ') : (selectedCampaignRequest.payload?.related_hazards || '—')}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Recommended Communities</p>
+                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.recommended_communities) ? selectedCampaignRequest.payload.recommended_communities.join(', ') : (selectedCampaignRequest.payload?.recommended_communities?.communities ? selectedCampaignRequest.payload.recommended_communities.communities.join(', ') : '—')}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Recommended Audience</p>
+                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.recommended_audience) ? selectedCampaignRequest.payload.recommended_audience.join(', ') : (selectedCampaignRequest.payload?.recommended_audience || selectedCampaignRequest.payload?.recommended_audience || '—')}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Lead Trainer(s)</p>
+                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.assigned_trainers) ? selectedCampaignRequest.payload.assigned_trainers.map(t => t.name).join(', ') : '—'}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Proposed Training Session</p>
+                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.proposed_session_label || '—'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Maximum Participants</p>
+                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.maximum_participants) ? (selectedCampaignRequest.payload.maximum_participants.length ? selectedCampaignRequest.payload.maximum_participants.join(', ') : '—') : (selectedCampaignRequest.payload?.maximum_participants || '—')}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Current Status</p>
+                                                    <p className="text-sm text-slate-700"><CampaignRequestStatusBadge status={selectedCampaignRequest.status} /></p>
                                                 </div>
                                             </div>
 
@@ -1346,13 +1415,6 @@ export function TrainingModuleDetail({ module }) {
                                                 ) : (
                                                     <p className="text-sm text-slate-600">No remarks yet.</p>
                                                 )}
-                                            </div>
-
-                                            <div>
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Submission Payload (Snapshot)</p>
-                                                <pre className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700 overflow-auto">
-                                                    {JSON.stringify(selectedCampaignRequest.payload || {}, null, 2)}
-                                                </pre>
                                             </div>
                                         </>
                                     )}
