@@ -1310,108 +1310,145 @@ export function TrainingModuleDetail({ module }) {
 
                     <Dialog.Root open={isCampaignRequestDialogOpen} onOpenChange={setIsCampaignRequestDialogOpen}>
                         <Dialog.Portal>
-                            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-                            <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl max-h-[90vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col">
-                                <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                                    <Dialog.Title className="text-lg font-semibold text-slate-800">
-                                        Campaign Request {selectedCampaignRequest ? `#${selectedCampaignRequest.id}` : ''}
-                                    </Dialog.Title>
-                                    <Dialog.Close asChild>
-                                        <button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100" aria-label="Close">
-                                            <X className="w-4 h-4 mx-auto" />
-                                        </button>
-                                    </Dialog.Close>
+                            {/* Keep the table visible — use a right-side slide-over drawer */}
+                            <div className="fixed inset-0 z-40 pointer-events-none" />
+                            <Dialog.Content className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-lg z-50 overflow-auto flex flex-col border-l border-slate-200">
+                                <div className="flex items-center justify-between p-6">
+                                    <div>
+                                        <Dialog.Title className="text-lg font-semibold text-slate-800">Campaign Request {selectedCampaignRequest ? `#${selectedCampaignRequest.id}` : ''}</Dialog.Title>
+                                        <p className="text-xs text-slate-500 mt-1">{selectedCampaignRequest?.training_module?.title || ''}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {selectedCampaignRequest ? <CampaignRequestStatusBadge status={selectedCampaignRequest.status} /> : null}
+                                        <Dialog.Close asChild>
+                                            <button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100" aria-label="Close">
+                                                <X className="w-4 h-4 mx-auto" />
+                                            </button>
+                                        </Dialog.Close>
+                                    </div>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                <div className="flex-1 p-6 space-y-6">
                                     {!selectedCampaignRequest ? (
-                                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                                            Loading request details…
-                                        </div>
+                                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">Loading request details…</div>
                                     ) : (
                                         <>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="md:col-span-2">
-                                                    <p className="text-xs text-slate-500">Training Module</p>
-                                                    <p className="text-sm font-semibold text-slate-900">{selectedCampaignRequest.training_module?.title || '—'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Status</p>
-                                                    <div className="mt-1">
-                                                        <CampaignRequestStatusBadge status={selectedCampaignRequest.status} />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {/* Top summary */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <div>
                                                     <p className="text-xs text-slate-500">Request ID</p>
-                                                    <p className="text-sm text-slate-700">#{selectedCampaignRequest.id}</p>
+                                                    <div className="text-sm font-medium text-slate-900">#{selectedCampaignRequest.id}</div>
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs text-slate-500">Submitted By</p>
-                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.submitted_by?.name || '—'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Submitted Date</p>
+                                                    <p className="text-xs text-slate-500">Submitted</p>
                                                     {selectedCampaignRequest.submitted_at ? (
                                                         <>
                                                             <div className="text-sm text-slate-900">{new Date(selectedCampaignRequest.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                                                             <div className="text-xs text-slate-500 mt-0.5">{new Date(selectedCampaignRequest.submitted_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
                                                         </>
                                                     ) : (
-                                                        <p className="text-sm text-slate-700">—</p>
+                                                        <div className="text-sm text-slate-700">—</div>
                                                     )}
                                                 </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
-                                                    <p className="text-xs text-slate-500">Training Description</p>
-                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.payload?.short_description || '—'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Related Hazard(s)</p>
-                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.related_hazards) ? selectedCampaignRequest.payload.related_hazards.join(', ') : (selectedCampaignRequest.payload?.related_hazards || '—')}</p>
+                                                    <p className="text-xs text-slate-500">Submitted By</p>
+                                                    <div className="text-sm text-slate-900">{selectedCampaignRequest.submitted_by?.name || '—'}</div>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Recommended Communities</p>
-                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.recommended_communities) ? selectedCampaignRequest.payload.recommended_communities.join(', ') : (selectedCampaignRequest.payload?.recommended_communities?.communities ? selectedCampaignRequest.payload.recommended_communities.communities.join(', ') : '—')}</p>
+                                            {/* Training Description (truncated) */}
+                                            <div>
+                                                <p className="text-xs text-slate-500">Training Description</p>
+                                                <div className="text-sm text-slate-700">
+                                                    {(() => {
+                                                        const desc = selectedCampaignRequest.payload?.short_description || '';
+                                                        if (!desc) return '—';
+                                                        if (!isDescriptionExpanded && desc.length > 240) {
+                                                            return (
+                                                                <>
+                                                                    <div>{desc.slice(0, 240)}…</div>
+                                                                    <button type="button" onClick={() => setIsDescriptionExpanded(true)} className="mt-2 text-xs text-emerald-600">Read more</button>
+                                                                </>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <>
+                                                                <div>{desc}</div>
+                                                                {desc.length > 240 ? (
+                                                                    <button type="button" onClick={() => setIsDescriptionExpanded(false)} className="mt-2 text-xs text-emerald-600">Show less</button>
+                                                                ) : null}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
+                                            </div>
+
+                                            {/* Key metadata row */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <div>
-                                                    <p className="text-xs text-slate-500">Recommended Audience</p>
-                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.recommended_audience) ? selectedCampaignRequest.payload.recommended_audience.join(', ') : (selectedCampaignRequest.payload?.recommended_audience || selectedCampaignRequest.payload?.recommended_audience || '—')}</p>
+                                                    <p className="text-xs text-slate-500">Related Hazard</p>
+                                                    <div className="text-sm text-slate-900">{Array.isArray(selectedCampaignRequest.payload?.related_hazards) ? selectedCampaignRequest.payload.related_hazards.join(', ') : (selectedCampaignRequest.payload?.related_hazards || '—')}</div>
                                                 </div>
+
                                                 <div>
                                                     <p className="text-xs text-slate-500">Lead Trainer(s)</p>
-                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.assigned_trainers) ? selectedCampaignRequest.payload.assigned_trainers.map(t => t.name).join(', ') : '—'}</p>
+                                                    <div className="text-sm text-slate-900">{Array.isArray(selectedCampaignRequest.payload?.assigned_trainers) ? selectedCampaignRequest.payload.assigned_trainers.map(t => t.name).join(', ') : '—'}</div>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Recommended Communities</p>
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        {(() => {
+                                                            const rc = selectedCampaignRequest.payload?.recommended_communities;
+                                                            let list = [];
+                                                            if (Array.isArray(rc)) {
+                                                                list = rc.map(c => (typeof c === 'string' ? c : (c?.name || c?.label || JSON.stringify(c))));
+                                                            } else if (rc && Array.isArray(rc.communities)) {
+                                                                list = rc.communities.map(c => (typeof c === 'string' ? c : (c?.name || c?.label || JSON.stringify(c))));
+                                                            }
+                                                            if (list.length === 0) return <div className="text-sm text-slate-700">—</div>;
+                                                            return list.map((c, i) => (
+                                                                <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-xs text-slate-700">{c}</span>
+                                                            ));
+                                                        })()}
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Proposed Training Session</p>
-                                                    <p className="text-sm text-slate-700">{selectedCampaignRequest.proposed_session_label || '—'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Maximum Participants</p>
-                                                    <p className="text-sm text-slate-700">{Array.isArray(selectedCampaignRequest.payload?.maximum_participants) ? (selectedCampaignRequest.payload.maximum_participants.length ? selectedCampaignRequest.payload.maximum_participants.join(', ') : '—') : (selectedCampaignRequest.payload?.maximum_participants || '—')}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Current Status</p>
-                                                    <p className="text-sm text-slate-700"><CampaignRequestStatusBadge status={selectedCampaignRequest.status} /></p>
+                                            {/* Proposed Sessions */}
+                                            <div>
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Proposed Sessions</p>
+                                                <div className="grid grid-cols-1 gap-3">
+                                                    {(() => {
+                                                        const sessions = selectedCampaignRequest.payload?.available_training_sessions || [];
+                                                        if (!sessions.length) return <div className="text-sm text-slate-700">No sessions provided.</div>;
+                                                        return sessions.map((s, idx) => {
+                                                            const date = s?.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+                                                            const start = s?.start_time ? new Date(s.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+                                                            const end = s?.end_time ? new Date(s.end_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+                                                            const timeRange = start && end ? `${start} – ${end}` : (start || '—');
+                                                            const maxParts = s?.maximum_participants ?? s?.maximumParticipants ?? null;
+
+                                                            return (
+                                                                <div key={idx} className="border border-slate-200 rounded-lg p-4 bg-white">
+                                                                    {s?.title ? <div className="font-medium text-slate-900">{s.title}</div> : null}
+                                                                    <div className="mt-2 text-sm text-slate-700">
+                                                                        {date ? <div className="flex items-center gap-2"><span className="text-slate-400">📅</span><span>{date}</span></div> : null}
+                                                                        {timeRange ? <div className="flex items-center gap-2 mt-1"><span className="text-slate-400">🕙</span><span className="text-xs text-slate-500">{timeRange}</span></div> : null}
+                                                                    </div>
+                                                                    <div className="mt-3 text-sm text-slate-700">{maxParts ? `${maxParts} Participants` : '—'}</div>
+                                                                </div>
+                                                            );
+                                                        });
+                                                    })()}
                                                 </div>
                                             </div>
 
+                                            {/* Remarks */}
                                             <div>
                                                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Campaign Remarks</p>
                                                 {selectedCampaignRequest.remarks ? (
-                                                    <pre className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700 overflow-auto">
-                                                        {JSON.stringify(selectedCampaignRequest.remarks, null, 2)}
-                                                    </pre>
+                                                    <pre className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 overflow-auto">{JSON.stringify(selectedCampaignRequest.remarks, null, 2)}</pre>
                                                 ) : (
                                                     <p className="text-sm text-slate-600">No remarks yet.</p>
                                                 )}

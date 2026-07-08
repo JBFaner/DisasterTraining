@@ -1,8 +1,0 @@
-Add submitted_by to campaign requests, return submitter in API; improve Campaign Requests table and details UI
-
-- Add migration to store submitted_by_id on campaign_requests
-- Save authenticated user on submit and include submitted_by in index/show responses
-- Update CampaignRequest model with submittedBy relation
-- Update TrainingModuleDetail.jsx: format proposed session and submitted date/time; expand details modal to show full Training Intelligence Profile
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
