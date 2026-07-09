@@ -209,6 +209,9 @@
             @isset($summaryStats)
                 data-summary-stats='@json($summaryStats)'
             @endisset
+            @isset($evaluationSummaryStats)
+                data-evaluation-summary-stats='@json($evaluationSummaryStats)'
+            @endisset
             @isset($eligibleParticipants)
                 data-eligible-participants='@json($eligibleParticipants)'
             @endisset
@@ -253,6 +256,27 @@
             @endisset
             @isset($ai_scenario_attempt)
                 data-ai-scenario-attempt='@json($ai_scenario_attempt)'
+            @endisset
+            @isset($evaluation_tab)
+                data-evaluation-tab="{{ $evaluation_tab }}"
+            @endisset
+            @isset($evaluation_event_filters)
+                data-evaluation-event-filters='@json($evaluation_event_filters)'
+            @endisset
+            @isset($lesson_quiz_attempts)
+                data-lesson-quiz-attempts='@json($lesson_quiz_attempts)'
+            @endisset
+            @isset($lesson_quiz_pagination)
+                data-lesson-quiz-pagination='@json($lesson_quiz_pagination)'
+            @endisset
+            @isset($lesson_quiz_analytics)
+                data-lesson-quiz-analytics='@json($lesson_quiz_analytics)'
+            @endisset
+            @isset($lesson_quiz_modules)
+                data-lesson-quiz-monitoring-modules='@json($lesson_quiz_modules)'
+            @endisset
+            @isset($lesson_quiz_filters)
+                data-lesson-quiz-filters='@json($lesson_quiz_filters)'
             @endisset
             @isset($evaluation_results)
                 data-evaluation-results='@json($evaluation_results)'

@@ -23,7 +23,7 @@ class EvaluationModuleTest extends TestCase
         $this->admin = User::factory()->create(['role' => 'LGU_ADMIN']);
     }
 
-    public function test_evaluation_dashboard_shows_published_ongoing_and_completed_events()
+    public function test_evaluation_dashboard_shows_only_completed_events()
     {
         $publishedEvent = SimulationEvent::factory()->create(['status' => 'published', 'title' => 'Published Event']);
         $ongoingEvent = SimulationEvent::factory()->create(['status' => 'ongoing', 'title' => 'Ongoing Event']);
@@ -33,9 +33,9 @@ class EvaluationModuleTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('admin.evaluations.index'));
 
         $response->assertStatus(200);
-        $response->assertSee('Published Event');
-        $response->assertSee('Ongoing Event');
         $response->assertSee('Completed Event');
+        $response->assertDontSee('Published Event');
+        $response->assertDontSee('Ongoing Event');
         $response->assertDontSee('Draft Event');
     }
 
@@ -70,7 +70,7 @@ class EvaluationModuleTest extends TestCase
         $response->assertDontSee('Event without Evaluation');
     }
 
-    public function test_evaluation_show_lists_all_approved_participants()
+    public function test_evaluation_show_lists_only_present_participants()
     {
         $event = SimulationEvent::factory()->create(['status' => 'completed']);
         $participant1 = User::factory()->create(['role' => 'PARTICIPANT', 'name' => 'Present Part']);
@@ -99,6 +99,6 @@ class EvaluationModuleTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Present Part');
-        $response->assertSee('Absent Part');
+        $response->assertDontSee('Absent Part');
     }
 }

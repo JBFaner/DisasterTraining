@@ -10,11 +10,13 @@ class ParticipantEvaluation extends Model
         'evaluation_id',
         'user_id',
         'attendance_id',
+        'attendance_status',
         'status',
         'total_score',
         'average_score',
         'weighted_score',
         'result',
+        'competency_rating',
         'overall_feedback',
         'is_eligible_for_certification',
         'evaluated_by',
@@ -57,11 +59,16 @@ class ParticipantEvaluation extends Model
     public function calculateScores()
     {
         $scores = $this->scores;
+        $threshold = (float) ($this->evaluation?->pass_threshold ?? 75.00);
         
         if ($scores->isEmpty()) {
             $this->total_score = 0;
             $this->average_score = 0;
             $this->weighted_score = 0;
+            $this->result = 'failed';
+            $this->is_eligible_for_certification = false;
+            $this->competency_rating = $this->competency_rating ?: 'Needs Improvement';
+            $this->save();
             return;
         }
 
@@ -77,10 +84,27 @@ class ParticipantEvaluation extends Model
         // Business rule:
         // - Passed if average score >= 75%
         // - Certification eligible: Yes if Passed, else No
-        $threshold = 75.00;
         $this->result = $averageScore >= $threshold ? 'passed' : 'failed';
         $this->is_eligible_for_certification = $this->result === 'passed';
+        $this->competency_rating = $this->competencyRatingFromAverage($averageScore);
 
         $this->save();
+    }
+
+    public function competencyRatingFromAverage(float $averageScore): string
+    {
+        if ($averageScore >= 90) {
+            return 'Excellent';
+        }
+
+        if ($averageScore >= 80) {
+            return 'Good';
+        }
+
+        if ($averageScore >= 70) {
+            return 'Satisfactory';
+        }
+
+        return 'Needs Improvement';
     }
 }

@@ -158,7 +158,7 @@ This document uses the **same naming** as the left sidebar modules so other grou
 - Availability / usage tracking
 - Assignment to events (if enabled)
 
-### 5.2 (Optional) Event Resource Planning
+### 5.2 Event Resource Planning
 **Purpose**
 - Link planned resources/equipment to a simulation event for coordination.
 
@@ -166,40 +166,36 @@ This document uses the **same naming** as the left sidebar modules so other grou
 - Event ID ↔ assigned resources list
 - Status updates (reserved/in-use/returned)
 
-### 5.3 FROM/TO External: Resource Allocation (Other Group Module)
+### 5.3 FROM/TO External: Resource Allocation (Group 3)
 **Purpose**
-- Allow a separate “Resource Allocation” module to request, reserve, and dispatch equipment/resources using our inventory as the source of truth.
+- Provide equipment availability information for emergency response operations.
+- Keep `Resource & Equipment Inventory` as the source of truth for stock validation, reservation, and lifecycle status.
+- Support two request paths:
+  - **Direct path (internal):** Simulation Event Planning requests resources directly from Inventory.
+  - **External path (cross-group):** Other groups request via `Resource Allocation (Group 3)`, which then coordinates with Inventory.
 
 **Data Received (from Resource Allocation → to our Inventory)**
-- Allocation Request ID (external reference)
-- Operation / Incident / Event reference (optional; can map to Simulation Event ID if applicable)
-- Requested Resources list
-  - Resource Category / Type
-  - Quantity
-  - Priority / urgency (optional)
-  - Requested time window (start/end) (optional)
-- Delivery / staging location (optional)
-- Requesting unit / office (optional)
+- Resource Request ID
+- Requested Equipment
+- Requested Quantity
+- Emergency Operation ID
 
 **Data Sent (from our Inventory → to Resource Allocation)**
-- Resource Catalog snapshot (filterable)
-  - Resource ID
-  - Resource Name / Category / Type
-  - Current Availability Status (available / reserved / in_use / maintenance / unavailable)
-  - Location / storage site (if tracked)
-- Reservation / allocation results
-  - Reservation ID (our reference)
-  - Allocated resource items (Resource ID + quantity)
-  - Reservation status (reserved / partially_reserved / rejected)
-  - Reason codes (e.g., insufficient stock, maintenance, conflict)
-- Status updates / lifecycle events (optional)
-  - reserved → in_use → returned
-  - damage report / maintenance flag
+- Equipment ID
+- Equipment Name
+- Available Quantity
+- Equipment Condition
+- Availability Status
+- Storage Location
+
+**Purpose of Integration**
+- Allow the Emergency Response System to verify available equipment before deploying emergency response units during actual incidents.
 
 **Suggested Integration Flow (General)**
-- Resource Allocation submits a request → Inventory validates availability and returns allocatable items.
-- Resource Allocation confirms selection → Inventory marks as reserved for a defined window.
-- During operations → Inventory receives state changes (in-use/returned/damaged) and updates availability.
+- **Simulation request (internal):** Simulation module sends equipment need directly to Inventory → Inventory validates and reserves if available.
+- **External group request:** External group sends request to Resource Allocation (Group 3) → Group 3 calls Inventory for availability check and reservation.
+- Inventory returns allocation outcome (`reserved` or `insufficient inventory available`) and keeps movement history for audit/reporting.
+- On return, Inventory updates stock buckets and status (`Available` or `Needs Repair`) based on returned condition.
 
 ---
 
@@ -207,26 +203,78 @@ This document uses the **same naming** as the left sidebar modules so other grou
 
 ### 6.1 Evaluation Workflow
 **Purpose**
-- Evaluate participant performance for a simulation event.
+- Evaluate participant performance for completed simulation events and generate post-event performance summaries.
 
 **Data Received**
 - Simulation Event ID
-- Participant list (registered/approved)
+- Event Title
+- Simulation Type
+- Disaster Scenario
+- Event Date
+- Venue
+- Participant list
 - Attendance status
+- Event completion status
 
 **Data Produced**
 - Evaluation Result records (per participant)
 - Score / competency ratings
 - Evaluation status (in_progress / completed)
 
+**Business Rules**
+- Only simulation events marked `completed` can appear in the evaluation list.
+- Only participants with attendance status `present` can receive evaluation scores.
+- Evaluation completion is only allowed when all present participants have been evaluated.
+- Event performance metrics are computed after participant evaluations are submitted.
+
 ### 6.2 Reporting Outputs
 **Purpose**
 - Provide performance reporting to admins and dashboards.
 
 **Computed Data**
-- Completion rate
-- Score distribution summaries
-- Pass/fail counts (if configured)
+- Average score
+- Highest score
+- Lowest score
+- Passing rate
+- Number passed
+- Number failed
+- Evaluation completion percentage
+- Overall performance classification
+
+### 6.3 FROM/TO Internal: Simulation Event Planning / Simulation Events
+**Purpose**
+- Use completed simulation events as the evaluation source of truth.
+
+**Data Received**
+- Simulation Event ID
+- Event Title
+- Simulation Type
+- Disaster Scenario
+- Event Date
+- Venue
+- Participant List
+- Attendance Status
+- Event Completion Status
+
+**Purpose of Integration**
+- Ensure that evaluation only starts after a simulation event has been completed and participant attendance has already been finalized.
+
+### 6.4 FROM/TO External: Event & Seminar Management (Group 6)
+**Purpose**
+- Prepare completed evaluation summaries for event reporting and seminar effectiveness analysis.
+
+**Data Sent**
+- Event ID
+- Evaluation ID
+- Average Evaluation Score
+- Passing Rate
+- Evaluation Completion Status
+- Overall Performance
+- Participant Performance Summary
+
+**Integration Approach**
+- The Evaluation & Scoring System prepares the outbound payload locally once the evaluation is completed.
+- Group 6 integration can read the prepared payload later without requiring immediate direct push.
 
 ---
 

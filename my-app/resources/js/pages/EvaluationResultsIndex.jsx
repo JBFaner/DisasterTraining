@@ -60,6 +60,7 @@ export function EvaluationResultsIndex({
     filters = {},
     passingScore = 75,
     role = 'LGU_ADMIN',
+    embedded = false,
 }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const isParticipant = role === 'PARTICIPANT';
@@ -92,6 +93,9 @@ export function EvaluationResultsIndex({
     const applyFilters = (e) => {
         e?.preventDefault();
         const url = new URL(window.location.href);
+        if (embedded) {
+            url.searchParams.set('tab', filters.tab || 'modules');
+        }
         if (search) url.searchParams.set('search', search);
         else url.searchParams.delete('search');
         if (statusFilter) url.searchParams.set('status', statusFilter);
@@ -104,6 +108,7 @@ export function EvaluationResultsIndex({
         else url.searchParams.delete('date_from');
         if (dateTo) url.searchParams.set('date_to', dateTo);
         else url.searchParams.delete('date_to');
+        url.searchParams.delete('page');
         window.location.href = url.toString();
     };
 
@@ -277,18 +282,8 @@ export function EvaluationResultsIndex({
         }],
     };
 
-    return (
-        <AdminPageShell>
-            <AdminPageHeader
-                icon={ClipboardList}
-                title="Evaluation & Scoring System"
-                description={
-                    isParticipant
-                        ? 'View your AI scenario training evaluation reports.'
-                        : 'Automatic evaluation reports from AI Scenario Training with analytics and performance breakdown.'
-                }
-            />
-
+    const content = (
+        <>
             {!isParticipant && analytics && (
                 <>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -551,7 +546,7 @@ export function EvaluationResultsIndex({
                     <div className="flex gap-2">
                         {pagination.current_page > 1 && (
                             <a
-                                href={`?${new URLSearchParams({ ...filters, page: pagination.current_page - 1 }).toString()}`}
+                                href={`?${new URLSearchParams({ ...filters, ...(embedded ? { tab: filters.tab || 'modules' } : {}), page: pagination.current_page - 1 }).toString()}`}
                                 className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
                             >
                                 Previous
@@ -559,7 +554,7 @@ export function EvaluationResultsIndex({
                         )}
                         {pagination.current_page < pagination.last_page && (
                             <a
-                                href={`?${new URLSearchParams({ ...filters, page: pagination.current_page + 1 }).toString()}`}
+                                href={`?${new URLSearchParams({ ...filters, ...(embedded ? { tab: filters.tab || 'modules' } : {}), page: pagination.current_page + 1 }).toString()}`}
                                 className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
                             >
                                 Next
@@ -568,6 +563,25 @@ export function EvaluationResultsIndex({
                     </div>
                 </div>
             )}
+        </>
+    );
+
+    if (embedded) {
+        return <div className="space-y-4">{content}</div>;
+    }
+
+    return (
+        <AdminPageShell>
+            <AdminPageHeader
+                icon={ClipboardList}
+                title="Evaluation & Scoring System"
+                description={
+                    isParticipant
+                        ? 'View your AI scenario training evaluation reports.'
+                        : 'Automatic evaluation reports from AI Scenario Training with analytics and performance breakdown.'
+                }
+            />
+            {content}
         </AdminPageShell>
     );
 }

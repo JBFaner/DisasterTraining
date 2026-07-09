@@ -50,6 +50,20 @@ class EvaluationResultController extends Controller
 
 
 
+        if ($user->role !== 'PARTICIPANT') {
+
+            return redirect()->route('admin.evaluations.index', array_merge(
+
+                $request->query(),
+
+                ['tab' => 'modules'],
+
+            ));
+
+        }
+
+
+
         $query = EvaluationResult::query()
 
             ->with(['participant', 'trainingModule.aiScenarioConfig', 'aiScenarioAttempt'])

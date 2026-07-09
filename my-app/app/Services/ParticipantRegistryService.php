@@ -19,6 +19,7 @@ class ParticipantRegistryService
         $user->evaluation_status = $statuses['evaluation_status'];
         $user->certificate_status = $statuses['certificate_status'];
         $user->municipality = $user->city;
+        $user->participant_source = $this->resolveSource($user);
 
         return $user;
     }
@@ -63,6 +64,7 @@ class ParticipantRegistryService
 
         return $collection->map(function (User $user) use ($lessonCounts, $aiCompletedCounts, $evaluationCounts, $certificateCounts) {
             $user->municipality = $user->city;
+            $user->participant_source = $this->resolveSource($user);
             $user->training_status = $this->resolveTrainingStatus(
                 (int) ($lessonCounts[$user->id] ?? 0),
                 (int) ($aiCompletedCounts[$user->id] ?? 0),
@@ -106,7 +108,17 @@ class ParticipantRegistryService
         return [
             'barangays' => (clone $base)->whereNotNull('barangay')->distinct()->orderBy('barangay')->pluck('barangay')->filter()->values()->all(),
             'municipalities' => (clone $base)->whereNotNull('city')->distinct()->orderBy('city')->pluck('city')->filter()->values()->all(),
+            'sources' => ['local', 'synced'],
         ];
+    }
+
+    public function resolveSource(User $user): string
+    {
+        if ($user->registration_source === 'synced' || ! empty($user->group6_external_id)) {
+            return 'synced';
+        }
+
+        return 'local';
     }
 
     protected function resolveTrainingStatus(int $lessonCount, int $aiCompleted): string

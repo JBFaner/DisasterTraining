@@ -5,6 +5,7 @@ import {
     Eye,
     Download,
     RefreshCw,
+    UserPlus,
     CalendarPlus,
     BarChart3,
 } from 'lucide-react';
@@ -94,13 +95,19 @@ export function ParticipantRegistrationAttendanceModule({
                 icon={Users}
                 title="Participant Registration & Attendance"
                 description="Manage participants, qualified trainers, event registrations, and attendance."
+                actions={activeTab === 'participants' ? (
+                    <AdminPrimaryButton href="/participant/register">
+                        <UserPlus className="w-4 h-4" />
+                        Register New Participant
+                    </AdminPrimaryButton>
+                ) : null}
             />
 
             {activeTab === 'participants' && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <StatCard label="Total Participants" value={totalParticipants} hint="Synchronized registry" />
-                    <StatCard label="Active" value={activeParticipants} hint="Active in external system" accent="emerald" />
-                    <StatCard label="Inactive" value={inactiveParticipants} hint="Inactive in external system" />
+                    <StatCard label="Active" value={activeParticipants} hint="Active participant accounts" accent="emerald" />
+                    <StatCard label="Inactive" value={inactiveParticipants} hint="Inactive participant accounts" />
                     <StatCard label="Synced This Month" value={participantsSyncedThisMonth} hint="Last registry sync" />
                 </div>
             )}
@@ -195,10 +202,21 @@ function RegistryLabelBadge({ label }) {
     );
 }
 
+function SourceBadge({ source }) {
+    const normalized = (source || '').toString().toLowerCase();
+    const isSynced = normalized === 'synced';
+    return (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${isSynced ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
+            {isSynced ? 'SYNCED' : 'LOCAL'}
+        </span>
+    );
+}
+
 function ParticipantRegistryTab({ participants = [], participantsPagination = null, filterOptions = null }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
+    const [sourceFilter, setSourceFilter] = React.useState('all');
     const [barangayFilter, setBarangayFilter] = React.useState('');
     const [municipalityFilter, setMunicipalityFilter] = React.useState('');
     const [trainingStatusFilter, setTrainingStatusFilter] = React.useState('');
@@ -218,6 +236,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             url.searchParams.set('page', page);
             if (searchTerm.trim()) url.searchParams.set('search', searchTerm.trim());
             if (statusFilter !== 'all') url.searchParams.set('status_filter', statusFilter);
+            if (sourceFilter !== 'all') url.searchParams.set('source_filter', sourceFilter);
             if (barangayFilter) url.searchParams.set('barangay_filter', barangayFilter);
             if (municipalityFilter) url.searchParams.set('municipality_filter', municipalityFilter);
             if (trainingStatusFilter) url.searchParams.set('training_status_filter', trainingStatusFilter);
@@ -239,12 +258,12 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm, statusFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir]);
+    }, [searchTerm, statusFilter, sourceFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir]);
 
     React.useEffect(() => {
         const timer = setTimeout(() => fetchParticipants(1), 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, statusFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir, fetchParticipants]);
+    }, [searchTerm, statusFilter, sourceFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir, fetchParticipants]);
 
     const handleSync = async () => {
         setIsSyncing(true);
@@ -276,7 +295,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
         }
     };
 
-    const hasActiveFilters = statusFilter !== 'all' || barangayFilter || municipalityFilter || trainingStatusFilter || certificateStatusFilter;
+    const hasActiveFilters = statusFilter !== 'all' || sourceFilter !== 'all' || barangayFilter || municipalityFilter || trainingStatusFilter || certificateStatusFilter;
 
     const columns = [
         {
@@ -296,6 +315,11 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             label: 'Email Address',
             sortable: true,
             render: (row) => <span className="text-sm text-slate-700">{row.email || '—'}</span>,
+        },
+        {
+            key: 'participant_source',
+            label: 'Source',
+            render: (row) => <SourceBadge source={row.participant_source} />,
         },
         {
             key: 'phone',
@@ -345,8 +369,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
     return (
         <div className="space-y-4">
             <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                Participant records are read-only in this system. Profile updates are managed in the{' '}
-                <span className="font-semibold">Community Registration & Campaign Management System</span> and synchronized here via API.
+                This registry supports both locally registered participants and synchronized participants from the Community Registration & Campaign Management System.
             </div>
 
             <AdminCollapsibleFilterBar
@@ -356,22 +379,30 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 hasActiveFilters={hasActiveFilters}
                 onClearFilters={() => {
                     setStatusFilter('all');
+                    setSourceFilter('all');
                     setBarangayFilter('');
                     setMunicipalityFilter('');
                     setTrainingStatusFilter('');
                     setCertificateStatusFilter('');
                 }}
                 trailing={(
-                    <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
-                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        Sync Participants
-                    </AdminPrimaryButton>
+                    <>
+                        <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
+                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                            Sync Participants
+                        </AdminPrimaryButton>
+                    </>
                 )}
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="all">All Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect label="Source" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
+                    <option value="all">All Participants</option>
+                    <option value="local">Local</option>
+                    <option value="synced">Synced</option>
                 </AdminFilterSelect>
                 <AdminFilterSelect label="Barangay" value={barangayFilter} onChange={(e) => setBarangayFilter(e.target.value)}>
                     <option value="">All Barangays</option>
@@ -407,9 +438,9 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 isLoading={isLoading}
                 pagination={pagination}
                 onPageChange={(page) => fetchParticipants(page)}
-                minWidth="1400px"
+                minWidth="1500px"
                 emptyTitle="No participants found"
-                emptyDescription="Sync Participants to load records from the Community Registration & Campaign Management System."
+                emptyDescription="Use Register New Participant or Sync Participants to build your unified registry."
                 renderActions={(row) => (
                     <>
                         <AdminTableActionButton

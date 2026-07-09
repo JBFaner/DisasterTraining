@@ -28,6 +28,7 @@ import {
     ParticipantTrainingModuleCard,
 } from './components/TrainingModuleCard';
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
+import { EvaluationHub } from './pages/EvaluationHub';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
 import { CampaignRequestShow } from './pages/CampaignRequestShow';
 import { SimulationEventPlanningDetail } from './pages/SimulationEventPlanningDetail';
@@ -680,6 +681,7 @@ if (rootElement) {
     let currentPassedCount = null;
     let currentFailedCount = null;
     let currentOverallAverage = null;
+    let evaluationSummaryStats = null;
 
     const evaluationJson = rootElement.getAttribute('data-evaluation');
     const criteriaJson = rootElement.getAttribute('data-criteria');
@@ -711,10 +713,18 @@ if (rootElement) {
     const evaluationFiltersJson = rootElement.getAttribute('data-evaluation-filters');
     const evaluationAttemptNumbersJson = rootElement.getAttribute('data-evaluation-attempt-numbers');
     const evaluationPassingScoreAttr = rootElement.getAttribute('data-evaluation-passing-score');
+    const evaluationTabAttr = rootElement.getAttribute('data-evaluation-tab');
+    const evaluationEventFiltersJson = rootElement.getAttribute('data-evaluation-event-filters');
+    const lessonQuizAttemptsJson = rootElement.getAttribute('data-lesson-quiz-attempts');
+    const lessonQuizPaginationJson = rootElement.getAttribute('data-lesson-quiz-pagination');
+    const lessonQuizAnalyticsJson = rootElement.getAttribute('data-lesson-quiz-analytics');
+    const lessonQuizMonitoringModulesJson = rootElement.getAttribute('data-lesson-quiz-monitoring-modules');
+    const lessonQuizFiltersJson = rootElement.getAttribute('data-lesson-quiz-filters');
     const evaluationResultJson = rootElement.getAttribute('data-evaluation-result');
     const campaignRequestJson = rootElement.getAttribute('data-campaign-request');
     const scoresJson = rootElement.getAttribute('data-scores');
     const criterionAveragesJson = rootElement.getAttribute('data-criterion-averages');
+    const evaluationSummaryStatsJson = rootElement.getAttribute('data-evaluation-summary-stats');
 
     if (evaluationJson) {
         try {
@@ -792,6 +802,13 @@ if (rootElement) {
             console.error('Failed to parse criterionAverages JSON', e);
         }
     }
+    if (evaluationSummaryStatsJson) {
+        try {
+            evaluationSummaryStats = JSON.parse(evaluationSummaryStatsJson);
+        } catch (e) {
+            console.error('Failed to parse evaluationSummaryStats JSON', e);
+        }
+    }
 
     currentTotalParticipants = rootElement.getAttribute('data-total-participants');
     currentPassedCount = rootElement.getAttribute('data-passed-count');
@@ -859,6 +876,13 @@ if (rootElement) {
     let evaluationFilters = {};
     let evaluationAttemptNumbers = [];
     let evaluationPassingScore = 75;
+    let evaluationTab = 'events';
+    let evaluationEventFilters = {};
+    let lessonQuizAttempts = [];
+    let lessonQuizPagination = null;
+    let lessonQuizAnalytics = null;
+    let lessonQuizMonitoringModules = [];
+    let lessonQuizFilters = {};
     let evaluationResult = null;
     let campaignRequest = null;
     let simulationPlanning = null;
@@ -1011,6 +1035,51 @@ if (rootElement) {
     }
     if (evaluationPassingScoreAttr) {
         evaluationPassingScore = parseFloat(evaluationPassingScoreAttr) || 75;
+    }
+    if (evaluationTabAttr) {
+        evaluationTab = evaluationTabAttr;
+    }
+    if (evaluationEventFiltersJson) {
+        try {
+            evaluationEventFilters = JSON.parse(evaluationEventFiltersJson);
+        } catch (e) {
+            console.error('Failed to parse evaluation event filters JSON', e);
+        }
+    }
+    if (lessonQuizAttemptsJson) {
+        try {
+            lessonQuizAttempts = JSON.parse(lessonQuizAttemptsJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz attempts JSON', e);
+        }
+    }
+    if (lessonQuizPaginationJson) {
+        try {
+            lessonQuizPagination = JSON.parse(lessonQuizPaginationJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz pagination JSON', e);
+        }
+    }
+    if (lessonQuizAnalyticsJson) {
+        try {
+            lessonQuizAnalytics = JSON.parse(lessonQuizAnalyticsJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz analytics JSON', e);
+        }
+    }
+    if (lessonQuizMonitoringModulesJson) {
+        try {
+            lessonQuizMonitoringModules = JSON.parse(lessonQuizMonitoringModulesJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz monitoring modules JSON', e);
+        }
+    }
+    if (lessonQuizFiltersJson) {
+        try {
+            lessonQuizFilters = JSON.parse(lessonQuizFiltersJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz filters JSON', e);
+        }
     }
     if (evaluationResultJson) {
         try {
@@ -1278,7 +1347,7 @@ if (rootElement) {
             return [];
         }
 
-        if (sectionAttr === 'evaluation_dashboard') {
+        if (sectionAttr === 'evaluation_hub' || sectionAttr === 'evaluation_dashboard') {
             return [];
         }
 
@@ -1288,7 +1357,7 @@ if (rootElement) {
 
         if (sectionAttr === 'evaluation_result_detail') {
             return [
-                { label: 'Evaluations', href: '/admin/evaluations' },
+                { label: 'Evaluations', href: '/admin/evaluations?tab=modules' },
                 { label: 'Evaluation Report', href: null },
             ];
         }
@@ -1447,6 +1516,7 @@ if (rootElement) {
             'participants',
             'resources',
             'evaluation_dashboard',
+            'evaluation_hub',
             'training_evaluation_results',
             'evaluation_results_participant',
             'certification',
@@ -2011,6 +2081,27 @@ if (rootElement) {
                             <EventAttendanceTable event={currentEvent} registrations={registrations} />
                         )}
 
+                        {sectionAttr === 'evaluation_hub' && (
+                            <EvaluationHub
+                                activeTab={evaluationTab}
+                                events={events}
+                                eventFilters={evaluationEventFilters}
+                                evaluationResults={evaluationResults}
+                                evaluationResultsPagination={evaluationResultsPagination}
+                                evaluationAnalytics={evaluationAnalytics}
+                                evaluationModules={evaluationModules}
+                                evaluationAttemptNumbers={evaluationAttemptNumbers}
+                                evaluationFilters={evaluationFilters}
+                                evaluationPassingScore={evaluationPassingScore}
+                                lessonQuizAttempts={lessonQuizAttempts}
+                                lessonQuizPagination={lessonQuizPagination}
+                                lessonQuizAnalytics={lessonQuizAnalytics}
+                                lessonQuizModules={lessonQuizMonitoringModules}
+                                lessonQuizFilters={lessonQuizFilters}
+                                role={role}
+                            />
+                        )}
+
                         {sectionAttr === 'evaluation_dashboard' && (
                             <EvaluationDashboard events={events} />
                         )}
@@ -2076,6 +2167,7 @@ if (rootElement) {
                                 passedCount={currentPassedCount}
                                 failedCount={currentFailedCount}
                                 overallAverage={currentOverallAverage}
+                                summaryStats={evaluationSummaryStats}
                             />
                         )}
 
@@ -10326,7 +10418,10 @@ function EvaluationDashboard({ events }) {
                                     <div className="flex-1 min-w-0">
                                         <h3 className="text-lg font-semibold text-slate-900 mb-1">📘 {event.title}</h3>
                                         <p className="text-sm text-slate-600">
-                                            Scenario: {event.scenario_name || 'N/A'} | Date: {formatDate(event.event_date)}
+                                            Type: {event.simulation_type || 'N/A'} | Scenario: {event.scenario_name || 'N/A'} | Date: {formatDate(event.event_date)}
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Venue: {event.venue || 'N/A'}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-3">
@@ -10343,6 +10438,9 @@ function EvaluationDashboard({ events }) {
                                         <span className="inline-flex items-center gap-1.5 text-sm text-slate-600">
                                             <Users className="w-4 h-4 text-slate-400" />
                                             <span className="font-medium">{event.participant_count ?? 0}</span> Participants
+                                        </span>
+                                        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200">
+                                            Avg: {Number(event.average_score || 0).toFixed(1)}% | Pass: {Number(event.passing_rate || 0).toFixed(1)}%
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
@@ -11157,6 +11255,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
         return initial;
     });
     const [overallFeedback, setOverallFeedback] = React.useState(participantEvaluation?.overall_feedback || '');
+    const [competencyRating, setCompetencyRating] = React.useState(participantEvaluation?.competency_rating || '');
 
     const handleScoreChange = (criterion, field, value) => {
         setFormScores(prev => ({
@@ -11230,7 +11329,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
         const d = formScores[c] || {};
         return d.score !== '' && d.score != null;
     }) ?? false;
-    const canSubmit = !isLocked && allScored;
+    const canSubmit = !isLocked && allScored && Boolean(competencyRating);
 
     const passed = maxScore > 0 && (totalScore / maxScore) >= 0.7;
 
@@ -11253,6 +11352,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                     <span><strong>Event:</strong> {event?.title}</span>
                     <span><strong>Scenario:</strong> {event?.scenario?.title || 'N/A'}</span>
                     <span><strong>Date:</strong> {formatDate(event?.event_date)}</span>
+                    <span><strong>Attendance:</strong> {attendance?.status || 'N/A'}</span>
                 </div>
             </div>
 
@@ -11272,6 +11372,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="status" value="submitted" />
+                <input type="hidden" name="competency_rating" value={competencyRating} />
 
                 {/* Left Column - Criteria (70%) */}
                 <div className="flex-1 lg:w-[70%] space-y-4">
@@ -11330,6 +11431,23 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                 );
                             })}
                             <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+                                <label className="block text-sm font-semibold text-slate-800 mb-2">
+                                    Competency Rating <span className="text-rose-500">*</span>
+                                </label>
+                                <select
+                                    value={competencyRating}
+                                    onChange={(e) => setCompetencyRating(e.target.value)}
+                                    disabled={isLocked}
+                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 disabled:bg-slate-50 mb-4"
+                                    required
+                                >
+                                    <option value="">Select rating</option>
+                                    <option value="Excellent">Excellent</option>
+                                    <option value="Good">Good</option>
+                                    <option value="Satisfactory">Satisfactory</option>
+                                    <option value="Needs Improvement">Needs Improvement</option>
+                                </select>
+
                                 <label className="block text-sm font-semibold text-slate-800 mb-2">Overall Feedback</label>
                                 <textarea
                                     name="overall_feedback"
@@ -11397,6 +11515,9 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                 {!allScored && (
                                     <p className="text-xs text-amber-600 text-center">Score all criteria to enable submit</p>
                                 )}
+                                {allScored && !competencyRating && (
+                                    <p className="text-xs text-amber-600 text-center">Select competency rating to enable submit</p>
+                                )}
                                 <a
                                     href={`/admin/simulation-events/${event.id}/evaluation`}
                                     className="block text-center text-sm text-slate-600 hover:text-slate-800"
@@ -11413,7 +11534,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
 }
 
 // Evaluation Summary Component
-function EvaluationSummary({ event, evaluation, participantEvaluations, criteria, criterionAverages, totalParticipants, passedCount, failedCount, overallAverage }) {
+function EvaluationSummary({ event, evaluation, participantEvaluations, criteria, criterionAverages, totalParticipants, passedCount, failedCount, overallAverage, summaryStats }) {
     const handleExport = (format) => {
         window.location.href = `/admin/simulation-events/${event.id}/evaluation/export/${format}`;
     };
@@ -11421,6 +11542,28 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
     const handlePrint = () => window.print();
     const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const avgPct = (parseFloat(overallAverage ?? 0) || 0).toFixed(2);
+    const metrics = summaryStats?.metrics || {};
+    const participantSummary = summaryStats?.participant_summary || {};
+    const simulationInfo = summaryStats?.simulation_information || {};
+    const highestScore = Number(metrics.highest_score || 0).toFixed(2);
+    const lowestScore = Number(metrics.lowest_score || 0).toFixed(2);
+    const passingRate = Number(metrics.passing_rate || 0).toFixed(2);
+    const completionPct = Number(metrics.evaluation_completion_percentage || 0).toFixed(2);
+    const overallPerformance = metrics.overall_performance || 'Needs Improvement';
+    const getPerformanceBadgeClass = (value) => {
+        switch (value) {
+            case 'Excellent':
+                return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case 'Very Good':
+                return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'Good':
+                return 'bg-sky-100 text-sky-800 border-sky-200';
+            case 'Fair':
+                return 'bg-amber-100 text-amber-800 border-amber-200';
+            default:
+                return 'bg-rose-100 text-rose-800 border-rose-200';
+        }
+    };
 
     return (
         <div className="space-y-4 summary-print">
@@ -11523,7 +11666,10 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                             Evaluation Summary: {event?.title}
                         </h3>
                         <p className="text-sm text-slate-600 mt-1">
-                            Scenario: {event?.scenario?.title || 'N/A'} | Date: {formatDate(event?.event_date)}
+                            Type: {simulationInfo.simulation_type || event?.event_category || 'N/A'} | Scenario: {simulationInfo.disaster_scenario || event?.scenario?.title || 'N/A'} | Date: {formatDate(simulationInfo.date || event?.event_date)}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Venue: {simulationInfo.venue || event?.venue || event?.location || 'N/A'}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -11565,9 +11711,44 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                     </div>
                 </div>
                 <div className="mb-6">
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200 border-l-4 border-l-slate-400">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Total Participants</p>
-                        <p className="text-2xl font-bold text-slate-800">{totalParticipants || 0}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm border-l-4 border-l-slate-400">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Registered</p>
+                            <p className="text-2xl font-bold text-slate-800">{participantSummary.registered_participants ?? totalParticipants ?? 0}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm border-l-4 border-l-emerald-400">
+                            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Present</p>
+                            <p className="text-2xl font-bold text-emerald-700">{participantSummary.present_participants ?? totalParticipants ?? 0}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm border-l-4 border-l-blue-400">
+                            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Evaluated</p>
+                            <p className="text-2xl font-bold text-blue-700">{participantSummary.evaluated_participants ?? totalParticipants ?? 0}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm border-l-4 border-l-violet-400">
+                            <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">Overall Performance</p>
+                            <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-semibold border ${getPerformanceBadgeClass(overallPerformance)}`}>
+                                {overallPerformance}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold text-slate-500 uppercase">Highest Score</p>
+                        <p className="text-xl font-bold text-slate-900 mt-1">{highestScore}%</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold text-slate-500 uppercase">Lowest Score</p>
+                        <p className="text-xl font-bold text-slate-900 mt-1">{lowestScore}%</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold text-slate-500 uppercase">Passing Rate</p>
+                        <p className="text-xl font-bold text-emerald-700 mt-1">{passingRate}%</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold text-slate-500 uppercase">Completion</p>
+                        <p className="text-xl font-bold text-blue-700 mt-1">{completionPct}%</p>
                     </div>
                 </div>
 
@@ -11668,7 +11849,9 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                             <thead className="bg-slate-50">
                                 <tr>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Participant</th>
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Attendance</th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Score</th>
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Competency</th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Result</th>
                                     <th className="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Certification</th>
                                 </tr>
@@ -11688,6 +11871,11 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                     <span className="font-medium text-slate-900">{pe.user?.name || 'Unknown'}</span>
                                                 </td>
                                                 <td className="px-5 py-4">
+                                                    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        {pe.attendance_status || 'present'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-24 h-2.5 bg-slate-200 rounded-full overflow-hidden">
                                                             <div
@@ -11698,6 +11886,9 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                                         <span className="text-sm font-semibold text-slate-800">{totalScore.toFixed(1)} / {maxScore}</span>
                                                         <span className="text-xs text-slate-500">({averageScore.toFixed(1)}%)</span>
                                                     </div>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className="text-sm text-slate-700">{pe.competency_rating || 'Needs Improvement'}</span>
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold border ${
@@ -11721,7 +11912,7 @@ function EvaluationSummary({ event, evaluation, participantEvaluations, criteria
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan="4" className="px-5 py-12 text-center text-slate-500">
+                                        <td colSpan="6" className="px-5 py-12 text-center text-slate-500">
                                             No evaluations submitted yet.
                                         </td>
                                     </tr>

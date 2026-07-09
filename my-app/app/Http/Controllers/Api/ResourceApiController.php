@@ -6,6 +6,7 @@ use App\Models\Resource;
 use App\Models\SimulationEvent;
 use App\Models\ResourceEventAssignment;
 use App\Models\ResourceMovement;
+use App\Models\ResourceMaintenanceLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -127,6 +128,110 @@ class ResourceApiController
             ->all();
 
         return response()->json(['movements' => $rows]);
+    }
+
+    public function reports(): JsonResponse
+    {
+        $mostUsed = ResourceMovement::query()
+            ->selectRaw('resource_id, SUM(quantity) as total_allocated, COUNT(*) as movement_count')
+            ->whereIn('status', ['Reserved', 'In Use', 'Returned', 'Needs Repair'])
+            ->groupBy('resource_id')
+            ->with('resource:id,name,category')
+            ->orderByDesc('total_allocated')
+            ->limit(10)
+            ->get()
+            ->map(fn ($row) => [
+                'resource_id' => (int) $row->resource_id,
+                'resource_name' => $row->resource?->name ?? 'Unknown Resource',
+                'category' => $row->resource?->category ?? '—',
+                'total_allocated' => (int) $row->total_allocated,
+                'movement_count' => (int) $row->movement_count,
+            ])
+            ->values()
+            ->all();
+
+        $currentReservations = Resource::query()
+            ->where('reserved_quantity', '>', 0)
+            ->orderByDesc('reserved_quantity')
+            ->get(['id', 'name', 'category', 'reserved_quantity', 'available', 'status', 'location'])
+            ->map(fn (Resource $resource) => [
+                'resource_id' => $resource->id,
+                'resource_name' => $resource->name,
+                'category' => $resource->category,
+                'reserved_quantity' => (int) ($resource->reserved_quantity ?? 0),
+                'available_quantity' => (int) ($resource->available ?? 0),
+                'status' => $resource->status,
+                'location' => $resource->location,
+            ])
+            ->values()
+            ->all();
+
+        $utilization = Resource::query()
+            ->get(['id', 'name', 'quantity', 'reserved_quantity', 'in_use_quantity', 'needs_repair_quantity'])
+            ->map(function (Resource $resource) {
+                $total = max(0, (int) ($resource->quantity ?? 0));
+                $reserved = max(0, (int) ($resource->reserved_quantity ?? 0));
+                $inUse = max(0, (int) ($resource->in_use_quantity ?? 0));
+                $needsRepair = max(0, (int) ($resource->needs_repair_quantity ?? 0));
+                $used = $reserved + $inUse + $needsRepair;
+                $utilizationRate = $total > 0 ? round(($used / $total) * 100, 2) : 0.0;
+
+                return [
+                    'resource_id' => $resource->id,
+                    'resource_name' => $resource->name,
+                    'total_quantity' => $total,
+                    'active_quantity' => $used,
+                    'utilization_rate' => $utilizationRate,
+                ];
+            })
+            ->sortByDesc('utilization_rate')
+            ->values()
+            ->all();
+
+        $damagedSummary = Resource::query()
+            ->where(function ($query) {
+                $query->where('needs_repair_quantity', '>', 0)
+                    ->orWhere('condition', 'Needs Repair')
+                    ->orWhere('condition', 'Damaged')
+                    ->orWhere('status', 'Needs Repair')
+                    ->orWhere('status', 'Damaged');
+            })
+            ->orderByDesc('needs_repair_quantity')
+            ->get(['id', 'name', 'category', 'condition', 'status', 'needs_repair_quantity'])
+            ->map(fn (Resource $resource) => [
+                'resource_id' => $resource->id,
+                'resource_name' => $resource->name,
+                'category' => $resource->category,
+                'condition' => $resource->condition,
+                'status' => $resource->status,
+                'needs_repair_quantity' => (int) ($resource->needs_repair_quantity ?? 0),
+            ])
+            ->values()
+            ->all();
+
+        $maintenanceHistory = ResourceMaintenanceLog::query()
+            ->with('resource:id,name')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (ResourceMaintenanceLog $log) => [
+                'id' => $log->id,
+                'date' => $log->created_at?->toDateString(),
+                'resource' => $log->resource?->name ?? 'Unknown Resource',
+                'action' => $log->action,
+                'notes' => $log->notes,
+                'technician' => $log->technician,
+            ])
+            ->values()
+            ->all();
+
+        return response()->json([
+            'most_used_equipment' => $mostUsed,
+            'current_reservations' => $currentReservations,
+            'equipment_utilization' => $utilization,
+            'damaged_equipment_summary' => $damagedSummary,
+            'maintenance_history' => $maintenanceHistory,
+        ]);
     }
 
     /**

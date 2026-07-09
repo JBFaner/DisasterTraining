@@ -4,15 +4,14 @@ namespace App\Services\Group6;
 
 use App\Contracts\Group6\Group6ApiClientInterface;
 use App\Models\Group6InboundRecord;
-use App\Models\User;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Hash;
+use App\Services\ParticipantUpsertService;
 use Illuminate\Support\Str;
 
 class ParticipantSyncService
 {
     public function __construct(
         private readonly Group6ApiClientInterface $apiClient,
+        private readonly ParticipantUpsertService $participantUpsertService,
     ) {}
 
     /**
@@ -109,11 +108,11 @@ class ParticipantSyncService
                 'barangay' => $this->stringValue($record, ['barangay', 'barangay_name']),
                 'city' => $this->stringValue($record, ['city', 'municipality', 'municipality_city']),
                 'province' => $this->stringValue($record, ['province']),
+                'street' => $this->stringValue($record, ['street', 'address', 'full_address']),
                 'status' => $this->normalizeStatus($record),
-                'role' => 'PARTICIPANT',
-                'group6_external_id' => $externalId,
                 'last_synced_at' => $now,
                 'registered_at' => $now,
+                'registration_source' => 'synced',
             ];
 
             $participantId = $this->stringValue($record, ['participant_code', 'local_participant_id']);
@@ -121,22 +120,7 @@ class ParticipantSyncService
                 $attributes['participant_id'] = $participantId;
             }
 
-            $user = null;
-            if ($externalId) {
-                $user = User::where('group6_external_id', $externalId)->first();
-            }
-            if (! $user && $email) {
-                $user = User::where('email', $email)->where('role', 'PARTICIPANT')->first();
-            }
-
-            if ($user) {
-                $user->update(Arr::except($attributes, ['email', 'role', 'registered_at']));
-            } else {
-                User::create(array_merge($attributes, [
-                    'password' => Hash::make(Str::random(32)),
-                    'participant_id' => $attributes['participant_id'] ?? $this->generateParticipantId(),
-                ]));
-            }
+            $this->participantUpsertService->upsert($attributes, $externalId);
 
             $synced++;
         }
@@ -168,14 +152,5 @@ class ParticipantSyncService
         $slug = $externalId ? preg_replace('/[^a-zA-Z0-9_-]/', '', $externalId) : Str::random(8);
 
         return "participant.{$slug}@group6.local";
-    }
-
-    protected function generateParticipantId(): string
-    {
-        do {
-            $id = 'PART-'.strtoupper(Str::random(8));
-        } while (User::where('participant_id', $id)->exists());
-
-        return $id;
     }
 }

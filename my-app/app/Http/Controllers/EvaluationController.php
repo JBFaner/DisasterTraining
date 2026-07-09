@@ -7,14 +7,17 @@ use App\Models\ParticipantEvaluation;
 use App\Models\EvaluationScore;
 use App\Models\SimulationEvent;
 use App\Models\Attendance;
-use App\Models\Scenario;
 use App\Services\DatabaseBackupService;
+use App\Services\EvaluationHubService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class EvaluationController extends Controller
 {
+    public function __construct(
+        private readonly EvaluationHubService $hubService,
+    ) {}
+
     /**
      * Display evaluation dashboard with list of completed events
      */
@@ -53,16 +56,45 @@ class EvaluationController extends Controller
 
         $this->authorizeEvaluationAccess();
 
-        $query = SimulationEvent::whereIn('status', ['published', 'ongoing', 'completed'])
-            ->with(['scenario', 'evaluation']);
+        $tab = $request->string('tab')->toString() ?: 'events';
+        if (! in_array($tab, ['events', 'modules', 'lessons'], true)) {
+            $tab = 'events';
+        }
 
-        // Search by event title
+        $viewData = [
+            'section' => 'evaluation_hub',
+            'evaluation_tab' => $tab,
+            'evaluation_event_filters' => [
+                'tab' => 'events',
+                'search' => $request->search,
+                'status' => $request->status,
+            ],
+        ];
+
+        if ($tab === 'events') {
+            $viewData['events'] = $this->loadCompletedEvents($request);
+        } elseif ($tab === 'modules') {
+            $viewData = array_merge($viewData, $this->hubService->moduleResultsPayload($request, $user));
+        } else {
+            $viewData = array_merge($viewData, $this->hubService->lessonQuizPayload($request));
+        }
+
+        return view('app', $viewData);
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    protected function loadCompletedEvents(Request $request)
+    {
+        $query = SimulationEvent::where('status', 'completed')
+            ->with(['scenario', 'evaluation', 'attendances', 'registrations']);
+
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where('title', 'like', "%{$search}%");
         }
 
-        // Filter by evaluation status
         if ($request->has('status') && $request->status) {
             $statusFilter = $request->status;
             if ($statusFilter === 'not_started') {
@@ -74,59 +106,33 @@ class EvaluationController extends Controller
             }
         }
 
-        $events = $query->orderByDesc('event_date')
+        return $query->orderByDesc('event_date')
             ->orderByDesc('start_time')
             ->get()
             ->map(function ($event) {
-                // Get attendance count (present participants)
-                $attendanceCount = Attendance::where('simulation_event_id', $event->id)
-                    ->where('status', 'present')
-                    ->count();
-
-                // Derive evaluation status from actual participant scores
                 $evaluation = $event->evaluation;
-                $evaluationStatus = 'not_started';
-
-                if ($evaluation) {
-                    // Count approved participants
-                    $approvedCount = $event->registrations()
-                        ->where('status', 'approved')
-                        ->count();
-
-                    // Count participants that have at least one score
-                    $withScores = ParticipantEvaluation::where('evaluation_id', $evaluation->id)
-                        ->whereHas('scores')
-                        ->count();
-
-                    if ($withScores === 0) {
-                        $evaluationStatus = 'not_started';
-                    } elseif ($approvedCount > 0 && $withScores >= $approvedCount) {
-                        $evaluationStatus = 'completed';
-                    } else {
-                        $evaluationStatus = 'in_progress';
-                    }
-                }
+                $summary = $evaluation?->buildSummary();
+                $presentCount = $event->attendances->where('status', 'present')->count();
+                $registeredCount = $event->registrations->where('status', 'approved')->count();
+                $evaluationStatus = $evaluation?->status ?? 'not_started';
 
                 return [
                     'id' => $event->id,
                     'title' => $event->title,
                     'event_date' => $event->event_date,
+                    'venue' => $event->venue ?: $event->location,
+                    'simulation_type' => $event->event_category ?: $event->disaster_type,
                     'scenario_name' => $event->scenario ? $event->scenario->title : 'N/A',
-                    'participant_count' => $attendanceCount,
+                    'participant_count' => $presentCount,
+                    'registered_participant_count' => $registeredCount,
                     'evaluation_status' => $evaluationStatus,
                     'evaluation' => $evaluation,
                     'status' => $event->status,
+                    'average_score' => $summary['metrics']['average_score'] ?? 0,
+                    'passing_rate' => $summary['metrics']['passing_rate'] ?? 0,
+                    'overall_performance' => $summary['metrics']['overall_performance'] ?? 'Needs Improvement',
                 ];
             });
-
-        return view('app', [
-            'section' => 'evaluation_dashboard',
-            'events' => $events,
-            'filters' => [
-                'search' => $request->search,
-                'status' => $request->status,
-            ],
-        ]);
     }
 
     /**
@@ -136,10 +142,9 @@ class EvaluationController extends Controller
     {
         $this->authorizeEvaluationAccess();
 
-        // Ensure event is in a relevant status
-        if (!in_array($simulationEvent->status, ['published', 'ongoing', 'completed'])) {
+        if ($simulationEvent->status !== 'completed') {
             return redirect()->route('admin.evaluations.index')
-                ->with('status', 'Evaluation can only be viewed for published, ongoing, or completed events.');
+                ->with('status', 'Evaluation can only be viewed for completed simulation events.');
         }
 
         // Get or create evaluation
@@ -159,36 +164,16 @@ class EvaluationController extends Controller
             $criteria = is_array($scenario->criteria) ? $scenario->criteria : json_decode($scenario->criteria, true);
         }
 
-        // Get all approved registrations for this event
-        $registrations = $simulationEvent->registrations()
-            ->where('status', 'approved')
-            ->with(['user', 'attendance.user'])
+        $attendances = $simulationEvent->attendances()
+            ->where('status', 'present')
+            ->with(['user', 'eventRegistration'])
             ->get();
-
-        // Collect attendances from registrations for compatibility with existing React logic
-        $attendances = $registrations->map(function ($reg) {
-            if ($reg->attendance) {
-                // Ensure attendance has user relationship loaded
-                if (!$reg->attendance->relationLoaded('user')) {
-                    $reg->attendance->load('user');
-                }
-                return $reg->attendance;
-            }
-            return [
-                'id' => 'reg-' . $reg->id, // Mock ID for non-attendance records
-                'user_id' => $reg->user_id,
-                'simulation_event_id' => $reg->simulation_event_id,
-                'status' => 'not_marked',
-                'user' => $reg->user,
-            ];
-        });
 
         // Get participant evaluations
         $participantEvaluations = ParticipantEvaluation::where('evaluation_id', $evaluation->id)
-            ->with(['user', 'scores'])
+            ->with(['user', 'scores', 'attendance'])
             ->get()
             ->map(function ($pe) {
-                // Derive a simple status for the UI based on presence of scores
                 $hasScores = $pe->scores && $pe->scores->count() > 0;
                 $pe->status = $hasScores ? 'submitted' : 'not_evaluated';
                 return $pe;
@@ -221,11 +206,9 @@ class EvaluationController extends Controller
 
         $user = \App\Models\User::findOrFail($userId);
 
-        // Allow evaluation for any participant who has an attendance record for this event.
-        // Frontend already restricts the Evaluate button to participants marked Present/Completed,
-        // so we don't need a strict status guard here.
         $attendance = Attendance::where('simulation_event_id', $simulationEvent->id)
             ->where('user_id', $userId)
+            ->where('status', 'present')
             ->first();
 
         if (!$attendance) {
@@ -248,6 +231,7 @@ class EvaluationController extends Controller
             ],
             [
                 'attendance_id' => $attendance->id,
+                'attendance_status' => $attendance->status,
                 'status' => 'draft',
                 'evaluated_by' => portal_id(),
             ]
@@ -288,10 +272,9 @@ class EvaluationController extends Controller
         }
 
         $user = \App\Models\User::findOrFail($userId);
-        // Allow saving as long as there is any attendance record for this event + user.
-        // Frontend already restricts Evaluate to participants marked Present.
         $attendance = Attendance::where('simulation_event_id', $simulationEvent->id)
             ->where('user_id', $userId)
+            ->where('status', 'present')
             ->first();
 
         if (!$attendance) {
@@ -318,6 +301,7 @@ class EvaluationController extends Controller
                 'scores.*.score' => ['required', 'numeric', 'min:0'],
                 'scores.*.comment' => ['nullable', 'string', 'max:1000'],
                 'overall_feedback' => ['nullable', 'string', 'max:2000'],
+                'competency_rating' => ['required', 'string', 'in:Excellent,Good,Satisfactory,Needs Improvement'],
                 'status' => ['required', 'string', 'in:draft,submitted'],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -339,7 +323,9 @@ class EvaluationController extends Controller
                 ],
                 [
                     'attendance_id' => $attendance->id,
+                    'attendance_status' => $attendance->status,
                     'status' => $data['status'],
+                    'competency_rating' => $data['competency_rating'],
                     'overall_feedback' => $data['overall_feedback'] ?? null,
                     'evaluated_by' => portal_id(),
                     'submitted_at' => $data['status'] === 'submitted' ? now() : null,
@@ -376,6 +362,7 @@ class EvaluationController extends Controller
                 $participantEvaluation->update([
                     'status' => 'submitted',
                     'submitted_at' => now(),
+                    'competency_rating' => $data['competency_rating'],
                 ]);
             }
 
@@ -388,25 +375,20 @@ class EvaluationController extends Controller
                 ]);
             }
 
-            // If all participants have submitted final scores, mark evaluation as completed
-            $approvedCount = $simulationEvent->registrations()
-                ->where('status', 'approved')
-                ->count();
+            $summary = $evaluation->fresh()->buildSummary();
+            $presentCount = $summary['participant_summary']['present_participants'] ?? 0;
+            $evaluatedCount = $summary['participant_summary']['evaluated_participants'] ?? 0;
 
-            if ($approvedCount > 0) {
-                $submittedCount = ParticipantEvaluation::where('evaluation_id', $evaluation->id)
-                    ->where('status', 'submitted')
-                    ->count();
+            if ($presentCount > 0 && $evaluatedCount >= $presentCount && $evaluation->status !== 'completed') {
+                $evaluation->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                    'updated_by' => portal_id(),
+                    'group6_outbound_payload' => $this->buildGroup6Payload($evaluation->fresh()),
+                    'group6_payload_prepared_at' => now(),
+                ]);
 
-                if ($submittedCount >= $approvedCount && $evaluation->status !== 'completed') {
-                    $evaluation->update([
-                        'status' => 'completed',
-                        'completed_at' => now(),
-                        'updated_by' => portal_id(),
-                    ]);
-
-                    app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
-                }
+                app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
             }
         });
 
@@ -442,6 +424,16 @@ class EvaluationController extends Controller
             return back()->with('status', 'Evaluation is locked and cannot be modified.');
         }
 
+        if ($data['status'] === 'completed') {
+            $summary = $evaluation->buildSummary();
+            $presentCount = $summary['participant_summary']['present_participants'] ?? 0;
+            $evaluatedCount = $summary['participant_summary']['evaluated_participants'] ?? 0;
+
+            if ($presentCount === 0 || $evaluatedCount < $presentCount) {
+                return back()->with('status', 'All present participants must be evaluated before marking this event as completed.');
+            }
+        }
+
         $updateData = [
             'status' => $data['status'],
             'updated_by' => portal_id(),
@@ -449,6 +441,8 @@ class EvaluationController extends Controller
 
         if ($data['status'] === 'completed' && !$evaluation->completed_at) {
             $updateData['completed_at'] = now();
+            $updateData['group6_outbound_payload'] = $this->buildGroup6Payload($evaluation->fresh());
+            $updateData['group6_payload_prepared_at'] = now();
         }
 
         $evaluation->update($updateData);
@@ -489,54 +483,20 @@ class EvaluationController extends Controller
 
         $evaluation = Evaluation::where('simulation_event_id', $simulationEvent->id)->firstOrFail();
 
-        // Only include participants that actually have scores (final evaluations)
-        $participantEvaluations = ParticipantEvaluation::where('evaluation_id', $evaluation->id)
-            ->with(['user', 'scores'])
-            ->whereHas('scores')
-            ->get();
-
-        $scenario = $simulationEvent->scenario;
-        $criteria = [];
-        if ($scenario && $scenario->criteria) {
-            $criteria = is_array($scenario->criteria) ? $scenario->criteria : json_decode($scenario->criteria, true);
-        }
-
-        // Apply pass/fail rule (>= 75%) and eligibility (passed => yes)
-        $threshold = 75.00;
-        foreach ($participantEvaluations as $pe) {
-            $avg = (float) ($pe->average_score ?? 0);
-            $pe->result = $avg >= $threshold ? 'passed' : 'failed';
-            $pe->is_eligible_for_certification = $pe->result === 'passed';
-        }
-
-        // Calculate statistics
-        $totalParticipants = $participantEvaluations->count();
-        $passedCount = $participantEvaluations->where('result', 'passed')->count();
-        $failedCount = $participantEvaluations->where('result', 'failed')->count();
-
-        // Calculate average scores per criterion
-        $criterionAverages = [];
-        foreach ($criteria as $criterion) {
-            $criterionName = is_array($criterion) ? $criterion : $criterion;
-            $scores = [];
-            foreach ($participantEvaluations as $pe) {
-                $score = $pe->scores->where('criterion_name', $criterionName)->first();
-                if ($score) {
-                    $scores[] = $score->score;
-                }
-            }
-            $criterionAverages[$criterionName] = count($scores) > 0 
-                ? round(array_sum($scores) / count($scores), 2) 
-                : 0;
-        }
-
-        $overallAverage = $participantEvaluations->avg('average_score') ?? 0;
+        $summary = $evaluation->buildSummary();
+        $participantEvaluations = collect($summary['participant_evaluations'] ?? [])->values()->all();
+        $criteria = $summary['criteria'] ?? [];
+        $criterionAverages = $summary['criterion_averages'] ?? [];
+        $totalParticipants = $summary['participant_summary']['evaluated_participants'] ?? 0;
+        $passedCount = $summary['metrics']['number_passed'] ?? 0;
+        $failedCount = $summary['metrics']['number_failed'] ?? 0;
+        $overallAverage = $summary['metrics']['average_score'] ?? 0;
 
         return view('app', [
             'section' => 'evaluation_summary',
             'event' => $simulationEvent,
             'evaluation' => $evaluation,
-            'participantEvaluations' => $participantEvaluations->values()->all(),
+            'participantEvaluations' => $participantEvaluations,
             'criteria' => $criteria,
             // Keep camelCase for any direct Blade usage
             'criterionAverages' => $criterionAverages,
@@ -551,6 +511,8 @@ class EvaluationController extends Controller
             'passed_count' => $passedCount,
             'failed_count' => $failedCount,
             'overall_average' => $overallAverage,
+            'summaryStats' => $summary,
+            'evaluationSummaryStats' => $summary,
         ]);
     }
 
@@ -605,6 +567,22 @@ class EvaluationController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    protected function buildGroup6Payload(Evaluation $evaluation): array
+    {
+        $summary = $evaluation->buildSummary();
+
+        return [
+            'event_id' => $evaluation->simulation_event_id,
+            'evaluation_id' => $evaluation->id,
+            'average_evaluation_score' => $summary['metrics']['average_score'] ?? 0,
+            'passing_rate' => $summary['metrics']['passing_rate'] ?? 0,
+            'evaluation_completion_status' => $evaluation->status,
+            'overall_performance' => $summary['metrics']['overall_performance'] ?? 'Needs Improvement',
+            'participant_performance_summary' => $summary['participant_performance_summary'] ?? [],
+            'prepared_at' => now()->toIso8601String(),
+        ];
     }
 
     protected function authorizeEvaluationAccess(): void

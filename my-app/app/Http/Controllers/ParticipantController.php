@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\SimulationEvent;
 use App\Services\AuditLogger;
 use App\Services\Group6\ParticipantSyncService;
+use App\Services\ParticipantUpsertService;
 use App\Services\ParticipantRegistryService;
 use Illuminate\Http\Request;
 
@@ -15,10 +16,11 @@ class ParticipantController extends Controller
     public function __construct(
         private readonly ParticipantRegistryService $registry,
         private readonly ParticipantSyncService $syncService,
+        private readonly ParticipantUpsertService $participantUpsertService,
     ) {}
 
     /**
-     * Display the participant registry (read-only, synchronized records).
+     * Display the participant registry.
      */
     public function index(Request $request)
     {
@@ -32,6 +34,14 @@ class ParticipantController extends Controller
             'active' => (clone $summaryBase)->where('status', 'active')->count(),
             'inactive' => (clone $summaryBase)->where('status', 'inactive')->count(),
             'synced_this_month' => (clone $summaryBase)->where('last_synced_at', '>=', $startOfMonth)->count(),
+            'local' => (clone $summaryBase)->where(function ($query) {
+                $query->whereNull('group6_external_id')
+                    ->where('registration_source', '!=', 'synced');
+            })->count(),
+            'synced' => (clone $summaryBase)->where(function ($query) {
+                $query->whereNotNull('group6_external_id')
+                    ->orWhere('registration_source', 'synced');
+            })->count(),
         ];
 
         $query = User::where('role', 'PARTICIPANT')
@@ -50,6 +60,21 @@ class ParticipantController extends Controller
 
         if ($request->filled('status_filter')) {
             $query->where('status', $request->string('status_filter'));
+        }
+
+        if ($request->filled('source_filter') && $request->string('source_filter') !== 'all') {
+            $source = $request->string('source_filter')->toString();
+            if ($source === 'synced') {
+                $query->where(function ($q) {
+                    $q->whereNotNull('group6_external_id')
+                        ->orWhere('registration_source', 'synced');
+                });
+            } elseif ($source === 'local') {
+                $query->where(function ($q) {
+                    $q->whereNull('group6_external_id')
+                        ->where('registration_source', '!=', 'synced');
+                });
+            }
         }
 
         if ($request->filled('barangay_filter')) {
@@ -154,8 +179,57 @@ class ParticipantController extends Controller
             ->with($result['success'] ? 'status' : 'error', $result['message']);
     }
 
+    public function store(Request $request)
+    {
+        $this->authorizeParticipantAccess();
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
+            'barangay' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'province' => ['nullable', 'string', 'max:255'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'in:active,inactive'],
+        ]);
+
+        $participant = $this->participantUpsertService->upsert([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'],
+            'barangay' => $data['barangay'] ?? null,
+            'city' => $data['city'] ?? null,
+            'province' => $data['province'] ?? null,
+            'street' => $data['street'] ?? null,
+            'status' => $data['status'],
+            'registered_at' => now(),
+            'registration_source' => 'local',
+        ]);
+
+        AuditLogger::log([
+            'user' => portal_user(),
+            'action' => 'Registered participant',
+            'module' => 'Participant Registry',
+            'status' => 'success',
+            'description' => "Participant {$participant->name} was registered in the unified registry.",
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Participant registered successfully.',
+                'participant' => $this->registry->enrichParticipant($participant),
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.participants.index')
+            ->with('status', 'Participant registered successfully.');
+    }
+
     /**
-     * Show read-only participant registry profile.
+     * Show participant registry profile.
      */
     public function show(User $user)
     {

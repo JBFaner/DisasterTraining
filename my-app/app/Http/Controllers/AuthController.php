@@ -15,12 +15,15 @@ use App\Support\MaskedEmail;
 use App\Support\PortalAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
     private const ADMIN_OTP_EXPIRY_MINUTES = 2;
+    private const PARTICIPANT_EMAIL_VERIFICATION_EXPIRY_MINUTES = 15;
+    private const PARTICIPANT_EMAIL_RESEND_COOLDOWN_SECONDS = 60;
     private const CAMPAIGN_REGISTRATION_SOURCE = 'campaign_planning_scheduling';
 
     private function createCampaignEventRegistrationIfNeeded(User $user, ?array $campaignContext): void
@@ -300,6 +303,15 @@ class AuthController extends Controller
         }
 
         $loginAttempts->clearAttempts($email, $ip);
+
+        if (! $user->email_verified_at || $user->status === 'pending_email_verification') {
+            return back()
+                ->withErrors([
+                    'email' => 'Your email address has not yet been verified. Please verify your email before accessing the system.',
+                ])
+                ->with('unverified_email', $user->email)
+                ->onlyInput('email');
+        }
 
         // Participant login flow (no OTP, no remember token)
         if ($user->status === 'inactive') {

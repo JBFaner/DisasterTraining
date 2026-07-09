@@ -365,6 +365,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             Route::get('/resources', [\App\Http\Controllers\Api\ResourceApiController::class, 'index'])->name('resources.index');
             Route::get('/resources/{resource}/history', [\App\Http\Controllers\Api\ResourceApiController::class, 'getHistory'])->name('resources.history');
             Route::get('/resource-movements', [\App\Http\Controllers\Api\ResourceApiController::class, 'movements'])->name('resources.movements');
+            Route::get('/resource-reports', [\App\Http\Controllers\Api\ResourceApiController::class, 'reports'])->name('resources.reports');
         });
 
         // Group 6 — external system integration (status & placeholders only)
@@ -376,6 +377,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
 
         // Participants (admin management)
         Route::get('/participants', [ParticipantController::class, 'index'])->name('admin.participants.index');
+        Route::post('/participants', [ParticipantController::class, 'store'])->name('admin.participants.store');
         Route::post('/participants/sync', [ParticipantController::class, 'sync'])->name('admin.participants.sync');
         Route::get('/participants/export/csv', [ParticipantController::class, 'export'])->name('admin.participants.export');
         Route::get('/participants/{user}', [ParticipantController::class, 'show'])

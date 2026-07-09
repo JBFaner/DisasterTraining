@@ -8,9 +8,32 @@ use App\Models\ResourceMovement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ResourceAllocationInventoryController
 {
+    private function assignmentColumns(): array
+    {
+        static $columns = null;
+
+        if ($columns === null) {
+            $columns = Schema::getColumnListing('resource_event_assignments');
+        }
+
+        return $columns;
+    }
+
+    private function assignmentPayload(array $values): array
+    {
+        $columns = array_flip($this->assignmentColumns());
+
+        return array_filter(
+            $values,
+            fn ($value, $key) => isset($columns[$key]),
+            ARRAY_FILTER_USE_BOTH
+        );
+    }
+
     public function reserve(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -46,19 +69,21 @@ class ResourceAllocationInventoryController
                     ]);
                     $resource->refreshStockStatus();
 
-                    ResourceEventAssignment::updateOrCreate(
-                        [
-                            'resource_id' => $resource->id,
-                            'event_id' => $eventId,
-                        ],
-                        [
-                            'quantity_assigned' => $qty,
-                            'status' => 'Reserved',
-                            'notes' => $notes,
-                            'assigned_by' => null,
-                            'assigned_at' => now(),
-                        ],
-                    );
+                    if ($eventId) {
+                        ResourceEventAssignment::updateOrCreate(
+                            [
+                                'resource_id' => $resource->id,
+                                'event_id' => $eventId,
+                            ],
+                            $this->assignmentPayload([
+                                'quantity_assigned' => $qty,
+                                'status' => 'Reserved',
+                                'notes' => $notes,
+                                'assigned_by' => null,
+                                'assigned_at' => now(),
+                            ]),
+                        );
+                    }
 
                     ResourceMovement::create([
                         'resource_id' => $resource->id,

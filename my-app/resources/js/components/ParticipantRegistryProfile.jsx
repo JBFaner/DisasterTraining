@@ -56,6 +56,17 @@ function RegistryStatusBadge({ label }) {
     );
 }
 
+function SourceBadge({ source }) {
+    const normalized = (source || '').toString().toLowerCase();
+    const synced = normalized === 'synced';
+
+    return (
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${synced ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+            {synced ? 'SYNCED' : 'LOCAL'}
+        </span>
+    );
+}
+
 function getInitialTab() {
     if (typeof window === 'undefined') return 'personal';
     const params = new URLSearchParams(window.location.search);
@@ -169,9 +180,7 @@ export function ParticipantRegistryProfile({ participant }) {
             />
 
             <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4">
-                This profile is synchronized from the{' '}
-                <span className="font-semibold">Community Registration & Campaign Management System</span>.
-                Personal details are read-only here. Updates must be made in the external system and synced into this registry.
+                This participant profile is part of the unified registry and supports both locally registered and synchronized records from the Community Registration & Campaign Management System.
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
@@ -219,6 +228,7 @@ export function ParticipantRegistryProfile({ participant }) {
                         <DetailItem label="Municipality / City" value={record.city || '—'} />
                         <DetailItem label="Province" value={record.province || '—'} />
                         <DetailItem label="Registry Status" value={<AdminStatusBadge status={record.status} />} />
+                        <DetailItem label="Source" value={<SourceBadge source={record.participant_source} />} />
                         <DetailItem label="External ID" value={record.group6_external_id || '—'} />
                         <DetailItem label="Last Synced" value={formatDateTime(record.last_synced_at)} />
                     </dl>

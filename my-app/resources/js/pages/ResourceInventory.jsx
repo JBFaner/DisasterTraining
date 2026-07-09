@@ -123,10 +123,13 @@ export function ResourceInventory() {
     const [completedEventsWithResources, setCompletedEventsWithResources] = useState([]);
     const [movementHistory, setMovementHistory] = useState([]);
     const [selectedResourceHistory, setSelectedResourceHistory] = useState(null);
-    const [reportCategoryFilter, setReportCategoryFilter] = useState('all');
-    const [reportConditionFilter, setReportConditionFilter] = useState('all');
-    const [reportLocationFilter, setReportLocationFilter] = useState('all');
-
+    const [reportData, setReportData] = useState({
+        most_used_equipment: [],
+        current_reservations: [],
+        equipment_utilization: [],
+        damaged_equipment_summary: [],
+        maintenance_history: [],
+    });
     const resourceTypes = ['PPE', 'Fire Equipment', 'Medical', 'Communication', 'Vehicles', 'Tools', 'Other'];
     const statusOptions = ['Available', 'In Use', 'Under Maintenance', 'Damaged', 'Missing', 'Reserved'];
     const conditionOptions = ['New', 'Good', 'Needs Repair', 'Damaged'];
@@ -137,6 +140,7 @@ export function ResourceInventory() {
         fetchEvents();
         fetchCompletedEventsWithResources();
         fetchMovementHistory();
+        fetchReportData();
     }, []);
 
 
@@ -204,6 +208,23 @@ export function ResourceInventory() {
             setMovementHistory(Array.isArray(data.movements) ? data.movements : []);
         } catch (error) {
             console.error('Error fetching movement history:', error);
+        }
+    };
+
+    const fetchReportData = async () => {
+        try {
+            const response = await fetch('/admin/api/resource-reports');
+            if (!response.ok) return;
+            const data = await response.json().catch(() => ({}));
+            setReportData({
+                most_used_equipment: Array.isArray(data.most_used_equipment) ? data.most_used_equipment : [],
+                current_reservations: Array.isArray(data.current_reservations) ? data.current_reservations : [],
+                equipment_utilization: Array.isArray(data.equipment_utilization) ? data.equipment_utilization : [],
+                damaged_equipment_summary: Array.isArray(data.damaged_equipment_summary) ? data.damaged_equipment_summary : [],
+                maintenance_history: Array.isArray(data.maintenance_history) ? data.maintenance_history : [],
+            });
+        } catch (error) {
+            console.error('Error fetching report data:', error);
         }
     };
 
@@ -901,7 +922,7 @@ export function ResourceInventory() {
 
     const TABS = [
         { id: 'resources', label: 'Resources' },
-        { id: 'usage_tracking', label: 'Usage Tracking' },
+        { id: 'usage_tracking', label: 'Movement History' },
         { id: 'maintenance', label: 'Maintenance' },
         { id: 'reports', label: 'Reports' },
     ];
@@ -1366,280 +1387,141 @@ export function ResourceInventory() {
                 </div>
             )}
 
-            {activeTab === 'reports' && (() => {
-                const categoryDistribution = resourceTypes.map(type => ({
-                    name: type,
-                    count: resources.filter(r => r.category === type).length,
-                })).filter(item => item.count > 0);
-                const maxCategoryCount = Math.max(...categoryDistribution.map(c => c.count), 1);
-                
-                const conditionBreakdown = conditionOptions.map(cond => ({
-                    name: cond,
-                    count: resources.filter(r => r.condition === cond).length,
-                }));
-                const maxConditionCount = Math.max(...conditionBreakdown.map(c => c.count), 1);
-                
-                const locations = [...new Set(resources.map(r => r.location).filter(Boolean))];
-                const filteredForReports = resources.filter(r => {
-                    const matchCategory = reportCategoryFilter === 'all' || r.category === reportCategoryFilter;
-                    const matchCondition = reportConditionFilter === 'all' || r.condition === reportConditionFilter;
-                    const matchLocation = reportLocationFilter === 'all' || r.location === reportLocationFilter;
-                    return matchCategory && matchCondition && matchLocation;
-                });
-                
-                // Quick Insights - Enhanced
-                const resourcesWithAssignments = resources.filter(r => (r.eventAssignments || []).length > 0);
-                const mostUsedResource = resourcesWithAssignments.reduce((max, r) => {
-                    const assignments = (r.eventAssignments || []).length;
-                    return assignments > (max.eventAssignments?.length || 0) ? r : max;
-                }, resourcesWithAssignments[0] || {});
-                const mostUsedCount = mostUsedResource?.eventAssignments?.length || 0;
-                
-                const unusedResources = resources.filter(r => {
-                    const lastUsed = r.lastUpdated ? new Date(r.lastUpdated) : null;
-                    if (!lastUsed) return true;
-                    const daysSince = (Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24);
-                    return daysSince > 30 && (r.status === 'Available' || !r.status);
-                });
-                
-                // Usage Over Time - Simulate monthly data (since we don't have historical data)
-                const usageOverTime = [
-                    { month: 'Jan', inUse: Math.floor(Math.random() * 10) + 5, available: Math.floor(Math.random() * 20) + 15 },
-                    { month: 'Feb', inUse: Math.floor(Math.random() * 10) + 5, available: Math.floor(Math.random() * 20) + 15 },
-                    { month: 'Mar', inUse: Math.floor(Math.random() * 10) + 5, available: Math.floor(Math.random() * 20) + 15 },
-                    { month: 'Apr', inUse: stats.inUse, available: stats.available },
-                ];
-                const maxUsage = Math.max(...usageOverTime.map(u => Math.max(u.inUse, u.available)), 1);
-                
-                // Highest maintenance cost (most frequently needing repair)
-                const maintenanceFrequent = resources.filter(r => r.condition === 'Needs Repair' || r.status === 'Under Maintenance' || r.status === 'Damaged')
-                    .sort((a, b) => {
-                        const aCount = (a.eventAssignments || []).length;
-                        const bCount = (b.eventAssignments || []).length;
-                        return bCount - aCount;
-                    })[0];
-                
-                return (
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        {/* Left Filter Panel */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm sticky top-4">
-                                <h3 className="font-semibold text-slate-500 mb-4 text-sm uppercase tracking-wide">Filter Panel</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-2">Category</label>
-                                        <select
-                                            value={reportCategoryFilter}
-                                            onChange={(e) => setReportCategoryFilter(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                        >
-                                            <option value="all">All Categories</option>
-                                            {resourceTypes.map(type => (
-                                                <option key={type} value={type}>{type}</option>
-                                            ))}
-                                        </select>
+            {activeTab === 'reports' && (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl font-semibold text-slate-900">Resource Reports</h2>
+                            <p className="text-slate-600 mt-1 text-sm">Most Used, Reservations, Utilization, Damaged Summary, and Maintenance History.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <AdminSecondaryButton onClick={fetchReportData}>Refresh</AdminSecondaryButton>
+                            <AdminSecondaryButton onClick={handleExportReport}>
+                                <Download className="w-4 h-4" />
+                                Export
+                            </AdminSecondaryButton>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 uppercase">Most Used Equipment</p>
+                            <p className="text-2xl font-bold text-slate-900 mt-1">{reportData.most_used_equipment.length}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 uppercase">Current Reservations</p>
+                            <p className="text-2xl font-bold text-violet-700 mt-1">{reportData.current_reservations.length}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 uppercase">Equipment Utilization</p>
+                            <p className="text-2xl font-bold text-blue-700 mt-1">{reportData.equipment_utilization.length}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 uppercase">Damaged Summary</p>
+                            <p className="text-2xl font-bold text-amber-700 mt-1">{reportData.damaged_equipment_summary.length}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 uppercase">Maintenance History</p>
+                            <p className="text-2xl font-bold text-emerald-700 mt-1">{reportData.maintenance_history.length}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-200">
+                                <h3 className="font-semibold text-slate-900">Most Used Equipment</h3>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                                {reportData.most_used_equipment.slice(0, 8).map((row) => (
+                                    <div key={row.resource_id} className="px-5 py-3 flex items-center justify-between text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-900">{row.resource_name}</p>
+                                            <p className="text-slate-500">{row.category}</p>
+                                        </div>
+                                        <p className="font-semibold text-slate-900">{row.total_allocated}</p>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-2">Condition</label>
-                                        <select
-                                            value={reportConditionFilter}
-                                            onChange={(e) => setReportConditionFilter(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                        >
-                                            <option value="all">All Conditions</option>
-                                            {conditionOptions.map(cond => (
-                                                <option key={cond} value={cond}>{cond}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-2">Location</label>
-                                        <select
-                                            value={reportLocationFilter}
-                                            onChange={(e) => setReportLocationFilter(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                        >
-                                            <option value="all">All Locations</option>
-                                            {locations.map(loc => (
-                                                <option key={loc} value={loc}>{loc}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-2">Date Range</label>
-                                        <select className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
-                                            <option>Last 30 days</option>
-                                            <option>Last 90 days</option>
-                                            <option>Last 6 months</option>
-                                            <option>All time</option>
-                                        </select>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            setReportCategoryFilter('all');
-                                            setReportConditionFilter('all');
-                                            setReportLocationFilter('all');
-                                        }}
-                                        className="w-full px-3 py-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors font-medium"
-                                    >
-                                        Clear Filters
-                                    </button>
-                                </div>
+                                ))}
+                                {reportData.most_used_equipment.length === 0 && <div className="px-5 py-8 text-sm text-slate-500 text-center">No data available.</div>}
                             </div>
                         </div>
 
-                        {/* Main Content */}
-                        <div className="lg:col-span-3 space-y-6">
-                            {/* Header */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h2 className="text-xl font-semibold text-slate-900">Resource Reports & Analytics</h2>
-                                        <p className="text-slate-600 mt-1 text-sm">Export and view detailed resource usage statistics</p>
-                                    </div>
-                                    <button
-                                        onClick={handleExportReport}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:shadow-[0_0_0_3px_rgba(59,130,246,0.2)] transition-all duration-200 font-medium"
-                                    >
-                                        <Download className="w-5 h-5" />
-                                        Export to CSV
-                                    </button>
-                                </div>
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-200">
+                                <h3 className="font-semibold text-slate-900">Current Reservations</h3>
                             </div>
-
-                            {/* Visual Summary Charts */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Resource Distribution by Category */}
-                                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="font-semibold text-slate-900 mb-4">Resource Distribution by Category</h3>
-                                    <div className="space-y-3">
-                                        {categoryDistribution.length > 0 ? categoryDistribution.map((item) => (
-                                            <div key={item.name}>
-                                                <div className="flex justify-between items-center mb-1.5">
-                                                    <span className="text-sm font-medium text-slate-700">{item.name}</span>
-                                                    <span className="text-sm font-bold text-slate-900">{item.count}</span>
-                                                </div>
-                                                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all duration-500"
-                                                        style={{ width: `${(item.count / maxCategoryCount) * 100}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        )) : (
-                                            <p className="text-sm text-slate-500 text-center py-4">No data available</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Condition Breakdown */}
-                                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="font-semibold text-slate-900 mb-4">Condition Breakdown</h3>
-                                    <div className="space-y-3">
-                                        {conditionBreakdown.map((item) => {
-                                            const colorMap = {
-                                                'New': 'from-emerald-500 to-emerald-600',
-                                                'Good': 'from-blue-500 to-blue-600',
-                                                'Needs Repair': 'from-amber-500 to-amber-600',
-                                                'Damaged': 'from-red-500 to-red-600',
-                                            };
-                                            const color = colorMap[item.name] || 'from-slate-400 to-slate-500';
-                                            return (
-                                                <div key={item.name}>
-                                                    <div className="flex justify-between items-center mb-1.5">
-                                                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
-                                                        <span className="text-sm font-bold text-slate-900">{item.count}</span>
-                                                    </div>
-                                                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full bg-gradient-to-r ${color} rounded-full transition-all duration-500`}
-                                                            style={{ width: `${(item.count / maxConditionCount) * 100}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Usage Over Time */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                <h3 className="font-semibold text-slate-900 mb-4">Usage Over Time</h3>
-                                <div className="space-y-3">
-                                    {usageOverTime.map((item) => (
-                                        <div key={item.month}>
-                                            <div className="flex justify-between items-center mb-1.5">
-                                                <span className="text-sm font-medium text-slate-700">{item.month}</span>
-                                                <div className="flex gap-4 text-xs">
-                                                    <span className="text-blue-600">In Use: {item.inUse}</span>
-                                                    <span className="text-emerald-600">Available: {item.available}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-1 h-3">
-                                                <div
-                                                    className="bg-blue-500 rounded-l-full transition-all duration-500"
-                                                    style={{ width: `${(item.inUse / maxUsage) * 100}%` }}
-                                                ></div>
-                                                <div
-                                                    className="bg-emerald-500 rounded-r-full transition-all duration-500"
-                                                    style={{ width: `${(item.available / maxUsage) * 100}%` }}
-                                                ></div>
-                                            </div>
+                            <div className="divide-y divide-slate-100">
+                                {reportData.current_reservations.slice(0, 8).map((row) => (
+                                    <div key={row.resource_id} className="px-5 py-3 flex items-center justify-between text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-900">{row.resource_name}</p>
+                                            <p className="text-slate-500">{row.location || '—'}</p>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Quick Insights Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-all duration-200">
-                                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Most Used Resource</p>
-                                    <p className="text-lg font-bold text-blue-900 mb-1 truncate">{mostUsedResource?.name || '—'}</p>
-                                    <p className="text-sm text-blue-700">{mostUsedCount} assignment{mostUsedCount !== 1 ? 's' : ''}</p>
-                                </div>
-                                <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-5 rounded-xl border border-amber-200 shadow-sm hover:shadow-md transition-all duration-200">
-                                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Highest Maintenance Cost</p>
-                                    <p className="text-lg font-bold text-amber-900 mb-1 truncate">
-                                        {maintenanceFrequent?.name || 'None'}
-                                    </p>
-                                    <p className="text-sm text-amber-700">
-                                        {resources.filter(r => r.condition === 'Needs Repair' || r.status === 'Under Maintenance' || r.status === 'Damaged').length} item{resources.filter(r => r.condition === 'Needs Repair' || r.status === 'Under Maintenance' || r.status === 'Damaged').length !== 1 ? 's' : ''} need attention
-                                    </p>
-                                </div>
-                                <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200">
-                                    <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">Unused Resources</p>
-                                    <p className="text-lg font-bold text-slate-900 mb-1">{unusedResources.length}</p>
-                                    <p className="text-sm text-slate-600">Inactive 30+ days</p>
-                                </div>
-                            </div>
-
-                            {/* Filtered Summary */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                <h3 className="font-semibold text-slate-900 mb-4">Filtered Inventory Summary</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-slate-600 block mb-1">Total Items:</span>
-                                        <p className="text-lg font-bold text-slate-900">{filteredForReports.reduce((sum, r) => sum + r.quantity, 0)}</p>
+                                        <p className="font-semibold text-violet-700">{row.reserved_quantity}</p>
                                     </div>
-                                    <div>
-                                        <span className="text-slate-600 block mb-1">Unique Resources:</span>
-                                        <p className="text-lg font-bold text-slate-900">{filteredForReports.length}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-600 block mb-1">Damaged Items:</span>
-                                        <p className="text-lg font-bold text-red-600">{filteredForReports.filter((r) => r.condition === 'Damaged').length}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-600 block mb-1">Under Maintenance:</span>
-                                        <p className="text-lg font-bold text-yellow-600">{filteredForReports.filter((r) => r.status === 'Under Maintenance').length}</p>
-                                    </div>
-                                </div>
+                                ))}
+                                {reportData.current_reservations.length === 0 && <div className="px-5 py-8 text-sm text-slate-500 text-center">No active reservations.</div>}
                             </div>
                         </div>
                     </div>
-                );
-            })()}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-200">
+                                <h3 className="font-semibold text-slate-900">Equipment Utilization</h3>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                                {reportData.equipment_utilization.slice(0, 8).map((row) => (
+                                    <div key={row.resource_id} className="px-5 py-3 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <p className="font-medium text-slate-900">{row.resource_name}</p>
+                                            <p className="font-semibold text-blue-700">{row.utilization_rate}%</p>
+                                        </div>
+                                        <div className="mt-2 w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                                            <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, row.utilization_rate)}%` }} />
+                                        </div>
+                                    </div>
+                                ))}
+                                {reportData.equipment_utilization.length === 0 && <div className="px-5 py-8 text-sm text-slate-500 text-center">No utilization data.</div>}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-200">
+                                <h3 className="font-semibold text-slate-900">Damaged Equipment Summary</h3>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                                {reportData.damaged_equipment_summary.slice(0, 8).map((row) => (
+                                    <div key={row.resource_id} className="px-5 py-3 flex items-center justify-between text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-900">{row.resource_name}</p>
+                                            <p className="text-slate-500">{row.condition} / {row.status}</p>
+                                        </div>
+                                        <p className="font-semibold text-amber-700">{row.needs_repair_quantity}</p>
+                                    </div>
+                                ))}
+                                {reportData.damaged_equipment_summary.length === 0 && <div className="px-5 py-8 text-sm text-slate-500 text-center">No damaged items.</div>}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 border-b border-slate-200">
+                            <h3 className="font-semibold text-slate-900">Maintenance History</h3>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                            {reportData.maintenance_history.slice(0, 12).map((row) => (
+                                <div key={row.id} className="px-5 py-3 grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
+                                    <p className="text-slate-700">{row.date || '—'}</p>
+                                    <p className="font-medium text-slate-900">{row.resource}</p>
+                                    <p className="text-slate-700">{row.action}</p>
+                                    <p className="text-slate-600 truncate">{row.notes || '—'}</p>
+                                </div>
+                            ))}
+                            {reportData.maintenance_history.length === 0 && <div className="px-5 py-8 text-sm text-slate-500 text-center">No maintenance records found.</div>}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Notification Alerts */}
             {stats.needsRepair > 0 && (
