@@ -20,7 +20,10 @@ export function AdminDataTable({
     onPageChange = null,
     renderActions = null,
     minWidth = '900px',
+    compact = false,
 }) {
+    const cellPadding = compact ? 'px-4 py-2.5' : 'px-5 py-4';
+    const headerPadding = compact ? 'px-4 py-3' : 'px-5 py-4';
     const SortIcon = ({ columnKey }) => {
         if (!onSort || !columns.find((c) => c.key === columnKey)?.sortable) {
             return null;
@@ -56,9 +59,9 @@ export function AdminDataTable({
                             {columns.map((column) => (
                                 <th
                                     key={column.key}
-                                    className={`px-5 py-4 text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap ${
+                                    className={`${headerPadding} text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap ${
                                         column.align === 'right' ? 'text-right' : 'text-left'
-                                    } ${column.sortable && onSort ? 'cursor-pointer select-none hover:bg-slate-100/80' : ''}`}
+                                    } ${column.headerClassName || ''} ${column.sortable && onSort ? 'cursor-pointer select-none hover:bg-slate-100/80' : ''}`}
                                     onClick={() => handleSort(column)}
                                 >
                                     <span className="inline-flex items-center gap-1.5">
@@ -68,7 +71,7 @@ export function AdminDataTable({
                                 </th>
                             ))}
                             {renderActions && (
-                                <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                                <th className={`${headerPadding} text-right text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap`}>
                                     Actions
                                 </th>
                             )}
@@ -94,7 +97,7 @@ export function AdminDataTable({
                                 {columns.map((column) => (
                                     <td
                                         key={column.key}
-                                        className={`px-5 py-4 whitespace-nowrap ${
+                                        className={`${cellPadding} whitespace-nowrap ${
                                             column.align === 'right' ? 'text-right' : ''
                                         } ${column.className || ''}`}
                                     >
@@ -104,7 +107,7 @@ export function AdminDataTable({
                                     </td>
                                 ))}
                                 {renderActions && (
-                                    <td className="px-5 py-4 whitespace-nowrap">
+                                    <td className={`${cellPadding} whitespace-nowrap`}>
                                         <div className="flex items-center justify-end gap-2">
                                             {renderActions(row)}
                                         </div>

@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceApiController;
 use App\Http\Controllers\Api\Group6InboundController;
+use App\Http\Controllers\Api\ResourceAllocationInventoryController;
 use App\Models\Resource;
 
 // Public API endpoints
@@ -24,6 +25,22 @@ Route::get('/resources/{resource}/history', function (Resource $resource) {
         'history' => $resource->maintenanceLogs()->orderBy('created_at', 'desc')->get(),
     ]);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Resource Allocation — inbound integration
+|--------------------------------------------------------------------------
+| Inventory is the source of truth. Resource Allocation can reserve / mark in-use / return.
+| Auth: X-Resource-Allocation-Api-Key header (or Bearer token).
+*/
+Route::prefix('integrations/resource-allocation')
+    ->middleware('resource_allocation.api')
+    ->name('api.integrations.resource-allocation.')
+    ->group(function () {
+        Route::post('/reserve', [ResourceAllocationInventoryController::class, 'reserve'])->name('reserve');
+        Route::post('/mark-in-use', [ResourceAllocationInventoryController::class, 'markInUse'])->name('mark-in-use');
+        Route::post('/return', [ResourceAllocationInventoryController::class, 'returnItems'])->name('return');
+    });
 
 /*
 |--------------------------------------------------------------------------

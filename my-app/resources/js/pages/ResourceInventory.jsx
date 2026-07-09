@@ -121,6 +121,7 @@ export function ResourceInventory() {
     const [loading, setLoading] = useState(true);
     const [events, setEvents] = useState([]);
     const [completedEventsWithResources, setCompletedEventsWithResources] = useState([]);
+    const [movementHistory, setMovementHistory] = useState([]);
     const [selectedResourceHistory, setSelectedResourceHistory] = useState(null);
     const [reportCategoryFilter, setReportCategoryFilter] = useState('all');
     const [reportConditionFilter, setReportConditionFilter] = useState('all');
@@ -135,6 +136,7 @@ export function ResourceInventory() {
         fetchResources();
         fetchEvents();
         fetchCompletedEventsWithResources();
+        fetchMovementHistory();
     }, []);
 
 
@@ -191,6 +193,17 @@ export function ResourceInventory() {
             setSelectedResourceHistory(data);
         } catch (error) {
             console.error('Error fetching resource history:', error);
+        }
+    };
+
+    const fetchMovementHistory = async () => {
+        try {
+            const response = await fetch('/admin/api/resource-movements?limit=100');
+            if (!response.ok) return;
+            const data = await response.json().catch(() => ({}));
+            setMovementHistory(Array.isArray(data.movements) ? data.movements : []);
+        } catch (error) {
+            console.error('Error fetching movement history:', error);
         }
     };
 
@@ -574,6 +587,7 @@ export function ResourceInventory() {
             .then(data => {
                 const resourceData = data.resource || resource;
                 const history = data.history || [];
+                const movements = data.movements || [];
                 const assignments = resourceData.eventAssignments || [];
                 
                 Swal.fire({
@@ -601,6 +615,18 @@ export function ResourceInventory() {
                                 <div>
                                     <p class="text-xs font-semibold text-slate-500 uppercase">Available</p>
                                     <p class="text-sm font-medium text-slate-900">${resourceData.available || resourceData.quantity} units</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Reserved</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.reserved_quantity || 0} units</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">In Use</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.in_use_quantity || 0} units</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Needs Repair</p>
+                                    <p class="text-sm font-medium text-slate-900">${resourceData.needs_repair_quantity || 0} units</p>
                                 </div>
                                 <div>
                                     <p class="text-xs font-semibold text-slate-500 uppercase">Status</p>
@@ -653,6 +679,20 @@ export function ResourceInventory() {
                                             <p class="text-sm font-medium text-slate-900">${log.action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
                                             <p class="text-xs text-slate-600">${log.notes || 'No notes'}</p>
                                             <p class="text-xs text-slate-500 mt-1">${new Date(log.created_at).toLocaleString()}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                            ${movements.length > 0 ? `
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Movement History</p>
+                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                    ${movements.slice(0, 6).map(m => `
+                                        <div class="p-2 border-l-4 border-emerald-300 bg-emerald-50/40 rounded">
+                                            <p class="text-sm font-medium text-slate-900">${m.status}</p>
+                                            <p class="text-xs text-slate-600">${m.quantity || 0} unit(s) • ${m.requested_by || m.source_module || '—'} • ${m.simulationEvent?.title || ''}</p>
+                                            <p class="text-xs text-slate-500 mt-1">${new Date(m.created_at).toLocaleString()}</p>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -851,6 +891,7 @@ export function ResourceInventory() {
     const stats = {
         total: resources.length,
         available: resources.filter((r) => r.status === 'Available').length,
+        reserved: resources.filter((r) => r.status === 'Reserved').length,
         inUse: resources.filter((r) => r.status === 'In Use' || r.status === 'Partially Assigned' || r.status === 'Fully Assigned').length,
         needsRepair: resources.filter((r) => r.condition === 'Needs Repair').length,
     };
@@ -886,7 +927,7 @@ export function ResourceInventory() {
             />
 
             {/* Summary Cards - Certification style (premium KPI cards) */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                 <div
                     className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'all' && resourceTypeFilter === 'all' && conditionFilter === 'all' ? 'border-slate-300 ring-2 ring-emerald-500/30' : 'border-slate-200'}`}
                     onClick={() => { setStatusFilter('all'); setResourceTypeFilter('all'); setConditionFilter('all'); }}
@@ -908,6 +949,17 @@ export function ResourceInventory() {
                     <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Available</p>
                     <p className="text-[32px] font-bold text-emerald-800 mt-1">{stats.available}</p>
                     <p className="text-xs text-slate-500 mt-1">{stats.total ? `${availablePct}%` : '0%'}</p>
+                </div>
+                <div
+                    className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'Reserved' ? 'border-violet-300 ring-2 ring-emerald-500/30' : 'border-slate-200'}`}
+                    onClick={() => setStatusFilter('Reserved')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter('Reserved'); } }}
+                >
+                    <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Reserved</p>
+                    <p className="text-[32px] font-bold text-violet-800 mt-1">{stats.reserved}</p>
+                    <p className="text-xs text-slate-500 mt-1">{stats.reserved === 0 ? 'No reservations' : 'Pending allocation'}</p>
                 </div>
                 <div
                     className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'in_use_all' ? 'border-blue-300 ring-2 ring-emerald-500/30' : 'border-slate-200'}`}
@@ -1120,222 +1172,55 @@ export function ResourceInventory() {
             )}
 
             {activeTab === 'usage_tracking' && (
-                <>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Stepper UI - Assignment Workflow */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h2 className="text-lg font-semibold text-slate-900 mb-5">Resource Assignment & Usage Tracking</h2>
-                            <div className="relative">
-                                <div className="flex flex-col gap-0">
-                                    {[
-                                        { step: 1, title: 'Select Resource', desc: 'Choose from inventory' },
-                                        { step: 2, title: 'Assign to Event', desc: 'Pick simulation event' },
-                                        { step: 3, title: 'Set Quantity', desc: 'Specify units needed' },
-                                        { step: 4, title: 'Assign Handler', desc: 'Responsible staff' },
-                                        { step: 5, title: 'Confirm', desc: 'Status → Reserved / In Use' },
-                                    ].map((item, idx) => (
-                                        <div key={item.step} className="flex gap-4 items-start transition-all duration-250 ease-out">
-                                            <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-250 ${
-                                                idx === 0 ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-slate-300 text-slate-500'
-                                            }`}>
-                                                {item.step}
-                                            </div>
-                                            <div className="pb-6">
-                                                <p className="font-medium text-slate-900">{item.title}</p>
-                                                <p className="text-sm text-slate-500">{item.desc}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                <div className="space-y-4">
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-semibold text-slate-900">Equipment Movement History</h2>
+                                <p className="text-sm text-slate-600 mt-1">Tracks Reserved → In Use → Returned → Available / Needs Repair.</p>
                             </div>
-                        </div>
-
-                        {/* Currently Assigned Resources */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="font-semibold text-slate-900 mb-3">Currently Assigned Resources</h3>
-                            {resources.filter(r => r.status === 'Reserved' || r.status === 'In Use' || r.status === 'Partially Assigned' || r.status === 'Fully Assigned').length > 0 ? (
-                                <div className="space-y-2">
-                                    {resources
-                                        .filter(r => r.status === 'Reserved' || r.status === 'In Use' || r.status === 'Partially Assigned' || r.status === 'Fully Assigned')
-                                        .map(r => (
-                                            <div key={r.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm flex justify-between items-center hover:bg-slate-100/80 transition-colors duration-200">
-                                                <div>
-                                                    <strong className="text-slate-900">{r.name}</strong>
-                                                    <div className="text-xs text-slate-600">{r.category}</div>
-                                                </div>
-                                                <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(r.status)}`}>
-                                                    {r.status}
-                                                </span>
-                                            </div>
-                                        ))
-                                    }
-                                </div>
-                            ) : (
-                                <p className="text-slate-500 text-sm">No resources currently assigned to events</p>
-                            )}
+                            <AdminSecondaryButton onClick={() => fetchMovementHistory()}>
+                                Refresh
+                            </AdminSecondaryButton>
                         </div>
                     </div>
 
-                    {/* Right sidebar: Live Monitoring + Active Deployments */}
-                    <div className="space-y-4">
-                        {/* Live Monitoring Card - During Event */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="font-semibold text-slate-500 mb-4 text-sm uppercase tracking-wide">During Event</h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-700">Resources Active</span>
-                                    <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" /> {stats.inUse}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-700">Pending Return</span>
-                                    <span className="inline-flex items-center gap-1.5 font-semibold text-amber-700">
-                                        <span className="w-2 h-2 rounded-full bg-amber-500" /> {completedEventsWithResources.reduce((sum, e) => sum + (e.resources?.length || 0), 0)}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-700">Reported Issues</span>
-                                    <span className="inline-flex items-center gap-1.5 font-semibold text-red-700">
-                                        <span className="w-2 h-2 rounded-full bg-red-500" /> {stats.needsRepair}
-                                    </span>
-                                </div>
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                            <div className="grid grid-cols-6 gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                <div>Date</div>
+                                <div>Equipment</div>
+                                <div>Simulation Event</div>
+                                <div>Requested By</div>
+                                <div className="text-right">Allocated Quantity</div>
+                                <div>Current Status</div>
                             </div>
                         </div>
-
-                        {/* Active Deployments */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="font-semibold text-slate-900 mb-3">Active Deployments</h3>
-                            {stats.inUse > 0 ? (
-                                <div className="space-y-3 text-sm">
-                                    {events.filter(ev => !ev.completed_at).slice(0, 3).map(ev => (
-                                        <div key={ev.id} className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                                            <p className="font-medium text-slate-900 truncate">{ev.title}</p>
-                                            <p className="text-xs text-slate-500 mt-0.5">Resources: {resources.filter(r => (r.eventAssignments || []).some(a => a.event_id === ev.id)).length || '—'}</p>
-                                            <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">In Progress</span>
-                                        </div>
-                                    ))}
-                                    {events.filter(ev => !ev.completed_at).length === 0 && (
-                                        <p className="text-slate-500 text-sm">{stats.inUse} resource(s) in use</p>
-                                    )}
-                                </div>
-                            ) : (
-                                <p className="text-slate-500 text-sm">No active deployments</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Post-Event Resource Return - full width */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900 mb-4">Post-Event Resource Return</h2>
-                    <p className="text-sm text-slate-600 mb-4">
-                            Resources from completed simulation events that need to be returned to inventory.
-                        </p>
-                        <div className="space-y-4">
-                            {completedEventsWithResources.length > 0 ? (
-                                completedEventsWithResources.map(event => (
-                                    <div key={event.id} className="border border-slate-200 rounded-lg overflow-hidden">
-                                        <div className="bg-indigo-50 px-4 py-3 border-b border-slate-200">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h3 className="font-medium text-indigo-900">{event.title}</h3>
-                                                    <p className="text-xs text-indigo-700">
-                                                        Event Date: {new Date(event.event_date).toLocaleDateString()}
-                                                        {event.completed_at && ` • Completed: ${new Date(event.completed_at).toLocaleDateString()}`}
-                                                    </p>
-                                                </div>
-                                                <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
-                                                    {event.resources.length} resource(s)
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 space-y-2">
-                                            {event.resources.map((r, idx) => (
-                                                <div key={`${event.id}-${r.id}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="font-medium text-slate-900">{r.name}</p>
-                                                            <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
-                                                                Qty: {r.quantity_assigned}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-slate-600">{r.category} {r.serial_number && `• ${r.serial_number}`}</p>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            Swal.fire({
-                                                                title: 'Return Resource from Event',
-                                                                html: `
-                                                                    <div class="text-left mb-4">
-                                                                        <p class="text-sm text-slate-600">Returning <strong>${r.name}</strong> (${r.quantity_assigned} unit(s)) from <strong>${event.title}</strong></p>
-                                                                    </div>
-                                                                    <form class="text-left space-y-3">
-                                                                        <label class="block">
-                                                                            <span class="text-sm font-medium text-slate-700">Condition after use:</span>
-                                                                            <select id="newCondition" class="w-full px-3 py-2 border border-slate-300 rounded-md mt-1">
-                                                                                <option value="Good">Good - No issues</option>
-                                                                                <option value="Needs Repair">Needs Repair - Minor damage</option>
-                                                                                <option value="Damaged">Damaged - Major damage</option>
-                                                                            </select>
-                                                                        </label>
-                                                                        <label class="block">
-                                                                            <span class="text-sm font-medium text-slate-700">Remarks:</span>
-                                                                            <textarea id="remarks" placeholder="Enter any damage or usage notes..." class="w-full px-3 py-2 border border-slate-300 rounded-md mt-1" rows="3"></textarea>
-                                                                        </label>
-                                                                    </form>
-                                                                `,
-                                                                showCancelButton: true,
-                                                                confirmButtonText: 'Return Resource',
-                                                                cancelButtonText: 'Cancel',
-                                                                confirmButtonColor: '#10b981',
-                                                                preConfirm: async () => {
-                                                                    const newCondition = document.getElementById('newCondition').value;
-                                                                    const remarks = document.getElementById('remarks').value;
-                                                                    
-                                                                    try {
-                                                                        const response = await fetch(`/admin/resources/${r.id}/return-from-event`, {
-                                                                            method: 'POST',
-                                                                            headers: {
-                                                                                'Content-Type': 'application/json',
-                                                                                'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.content,
-                                                                            },
-                                                                            body: JSON.stringify({
-                                                                                condition: newCondition,
-                                                                                damage_report: remarks,
-                                                                                event_id: event.id,
-                                                                                quantity: r.quantity_assigned,
-                                                                            }),
-                                                                        });
-
-                                                                        if (!response.ok) throw new Error('Failed to return resource');
-                                                                        
-                                                                        fetchResources();
-                                                                        fetchCompletedEventsWithResources();
-                                                                        Swal.fire('Success', 'Resource returned successfully', 'success');
-                                                                    } catch (error) {
-                                                                        Swal.showValidationMessage(error.message);
-                                                                        return false;
-                                                                    }
-                                                                },
-                                                            });
-                                                        }}
-                                                        className="px-3 py-1 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
-                                                    >
-                                                        <RotateCcw className="w-4 h-4 inline mr-1" /> Return
-                                                    </button>
-                                                </div>
-                                            ))}
+                        <div className="divide-y divide-slate-100">
+                            {movementHistory.length > 0 ? movementHistory.map((row) => (
+                                <div key={row.id} className="px-6 py-4">
+                                    <div className="grid grid-cols-6 gap-3 items-center text-sm">
+                                        <div className="text-slate-700">{row.date || '—'}</div>
+                                        <div className="text-slate-900 font-medium truncate">{row.equipment || '—'}</div>
+                                        <div className="text-slate-700 truncate">{row.simulation_event || '—'}</div>
+                                        <div className="text-slate-700 truncate">{row.requested_by || row.source_module || '—'}</div>
+                                        <div className="text-slate-900 font-semibold text-right">{row.quantity ?? 0}</div>
+                                        <div>
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.status)}`}>
+                                                {getStatusIcon(row.status)}
+                                                {row.status}
+                                            </span>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <p className="text-slate-500 text-sm">No resources to return from completed events</p>
+                                </div>
+                            )) : (
+                                <div className="px-6 py-10 text-center text-sm text-slate-500">
+                                    No movement records yet.
+                                </div>
                             )}
                         </div>
+                    </div>
                 </div>
-                </>
             )}
 
             {activeTab === 'maintenance' && (

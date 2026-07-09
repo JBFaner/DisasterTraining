@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('certificates', 'qr_verification_token')) {
+            return;
+        }
+
         Schema::table('certificates', function (Blueprint $table) {
             $table->string('qr_verification_token', 64)->nullable()->unique()->after('certificate_number');
         });
@@ -15,6 +19,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasColumn('certificates', 'qr_verification_token')) {
+            return;
+        }
+
         Schema::table('certificates', function (Blueprint $table) {
             $table->dropColumn('qr_verification_token');
         });

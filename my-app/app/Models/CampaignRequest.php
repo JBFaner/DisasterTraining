@@ -10,10 +10,15 @@ class CampaignRequest extends Model
 {
     protected $fillable = [
         'training_module_id',
+        'simulation_event_id',
         'submitted_to',
         'proposed_session_label',
         'submitted_at',
+        'approved_at',
         'status',
+        'expected_participants',
+        'minimum_qualified_participants',
+        'session_index',
         'payload',
         'remarks',
         'submitted_by_id',
@@ -21,8 +26,12 @@ class CampaignRequest extends Model
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'approved_at' => 'datetime',
         'payload' => 'array',
         'remarks' => 'array',
+        'expected_participants' => 'integer',
+        'minimum_qualified_participants' => 'integer',
+        'session_index' => 'integer',
     ];
 
     public function trainingModule(): BelongsTo
@@ -33,6 +42,16 @@ class CampaignRequest extends Model
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'submitted_by_id');
+    }
+
+    public function simulationEvent(): BelongsTo
+    {
+        return $this->belongsTo(SimulationEvent::class);
+    }
+
+    public function simulationPlan(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SimulationPlan::class);
     }
 
     protected static function booted(): void

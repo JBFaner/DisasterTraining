@@ -37,6 +37,7 @@ use App\Http\Controllers\LessonQuizWorkflowController;
 use App\Http\Controllers\LessonQuizAttemptController;
 use App\Http\Controllers\Admin\Group6IntegrationController;
 use App\Http\Controllers\Admin\CampaignRequestController;
+use App\Http\Controllers\Admin\SimulationEventPlanningController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
 
@@ -332,6 +333,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
 
         // Simulation Events (admin management)
         Route::get('/simulation-events', [SimulationEventController::class, 'index'])->name('admin.simulation-events.index');
+        Route::get('/simulation-planning/{campaignRequest}', [SimulationEventPlanningController::class, 'show'])->name('admin.simulation-planning.show');
+        Route::post('/simulation-planning/{campaignRequest}/plan', [SimulationEventPlanningController::class, 'savePlan'])->name('admin.simulation-planning.plan');
+        Route::post('/simulation-planning/{campaignRequest}/ai-draft', [SimulationEventPlanningController::class, 'generateAiDraft'])->name('admin.simulation-planning.ai-draft');
+        Route::post('/simulation-planning/{campaignRequest}/generate', [SimulationEventPlanningController::class, 'generateEvent'])->name('admin.simulation-planning.generate');
         Route::get('/simulation-events/create', [SimulationEventController::class, 'create'])->name('admin.simulation-events.create');
         Route::post('/simulation-events', [SimulationEventController::class, 'store'])->name('admin.simulation-events.store');
         Route::get('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'show'])->name('admin.simulation-events.show');
@@ -359,6 +364,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::prefix('api')->name('admin.api.')->group(function () {
             Route::get('/resources', [\App\Http\Controllers\Api\ResourceApiController::class, 'index'])->name('resources.index');
             Route::get('/resources/{resource}/history', [\App\Http\Controllers\Api\ResourceApiController::class, 'getHistory'])->name('resources.history');
+            Route::get('/resource-movements', [\App\Http\Controllers\Api\ResourceApiController::class, 'movements'])->name('resources.movements');
         });
 
         // Group 6 — external system integration (status & placeholders only)

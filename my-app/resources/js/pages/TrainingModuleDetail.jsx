@@ -27,13 +27,19 @@ import {
     X,
     CheckCircle2,
     AlertCircle,
-    Building2,
-    Info,
-    MapPin,
 } from 'lucide-react';
 import { getCsrfHeaders, getCsrfToken, pingSessionActivity } from '../utils/csrf';
 import { AdminContentCard } from '../components/admin/AdminLayout';
 import { AdminTableActionButton } from '../components/admin/AdminDataTable';
+import {
+    CampaignRequestProposedSessionsCell,
+    CampaignRequestStatusBadge,
+    CommunityRecommendationsTable,
+    formatDate,
+    formatDateTimeParts,
+    formatTime,
+    getRecommendedCommunityEntries,
+} from '../components/campaign/CampaignRequestUi';
 
 const RESOURCE_TYPE_LABELS = {
     text: 'Rich Text',
@@ -65,63 +71,6 @@ const DELIVERY_METHOD_LABELS = {
     online: 'Online',
 };
 
-function parseDateValue(value) {
-    if (!value) return null;
-    if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value;
-    }
-
-    const normalized = String(value).trim();
-    if (!normalized) return null;
-
-    const dateOnlyMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (dateOnlyMatch) {
-        const [, year, month, day] = dateOnlyMatch;
-        const parsed = new Date(Number(year), Number(month) - 1, Number(day));
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-
-    const parsed = new Date(normalized);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function parseTimeValue(value) {
-    if (!value) return null;
-
-    const normalized = String(value).trim();
-    if (!normalized) return null;
-
-    const timeMatch = normalized.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-    if (timeMatch) {
-        const [, hours = '0', minutes = '0', seconds = '0'] = timeMatch;
-        const date = new Date();
-        date.setHours(Number(hours), Number(minutes), Number(seconds), 0);
-        return Number.isNaN(date.getTime()) ? null : date;
-    }
-
-    const parsed = new Date(normalized);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatDate(dateString) {
-    const date = parseDateValue(dateString);
-    if (!date) return '—';
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
-
-function formatTime(timeString) {
-    const date = parseTimeValue(timeString);
-    if (!date) return '—';
-    return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-}
-
 function parseHazardTokens(value) {
     return String(value || '')
         .split(/[,&/]+/)
@@ -145,40 +94,6 @@ function getLessonStatus(lesson) {
     }
 
     return { label: 'Ready', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-}
-
-function formatDateTime(dateString) {
-    const date = parseDateValue(dateString);
-    if (!date) return '—';
-    return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-}
-
-function formatDateTimeParts(dateString) {
-    const date = parseDateValue(dateString);
-    if (!date) return { date: '—', time: '—' };
-
-    return {
-        date: formatDate(date),
-        time: date.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-        }),
-    };
-}
-
-function formatTimeRange(startTime, endTime) {
-    const start = formatTime(startTime);
-    const end = formatTime(endTime);
-
-    if (start === '—' && end === '—') return '—';
-    if (start !== '—' && end !== '—') return `${start} – ${end}`;
-    return start !== '—' ? start : end;
 }
 
 function isTrainingSessionPartiallyFilled(session) {
@@ -275,69 +190,6 @@ function RequiredFieldLabel({ children }) {
     );
 }
 
-function CampaignRequestProposedSessionsCell({ request }) {
-    const sessions = Array.isArray(request?.proposed_sessions) ? request.proposed_sessions : [];
-
-    if (sessions.length === 0) {
-        if (!request?.proposed_session_label) {
-            return <div className="text-slate-700">—</div>;
-        }
-
-        return <div className="text-slate-700">{request.proposed_session_label}</div>;
-    }
-
-    const maxVisible = 2;
-    const visibleSessions = sessions.slice(0, maxVisible);
-    const hiddenCount = sessions.length - visibleSessions.length;
-
-    return (
-        <div className="space-y-1">
-            {visibleSessions.map((session, idx) => (
-                <div key={`${session.label}-${idx}`} className="leading-tight">
-                    <div className="font-medium text-slate-900">{session.label}</div>
-                    {session.date ? (
-                        <div className="text-xs text-slate-700">
-                            {session.date}
-                        </div>
-                    ) : null}
-                    {session.time ? (
-                        <div className="text-[0.7rem] text-slate-500">
-                            {session.time}
-                        </div>
-                    ) : null}
-                </div>
-            ))}
-            {hiddenCount > 0 ? (
-                <div className="text-xs font-medium text-emerald-700">+{hiddenCount} more</div>
-            ) : null}
-        </div>
-    );
-}
-
-function getRecommendedCommunityEntries(value) {
-    if (value && Array.isArray(value.communities)) {
-        return value.communities.filter((item) => item && typeof item === 'object');
-    }
-    if (Array.isArray(value)) {
-        return value.filter((item) => item && typeof item === 'object');
-    }
-
-    return [];
-}
-
-function getRiskBadgeClass(level) {
-    const normalized = String(level || '').toLowerCase();
-    if (normalized === 'high') return 'border-rose-200 bg-rose-50 text-rose-700';
-    if (normalized === 'medium' || normalized === 'moderate') return 'border-amber-200 bg-amber-50 text-amber-700';
-    return 'border-slate-200 bg-slate-100 text-slate-700';
-}
-
-function getPriorityBadgeClass(level) {
-    if (level === 'Priority 1') return 'border-rose-200 bg-rose-50 text-rose-700';
-    if (level === 'Priority 2') return 'border-amber-200 bg-amber-50 text-amber-700';
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-}
-
 function formatDuration(minutes) {
     if (!minutes) return null;
     if (minutes < 60) return `${minutes} min`;
@@ -410,28 +262,6 @@ function ResourceStatusBadge({ resource }) {
                 )}
             </div>
         </div>
-    );
-}
-
-function CampaignRequestStatusBadge({ status }) {
-    const normalized = String(status || '').toLowerCase();
-
-    const map = {
-        draft: { label: 'Draft', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
-        submitted: { label: 'Submitted', cls: 'border-sky-200 bg-sky-50 text-sky-700' },
-        waiting_for_approval: { label: 'Waiting for Approval', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
-        approved: { label: 'Approved', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-        scheduled: { label: 'Scheduled', cls: 'border-violet-200 bg-violet-50 text-violet-700' },
-        completed: { label: 'Completed', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-        rejected: { label: 'Rejected', cls: 'border-rose-200 bg-rose-50 text-rose-700' },
-    };
-
-    const item = map[normalized] || { label: status || '—', cls: 'border-slate-200 bg-slate-50 text-slate-700' };
-
-    return (
-        <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${item.cls}`}>
-            {item.label}
-        </span>
     );
 }
 
@@ -630,7 +460,6 @@ export function TrainingModuleDetail({ module }) {
     const [showAddResource, setShowAddResource] = React.useState(false);
     const [showAddLessonModal, setShowAddLessonModal] = React.useState(false);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
-    const [isCampaignDescriptionExpanded, setIsCampaignDescriptionExpanded] = React.useState(false);
     const [draggedId, setDraggedId] = React.useState(null);
     const [lessonForm, setLessonForm] = React.useState({ title: '', description: '' });
     const [resourceForm, setResourceForm] = React.useState({ title: '', body: '', external_url: '', resource_type: 'text' });
@@ -687,12 +516,6 @@ export function TrainingModuleDetail({ module }) {
     const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false);
     const [campaignRequests, setCampaignRequests] = React.useState([]);
     const [isLoadingCampaignRequests, setIsLoadingCampaignRequests] = React.useState(false);
-    const [selectedCampaignRequest, setSelectedCampaignRequest] = React.useState(null);
-    const [isCampaignRequestDialogOpen, setIsCampaignRequestDialogOpen] = React.useState(false);
-    const [additionalCommunityQuery, setAdditionalCommunityQuery] = React.useState('');
-    const [additionalCommunities, setAdditionalCommunities] = React.useState(() => (
-        Array.isArray(module.additional_communities) ? module.additional_communities : []
-    ));
 
     const thumbnailUrl = module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null);
     const recommendations = module.recommended_communities || null;
@@ -700,31 +523,6 @@ export function TrainingModuleDetail({ module }) {
         () => getRecommendedCommunityEntries(recommendations),
         [recommendations],
     );
-    const recommendedCommunityIds = React.useMemo(
-        () => new Set(recommendedCommunityEntries.map((item) => Number(item.barangay_profile_id)).filter(Number.isFinite)),
-        [recommendedCommunityEntries],
-    );
-    const availableCommunityOptions = React.useMemo(
-        () => (Array.isArray(module.community_options) ? module.community_options : []),
-        [module.community_options],
-    );
-    const filteredCommunityOptions = React.useMemo(() => {
-        const selectedIds = new Set(additionalCommunities.map((item) => Number(item.barangay_profile_id)));
-        const q = additionalCommunityQuery.trim().toLowerCase();
-
-        return availableCommunityOptions
-            .filter((item) => !selectedIds.has(Number(item.barangay_profile_id)))
-            .filter((item) => !recommendedCommunityIds.has(Number(item.barangay_profile_id)))
-            .filter((item) => {
-                if (!q) return true;
-                return [
-                    item.barangay_name,
-                    item.municipality_city,
-                    item.province,
-                ].join(' ').toLowerCase().includes(q);
-            })
-            .slice(0, 8);
-    }, [availableCommunityOptions, additionalCommunities, additionalCommunityQuery, recommendedCommunityIds]);
     const hazardTokens = React.useMemo(() => parseHazardTokens(relatedHazard || module.category), [relatedHazard, module.category]);
     const activeTrainerOptions = React.useMemo(
         () => trainerOptions.filter((trainer) => String(trainer.status || '').toLowerCase() === 'active'),
@@ -900,20 +698,6 @@ export function TrainingModuleDetail({ module }) {
         current.map((item, idx) => idx === index ? { ...item, [field]: value } : item)
     ));
     const removeTrainingSession = (index) => setTrainingSessions((current) => current.filter((_, idx) => idx !== index));
-    const addAdditionalCommunity = (community) => {
-        if (!community || !community.barangay_profile_id) return;
-        setAdditionalCommunities((current) => (
-            current.some((item) => Number(item.barangay_profile_id) === Number(community.barangay_profile_id))
-                ? current
-                : [...current, community]
-        ));
-        setAdditionalCommunityQuery('');
-    };
-    const removeAdditionalCommunity = (barangayProfileId) => {
-        setAdditionalCommunities((current) => (
-            current.filter((item) => Number(item.barangay_profile_id) !== Number(barangayProfileId))
-        ));
-    };
 
     const loadCampaignRequests = async () => {
         setIsLoadingCampaignRequests(true);
@@ -960,34 +744,6 @@ export function TrainingModuleDetail({ module }) {
         }
 
         return data;
-    };
-
-    const handleViewCampaignRequest = async (requestId) => {
-        setSelectedCampaignRequest(null);
-        setIsCampaignDescriptionExpanded(false);
-        setIsCampaignRequestDialogOpen(true);
-
-        try {
-            const response = await fetch(`/admin/campaign-requests/${requestId}`, {
-                method: 'GET',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    ...getCsrfHeaders(),
-                },
-            });
-
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data.message || 'Could not load request details.');
-            }
-
-            setSelectedCampaignRequest(data.request || null);
-        } catch (e) {
-            setIsCampaignRequestDialogOpen(false);
-            await Swal.fire({ icon: 'error', title: 'Load failed', text: e?.message || 'Could not load request details.' });
-        }
     };
 
     React.useEffect(() => {
@@ -1531,57 +1287,36 @@ export function TrainingModuleDetail({ module }) {
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
-                        <h3 className="text-sm font-semibold text-slate-800 mb-2">Recommended Communities</h3>
-                        {recommendations && recommendations.summary.total_communities > 0 ? (
-                            <>
-                                <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                        <p className="text-xs text-slate-500">Communities Found</p>
-                                        <p className="text-lg font-semibold text-slate-900">{recommendations.summary.total_communities}</p>
-                                    </div>
-                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                                        <p className="text-xs text-emerald-700">High Priority</p>
-                                        <p className="text-lg font-semibold text-emerald-800">{recommendations.summary.high_priority}</p>
-                                    </div>
-                                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                        <p className="text-xs text-amber-700">Medium Priority</p>
-                                        <p className="text-lg font-semibold text-amber-800">{recommendations.summary.medium_priority}</p>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                        <p className="text-xs text-slate-500">Low Priority</p>
-                                        <p className="text-lg font-semibold text-slate-800">{recommendations.summary.low_priority}</p>
-                                    </div>
+                        <div className="mb-4">
+                            <h3 className="text-sm font-semibold text-slate-800">Recommended Communities</h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                                Priority-based recommendations from Hazard Assessment. Campaign teams may still include other communities when needed.
+                            </p>
+                        </div>
+
+                        {recommendations?.summary ? (
+                            <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                    <p className="text-xs text-slate-500">Communities Found</p>
+                                    <p className="text-lg font-semibold text-slate-900">{recommendations.summary.total_communities}</p>
                                 </div>
-                                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                        <thead className="bg-slate-50">
-                                            <tr>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Barangay</th>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Related Hazard</th>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Risk Level</th>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Priority Score</th>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Recommendation</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {recommendations.communities.map((row) => (
-                                                <tr key={row.barangay_profile_id}>
-                                                    <td className="px-4 py-2">
-                                                        <div className="font-medium text-slate-900">{row.barangay_name}</div>
-                                                        <div className="text-xs text-slate-500">
-                                                            {row.municipality_city}{row.province ? `, ${row.province}` : ''}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm text-slate-700">{row.related_hazard}</td>
-                                                    <td className="px-4 py-2 text-sm text-slate-700">{row.risk_level}</td>
-                                                    <td className="px-4 py-2 text-sm font-semibold text-slate-900">{row.priority_score}</td>
-                                                    <td className="px-4 py-2 text-xs text-slate-700">{row.recommendation}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+                                    <p className="text-xs text-rose-700">Priority 1</p>
+                                    <p className="text-lg font-semibold text-rose-800">{recommendations.summary.high_priority}</p>
                                 </div>
-                            </>
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                    <p className="text-xs text-amber-700">Priority 2</p>
+                                    <p className="text-lg font-semibold text-amber-800">{recommendations.summary.medium_priority}</p>
+                                </div>
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                                    <p className="text-xs text-emerald-700">Priority 3</p>
+                                    <p className="text-lg font-semibold text-emerald-800">{recommendations.summary.low_priority}</p>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {recommendedCommunityEntries.length > 0 ? (
+                            <CommunityRecommendationsTable communities={recommendedCommunityEntries} />
                         ) : (
                             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
                                 No communities currently match the selected hazard classification.
@@ -1619,7 +1354,7 @@ export function TrainingModuleDetail({ module }) {
                             <li>Training Title</li>
                             <li>Short Description</li>
                             <li>Related Hazard(s)</li>
-                            <li>Recommended Communities</li>
+                            <li>Recommended Communities (auto-generated priorities)</li>
                             <li>Recommended Audience</li>
                             <li>Estimated Duration</li>
                             <li>Total Lessons</li>
@@ -1710,13 +1445,12 @@ export function TrainingModuleDetail({ module }) {
                                                     <CampaignRequestStatusBadge status={req.status} />
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleViewCampaignRequest(req.id)}
-                                                        className="rounded-lg px-3 py-1.5 text-xs bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                    <a
+                                                        href={`/admin/campaign-requests/${req.id}`}
+                                                        className="inline-flex rounded-lg px-3 py-1.5 text-xs bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
                                                     >
                                                         View
-                                                    </button>
+                                                    </a>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1725,254 +1459,6 @@ export function TrainingModuleDetail({ module }) {
                             </div>
                         )}
                     </AdminContentCard>
-
-                    <Dialog.Root
-                        open={isCampaignRequestDialogOpen}
-                        onOpenChange={(open) => {
-                            setIsCampaignRequestDialogOpen(open);
-                            if (!open) {
-                                setIsCampaignDescriptionExpanded(false);
-                            }
-                        }}
-                    >
-                        <Dialog.Portal>
-                            {/* Keep the table visible — use a right-side slide-over drawer */}
-                            <div className="fixed inset-0 z-40 pointer-events-none" />
-                            <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col overflow-auto border-l border-slate-200 bg-slate-50 shadow-2xl sm:w-[42vw] sm:min-w-[620px] sm:max-w-[760px]">
-                                <div className="border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="min-w-0">
-                                            <Dialog.Title className="text-lg font-semibold text-slate-900">Campaign Request {selectedCampaignRequest ? `#${selectedCampaignRequest.id}` : ''}</Dialog.Title>
-                                            <p className="mt-1 truncate text-sm text-slate-500">{selectedCampaignRequest?.training_module?.title || 'Training campaign request details'}</p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            {selectedCampaignRequest ? <CampaignRequestStatusBadge status={selectedCampaignRequest.status} /> : null}
-                                            <Dialog.Close asChild>
-                                                <button type="button" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" aria-label="Close">
-                                                    <X className="h-4 w-4" />
-                                                </button>
-                                            </Dialog.Close>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 space-y-4 p-4 sm:p-5 lg:p-6">
-                                    {!selectedCampaignRequest ? (
-                                        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">Loading request details…</div>
-                                    ) : (
-                                        <>
-                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                        <FileText className="h-3.5 w-3.5" />
-                                                        Request ID
-                                                    </div>
-                                                    <div className="mt-2 text-base font-semibold text-slate-900">#{selectedCampaignRequest.id}</div>
-                                                    <p className="mt-1 text-xs text-slate-500">Operational reference</p>
-                                                </div>
-
-                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                        <CalendarDays className="h-3.5 w-3.5" />
-                                                        Submitted
-                                                    </div>
-                                                    <div className="mt-2 text-sm font-semibold text-slate-900">{formatDate(selectedCampaignRequest.submitted_at)}</div>
-                                                    <p className="mt-1 text-xs text-slate-500">{formatDateTimeParts(selectedCampaignRequest.submitted_at).time}</p>
-                                                </div>
-
-                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                        <UserRound className="h-3.5 w-3.5" />
-                                                        Submitted By
-                                                    </div>
-                                                    <div className="mt-2 text-sm font-semibold text-slate-900">{selectedCampaignRequest.submitted_by?.name || '—'}</div>
-                                                    <p className="mt-1 text-xs text-slate-500">Request owner</p>
-                                                </div>
-
-                                                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                        <Building2 className="h-3.5 w-3.5" />
-                                                        Submitted To
-                                                    </div>
-                                                    <div className="mt-2 text-sm font-semibold text-slate-900">{selectedCampaignRequest.submitted_to || '—'}</div>
-                                                    <p className="mt-1 text-xs text-slate-500">Destination system</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
-                                                <section className="space-y-4">
-                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                            <Info className="h-3.5 w-3.5" />
-                                                            Request Overview
-                                                        </div>
-                                                        <div className="mt-4 space-y-4">
-                                                            <div>
-                                                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Proposed Session Summary</div>
-                                                                <div className="mt-1 text-sm font-medium text-slate-900">{selectedCampaignRequest.proposed_session_label || '—'}</div>
-                                                            </div>
-
-                                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                                                <div>
-                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Related Hazards</div>
-                                                                    <div className="mt-1 text-sm text-slate-900">
-                                                                        {Array.isArray(selectedCampaignRequest.payload?.related_hazards)
-                                                                            ? selectedCampaignRequest.payload.related_hazards.join(', ')
-                                                                            : (selectedCampaignRequest.payload?.related_hazards || '—')}
-                                                                    </div>
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lead Trainers</div>
-                                                                    <div className="mt-1 text-sm text-slate-900">
-                                                                        {Array.isArray(selectedCampaignRequest.payload?.assigned_trainers)
-                                                                            ? selectedCampaignRequest.payload.assigned_trainers.map((trainer) => trainer.name).filter(Boolean).join(', ')
-                                                                            : '—'}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            <div>
-                                                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Training Description</div>
-                                                                <div className="mt-2 text-sm leading-6 text-slate-700">
-                                                                    {(() => {
-                                                                        const desc = selectedCampaignRequest.payload?.short_description || '';
-                                                                        if (!desc) return '—';
-                                                                        if (!isCampaignDescriptionExpanded && desc.length > 220) {
-                                                                            return (
-                                                                                <>
-                                                                                    <div>{desc.slice(0, 220)}…</div>
-                                                                                    <button type="button" onClick={() => setIsCampaignDescriptionExpanded(true)} className="mt-2 text-xs font-medium text-emerald-700 hover:text-emerald-800">
-                                                                                        Read more
-                                                                                    </button>
-                                                                                </>
-                                                                            );
-                                                                        }
-
-                                                                        return (
-                                                                            <>
-                                                                                <div>{desc}</div>
-                                                                                {desc.length > 220 ? (
-                                                                                    <button type="button" onClick={() => setIsCampaignDescriptionExpanded(false)} className="mt-2 text-xs font-medium text-emerald-700 hover:text-emerald-800">
-                                                                                        Show less
-                                                                                    </button>
-                                                                                ) : null}
-                                                                            </>
-                                                                        );
-                                                                    })()}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                                        <div className="flex items-center justify-between gap-3">
-                                                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                <CalendarDays className="h-3.5 w-3.5" />
-                                                                Proposed Sessions
-                                                            </div>
-                                                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                                                                {(selectedCampaignRequest.payload?.available_training_sessions || []).length} total
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-                                                            {(() => {
-                                                                const sessions = selectedCampaignRequest.payload?.available_training_sessions || [];
-                                                                if (!sessions.length) {
-                                                                    return <div className="bg-slate-50 px-4 py-6 text-sm text-slate-600">No sessions provided.</div>;
-                                                                }
-
-                                                                return (
-                                                                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                                                        <thead className="bg-slate-50">
-                                                                            <tr>
-                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Session Name</th>
-                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
-                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Time</th>
-                                                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Max Participants</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-slate-100 bg-white">
-                                                                            {sessions.map((session, idx) => {
-                                                                                const maxParticipants = session?.maximum_participants ?? session?.maximumParticipants ?? '—';
-
-                                                                                return (
-                                                                                    <tr key={`${session?.title || 'session'}-${idx}`} className="align-top">
-                                                                                        <td className="px-4 py-3 font-medium text-slate-900">{session?.title || '—'}</td>
-                                                                                        <td className="px-4 py-3 text-slate-700">{formatDate(session?.date)}</td>
-                                                                                        <td className="px-4 py-3 text-slate-700">{formatTimeRange(session?.start_time, session?.end_time)}</td>
-                                                                                        <td className="px-4 py-3 text-slate-700">{maxParticipants}</td>
-                                                                                    </tr>
-                                                                                );
-                                                                            })}
-                                                                        </tbody>
-                                                                    </table>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                    </div>
-                                                </section>
-
-                                                <aside className="space-y-4">
-                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                            <MapPin className="h-3.5 w-3.5" />
-                                                            Recommended Communities
-                                                        </div>
-                                                        <div className="mt-4 flex flex-wrap gap-2">
-                                                            {(() => {
-                                                                const communities = getRecommendedCommunitiesList(selectedCampaignRequest.payload?.recommended_communities);
-                                                                if (!communities.length) {
-                                                                    return <p className="text-sm text-slate-600">No recommended communities.</p>;
-                                                                }
-
-                                                                return communities.map((community, index) => (
-                                                                    <span key={`${community}-${index}`} className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
-                                                                        {community}
-                                                                    </span>
-                                                                ));
-                                                            })()}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                            <Workflow className="h-3.5 w-3.5" />
-                                                            Audit Trail
-                                                        </div>
-                                                        <dl className="mt-4 space-y-3">
-                                                            <div>
-                                                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created</dt>
-                                                                <dd className="mt-1 text-sm text-slate-900">{formatDateTime(selectedCampaignRequest.created_at)}</dd>
-                                                            </div>
-                                                            <div>
-                                                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Updated</dt>
-                                                                <dd className="mt-1 text-sm text-slate-900">{formatDateTime(selectedCampaignRequest.updated_at)}</dd>
-                                                            </div>
-                                                        </dl>
-                                                    </div>
-
-                                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                            <ShieldCheck className="h-3.5 w-3.5" />
-                                                            Campaign Remarks
-                                                        </div>
-                                                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                                                            {selectedCampaignRequest.remarks ? (
-                                                                <pre className="overflow-auto whitespace-pre-wrap wrap-break-word font-sans">{JSON.stringify(selectedCampaignRequest.remarks, null, 2)}</pre>
-                                                            ) : (
-                                                                <p>No remarks yet.</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </aside>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </Dialog.Content>
-                        </Dialog.Portal>
-                    </Dialog.Root>
                 </div>
             )}
 

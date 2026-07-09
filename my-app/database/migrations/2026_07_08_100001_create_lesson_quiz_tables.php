@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('lesson_quiz_configs')) {
+            return;
+        }
+
         Schema::create('lesson_quiz_configs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('training_content_id')->unique()->constrained()->cascadeOnDelete();
@@ -91,6 +95,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('lesson_quiz_configs')) {
+            return;
+        }
+
         Schema::dropIfExists('lesson_quiz_attempts');
         Schema::table('lesson_quiz_configs', function (Blueprint $table) {
             $table->dropForeign(['current_version_id']);

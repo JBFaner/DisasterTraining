@@ -12,13 +12,15 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\DatabaseBackupService;
 use App\Services\SimulationEventLifecycleService;
+use App\Services\SimulationEventPlanningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SimulationEventController extends Controller
 {
     public function __construct(
-        protected SimulationEventLifecycleService $lifecycle
+        protected SimulationEventLifecycleService $lifecycle,
+        protected SimulationEventPlanningService $planningService,
     ) {}
 
     public function index()
@@ -90,6 +92,7 @@ class SimulationEventController extends Controller
         return view('app', [
             'section' => 'simulation',
             'events' => $events,
+            'approved_schedules' => $this->planningService->listApprovedSchedules()->values()->all(),
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
         ]);
     }

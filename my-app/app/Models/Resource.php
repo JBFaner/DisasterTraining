@@ -16,6 +16,9 @@ class Resource extends Model
         'description',
         'quantity',
         'available',
+        'reserved_quantity',
+        'in_use_quantity',
+        'needs_repair_quantity',
         'condition',
         'status',
         'location',
@@ -35,7 +38,43 @@ class Resource extends Model
         'last_inspection_date' => 'datetime',
         'quantity' => 'integer',
         'available' => 'integer',
+        'reserved_quantity' => 'integer',
+        'in_use_quantity' => 'integer',
+        'needs_repair_quantity' => 'integer',
     ];
+
+    public function movements()
+    {
+        return $this->hasMany(ResourceMovement::class)->orderBy('created_at', 'desc');
+    }
+
+    public function computeAvailableQuantity(): int
+    {
+        $total = (int) ($this->quantity ?? 0);
+        $reserved = (int) ($this->reserved_quantity ?? 0);
+        $inUse = (int) ($this->in_use_quantity ?? 0);
+        $needsRepair = (int) ($this->needs_repair_quantity ?? 0);
+        return max(0, $total - $reserved - $inUse - $needsRepair);
+    }
+
+    public function refreshStockStatus(): void
+    {
+        $available = $this->computeAvailableQuantity();
+
+        $status = 'Available';
+        if (((int) ($this->needs_repair_quantity ?? 0)) > 0) {
+            $status = 'Needs Repair';
+        } elseif (((int) ($this->in_use_quantity ?? 0)) > 0) {
+            $status = 'In Use';
+        } elseif (((int) ($this->reserved_quantity ?? 0)) > 0) {
+            $status = 'Reserved';
+        }
+
+        $this->update([
+            'available' => $available,
+            'status' => $status,
+        ]);
+    }
 
     /**
      * Get all event assignments for this resource
@@ -173,7 +212,12 @@ class Resource extends Model
      */
     public function getAvailableQuantity(): int
     {
-        // If the new assignment system isn't set up yet, fall back to the old 'available' field
+        // Prefer new quantity buckets if present
+        if ($this->reserved_quantity !== null || $this->in_use_quantity !== null || $this->needs_repair_quantity !== null) {
+            return $this->computeAvailableQuantity();
+        }
+
+        // Legacy fallback
         try {
             $total = $this->getTotalAssignedQuantity();
             return $this->quantity - $total;

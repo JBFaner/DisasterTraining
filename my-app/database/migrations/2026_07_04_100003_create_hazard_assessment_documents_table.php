@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('hazard_assessment_documents')) {
+            return;
+        }
+
         Schema::create('hazard_assessment_documents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('barangay_profile_id')->constrained('barangay_profiles')->cascadeOnDelete();
@@ -23,6 +27,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('hazard_assessment_documents')) {
+            return;
+        }
+
         Schema::dropIfExists('hazard_assessment_documents');
     }
 };

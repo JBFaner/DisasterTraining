@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Resource;
 use App\Models\SimulationEvent;
 use App\Models\ResourceEventAssignment;
+use App\Models\ResourceMovement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -42,6 +43,8 @@ class ResourceApiController
                 'stats' => [
                     'total' => Resource::count(),
                     'available' => Resource::where('status', 'Available')->count(),
+                    'reserved' => Resource::where('status', 'Reserved')->count(),
+                    'inUse' => Resource::where('status', 'In Use')->count(),
                     'partiallyAssigned' => Resource::where('status', 'Partially Assigned')->count(),
                     'fullyAssigned' => Resource::where('status', 'Fully Assigned')->count(),
                     'needsRepair' => Resource::where('condition', 'Needs Repair')->orWhere('status', 'Damaged')->count(),
@@ -54,6 +57,8 @@ class ResourceApiController
                 'stats' => [
                     'total' => 0,
                     'available' => 0,
+                    'reserved' => 0,
+                    'inUse' => 0,
                     'partiallyAssigned' => 0,
                     'fullyAssigned' => 0,
                     'needsRepair' => 0,
@@ -87,9 +92,41 @@ class ResourceApiController
     public function getHistory(Resource $resource): JsonResponse
     {
         return response()->json([
-            'resource' => $resource->load(['maintenanceLogs']),
+            'resource' => $resource->load(['maintenanceLogs', 'movements']),
             'history' => $resource->maintenanceLogs()->orderBy('created_at', 'desc')->get(),
+            'movements' => $resource->movements()->orderBy('created_at', 'desc')->limit(100)->get(),
         ]);
+    }
+
+    public function movements(Request $request): JsonResponse
+    {
+        $limit = max(10, min(200, (int) $request->query('limit', 50)));
+
+        $rows = ResourceMovement::query()
+            ->with(['resource:id,name', 'simulationEvent:id,title'])
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(function (ResourceMovement $movement) {
+                return [
+                    'id' => $movement->id,
+                    'date' => $movement->created_at?->toDateString(),
+                    'created_at' => $movement->created_at?->toIso8601String(),
+                    'equipment' => $movement->resource?->name,
+                    'resource_id' => $movement->resource_id,
+                    'simulation_event' => $movement->simulationEvent?->title,
+                    'simulation_event_id' => $movement->simulation_event_id,
+                    'requested_by' => $movement->requested_by,
+                    'quantity' => (int) $movement->quantity,
+                    'status' => $movement->status,
+                    'source_module' => $movement->source_module,
+                    'notes' => $movement->notes,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json(['movements' => $rows]);
     }
 
     /**

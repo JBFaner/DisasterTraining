@@ -47,6 +47,7 @@ class ResourceController extends Controller
             'stats' => [
                 'total' => Resource::count(),
                 'available' => Resource::where('status', 'Available')->count(),
+                'reserved' => Resource::where('status', 'Reserved')->count(),
                 'inUse' => Resource::where('status', 'In Use')->count(),
                 'needsRepair' => Resource::where('condition', 'Needs Repair')->orWhere('status', 'Damaged')->count(),
             ],

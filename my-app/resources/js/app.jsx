@@ -29,6 +29,8 @@ import {
 } from './components/TrainingModuleCard';
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
+import { CampaignRequestShow } from './pages/CampaignRequestShow';
+import { SimulationEventPlanningDetail } from './pages/SimulationEventPlanningDetail';
 import AttendanceQrScanner from './components/AttendanceQrScanner';
 import {
     ParticipantRegistrationAttendanceModule,
@@ -143,6 +145,7 @@ import {
     UserCircle,
     Brain,
     Sparkles,
+    ShieldCheck,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
@@ -344,6 +347,8 @@ if (rootElement) {
     const moduleJson = rootElement.getAttribute('data-module');
     const scenarioJson = rootElement.getAttribute('data-scenario');
     const eventsJson = rootElement.getAttribute('data-events');
+    const approvedSchedulesJson = rootElement.getAttribute('data-approved-schedules');
+    const simulationPlanningJson = rootElement.getAttribute('data-simulation-planning');
     const eventJson = rootElement.getAttribute('data-event');
     const eventLifecycleJson = rootElement.getAttribute('data-event-lifecycle');
     const participantsJson = rootElement.getAttribute('data-participants');
@@ -371,6 +376,7 @@ if (rootElement) {
     let currentModule = null;
     let currentScenario = null;
     let events = [];
+    let approvedSchedules = [];
     let currentEvent = null;
     let currentEventLifecycle = null;
     let participants = [];
@@ -446,6 +452,13 @@ if (rootElement) {
             events = JSON.parse(eventsJson);
         } catch (e) {
             console.error('Failed to parse events JSON', e);
+        }
+    }
+    if (approvedSchedulesJson) {
+        try {
+            approvedSchedules = JSON.parse(approvedSchedulesJson);
+        } catch (e) {
+            console.error('Failed to parse approved schedules JSON', e);
         }
     }
     if (eventJson) {
@@ -699,6 +712,7 @@ if (rootElement) {
     const evaluationAttemptNumbersJson = rootElement.getAttribute('data-evaluation-attempt-numbers');
     const evaluationPassingScoreAttr = rootElement.getAttribute('data-evaluation-passing-score');
     const evaluationResultJson = rootElement.getAttribute('data-evaluation-result');
+    const campaignRequestJson = rootElement.getAttribute('data-campaign-request');
     const scoresJson = rootElement.getAttribute('data-scores');
     const criterionAveragesJson = rootElement.getAttribute('data-criterion-averages');
 
@@ -846,6 +860,8 @@ if (rootElement) {
     let evaluationAttemptNumbers = [];
     let evaluationPassingScore = 75;
     let evaluationResult = null;
+    let campaignRequest = null;
+    let simulationPlanning = null;
     if (barangayProfileJson) {
         try {
             barangayProfile = JSON.parse(barangayProfileJson);
@@ -1003,6 +1019,20 @@ if (rootElement) {
             console.error('Failed to parse evaluation result JSON', e);
         }
     }
+    if (campaignRequestJson) {
+        try {
+            campaignRequest = JSON.parse(campaignRequestJson);
+        } catch (e) {
+            console.error('Failed to parse campaign request JSON', e);
+        }
+    }
+    if (simulationPlanningJson) {
+        try {
+            simulationPlanning = JSON.parse(simulationPlanningJson);
+        } catch (e) {
+            console.error('Failed to parse simulation planning JSON', e);
+        }
+    }
 
     // Parse user details page data
     const viewingUserJson = rootElement.getAttribute('data-viewing-user');
@@ -1105,6 +1135,8 @@ if (rootElement) {
                                     sectionAttr.startsWith('evaluation_results_participant') ? 'evaluation' :
                                         sectionAttr === 'training_evaluation_results' ? 'evaluation' :
                                         sectionAttr === 'evaluation_result_detail' ? 'evaluation' :
+                                        sectionAttr === 'campaign_request_show' ? 'training' :
+                                        sectionAttr === 'simulation_planning_show' ? 'simulation' :
                                         sectionAttr.startsWith('certification_participant') ? 'certification' :
                                             sectionAttr.startsWith('resources') ? 'resources' :
                                                 sectionAttr.startsWith('resource_budget_proposal') ? 'resource_budget_proposal' :
@@ -1258,6 +1290,25 @@ if (rootElement) {
             return [
                 { label: 'Evaluations', href: '/admin/evaluations' },
                 { label: 'Evaluation Report', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'campaign_request_show') {
+            const moduleId = campaignRequest?.training_module?.id;
+            return [
+                { label: 'Training Modules', href: trainingModulesIndex(role) },
+                {
+                    label: campaignRequest?.training_module?.title || 'Module',
+                    href: moduleId ? trainingModuleShow(role, moduleId) : null,
+                },
+                { label: `Campaign Request #${campaignRequest?.id || ''}`, href: null },
+            ];
+        }
+
+        if (sectionAttr === 'simulation_planning_show') {
+            return [
+                { label: 'Simulation Event Planning', href: '/admin/simulation-events' },
+                { label: simulationPlanning?.schedule?.campaign_title || 'Planning Dashboard', href: null },
             ];
         }
 
@@ -1480,6 +1531,14 @@ if (rootElement) {
             return 'Evaluation Report';
         }
 
+        if (sectionAttr === 'campaign_request_show') {
+            return campaignRequest ? `Campaign Request #${campaignRequest.id}` : 'Campaign Request';
+        }
+
+        if (sectionAttr === 'simulation_planning_show') {
+            return simulationPlanning?.schedule?.campaign_title || 'Simulation Event Planning';
+        }
+
         if (breadcrumbs.length === 0) {
             return '';
         }
@@ -1602,6 +1661,7 @@ if (rootElement) {
                             ) : (
                                 <SimulationEventPlanningModule
                                     events={events}
+                                    approvedSchedules={approvedSchedules}
                                     role={role}
                                     SimulationEventsTable={SimulationEventsTable}
                                 />
@@ -1973,6 +2033,14 @@ if (rootElement) {
                                 result={evaluationResult}
                                 passingScore={evaluationPassingScore}
                             />
+                        )}
+
+                        {sectionAttr === 'campaign_request_show' && campaignRequest && (
+                            <CampaignRequestShow request={campaignRequest} />
+                        )}
+
+                        {sectionAttr === 'simulation_planning_show' && simulationPlanning && (
+                            <SimulationEventPlanningDetail planning={simulationPlanning} />
                         )}
 
                         {sectionAttr === 'evaluation_participants' && (
@@ -6289,14 +6357,28 @@ function SimulationEventsTable({ events, role, embedded = false, activeOnly = fa
                         <>
                             <div className="text-5xl mb-4 opacity-80">📅</div>
                             <h3 className="text-lg font-semibold text-slate-800 mb-1">No simulation events yet</h3>
-                            <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">Create your first event to schedule drills and exercises for your team.</p>
-                            <a
-                                href="/admin/simulation-events/create"
-                                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all duration-200"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Create Event
-                            </a>
+                            <p className="text-slate-500 text-sm mb-6 max-w-md mx-auto">
+                                {embedded
+                                    ? 'Simulation events are generated from approved campaign schedules once training readiness is met. Open a schedule, complete the simulation plan, then generate the event.'
+                                    : 'Create your first event to schedule drills and exercises for your team.'}
+                            </p>
+                            {embedded ? (
+                                <a
+                                    href="/admin/simulation-events"
+                                    className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all duration-200"
+                                >
+                                    <ShieldCheck className="w-4 h-4" />
+                                    View Approved Schedules
+                                </a>
+                            ) : (
+                                <a
+                                    href="/admin/simulation-events/create"
+                                    className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all duration-200"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create Event
+                                </a>
+                            )}
                         </>
                     ) : (
                         <>

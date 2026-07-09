@@ -352,8 +352,14 @@ class HazardTrainingRecommendationService
         $normalized = [];
 
         foreach ($tokens as $token) {
+            $tokenLower = strtolower($token);
             foreach ($validTypes as $type) {
-                if (strcasecmp($token, $type) === 0) {
+                $typeLower = strtolower($type);
+                if (
+                    strcasecmp($token, $type) === 0
+                    || str_contains($tokenLower, $typeLower)
+                    || str_contains($typeLower, $tokenLower)
+                ) {
                     $normalized[$type] = true;
                     continue 2;
                 }
@@ -365,12 +371,13 @@ class HazardTrainingRecommendationService
 
     private function buildTrainingRecommendationText(TrainingModule $module, BarangayHazard $hazard): string
     {
-        $base = $module->category ?: $hazard->hazard_type.' Preparedness Training';
+        $hazardType = strtolower($hazard->hazard_type);
 
         return match ($hazard->risk_level) {
-            'High', 'Very High' => "Highly recommended for {$base}.",
-            'Moderate' => "Recommended for {$base}.",
-            default => "Suitable for {$base}.",
+            'Very High', 'High' => "Recommended due to high {$hazardType} susceptibility.",
+            'Moderate' => "Recommended based on moderate {$hazardType} exposure.",
+            'Low' => "Included based on low {$hazardType} exposure for broader preparedness.",
+            default => 'Recommended based on hazard assessment profile.',
         };
     }
 

@@ -2,11 +2,10 @@ import React from 'react';
 import {
     CalendarClock,
     History,
-    Plus,
     Download,
     Eye,
+    ShieldCheck,
 } from 'lucide-react';
-import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
@@ -23,6 +22,7 @@ import {
     AdminTableActionButton,
 } from './admin/AdminDataTable';
 import { deriveSimulationEventStatus } from '../utils/simulationEventStatus';
+import { ApprovedCampaignSchedulesTable } from './ApprovedCampaignSchedulesTable';
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -48,13 +48,16 @@ function monitoringStatusTone(status) {
 }
 
 function getInitialTab() {
-    if (typeof window === 'undefined') return 'events';
+    if (typeof window === 'undefined') return 'schedules';
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    return tab === 'history' ? 'history' : 'events';
+    if (tab === 'history') return 'history';
+    if (tab === 'events') return 'events';
+    return 'schedules';
 }
 
 const PLANNING_TABS = [
+    { id: 'schedules', label: 'Approved Campaign Schedules', icon: ShieldCheck },
     { id: 'events', label: 'Simulation Events', icon: CalendarClock },
     { id: 'history', label: 'Completed Event History', icon: History },
 ];
@@ -296,61 +299,20 @@ function CompletedEventHistoryTab({ events = [] }) {
     );
 }
 
-export function SimulationEventPlanningModule({ events, role, SimulationEventsTable }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+export function SimulationEventPlanningModule({ events, approvedSchedules = [], role, SimulationEventsTable }) {
     const [activeTab, setActiveTab] = React.useState(getInitialTab);
-    const [autoApprovalEnabled, setAutoApprovalEnabled] = React.useState(false);
-    const [isLoadingToggle, setIsLoadingToggle] = React.useState(false);
-
-    React.useEffect(() => {
-        fetch('/admin/settings/auto-approval')
-            .then((res) => res.json())
-            .then((data) => setAutoApprovalEnabled(data.enabled))
-            .catch((err) => console.error('Failed to load auto-approval setting:', err));
-    }, []);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         const url = new URL(window.location.href);
         if (tabId === 'events') {
-            url.searchParams.delete('tab');
+            url.searchParams.set('tab', 'events');
+        } else if (tabId === 'history') {
+            url.searchParams.set('tab', 'history');
         } else {
-            url.searchParams.set('tab', tabId);
+            url.searchParams.delete('tab');
         }
         window.history.replaceState({}, '', url);
-    };
-
-    const handleToggleAutoApproval = async () => {
-        setIsLoadingToggle(true);
-        try {
-            const response = await fetch('/admin/settings/auto-approval', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
-                body: JSON.stringify({ enabled: !autoApprovalEnabled }),
-            });
-            const data = await response.json();
-            if (data.success) {
-                setAutoApprovalEnabled(data.enabled);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Settings Updated',
-                    text: data.message,
-                    timer: 3000,
-                    showConfirmButton: false,
-                });
-            }
-        } catch (error) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to update auto-approval setting.',
-            });
-        } finally {
-            setIsLoadingToggle(false);
-        }
     };
 
     return (
@@ -359,38 +321,19 @@ export function SimulationEventPlanningModule({ events, role, SimulationEventsTa
                 icon={CalendarClock}
                 title="Simulation Event Planning"
                 description={
-                    activeTab === 'events'
-                        ? 'Plan, prepare, and manage upcoming and ongoing disaster simulation events.'
+                    activeTab === 'schedules'
+                        ? 'Review approved campaign schedules and prepare simulation events based on training readiness.'
+                        : activeTab === 'events'
+                        ? 'Monitor draft, published, and ongoing simulation events generated from approved schedules.'
                         : 'Browse completed simulations with evaluation and attendance summaries.'
                 }
                 actions={
-                    activeTab === 'events' ? (
-                        <>
-                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
-                                <span className="text-xs font-medium text-slate-700">Auto-Approve</span>
-                                <button
-                                    type="button"
-                                    onClick={handleToggleAutoApproval}
-                                    disabled={isLoadingToggle}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${autoApprovalEnabled ? 'bg-emerald-600' : 'bg-slate-300'} ${isLoadingToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                    role="switch"
-                                    aria-checked={autoApprovalEnabled}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoApprovalEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
-                                <span className="text-xs text-slate-500">{autoApprovalEnabled ? 'On' : 'Off'}</span>
-                            </div>
-                            <AdminPrimaryButton href="/admin/simulation-events/create">
-                                <Plus className="w-4 h-4" />
-                                Create Event
-                            </AdminPrimaryButton>
-                        </>
-                    ) : (
+                    activeTab === 'history' ? (
                         <AdminSecondaryButton disabled title="Export coming soon">
                             <Download className="w-4 h-4" />
                             Export
                         </AdminSecondaryButton>
-                    )
+                    ) : null
                 }
             />
 
@@ -417,6 +360,9 @@ export function SimulationEventPlanningModule({ events, role, SimulationEventsTa
                 </div>
             </div>
 
+            {activeTab === 'schedules' && (
+                <ApprovedCampaignSchedulesTable schedules={approvedSchedules} />
+            )}
             {activeTab === 'events' && SimulationEventsTable && (
                 <SimulationEventsTable events={events} role={role} embedded activeOnly />
             )}

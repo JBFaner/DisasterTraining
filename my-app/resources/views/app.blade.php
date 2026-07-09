@@ -49,6 +49,12 @@
             @isset($events)
                 data-events='@json($events)'
             @endisset
+            @isset($approved_schedules)
+                data-approved-schedules='@json($approved_schedules)'
+            @endisset
+            @isset($simulation_planning)
+                data-simulation-planning='@json($simulation_planning)'
+            @endisset
             @isset($event)
                 data-event='@json($event)'
             @endisset
@@ -271,6 +277,9 @@
             @endisset
             @isset($evaluation_result)
                 data-evaluation-result='@json($evaluation_result)'
+            @endisset
+            @isset($campaign_request)
+                data-campaign-request='@json($campaign_request)'
             @endisset
             @if (session('status'))
                 data-status="{{ session('status') }}"

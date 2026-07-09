@@ -8,6 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('qualified_trainers')) {
+            return;
+        }
         Schema::create('qualified_trainers', function (Blueprint $table) {
             $table->id();
             $table->string('group6_external_id')->nullable()->unique();
@@ -30,6 +33,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('qualified_trainers')) {
+            return;
+        }
+
         Schema::dropIfExists('qualified_trainers');
     }
 };

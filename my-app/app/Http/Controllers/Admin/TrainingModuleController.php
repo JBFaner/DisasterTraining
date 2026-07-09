@@ -183,21 +183,6 @@ class TrainingModuleController extends Controller
             ->map(fn ($id) => $trainingModule->qualified_trainers->firstWhere('id', (int) $id))
             ->filter()
             ->values();
-        $trainingModule->community_options = BarangayProfile::query()
-            ->orderBy('barangay_name')
-            ->get([
-                'id',
-                'barangay_name',
-                'municipality_city',
-                'province',
-            ])
-            ->map(fn (BarangayProfile $profile) => [
-                'barangay_profile_id' => $profile->id,
-                'barangay_name' => $profile->barangay_name,
-                'municipality_city' => $profile->municipality_city,
-                'province' => $profile->province,
-            ])
-            ->values();
 
         return view('app', [
             'section' => 'training_detail',

@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('ai_scenario_assessment_versions')) {
+            return;
+        }
+
         Schema::create('ai_scenario_assessment_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('ai_scenario_config_id')->constrained()->cascadeOnDelete();
@@ -40,10 +44,14 @@ return new class extends Migration
         });
 
         Schema::table('ai_scenario_configs', function (Blueprint $table) {
-            $table->foreignId('current_version_id')->nullable()->after('shuffle_answer_choices')
-                ->constrained('ai_scenario_assessment_versions')->nullOnDelete();
-            $table->foreignId('published_version_id')->nullable()->after('current_version_id')
-                ->constrained('ai_scenario_assessment_versions')->nullOnDelete();
+            if (! Schema::hasColumn('ai_scenario_configs', 'current_version_id')) {
+                $table->foreignId('current_version_id')->nullable()->after('shuffle_answer_choices')
+                    ->constrained('ai_scenario_assessment_versions')->nullOnDelete();
+            }
+            if (! Schema::hasColumn('ai_scenario_configs', 'published_version_id')) {
+                $table->foreignId('published_version_id')->nullable()->after('current_version_id')
+                    ->constrained('ai_scenario_assessment_versions')->nullOnDelete();
+            }
         });
 
         $this->migrateExistingConfigs();
@@ -52,11 +60,17 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('ai_scenario_configs', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('published_version_id');
-            $table->dropConstrainedForeignId('current_version_id');
+            if (Schema::hasColumn('ai_scenario_configs', 'published_version_id')) {
+                $table->dropConstrainedForeignId('published_version_id');
+            }
+            if (Schema::hasColumn('ai_scenario_configs', 'current_version_id')) {
+                $table->dropConstrainedForeignId('current_version_id');
+            }
         });
 
-        Schema::dropIfExists('ai_scenario_assessment_versions');
+        if (Schema::hasTable('ai_scenario_assessment_versions')) {
+            Schema::dropIfExists('ai_scenario_assessment_versions');
+        }
     }
 
     private function migrateExistingConfigs(): void

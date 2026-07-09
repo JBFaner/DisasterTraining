@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('philippine_regions')) {
+            return;
+        }
+
         Schema::create('philippine_regions', function (Blueprint $table) {
             $table->id();
             $table->string('psgc_code', 20)->unique();
@@ -46,6 +50,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('philippine_regions')) {
+            return;
+        }
+
         Schema::dropIfExists('philippine_barangays');
         Schema::dropIfExists('philippine_cities');
         Schema::dropIfExists('philippine_provinces');
