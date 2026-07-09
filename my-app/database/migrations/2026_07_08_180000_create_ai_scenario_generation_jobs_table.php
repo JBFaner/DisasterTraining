@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('ai_scenario_generation_jobs')) {
+            return;
+        }
+
         Schema::create('ai_scenario_generation_jobs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('ai_scenario_config_id')->constrained()->cascadeOnDelete();
@@ -32,6 +36,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('ai_scenario_generation_jobs')) {
+            return;
+        }
+
         Schema::dropIfExists('ai_scenario_generation_jobs');
     }
 };

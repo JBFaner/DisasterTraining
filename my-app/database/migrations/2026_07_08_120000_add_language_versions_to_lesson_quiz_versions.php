@@ -9,14 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('lesson_quiz_versions', function (Blueprint $table) {
-            $table->json('language_versions')->nullable()->after('generated_language');
+            if (! Schema::hasColumn('lesson_quiz_versions', 'language_versions')) {
+                $table->json('language_versions')->nullable()->after('generated_language');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('lesson_quiz_versions', function (Blueprint $table) {
-            $table->dropColumn('language_versions');
+            if (Schema::hasColumn('lesson_quiz_versions', 'language_versions')) {
+                $table->dropColumn('language_versions');
+            }
         });
     }
 };

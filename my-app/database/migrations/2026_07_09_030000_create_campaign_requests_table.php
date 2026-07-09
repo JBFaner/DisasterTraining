@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('campaign_requests')) {
+            return;
+        }
+
         Schema::create('campaign_requests', function (Blueprint $table) {
             $table->id();
 
@@ -30,6 +34,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('campaign_requests')) {
+            return;
+        }
+
         Schema::dropIfExists('campaign_requests');
     }
 };

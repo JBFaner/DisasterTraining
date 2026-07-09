@@ -9,16 +9,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('training_modules', function (Blueprint $table) {
-            $table->json('assigned_qualified_trainer_ids')
-                ->nullable()
-                ->after('lead_qualified_trainer_id');
+            if (! Schema::hasColumn('training_modules', 'assigned_qualified_trainer_ids')) {
+                $table->json('assigned_qualified_trainer_ids')
+                    ->nullable()
+                    ->after('lead_qualified_trainer_id');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('training_modules', function (Blueprint $table) {
-            $table->dropColumn('assigned_qualified_trainer_ids');
+            if (Schema::hasColumn('training_modules', 'assigned_qualified_trainer_ids')) {
+                $table->dropColumn('assigned_qualified_trainer_ids');
+            }
         });
     }
 };

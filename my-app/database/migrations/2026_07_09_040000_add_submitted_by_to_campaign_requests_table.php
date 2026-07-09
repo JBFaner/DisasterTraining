@@ -9,14 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('campaign_requests', function (Blueprint $table) {
-            $table->foreignId('submitted_by_id')->nullable()->constrained('users')->nullOnDelete()->after('proposed_session_label');
+            if (! Schema::hasColumn('campaign_requests', 'submitted_by_id')) {
+                $table->foreignId('submitted_by_id')->nullable()->constrained('users')->nullOnDelete()->after('proposed_session_label');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('campaign_requests', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('submitted_by_id');
+            if (Schema::hasColumn('campaign_requests', 'submitted_by_id')) {
+                $table->dropConstrainedForeignId('submitted_by_id');
+            }
         });
     }
 };

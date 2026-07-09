@@ -44,7 +44,8 @@ return new class extends Migration
         });
 
         Schema::table('training_contents', function (Blueprint $table) {
-            $table->dropColumn([
+            $columnsToDrop = [];
+            foreach ([
                 'content_type',
                 'body',
                 'file_path',
@@ -53,7 +54,14 @@ return new class extends Migration
                 'ai_processing_status',
                 'ai_processing_error',
                 'ai_processed_at',
-            ]);
+            ] as $column) {
+                if (Schema::hasColumn('training_contents', $column)) {
+                    $columnsToDrop[] = $column;
+                }
+            }
+            if ($columnsToDrop !== []) {
+                $table->dropColumn($columnsToDrop);
+            }
         });
     }
 
