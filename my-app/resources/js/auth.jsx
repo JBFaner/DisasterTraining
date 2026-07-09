@@ -16,6 +16,7 @@ if (participantLoginRoot) {
     const lockoutRetryAfter = parseInt(participantLoginRoot.getAttribute('data-lockout-retry-after') || '0', 10);
     const sessionError = participantLoginRoot.getAttribute('data-session-error') || '';
     const status = participantLoginRoot.getAttribute('data-status') || '';
+    const unverifiedEmail = participantLoginRoot.getAttribute('data-unverified-email') || '';
     let errors = {};
     try {
         errors = JSON.parse(errorsJson);
@@ -33,7 +34,7 @@ if (participantLoginRoot) {
     const csrfToken = participantLoginRoot.getAttribute('data-csrf-token') || '';
     const failedAttempts = parseInt(participantLoginRoot.getAttribute('data-failed-attempts') || '0', 10);
     const root = ReactDOM.createRoot(participantLoginRoot);
-    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts, status, csrfToken }));
+    root.render(React.createElement(ParticipantLogin, { errors: errorsObj, oldEmail, lockoutRetryAfter, failedAttempts, status, csrfToken, unverifiedEmail }));
 }
 
 // Participant Register
@@ -76,6 +77,7 @@ if (participantRegisterVerifyRoot) {
     const verificationMethod = participantRegisterVerifyRoot.getAttribute('data-verification-method') || 'email';
     const contact = participantRegisterVerifyRoot.getAttribute('data-contact') || '';
     const status = participantRegisterVerifyRoot.getAttribute('data-status') || '';
+    const resendAvailableAt = parseInt(participantRegisterVerifyRoot.getAttribute('data-resend-available-at') || '0', 10);
     const errorsJson = participantRegisterVerifyRoot.getAttribute('data-errors') || '{}';
     let errors = {};
     
@@ -91,6 +93,7 @@ if (participantRegisterVerifyRoot) {
         contact, 
         errors,
         status,
+        resendAvailableAt,
     }));
 }
 

@@ -862,6 +862,10 @@ class SimulationEventController extends Controller
             abort(403);
         }
 
+        if (! $user->email_verified_at || $user->status !== 'active') {
+            return back()->with('status', 'Your email address has not yet been verified. Please verify your email before accessing the system.');
+        }
+
         // Check if event is published and open for registration
         if ($simulationEvent->status !== 'published') {
             return back()->with('status', 'This event is not open for registration.');

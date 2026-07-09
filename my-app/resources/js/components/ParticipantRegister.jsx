@@ -512,6 +512,11 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                             </>
                         )}
                     </button>
+
+                    <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+                        After creating your account, a verification code will be sent to your email.
+                        Your email must be verified before you can access training modules and simulation events.
+                    </p>
                 </form>
 
                 <div className="mt-6 space-y-2">

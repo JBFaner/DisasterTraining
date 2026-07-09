@@ -1,41 +1,62 @@
-import React, { useState } from 'react';
-import { Mail, Phone, AlertCircle, CheckCircle2, ArrowLeft, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 
-export function ParticipantRegisterVerify({ verificationMethod = 'email', contact = '', errors = {}, status = '' }) {
-    const [otp, setOtp] = useState('');
+export function ParticipantRegisterVerify({ contact = '', errors = {}, status = '', resendAvailableAt = 0 }) {
+    const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isResending, setIsResending] = useState(false);
+    const [countdown, setCountdown] = useState(() => Math.max(0, resendAvailableAt - Math.floor(Date.now() / 1000)));
+    const inputRefs = useRef([]);
+
+    const otp = useMemo(() => otpDigits.join(''), [otpDigits]);
+    const errorMessage = Object.values(errors || {}).flat?.()?.[0] || Object.values(errors || {})[0] || '';
+
+    useEffect(() => {
+        if (countdown <= 0) return undefined;
+        const timer = window.setInterval(() => {
+            setCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+        }, 1000);
+        return () => window.clearInterval(timer);
+    }, [countdown]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (otp.length !== 6) return;
         setIsSubmitting(true);
         e.target.submit();
     };
 
-    const handleOtpChange = (e) => {
-        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-        setOtp(value);
-    };
-
-    const handleResend = (e) => {
-        setIsResending(true);
-        e.target.submit();
-    };
-
-    const getFieldError = (fieldName) => {
-        if (errors[fieldName] && Array.isArray(errors[fieldName])) {
-            return errors[fieldName][0];
+    const updateDigit = (index, value) => {
+        const numeric = value.replace(/\D/g, '').slice(-1);
+        setOtpDigits((prev) => {
+            const next = [...prev];
+            next[index] = numeric;
+            return next;
+        });
+        if (numeric && index < 5) {
+            inputRefs.current[index + 1]?.focus();
         }
-        return null;
     };
 
-    const maskedContact = verificationMethod === 'email' 
-        ? contact.replace(/(.{2})(.*)(@.*)/, '$1***$3')
-        : contact.replace(/(.{3})(.*)(.{4})/, '$1***$3');
+    const handleKeyDown = (index, event) => {
+        if (event.key === 'Backspace' && !otpDigits[index] && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handlePaste = (event) => {
+        event.preventDefault();
+        const pasted = (event.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+        if (!pasted) return;
+        const next = pasted.split('');
+        while (next.length < 6) next.push('');
+        setOtpDigits(next);
+        const focusIndex = Math.min(5, pasted.length);
+        inputRefs.current[focusIndex === 6 ? 5 : focusIndex]?.focus();
+    };
 
     return (
         <div className="min-h-screen relative">
-            {/* Hero background image (same as admin login) with gradient overlay */}
             <div
                 className="absolute inset-0 bg-cover bg-center bg-fixed"
                 style={{ backgroundImage: 'url(/images/hero-training.jpg)' }}
@@ -44,136 +65,102 @@ export function ParticipantRegisterVerify({ verificationMethod = 'email', contac
                     className="absolute inset-0"
                     style={{
                         background:
-                            'linear-gradient(135deg, rgba(16, 24, 40, 0.95) 0%, rgba(30, 41, 59, 0.92) 50%, rgba(15, 118, 110, 0.88))',
+                            'linear-gradient(135deg, rgba(16, 24, 40, 0.95) 0%, rgba(30, 41, 59, 0.92) 50%, rgba(5, 150, 105, 0.88))',
                     }}
                 />
             </div>
+
             <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
                 <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-xl p-8">
-                <div className="mb-6">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 mb-4 mx-auto border border-emerald-200">
-                        <ShieldCheck className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <h1 className="text-2xl font-semibold text-slate-800 mb-1 text-center">
-                        Verify Your {verificationMethod === 'email' ? 'Email' : 'Phone'}
-                    </h1>
-                    <p className="text-sm text-slate-500 text-center">
-                        {verificationMethod === 'email' 
-                            ? `We've sent a 6-digit verification code to your email address.`
-                            : `We've sent a 6-digit code to your phone number.`}
-                    </p>
-                </div>
-
-                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-md">
-                    <div className="flex items-center gap-3">
-                        {verificationMethod === 'email' ? (
-                            <Mail className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                        ) : (
-                            <Phone className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                        )}
-                        <div>
-                            <p className="text-xs font-semibold text-slate-700 mb-0.5">
-                                Code sent to:
-                            </p>
-                            <p className="text-sm text-slate-600 font-mono">{maskedContact}</p>
+                    <div className="mb-6 text-center">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 mb-4 mx-auto border border-emerald-200">
+                            <ShieldCheck className="w-6 h-6 text-emerald-600" />
                         </div>
+                        <h1 className="text-2xl font-semibold text-slate-800 mb-1">Verify Your Email</h1>
+                        <p className="text-sm text-slate-500">We have sent a verification code to:</p>
                     </div>
-                </div>
 
-                {status && (
-                    <div className="mb-4 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-700 flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <span>{status}</span>
-                    </div>
-                )}
-
-                {Object.keys(errors).length > 0 && (
-                    <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
-                        <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                                {Object.entries(errors).map(([field, messages]) => (
-                                    <div key={field}>
-                                        {Array.isArray(messages) ? messages.map((msg, i) => (
-                                            <div key={i}>{msg}</div>
-                                        )) : <div>{messages}</div>}
-                                    </div>
-                                ))}
+                    <div className="mb-5 p-4 bg-emerald-50 border border-emerald-200 rounded-md">
+                        <div className="flex items-center gap-3">
+                            <Mail className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm text-slate-700 font-medium">{contact}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">Please enter the 6-digit verification code below to activate your account.</p>
                             </div>
                         </div>
                     </div>
-                )}
 
-                <form method="POST" action="/participant/register/verify" onSubmit={handleSubmit} className="space-y-4">
-                    <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                    
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="otp">
-                            Enter 6-digit verification code
-                        </label>
-                        <input
-                            id="otp"
-                            name="otp"
-                            type="text"
-                            value={otp}
-                            onChange={handleOtpChange}
-                            required
-                            maxLength={6}
-                            autoFocus
-                            placeholder="000000"
-                            className={`w-full rounded-md border ${
-                                getFieldError('otp') ? 'border-rose-300' : 'border-slate-300'
-                            } px-4 py-3 text-center text-2xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-[rgba(16,185,129,0.06)] transition-all duration-150`}
-                        />
-                        {getFieldError('otp') && (
-                            <p className="mt-1 text-xs text-rose-600">{getFieldError('otp')}</p>
-                        )}
-                        <p className="mt-2 text-xs text-slate-500 text-center">
-                            Check your {verificationMethod === 'email' ? 'email inbox' : 'phone'} for the verification code
-                        </p>
+                    {status ? (
+                        <div className="mb-4 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-700 flex items-start gap-2">
+                            <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            <span>{status}</span>
+                        </div>
+                    ) : null}
+
+                    {errorMessage ? (
+                        <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
+                            <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span>{errorMessage}</span>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    <form method="POST" action="/participant/register/verify" onSubmit={handleSubmit} className="space-y-4">
+                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                        <input type="hidden" name="otp" value={otp} />
+
+                        <div className="flex justify-center gap-2" onPaste={handlePaste}>
+                            {otpDigits.map((digit, index) => (
+                                <input
+                                    key={index}
+                                    ref={(el) => {
+                                        inputRefs.current[index] = el;
+                                    }}
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={1}
+                                    value={digit}
+                                    onChange={(e) => updateDigit(index, e.target.value)}
+                                    onKeyDown={(e) => handleKeyDown(index, e)}
+                                    className="w-11 h-12 rounded-md border border-slate-300 text-center text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    autoFocus={index === 0}
+                                />
+                            ))}
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isSubmitting || otp.length !== 6}
+                            className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-[#16A34A] hover:bg-[#1FA463] disabled:bg-[#16A34A]/60 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-all duration-200 ease-out"
+                        >
+                            {isSubmitting ? 'Verifying...' : 'Verify Email'}
+                        </button>
+                    </form>
+
+                    <form method="POST" action="/participant/register/resend" onSubmit={() => setIsResending(true)} className="mt-4 text-center">
+                        <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                        <button
+                            type="submit"
+                            disabled={isResending || isSubmitting || countdown > 0}
+                            className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold disabled:text-slate-400 disabled:cursor-not-allowed"
+                        >
+                            {isResending ? 'Sending new code...' : 'Resend Code'}
+                        </button>
+                        {countdown > 0 ? (
+                            <p className="text-xs text-slate-500 mt-1">Resend available in {countdown} seconds</p>
+                        ) : null}
+                    </form>
+
+                    <div className="mt-6 pt-6 border-t border-slate-200">
+                        <a
+                            href="/participant/register"
+                            className="inline-flex items-center gap-2 text-xs text-slate-600 hover:text-slate-800 font-medium"
+                        >
+                            <ArrowLeft className="w-3 h-3" />
+                            <span>Back to registration</span>
+                        </a>
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={isSubmitting || otp.length !== 6}
-                        className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-emerald-400 disabled:to-emerald-500 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-all duration-200 ease-out transform-gpu hover:-translate-y-[1px] hover:shadow-[0_6px_14px_rgba(0,0,0,0.12)]"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                <span>Verifying...</span>
-                            </>
-                        ) : (
-                            <>
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>Verify & Complete Registration</span>
-                            </>
-                        )}
-                    </button>
-
-                    <div className="text-center">
-                        <form method="POST" action="/participant/register/resend" onSubmit={handleResend}>
-                            <input type="hidden" name="_token" value={document.head.querySelector('meta[name="csrf-token"]')?.content || ''} />
-                            <button
-                                type="submit"
-                                disabled={isResending || isSubmitting}
-                                className="text-xs text-emerald-700 hover:text-emerald-800 font-medium disabled:text-slate-400 disabled:cursor-not-allowed"
-                            >
-                                {isResending ? 'Sending new code...' : 'Resend verification code'}
-                            </button>
-                        </form>
-                    </div>
-                </form>
-
-                <div className="mt-6 pt-6 border-t border-slate-200">
-                    <a
-                        href="/participant/register"
-                        className="inline-flex items-center gap-2 text-xs text-slate-200 hover:text-white font-medium"
-                    >
-                        <ArrowLeft className="w-3 h-3" />
-                        <span>Back to registration</span>
-                    </a>
-                </div>
                 </div>
             </div>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Plus } from 'lucide-react';
 import { AdminDataTable, AdminTableActionButton } from './admin/AdminDataTable';
 import {
     formatDate,
@@ -87,14 +87,32 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
             emptyTitle="No approved campaign schedules"
             emptyDescription="Approved schedules from Campaign Planning & Scheduling will appear here automatically."
             minWidth="1600px"
-            renderActions={(row) => (
-                <AdminTableActionButton
-                    href={`/admin/simulation-planning/${row.campaign_request_id || row.id}`}
-                    icon={Eye}
-                    title="Open Planning Dashboard"
-                    variant="view"
-                />
-            )}
+            renderActions={(row) => {
+                const planHref = `/admin/simulation-planning/${row.campaign_request_id || row.id}`;
+                const canCreate = !row.simulation_event_id && (
+                    row.simulation_plan_status === 'Not Yet Created'
+                    || row.simulation_plan_status === 'not_created'
+                );
+
+                return (
+                    <>
+                        {canCreate ? (
+                            <AdminTableActionButton
+                                href={planHref}
+                                icon={Plus}
+                                title="Create Simulation Plan"
+                                variant="edit"
+                            />
+                        ) : null}
+                        <AdminTableActionButton
+                            href={planHref}
+                            icon={Eye}
+                            title={canCreate ? 'View Planning Dashboard' : 'Open Planning Dashboard'}
+                            variant="view"
+                        />
+                    </>
+                );
+            }}
         />
     );
 }

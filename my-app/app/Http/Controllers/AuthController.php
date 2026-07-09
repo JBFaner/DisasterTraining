@@ -7,7 +7,6 @@ use App\Models\SimulationEvent;
 use App\Models\EventRegistration;
 use App\Mail\ParticipantVerificationEmail;
 use App\Mail\AdminLoginOtpEmail;
-use App\Services\SmsService;
 use App\Services\AuditLogger;
 use App\Services\DatabaseBackupService;
 use App\Services\LoginAttemptService;
@@ -387,18 +386,16 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'organization' => ['nullable', 'string', 'max:255'],
             'email' => [
-                'nullable',
+                'required',
                 'email',
                 'max:255',
                 'unique:users,email',
-                'required_without:phone',
             ],
             'phone' => [
                 'nullable',
                 'string',
                 'max:255',
                 'unique:users,phone',
-                'required_without:email',
             ],
             'street' => [
                 'nullable',
@@ -412,8 +409,6 @@ class AuthController extends Controller
             'barangay_name' => ['required', 'string', 'max:255'],
             'password' => ['required', 'confirmed', 'min:8'],
         ], [
-            'email.required_without' => 'Please provide either an email or phone number.',
-            'phone.required_without' => 'Please provide either an email or phone number.',
             'email.unique' => 'This email is already registered. Please log in or use a different one.',
             'phone.unique' => 'This phone number is already registered. Please log in or use a different one.',
         ]);
@@ -433,62 +428,53 @@ class AuthController extends Controller
                 ->withInput();
         }
 
-        // Determine verification method
-        $verificationMethod = isset($data['email']) ? 'email' : 'phone';
-        $verificationCode = null;
+        $participantId = $this->generateParticipantId();
+        $hazardProfile = \App\Models\BarangayProfile::where(
+            'philippine_barangay_id',
+            $data['philippine_barangay_id'] ?? null,
+        )->first();
 
-        // Generate 6-digit verification code for both email and phone
-        $verificationCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        if ($verificationMethod === 'phone') {
-            // Send OTP via SMS
-            try {
-                $smsService = new SmsService();
-                $smsService->sendOtp($data['phone'], $verificationCode);
-            } catch (\Exception $e) {
-                \Log::error("Failed to send SMS OTP: " . $e->getMessage());
-                // Still continue - OTP is logged as fallback
-                \Log::info("OTP for {$data['phone']}: {$verificationCode}");
-            }
-        } else {
-            // Send verification code via email
-            try {
-                Mail::to($data['email'])->send(
-                    new ParticipantVerificationEmail($verificationCode, $data['name'])
-                );
-            } catch (\Exception $e) {
-                \Log::error("Failed to send verification email: " . $e->getMessage());
-
-                return back()
-                    ->withErrors(['email' => 'We could not send the verification email. Please try again later.'])
-                    ->withInput();
-            }
-        }
-
-        // Store registration data in session
-        $request->session()->put('participant_registration', [
+        $user = User::create([
             'name' => $data['name'],
-            'email' => $data['email'] ?? null,
+            'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
             'organization' => $data['organization'] ?? null,
-            'philippine_barangay_id' => $data['philippine_barangay_id'],
-            'region' => $data['region'],
-            'province' => $data['province'],
-            'city' => $data['municipality_city'],
-            'municipality_city' => $data['municipality_city'],
-            'barangay' => $data['barangay_name'],
-            'barangay_name' => $data['barangay_name'],
+            'philippine_barangay_id' => $data['philippine_barangay_id'] ?? null,
+            'barangay_id' => $hazardProfile?->id,
+            'province' => $data['province'] ?? null,
+            'city' => $data['municipality_city'] ?? null,
+            'barangay' => $data['barangay_name'] ?? null,
             'street' => $data['street'] ?? null,
             'password' => $data['password'],
-            'verification_method' => $verificationMethod,
-            'verification_code' => $verificationCode,
-            'expires_at' => now()->addMinutes(15),
+            'role' => 'PARTICIPANT',
+            'participant_id' => $participantId,
+            'status' => 'pending_email_verification',
+            'registered_at' => now(),
+            'registration_source' => ! empty($campaignContext) ? self::CAMPAIGN_REGISTRATION_SOURCE : 'direct_registration',
+            'registration_campaign_id' => ! empty($campaignContext['campaign_event_id']) ? (string) $campaignContext['campaign_event_id'] : null,
+            'registration_campaign_title' => ! empty($campaignContext['training_title']) ? (string) $campaignContext['training_title'] : null,
+            'registration_campaign_registered_at' => ! empty($campaignContext) ? now() : null,
+        ]);
+
+        try {
+            $this->sendParticipantEmailVerificationCode($user);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send participant verification email: '.$e->getMessage());
+
+            return back()
+                ->withErrors(['email' => 'We could not send the verification email. Please try again later.'])
+                ->withInput();
+        }
+
+        $request->session()->put('participant_registration_verify', [
+            'user_id' => $user->id,
             'campaign_context' => $campaignContext,
+            'last_sent_at' => now()->getTimestamp(),
         ]);
 
         return redirect()->route('participant.register.verify')
-            ->with('verification_method', $verificationMethod)
-            ->with('contact', $verificationMethod === 'email' ? $data['email'] : $data['phone']);
+            ->with('contact', $user->email)
+            ->with('status', 'A verification code has been sent to your email.');
     }
 
     /**
@@ -496,21 +482,25 @@ class AuthController extends Controller
      */
     public function showParticipantRegisterVerify()
     {
-        $registrationData = session('participant_registration');
-        
-        if (!$registrationData) {
+        $verifySession = session('participant_registration_verify');
+        if (! $verifySession || empty($verifySession['user_id'])) {
             return redirect()->route('participant.register')
                 ->withErrors(['form' => 'Registration session expired. Please start again.']);
         }
 
-        $verificationMethod = $registrationData['verification_method'] ?? 'email';
-        $contact = $verificationMethod === 'email' 
-            ? $registrationData['email'] 
-            : $registrationData['phone'];
+        $user = User::find($verifySession['user_id']);
+        if (! $user || $user->role !== 'PARTICIPANT') {
+            session()->forget('participant_registration_verify');
+            return redirect()->route('participant.register')
+                ->withErrors(['form' => 'Registration session expired. Please start again.']);
+        }
+
+        $resendAvailableAt = (int) (($verifySession['last_sent_at'] ?? 0) + self::PARTICIPANT_EMAIL_RESEND_COOLDOWN_SECONDS);
 
         return view('auth.participant-register-verify', [
-            'verification_method' => $verificationMethod,
-            'contact' => $contact,
+            'verification_method' => 'email',
+            'contact' => $user->email,
+            'resend_available_at' => $resendAvailableAt,
             'status' => session('status'),
         ]);
     }
@@ -520,69 +510,45 @@ class AuthController extends Controller
      */
     public function participantRegisterResend(Request $request)
     {
-        $registrationData = $request->session()->get('participant_registration');
-
-        if (! $registrationData) {
+        $verifySession = $request->session()->get('participant_registration_verify');
+        if (! $verifySession || empty($verifySession['user_id'])) {
             return redirect()->route('participant.register')
                 ->withErrors(['form' => 'Registration session expired. Please start again.']);
         }
 
-        $lastResend = (int) $request->session()->get('participant_register_last_resend_at', 0);
-        if (now()->getTimestamp() - $lastResend < 60) {
-            $verificationMethod = $registrationData['verification_method'] ?? 'email';
-            $contact = $verificationMethod === 'email'
-                ? $registrationData['email']
-                : $registrationData['phone'];
+        $user = User::find($verifySession['user_id']);
+        if (! $user || $user->role !== 'PARTICIPANT') {
+            $request->session()->forget('participant_registration_verify');
+            return redirect()->route('participant.register')
+                ->withErrors(['form' => 'Registration session expired. Please start again.']);
+        }
 
+        $lastSentAt = (int) ($verifySession['last_sent_at'] ?? 0);
+        if (now()->getTimestamp() - $lastSentAt < self::PARTICIPANT_EMAIL_RESEND_COOLDOWN_SECONDS) {
             return back()
                 ->withErrors(['otp' => 'Please wait at least 60 seconds before requesting a new code.'])
-                ->with('verification_method', $verificationMethod)
-                ->with('contact', $contact);
+                ->with('verification_method', 'email')
+                ->with('contact', $user->email);
         }
 
-        $verificationMethod = $registrationData['verification_method'] ?? 'email';
-        $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        try {
+            $this->sendParticipantEmailVerificationCode($user);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to resend participant verification email: '.$e->getMessage());
 
-        $registrationData['verification_code'] = $verificationCode;
-        $registrationData['expires_at'] = now()->addMinutes(15);
-        $request->session()->put('participant_registration', $registrationData);
-        $request->session()->put('participant_register_last_resend_at', now()->getTimestamp());
-
-        $contact = $verificationMethod === 'email'
-            ? $registrationData['email']
-            : $registrationData['phone'];
-
-        if ($verificationMethod === 'phone') {
-            try {
-                $smsService = new SmsService();
-                $smsService->sendOtp($registrationData['phone'], $verificationCode);
-            } catch (\Exception $e) {
-                \Log::error('Failed to resend SMS OTP: ' . $e->getMessage());
-
-                return back()
-                    ->withErrors(['otp' => 'Unable to resend verification code. Please try again later.'])
-                    ->with('verification_method', $verificationMethod)
-                    ->with('contact', $contact);
-            }
-        } else {
-            try {
-                Mail::to($registrationData['email'])->send(
-                    new ParticipantVerificationEmail($verificationCode, $registrationData['name'])
-                );
-            } catch (\Exception $e) {
-                \Log::error('Failed to resend verification email: ' . $e->getMessage());
-
-                return back()
-                    ->withErrors(['otp' => 'Unable to resend verification email. Please try again later.'])
-                    ->with('verification_method', $verificationMethod)
-                    ->with('contact', $contact);
-            }
+            return back()
+                ->withErrors(['otp' => 'Unable to resend verification email. Please try again later.'])
+                ->with('verification_method', 'email')
+                ->with('contact', $user->email);
         }
+
+        $verifySession['last_sent_at'] = now()->getTimestamp();
+        $request->session()->put('participant_registration_verify', $verifySession);
 
         return back()
             ->with('status', 'A new verification code has been sent.')
-            ->with('verification_method', $verificationMethod)
-            ->with('contact', $contact);
+            ->with('verification_method', 'email')
+            ->with('contact', $user->email);
     }
 
     /**
@@ -590,93 +556,56 @@ class AuthController extends Controller
      */
     public function participantRegisterVerify(Request $request)
     {
-        $registrationData = $request->session()->get('participant_registration');
-
-        if (!$registrationData) {
+        $verifySession = $request->session()->get('participant_registration_verify');
+        if (! $verifySession || empty($verifySession['user_id'])) {
             return redirect()->route('participant.register')
                 ->withErrors(['form' => 'Registration session expired. Please start again.']);
         }
 
-        // Check expiry
-        if (now()->isAfter($registrationData['expires_at'])) {
-            $request->session()->forget('participant_registration');
+        $user = User::find($verifySession['user_id']);
+        if (! $user || $user->role !== 'PARTICIPANT') {
+            $request->session()->forget('participant_registration_verify');
             return redirect()->route('participant.register')
-                ->withErrors(['form' => 'Verification code expired. Please start registration again.']);
+                ->withErrors(['form' => 'Registration session expired. Please start again.']);
         }
 
-        $verificationMethod = $registrationData['verification_method'];
-
-        // Validate verification code (same for both email and phone)
         $request->validate([
-            'otp' => ['required', 'string', 'size:6'],
+            'otp' => ['required', 'digits:6'],
         ], [
             'otp.required' => 'Please enter the verification code.',
-            'otp.size' => 'Verification code must be 6 digits.',
+            'otp.digits' => 'Verification code must be 6 digits.',
         ]);
 
-        if ($request->otp !== $registrationData['verification_code']) {
-            $contact = $verificationMethod === 'email' 
-                ? $registrationData['email'] 
-                : $registrationData['phone'];
-            
+        $cachedCode = Cache::get($this->participantVerificationCacheKey($user->id));
+        if (! $cachedCode) {
             return back()
-                ->withErrors(['otp' => 'Invalid verification code. Please try again.'])
-                ->with('verification_method', $verificationMethod)
-                ->with('contact', $contact);
+                ->withErrors(['otp' => 'This verification code has expired.'])
+                ->with('verification_method', 'email')
+                ->with('contact', $user->email);
         }
 
-        // All verified - create the user
-        $participantId = $this->generateParticipantId();
-        $hazardProfile = \App\Models\BarangayProfile::where(
-            'philippine_barangay_id',
-            $registrationData['philippine_barangay_id'] ?? null,
-        )->first();
-
-        $user = User::create([
-            'name' => $registrationData['name'],
-            'email' => $registrationData['email'],
-            'phone' => $registrationData['phone'],
-            'organization' => $registrationData['organization'] ?? null,
-            'philippine_barangay_id' => $registrationData['philippine_barangay_id'] ?? null,
-            'barangay_id' => $hazardProfile?->id,
-            'province' => $registrationData['province'] ?? null,
-            'city' => $registrationData['city'] ?? $registrationData['municipality_city'] ?? null,
-            'barangay' => $registrationData['barangay'] ?? $registrationData['barangay_name'] ?? null,
-            'street' => $registrationData['street'] ?? null,
-            'password' => $registrationData['password'],
-            'role' => 'PARTICIPANT',
-            'participant_id' => $participantId,
-            'status' => 'active',
-            'registered_at' => now(),
-            'registration_source' => ! empty($registrationData['campaign_context']) ? self::CAMPAIGN_REGISTRATION_SOURCE : 'direct_registration',
-            'registration_campaign_id' => ! empty($registrationData['campaign_context']['campaign_event_id']) ? (string) $registrationData['campaign_context']['campaign_event_id'] : null,
-            'registration_campaign_title' => ! empty($registrationData['campaign_context']['training_title']) ? (string) $registrationData['campaign_context']['training_title'] : null,
-            'registration_campaign_registered_at' => ! empty($registrationData['campaign_context']) ? now() : null,
-        ]);
-
-        if ($verificationMethod === 'email' && ! empty($registrationData['email'])) {
-            $user->email_verified_at = now();
-        }
-        if ($verificationMethod === 'phone' && ! empty($registrationData['phone'])) {
-            $user->phone_verified_at = now();
-        }
-        if ($user->isDirty(['email_verified_at', 'phone_verified_at'])) {
-            $user->save();
+        if ($request->string('otp')->toString() !== (string) $cachedCode) {
+            return back()
+                ->withErrors(['otp' => 'The verification code you entered is invalid.'])
+                ->with('verification_method', 'email')
+                ->with('contact', $user->email);
         }
 
-        // Clear session
-        $request->session()->forget('participant_registration');
+        $user->email_verified_at = now();
+        $user->status = 'active';
+        $user->save();
+
+        Cache::forget($this->participantVerificationCacheKey($user->id));
+        $campaignContext = $verifySession['campaign_context'] ?? null;
+
+        $request->session()->forget('participant_registration_verify');
         $request->session()->forget('campaign_registration_context');
-
-        PortalAuth::login($user);
-        $request->session()->put('last_activity', now()->timestamp);
-
-        $this->createCampaignEventRegistrationIfNeeded($user, $registrationData['campaign_context'] ?? null);
+        $this->createCampaignEventRegistrationIfNeeded($user, $campaignContext);
 
         app(DatabaseBackupService::class)->queueAfterCommit('participant_registered');
 
-        return redirect('/dashboard')
-            ->with('status', 'Registration successful! Welcome to the training platform.');
+        return redirect()->route('participant.login')
+            ->with('status', 'Your email has been successfully verified. You may now log in to your account.');
     }
 
     /**
@@ -684,75 +613,78 @@ class AuthController extends Controller
      */
     public function participantRegisterVerifyEmail(Request $request, $token)
     {
-        $registrationData = $request->session()->get('participant_registration');
+        return redirect()->route('participant.register.verify')
+            ->withErrors(['otp' => 'Please enter the 6-digit verification code sent to your email.']);
+    }
 
-        if (!$registrationData) {
-            return redirect()->route('participant.register')
-                ->withErrors(['form' => 'Registration session expired. Please start again.']);
-        }
-
-        // Check expiry
-        if (now()->isAfter($registrationData['expires_at'])) {
-            $request->session()->forget('participant_registration');
-            return redirect()->route('participant.register')
-                ->withErrors(['form' => 'Verification link expired. Please start registration again.']);
-        }
-
-        if ($registrationData['verification_method'] !== 'email') {
-            return redirect()->route('participant.register.verify')
-                ->withErrors(['form' => 'Invalid verification method.']);
-        }
-
-        if ($token !== $registrationData['verification_token']) {
-            return redirect()->route('participant.register.verify')
-                ->withErrors(['token' => 'Invalid verification link.'])
-                ->with('verification_method', 'email')
-                ->with('contact', $registrationData['email']);
-        }
-
-        // Token is valid - complete registration
-        $participantId = $this->generateParticipantId();
-        $hazardProfile = \App\Models\BarangayProfile::where(
-            'philippine_barangay_id',
-            $registrationData['philippine_barangay_id'] ?? null,
-        )->first();
-
-        $user = User::create([
-            'name' => $registrationData['name'],
-            'email' => $registrationData['email'],
-            'phone' => $registrationData['phone'],
-            'organization' => $registrationData['organization'] ?? null,
-            'philippine_barangay_id' => $registrationData['philippine_barangay_id'] ?? null,
-            'barangay_id' => $hazardProfile?->id,
-            'province' => $registrationData['province'] ?? null,
-            'city' => $registrationData['city'] ?? $registrationData['municipality_city'] ?? null,
-            'barangay' => $registrationData['barangay'] ?? $registrationData['barangay_name'] ?? null,
-            'street' => $registrationData['street'] ?? null,
-            'password' => $registrationData['password'],
-            'role' => 'PARTICIPANT',
-            'participant_id' => $participantId,
-            'status' => 'active',
-            'registered_at' => now(),
-            'email_verified_at' => now(),
-            'registration_source' => ! empty($registrationData['campaign_context']) ? self::CAMPAIGN_REGISTRATION_SOURCE : 'direct_registration',
-            'registration_campaign_id' => ! empty($registrationData['campaign_context']['campaign_event_id']) ? (string) $registrationData['campaign_context']['campaign_event_id'] : null,
-            'registration_campaign_title' => ! empty($registrationData['campaign_context']['training_title']) ? (string) $registrationData['campaign_context']['training_title'] : null,
-            'registration_campaign_registered_at' => ! empty($registrationData['campaign_context']) ? now() : null,
+    public function participantResendVerificationFromLogin(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
         ]);
 
-        // Clear session
-        $request->session()->forget('participant_registration');
-        $request->session()->forget('campaign_registration_context');
+        $user = User::where('email', $data['email'])
+            ->where('role', 'PARTICIPANT')
+            ->first();
 
-        PortalAuth::login($user);
-        $request->session()->put('last_activity', now()->timestamp);
+        if (! $user) {
+            return back()->withErrors(['email' => 'Participant account not found.']);
+        }
 
-        $this->createCampaignEventRegistrationIfNeeded($user, $registrationData['campaign_context'] ?? null);
+        if ($user->email_verified_at) {
+            return back()->with('status', 'This email is already verified. You can log in now.');
+        }
 
-        app(DatabaseBackupService::class)->queueAfterCommit('participant_registered');
+        $lastSentAt = (int) Cache::get($this->participantVerificationCooldownCacheKey($user->id), 0);
+        if (now()->getTimestamp() - $lastSentAt < self::PARTICIPANT_EMAIL_RESEND_COOLDOWN_SECONDS) {
+            return back()->withErrors(['email' => 'Please wait at least 60 seconds before requesting a new code.']);
+        }
 
-        return redirect('/dashboard')
-            ->with('status', 'Registration successful! Welcome to the training platform.');
+        try {
+            $this->sendParticipantEmailVerificationCode($user);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send participant verification email from login: '.$e->getMessage());
+            return back()->withErrors(['email' => 'Unable to resend verification code right now. Please try again later.']);
+        }
+        $request->session()->put('participant_registration_verify', [
+            'user_id' => $user->id,
+            'campaign_context' => null,
+            'last_sent_at' => now()->getTimestamp(),
+        ]);
+
+        return redirect()->route('participant.register.verify')
+            ->with('status', 'A new verification code has been sent to your email.')
+            ->with('contact', $user->email);
+    }
+
+    protected function participantVerificationCacheKey(int $userId): string
+    {
+        return "participant_email_verification_code:{$userId}";
+    }
+
+    protected function participantVerificationCooldownCacheKey(int $userId): string
+    {
+        return "participant_email_verification_last_sent:{$userId}";
+    }
+
+    protected function sendParticipantEmailVerificationCode(User $user): void
+    {
+        $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        Cache::put(
+            $this->participantVerificationCacheKey($user->id),
+            $verificationCode,
+            now()->addMinutes(self::PARTICIPANT_EMAIL_VERIFICATION_EXPIRY_MINUTES),
+        );
+        Cache::put(
+            $this->participantVerificationCooldownCacheKey($user->id),
+            now()->getTimestamp(),
+            now()->addMinutes(self::PARTICIPANT_EMAIL_VERIFICATION_EXPIRY_MINUTES),
+        );
+
+        Mail::to($user->email)->send(
+            new ParticipantVerificationEmail($verificationCode, $user->name)
+        );
     }
 
     private function generateParticipantId()

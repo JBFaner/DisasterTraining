@@ -17,6 +17,7 @@
             data-lockout-retry-after="{{ session('lockout_retry_after', 0) }}"
             data-session-error="{{ session('error', '') }}"
             data-status="{{ session('status', '') }}"
+            data-unverified-email="{{ session('unverified_email', '') }}"
             data-failed-attempts="{{ $failedAttempts ?? 0 }}"
         ></div>
     </body>

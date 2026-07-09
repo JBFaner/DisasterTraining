@@ -79,6 +79,7 @@ Route::post('/register', [AuthController::class, 'participantRegisterStart'])->n
 // Participant auth routes
 Route::get('/participant/login', [AuthController::class, 'showParticipantLogin'])->name('participant.login');
 Route::post('/participant/login', [AuthController::class, 'participantLogin'])->name('participant.login.post');
+Route::post('/participant/login/resend-verification', [AuthController::class, 'participantResendVerificationFromLogin'])->name('participant.login.resend-verification');
 
 Route::get('/participant/register', [AuthController::class, 'showParticipantRegister'])->name('participant.register');
 Route::post('/participant/register/start', [AuthController::class, 'participantRegisterStart'])->name('participant.register.start');
@@ -379,6 +380,9 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::get('/participants', [ParticipantController::class, 'index'])->name('admin.participants.index');
         Route::post('/participants', [ParticipantController::class, 'store'])->name('admin.participants.store');
         Route::post('/participants/sync', [ParticipantController::class, 'sync'])->name('admin.participants.sync');
+        Route::post('/participants/{user}/resend-verification', [ParticipantController::class, 'resendVerificationEmail'])
+            ->whereNumber('user')
+            ->name('admin.participants.resend-verification');
         Route::get('/participants/export/csv', [ParticipantController::class, 'export'])->name('admin.participants.export');
         Route::get('/participants/{user}', [ParticipantController::class, 'show'])
             ->whereNumber('user')

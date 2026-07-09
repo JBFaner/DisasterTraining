@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, AlertCircle, LogIn, Home, CheckCircle } from 'lucide-react';
 
-export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, failedAttempts = 0, status = '', csrfToken = '' }) {
+export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter = 0, failedAttempts = 0, status = '', csrfToken = '', unverifiedEmail = '' }) {
     const [email, setEmail] = useState(oldEmail);
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,7 +155,18 @@ export function ParticipantLogin({ errors = {}, oldEmail = '', lockoutRetryAfter
                             {showErrorBanner && lockoutMessage && (
                                 <div className="mb-6 rounded-lg bg-red-50 border-l-4 border-red-500 px-4 py-3 text-sm text-red-700 flex items-start gap-3">
                                     <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                    <span>{lockoutMessage}</span>
+                                    <div className="flex-1">
+                                        <span>{lockoutMessage}</span>
+                                        {unverifiedEmail ? (
+                                            <form method="POST" action="/participant/login/resend-verification" className="mt-2">
+                                                <input type="hidden" name="_token" value={csrfToken} />
+                                                <input type="hidden" name="email" value={unverifiedEmail} />
+                                                <button type="submit" className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 underline underline-offset-2">
+                                                    Resend Verification Code
+                                                </button>
+                                            </form>
+                                        ) : null}
+                                    </div>
                                 </div>
                             )}
 

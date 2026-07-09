@@ -6,6 +6,7 @@ import {
     Download,
     RefreshCw,
     UserPlus,
+    Mail,
     CalendarPlus,
     BarChart3,
 } from 'lucide-react';
@@ -212,6 +213,15 @@ function SourceBadge({ source }) {
     );
 }
 
+function EmailStatusBadge({ verifiedAt }) {
+    const isVerified = Boolean(verifiedAt);
+    return (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${isVerified ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>
+            {isVerified ? 'Verified' : 'Pending Verification'}
+        </span>
+    );
+}
+
 function ParticipantRegistryTab({ participants = [], participantsPagination = null, filterOptions = null }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -295,6 +305,28 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
         }
     };
 
+    const handleResendVerification = async (participant) => {
+        try {
+            const res = await fetch(`/admin/participants/${participant.id}/resend-verification`, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                Swal.fire('Unable to resend', data.message || 'Could not resend verification code.', 'warning');
+                return;
+            }
+            Swal.fire('Verification email sent', data.message || 'Verification code resent successfully.', 'success');
+        } catch {
+            Swal.fire('Error', 'Failed to resend verification code.', 'error');
+        }
+    };
+
     const hasActiveFilters = statusFilter !== 'all' || sourceFilter !== 'all' || barangayFilter || municipalityFilter || trainingStatusFilter || certificateStatusFilter;
 
     const columns = [
@@ -320,6 +352,11 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             key: 'participant_source',
             label: 'Source',
             render: (row) => <SourceBadge source={row.participant_source} />,
+        },
+        {
+            key: 'email_verified_at',
+            label: 'Email Status',
+            render: (row) => <EmailStatusBadge verifiedAt={row.email_verified_at} />,
         },
         {
             key: 'phone',
@@ -363,6 +400,11 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             label: 'Last Synced',
             sortable: true,
             render: (row) => <span className="text-sm text-slate-600">{formatDate(row.last_synced_at)}</span>,
+        },
+        {
+            key: 'verification_date',
+            label: 'Verification Date',
+            render: (row) => <span className="text-sm text-slate-600">{formatDate(row.email_verified_at)}</span>,
         },
     ];
 
@@ -461,6 +503,14 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                             title="View Progress"
                             variant="default"
                         />
+                        {!row.email_verified_at && row.email ? (
+                            <AdminTableActionButton
+                                onClick={() => handleResendVerification(row)}
+                                icon={Mail}
+                                title="Resend Verification"
+                                variant="default"
+                            />
+                        ) : null}
                     </>
                 )}
             />

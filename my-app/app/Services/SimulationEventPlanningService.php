@@ -161,7 +161,7 @@ class SimulationEventPlanningService
         $minimumObjectives = max(3, min(8, (int) ($context['objective_count'] ?? 4)));
 
         if ($exerciseType === '' || $scenario === '') {
-            throw new \InvalidArgumentException('Select Simulation Type and Disaster Scenario first.');
+            throw new \InvalidArgumentException('Select Simulation Type and Disaster Type first.');
         }
 
         $prompt = <<<PROMPT
@@ -260,7 +260,7 @@ PROMPT;
                 'exercise_type',
                 'Simulation Type',
                 $this->hasText($exerciseType),
-                'Please select a Simulation Classification before generating the Simulation Event.'
+                'Please select a Simulation Type before generating the Simulation Event.'
             ),
             $this->checkItem(
                 'approved_schedule',
@@ -276,9 +276,9 @@ PROMPT;
             ),
             $this->checkItem(
                 'simulation_scenario',
-                'Disaster Scenario',
+                'Disaster Type',
                 $this->hasText($plan['simulation_scenario'] ?? null),
-                'Simulation scenario is missing.'
+                'Disaster type is missing.'
             ),
             $this->checkItem(
                 'minimum_qualified_participants',

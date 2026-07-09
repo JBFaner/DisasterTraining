@@ -14,6 +14,7 @@
             data-verification-method="{{ $verification_method ?? 'email' }}"
             data-contact="{{ $contact ?? '' }}"
             data-status="{{ session('status', '') }}"
+            data-resend-available-at="{{ $resend_available_at ?? 0 }}"
             data-errors='@json($errors->getMessages() ?: [])'
         ></div>
     </body>

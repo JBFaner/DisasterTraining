@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\QualifiedTrainerController;
 use App\Models\User;
 use App\Models\SimulationEvent;
+use App\Mail\ParticipantVerificationEmail;
 use App\Services\AuditLogger;
 use App\Services\Group6\ParticipantSyncService;
 use App\Services\ParticipantUpsertService;
 use App\Services\ParticipantRegistryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 
 class ParticipantController extends Controller
 {
@@ -177,6 +180,48 @@ class ParticipantController extends Controller
         return redirect()
             ->route('admin.participants.index')
             ->with($result['success'] ? 'status' : 'error', $result['message']);
+    }
+
+    public function resendVerificationEmail(User $user, Request $request)
+    {
+        $this->authorizeParticipantAccess();
+        if ($user->role !== 'PARTICIPANT') {
+            abort(404);
+        }
+
+        if ($user->email_verified_at) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This participant email is already verified.',
+            ], 422);
+        }
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put("participant_email_verification_code:{$user->id}", $code, now()->addMinutes(15));
+        Cache::put("participant_email_verification_last_sent:{$user->id}", now()->getTimestamp(), now()->addMinutes(15));
+
+        try {
+            Mail::to($user->email)->send(new ParticipantVerificationEmail($code, $user->name));
+        } catch (\Throwable $e) {
+            \Log::error('Failed to resend participant verification email from admin panel: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send verification email. Please try again later.',
+            ], 500);
+        }
+
+        AuditLogger::log([
+            'user' => portal_user(),
+            'action' => 'Resent participant verification code',
+            'module' => 'Participant Registry',
+            'status' => 'success',
+            'description' => "Resent verification code to {$user->email}.",
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Verification code resent successfully.',
+        ]);
     }
 
     public function store(Request $request)
