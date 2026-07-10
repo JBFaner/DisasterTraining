@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Services\DatabaseBackupService;
+use App\Models\User;
 
 class CampaignRequest extends Model
 {
@@ -61,6 +62,14 @@ class CampaignRequest extends Model
                 app(DatabaseBackupService::class)->queueAfterCommit('campaign_request_approved');
             }
         });
+    }
+
+    public function registeredParticipantsCount(): int
+    {
+        return User::query()
+            ->where('role', 'PARTICIPANT')
+            ->where('registration_campaign_id', 'campaign-request:'.$this->id)
+            ->count();
     }
 }
 

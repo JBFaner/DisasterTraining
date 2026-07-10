@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use App\Support\CampaignPlanningPayload;
+use App\Services\HazardAssessment\HazardTrainingRecommendationService;
 
 class TrainingModule extends Model
 {
@@ -31,6 +33,12 @@ class TrainingModule extends Model
         'lead_trainer_id',
         'trainer_availability',
         'available_training_sessions',
+        'campaign_registration_opens',
+        'campaign_registration_deadline',
+        'campaign_training_completion_deadline',
+        'campaign_expected_participants',
+        'campaign_maximum_participants',
+        'campaign_registration_enabled',
         'status',
         'visibility',
         'owner_id',
@@ -42,6 +50,12 @@ class TrainingModule extends Model
         'assigned_qualified_trainer_ids' => 'array',
         'trainer_availability' => 'array',
         'available_training_sessions' => 'array',
+        'campaign_registration_opens' => 'datetime',
+        'campaign_registration_deadline' => 'datetime',
+        'campaign_training_completion_deadline' => 'datetime',
+        'campaign_expected_participants' => 'integer',
+        'campaign_maximum_participants' => 'integer',
+        'campaign_registration_enabled' => 'boolean',
         'estimated_duration_minutes' => 'integer',
     ];
 
@@ -289,6 +303,27 @@ class TrainingModule extends Model
     public function totalEstimatedLearningTimeMinutes(): int
     {
         return max(0, (int) ($this->estimated_duration_minutes ?? 0));
+    }
+
+    /**
+     * Payload shared with the external Campaign Planning & Scheduling module.
+     *
+     * @return array<string, mixed>
+     */
+    public function toCampaignPlanningPayload(?array $recommendedCommunities = null, ?string $registrationLink = null): array
+    {
+        if ($recommendedCommunities === null && ! isset($this->recommended_communities)) {
+            $recommendedCommunities = app(HazardTrainingRecommendationService::class)
+                ->recommendCommunitiesForTraining($this);
+        } elseif ($recommendedCommunities === null) {
+            $recommendedCommunities = $this->recommended_communities;
+        }
+
+        return CampaignPlanningPayload::fromTrainingModule(
+            $this,
+            is_array($recommendedCommunities) ? $recommendedCommunities : null,
+            $registrationLink,
+        )->toArray();
     }
 
     /**

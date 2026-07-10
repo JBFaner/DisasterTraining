@@ -186,42 +186,13 @@ export function CampaignRequestStatusBadge({ status }) {
 }
 
 export function CampaignRequestProposedSessionsCell({ request }) {
-    const sessions = Array.isArray(request?.proposed_sessions) ? request.proposed_sessions : [];
+    const label = request?.registration_period_label || request?.proposed_session_label;
 
-    if (sessions.length === 0) {
-        if (!request?.proposed_session_label) {
-            return <div className="text-slate-700">—</div>;
-        }
-
-        return <div className="text-slate-700">{request.proposed_session_label}</div>;
+    if (!label) {
+        return <div className="text-slate-700">—</div>;
     }
 
-    const maxVisible = 2;
-    const visibleSessions = sessions.slice(0, maxVisible);
-    const hiddenCount = sessions.length - visibleSessions.length;
-
-    return (
-        <div className="space-y-1">
-            {visibleSessions.map((session, idx) => (
-                <div key={`${session.label}-${idx}`} className="leading-tight">
-                    <div className="font-medium text-slate-900">{session.label}</div>
-                    {session.date ? (
-                        <div className="text-xs text-slate-700">
-                            {session.date}
-                        </div>
-                    ) : null}
-                    {session.time ? (
-                        <div className="text-[0.7rem] text-slate-500">
-                            {session.time}
-                        </div>
-                    ) : null}
-                </div>
-            ))}
-            {hiddenCount > 0 ? (
-                <div className="text-xs font-medium text-emerald-700">+{hiddenCount} more</div>
-            ) : null}
-        </div>
-    );
+    return <div className="text-slate-700">{label}</div>;
 }
 
 export function CommunityRecommendationsTable({ communities }) {

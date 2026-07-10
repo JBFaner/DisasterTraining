@@ -2,7 +2,6 @@ import React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import Swal from 'sweetalert2';
 import {
-    CircleDashed,
     CalendarDays,
     ChevronDown,
     ChevronLeft,
@@ -16,19 +15,33 @@ import {
     Loader2,
     Pencil,
     Plus,
-    RefreshCw,
-    ShieldCheck,
-    Target,
     Trash2,
-    UserRound,
     Users,
     Video,
     Workflow,
     X,
     CheckCircle2,
     AlertCircle,
+    Sparkles,
 } from 'lucide-react';
 import { getCsrfHeaders, getCsrfToken, pingSessionActivity } from '../utils/csrf';
+import { registerAppAlert, registerAppChoice, registerAppConfirm, showAppAlert, showAppChoice, showAppConfirm } from '../utils/appAlert';
+import {
+    LessonAuditTrail,
+    LessonConfirmDialog,
+    LessonFormFields,
+    blurAllFocus,
+    buildLessonFormSnapshot,
+    buildLessonFormOverrides,
+    clearLessonDraft,
+    getLessonDraftKey,
+    getLessonTextResource,
+    isLessonFormDirty,
+    readLessonDraft,
+    resolveResourceStorageTarget,
+    useLessonClosePrompt,
+    writeLessonDraft,
+} from '../components/LessonFormFields';
 import { AdminContentCard } from '../components/admin/AdminLayout';
 import { AdminTableActionButton } from '../components/admin/AdminDataTable';
 import {
@@ -65,6 +78,13 @@ const AUDIENCE_OPTIONS = [
     { value: 'community_leaders', label: 'Community Leaders' },
     { value: 'others', label: 'Others' },
 ];
+
+const RECOMMENDED_PARTICIPANTS_OPTIONS = [10, 15, 20, 25, 30];
+
+function toDateTimeLocalValue(value) {
+    if (!value) return '';
+    return String(value).replace(' ', 'T').slice(0, 16);
+}
 
 const DELIVERY_METHOD_LABELS = {
     in_person: 'Face-to-Face',
@@ -198,14 +218,140 @@ function formatDuration(minutes) {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
+function getResourceFileUrl(resource) {
+    return resource.display_url || resource.file_url || resource.external_url || null;
+}
+
+function getPdfDownloadLabel(resource) {
+    const filePath = String(resource.file_path || resource.display_url || '');
+    const segment = filePath.split('/').pop() || '';
+    const decoded = decodeURIComponent(segment.split('?')[0] || '');
+
+    if (decoded.toLowerCase().endsWith('.pdf')) {
+        return decoded;
+    }
+
+    const title = String(resource.title || '').trim();
+    return title ? `${title}.pdf` : 'Download PDF';
+}
+
+function shouldShowAiProcessingStatus(resource) {
+    return resource.resource_type === 'youtube';
+}
+
+function ResourceDownloadLink({ resource }) {
+    const url = getResourceFileUrl(resource);
+    if (!url) {
+        return <p className="text-xs text-slate-500 mt-1">File unavailable.</p>;
+    }
+
+    if (resource.resource_type === 'pdf') {
+        return (
+            <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+                <FileText className="w-3.5 h-3.5" />
+                {getPdfDownloadLabel(resource)}
+            </a>
+        );
+    }
+
+    if (resource.resource_type === 'image') {
+        return (
+            <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+                <ImageIcon className="w-3.5 h-3.5" />
+                Open image
+            </a>
+        );
+    }
+
+    if (resource.resource_type === 'video') {
+        return (
+            <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+                <Video className="w-3.5 h-3.5" />
+                Download video
+            </a>
+        );
+    }
+
+    if (resource.resource_type === 'youtube') {
+        return (
+            <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline break-all"
+            >
+                <Video className="w-3.5 h-3.5 shrink-0" />
+                {url}
+            </a>
+        );
+    }
+
+    return null;
+}
+
+function LessonSupplementaryResourceItem({
+    resource,
+    moduleId,
+    lessonId,
+    editMode = false,
+    onDelete,
+}) {
+    const isFileResource = ['pdf', 'image', 'video', 'youtube'].includes(resource.resource_type);
+
+    return (
+        <li className="rounded-xl border border-slate-200 p-3 bg-slate-50/50">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-800 text-sm">{resource.title}</p>
+                    {resource.creator?.name ? (
+                        <p className="text-xs text-slate-500 mt-0.5">Uploaded by {resource.creator.name}</p>
+                    ) : null}
+                    {isFileResource ? <ResourceDownloadLink resource={resource} /> : null}
+                    {shouldShowAiProcessingStatus(resource) ? <ResourceStatusBadge resource={resource} /> : null}
+                </div>
+                {editMode ? (
+                    <form
+                        method="POST"
+                        action={`/admin/training-modules/${moduleId}/contents/${lessonId}/resources/${resource.id}/delete`}
+                        onSubmit={onDelete}
+                        className="shrink-0"
+                    >
+                        <input type="hidden" name="_token" value={getCsrfToken()} />
+                        <button type="submit" className="rounded-lg px-2 py-1 text-xs bg-white border border-rose-200 text-rose-700">
+                            Delete
+                        </button>
+                    </form>
+                ) : null}
+            </div>
+        </li>
+    );
+}
+
 function renderResourcePreview(resource) {
     const url = resource.display_url || resource.file_url || resource.external_url;
 
     if (resource.resource_type === 'text') {
         return (
-            <div className="prose prose-sm max-w-none text-slate-700 whitespace-pre-line">
-                {resource.body || 'No text content.'}
-            </div>
+            <div
+                className="prose prose-sm max-w-none text-slate-700 lesson-rich-editor__body lesson-rich-text-preview"
+                dangerouslySetInnerHTML={{ __html: resource.body || '<p>No text content.</p>' }}
+            />
         );
     }
 
@@ -226,8 +372,9 @@ function renderResourcePreview(resource) {
 
     if (resource.resource_type === 'pdf' && url) {
         return (
-            <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-emerald-700 hover:underline text-sm">
-                <FileText className="w-4 h-4" /> Open PDF
+            <a href={url} target="_blank" rel="noreferrer" download className="inline-flex items-center gap-2 text-emerald-700 hover:underline text-sm font-medium">
+                <FileText className="w-4 h-4" />
+                {getPdfDownloadLabel(resource)}
             </a>
         );
     }
@@ -244,19 +391,29 @@ function renderResourcePreview(resource) {
 }
 
 function ResourceStatusBadge({ resource }) {
+    if (!shouldShowAiProcessingStatus(resource)) {
+        return null;
+    }
+
     const isReady = resource.ai_processing_status === 'ready' && resource.has_readable_content;
     const isProcessing = ['pending', 'processing'].includes(resource.ai_processing_status);
     const isFailed = resource.ai_processing_status === 'failed';
+    const isMetadataFallback = isReady
+        && resource.resource_type === 'youtube'
+        && resource.ai_processing_status_label === 'Description Used (no captions)';
 
     return (
         <div className="flex items-start gap-2 text-xs">
             {isProcessing && <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-600 mt-0.5" />}
-            {isReady && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5" />}
+            {isReady && <CheckCircle2 className={`w-3.5 h-3.5 mt-0.5 ${isMetadataFallback ? 'text-amber-600' : 'text-emerald-600'}`} />}
             {isFailed && <AlertCircle className="w-3.5 h-3.5 text-red-600 mt-0.5" />}
             <div>
-                <span className={isReady ? 'text-emerald-700 font-medium' : isFailed ? 'text-red-700' : 'text-slate-600'}>
+                <span className={isReady ? (isMetadataFallback ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium') : isFailed ? 'text-red-700' : 'text-slate-600'}>
                     {isReady ? `✅ ${resource.ai_processing_status_label}` : resource.ai_processing_status_label}
                 </span>
+                {isMetadataFallback && (
+                    <p className="text-amber-700 mt-0.5">Used the video description because captions could not be retrieved. For better AI quiz quality, paste the transcript below and click Reprocess.</p>
+                )}
                 {isFailed && resource.ai_processing_error && (
                     <p className="text-red-600 mt-0.5">❌ {resource.ai_processing_error}</p>
                 )}
@@ -265,10 +422,10 @@ function ResourceStatusBadge({ resource }) {
     );
 }
 
-async function submitTrainingForm(form, moduleId) {
+async function submitTrainingForm(form, moduleId, { fieldOverrides = {} } = {}) {
     const ping = await pingSessionActivity();
     if (!ping.ok) {
-        await Swal.fire({ icon: 'error', title: 'Session error', text: 'Your session expired. Please refresh and try again.' });
+        await showAppAlert({ icon: 'error', title: 'Session error', description: 'Your session expired. Please refresh and try again.' });
         return false;
     }
 
@@ -276,27 +433,88 @@ async function submitTrainingForm(form, moduleId) {
     const formData = new FormData(form);
     formData.set('_token', token);
 
-    const spoofedMethod = formData.get('_method');
-    const method = spoofedMethod ? 'POST' : (form.getAttribute('method') || 'POST').toUpperCase();
-
-    const response = await fetch(form.action, {
-        method,
-        body: formData,
-        credentials: 'same-origin',
-        headers: { Accept: 'text/html,application/xhtml+xml', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
-        redirect: 'manual',
+    Object.entries(fieldOverrides).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+            formData.set(key, value);
+        }
     });
 
+    const spoofedMethod = formData.get('_method');
+    const method = spoofedMethod ? 'POST' : (form.getAttribute('method') || 'POST').toUpperCase();
+    const action = new URL(form.getAttribute('action') || '', window.location.origin).pathname;
+
+    let response;
+    const controller = new AbortController();
+    const uploadTimeoutMs = 300000;
+    const timeoutId = window.setTimeout(() => controller.abort(), uploadTimeoutMs);
+
+    try {
+        response = await fetch(action, {
+            method,
+            body: formData,
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
+            signal: controller.signal,
+        });
+    } catch (error) {
+        const isAbort = error?.name === 'AbortError';
+        await showAppAlert({
+            icon: 'error',
+            title: 'Request failed',
+            description: isAbort
+                ? 'The upload took too long. Try a smaller file or check your connection.'
+                : 'The request was interrupted. If you uploaded a large video, check PHP upload limits and Cloudinary settings.',
+        });
+        return false;
+    } finally {
+        window.clearTimeout(timeoutId);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    const data = isJson ? await response.json().catch(() => ({})) : {};
+
+    if (response.status === 0) {
+        await showAppAlert({
+            icon: 'error',
+            title: 'Request failed',
+            description: 'The request was interrupted. Please try again.',
+        });
+        return false;
+    }
+
+    if (response.status >= 500) {
+        await showAppAlert({
+            icon: 'error',
+            title: 'Server error',
+            description: data.message || data.error || `Upload failed (HTTP ${response.status}). Check Cloudinary configuration and file size limits.`,
+        });
+        return false;
+    }
+
     if (response.status === 419) {
-        await Swal.fire({ icon: 'error', title: 'Session expired', text: 'Please refresh and try again.' });
+        await showAppAlert({ icon: 'error', title: 'Session expired', description: 'Please refresh and try again.' });
+        return false;
+    }
+
+    if (response.status === 404) {
+        await showAppAlert({
+            icon: 'error',
+            title: 'Lesson not found',
+            description: data.message || 'This lesson may have been deleted or moved. Please refresh the page and try again.',
+        });
         return false;
     }
 
     if (response.status === 422) {
-        const data = await response.json().catch(() => ({}));
-        const errors = data.errors ? Object.values(data.errors).flat().join('\n') : data.message;
-        await Swal.fire({ icon: 'error', title: 'Validation failed', text: errors || 'Please check the form.' });
+        const errors = data.errors ? Object.values(data.errors).flat().join('\n') : data.message || data.error;
+        await showAppAlert({ icon: 'error', title: 'Validation failed', description: errors || 'Please check the form.' });
         return false;
+    }
+
+    if (response.ok && data.success !== false) {
+        window.location.assign(`/admin/training-modules/${moduleId}`);
+        return true;
     }
 
     if (response.status >= 300 && response.status < 400) {
@@ -304,13 +522,23 @@ async function submitTrainingForm(form, moduleId) {
         return true;
     }
 
-    if (!response.ok) {
-        await Swal.fire({ icon: 'error', title: 'Request failed', text: 'Could not save changes.' });
-        return false;
-    }
+    await showAppAlert({
+        icon: 'error',
+        title: 'Request failed',
+        description: data.message || data.error || `Could not complete the request. (HTTP ${response.status})`,
+    });
+    return false;
+}
 
-    window.location.assign(`/admin/training-modules/${moduleId}`);
-    return true;
+function blurActiveElement() {
+    blurAllFocus();
+}
+
+function focusDialogField(container) {
+    const focusable = container?.querySelector(
+        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]',
+    );
+    focusable?.focus({ preventScroll: true });
 }
 
 function AddResourceForm({ moduleId, lessonId, onCancel }) {
@@ -321,22 +549,12 @@ function AddResourceForm({ moduleId, lessonId, onCancel }) {
         const form = e.currentTarget;
         const fileInput = form.querySelector('input[name="file"]');
 
+        const fieldOverrides = { storage_target: 'auto' };
         if (fileInput?.files?.length) {
-            const result = await Swal.fire({
-                title: 'Storage location',
-                text: 'Choose where to store the uploaded file.',
-                icon: 'question',
-                showCancelButton: true,
-                showDenyButton: true,
-                confirmButtonText: 'Cloudinary',
-                denyButtonText: 'Local storage',
-                cancelButtonText: 'Cancel',
-            });
-            if (result.isDismissed) return;
-            form.querySelector('input[name="storage_target"]').value = result.isConfirmed ? 'cloudinary' : 'local';
+            fieldOverrides.storage_target = resolveResourceStorageTarget(resourceType);
         }
 
-        const ok = await submitTrainingForm(form, moduleId);
+        const ok = await submitTrainingForm(form, moduleId, { fieldOverrides });
         if (ok) onCancel?.();
     };
 
@@ -370,10 +588,16 @@ function AddResourceForm({ moduleId, lessonId, onCancel }) {
                 </div>
             )}
             {resourceType === 'youtube' && (
-                <div>
-                    <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">YouTube URL *</label>
-                    <input name="external_url" type="url" required placeholder="https://www.youtube.com/watch?v=..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                </div>
+                <>
+                    <div>
+                        <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">YouTube URL *</label>
+                        <input name="external_url" type="url" required placeholder="https://www.youtube.com/watch?v=..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">Transcript (optional)</label>
+                        <textarea name="body" rows={4} placeholder="Paste the video transcript here if auto-retrieval fails or captions are unavailable." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                </>
             )}
             {['pdf', 'image'].includes(resourceType) && (
                 <div>
@@ -391,50 +615,174 @@ function AddResourceForm({ moduleId, lessonId, onCancel }) {
     );
 }
 
-function AddLessonForm({ moduleId, onCancel }) {
+const LessonFormEditor = React.forwardRef(function LessonFormEditor({
+    mode,
+    moduleId,
+    lessonId = null,
+    initialLesson = null,
+    formId = null,
+    onCancel,
+    onSubmitted,
+    showActions = true,
+    submitLabel,
+}, ref) {
+    const draftKey = getLessonDraftKey(moduleId, lessonId);
+    const baseline = React.useMemo(
+        () => (mode === 'edit' ? buildLessonFormSnapshot(initialLesson) : null),
+        [mode, initialLesson?.id],
+    );
+
+    const [lessonTitle, setLessonTitle] = React.useState(() => baseline?.lessonTitle || '');
+    const [contentBody, setContentBody] = React.useState(() => baseline?.contentBody || '');
+    const [extraResources, setExtraResources] = React.useState([]);
+    const [draftPromptDone, setDraftPromptDone] = React.useState(false);
+
+    React.useEffect(() => {
+        if (draftPromptDone) {
+            return undefined;
+        }
+
+        const draft = readLessonDraft(draftKey);
+        if (!draft) {
+            setDraftPromptDone(true);
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            const choice = await showAppChoice({
+                title: 'Restore draft?',
+                description: 'A saved draft was found for this lesson. Would you like to restore it?',
+                buttons: [
+                    { label: 'Restore draft', variant: 'primary', value: 'restore' },
+                    { label: 'Start fresh', variant: 'secondary', value: 'fresh' },
+                ],
+            });
+
+            if (cancelled) {
+                return;
+            }
+
+            if (choice === 'restore') {
+                setLessonTitle(draft.lessonTitle || '');
+                setContentBody(draft.contentBody || '');
+                setExtraResources([]);
+            } else {
+                clearLessonDraft(draftKey);
+            }
+
+            setDraftPromptDone(true);
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [draftKey, draftPromptDone]);
+
+    React.useEffect(() => {
+        if (mode !== 'edit' || !initialLesson) {
+            return;
+        }
+        const snapshot = buildLessonFormSnapshot(initialLesson);
+        setLessonTitle(snapshot.lessonTitle);
+        setContentBody(snapshot.contentBody);
+        setExtraResources([]);
+    }, [mode, initialLesson?.id]);
+
+    const currentSnapshot = React.useMemo(() => ({
+        lessonTitle,
+        contentBody,
+        extraResources,
+    }), [lessonTitle, contentBody, extraResources]);
+
+    const isDirty = isLessonFormDirty(currentSnapshot, baseline);
+
+    const persistDraft = React.useCallback(() => {
+        writeLessonDraft(draftKey, currentSnapshot);
+    }, [currentSnapshot, draftKey]);
+
+    const discardDraft = React.useCallback(() => {
+        clearLessonDraft(draftKey);
+    }, [draftKey]);
+
+    const { requestClose, dialog: unsavedChangesDialog } = useLessonClosePrompt({
+        isDirty,
+        onSaveDraft: persistDraft,
+        onDiscard: discardDraft,
+    });
+
+    React.useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const ok = await submitTrainingForm(e.currentTarget, moduleId);
+        const form = e.currentTarget;
+
+        const ok = await submitTrainingForm(form, moduleId, {
+            fieldOverrides: buildLessonFormOverrides(form, contentBody),
+        });
         if (ok) {
+            clearLessonDraft(draftKey);
+            onSubmitted?.();
+        }
+    };
+
+    const handleCancel = async () => {
+        const canClose = await requestClose();
+        if (canClose) {
             onCancel?.();
         }
     };
 
+    const action = mode === 'edit'
+        ? `/admin/training-modules/${moduleId}/contents/${lessonId}/update`
+        : `/admin/training-modules/${moduleId}/contents`;
+
     return (
         <form
+            id={formId || undefined}
             method="POST"
-            action={`/admin/training-modules/${moduleId}/contents`}
+            action={action}
+            encType="multipart/form-data"
             className="space-y-4"
             onSubmit={handleSubmit}
         >
             <input type="hidden" name="_token" value={getCsrfToken()} />
-            <div>
-                <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">Lesson Title *</label>
-                <input name="title" type="text" required className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-            </div>
-            <div>
-                <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">Description (optional)</label>
-                <textarea name="description" rows={3} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-            </div>
-            <div className="flex flex-wrap justify-end gap-2 pt-2">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="submit"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add Lesson
-                </button>
-            </div>
+            <input type="hidden" name="storage_target" value="auto" />
+            <input type="hidden" name="content_body" value={contentBody} readOnly />
+
+            <LessonFormFields
+                lessonTitle={lessonTitle}
+                setLessonTitle={setLessonTitle}
+                contentBody={contentBody}
+                setContentBody={setContentBody}
+                extraResources={extraResources}
+                setExtraResources={setExtraResources}
+            />
+
+            {showActions ? (
+                <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5"
+                    >
+                        <Plus className="w-4 h-4" />
+                        {submitLabel || (mode === 'edit' ? 'Save Lesson' : 'Add Lesson')}
+                    </button>
+                </div>
+            ) : null}
+
+            {unsavedChangesDialog}
         </form>
     );
-}
+});
 
 export function TrainingModuleDetail({ module }) {
     const rootEl = document.getElementById('app');
@@ -461,7 +809,11 @@ export function TrainingModuleDetail({ module }) {
     const [showAddLessonModal, setShowAddLessonModal] = React.useState(false);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
     const [draggedId, setDraggedId] = React.useState(null);
-    const [lessonForm, setLessonForm] = React.useState({ title: '', description: '' });
+    const addLessonFormRef = React.useRef(null);
+    const editLessonFormRef = React.useRef(null);
+    const [appAlert, setAppAlert] = React.useState(null);
+    const [appConfirm, setAppConfirm] = React.useState(null);
+    const [appChoice, setAppChoice] = React.useState(null);
     const [resourceForm, setResourceForm] = React.useState({ title: '', body: '', external_url: '', resource_type: 'text' });
     const [activeTab, setActiveTab] = React.useState(() => {
         const hash = String(window.location.hash || '').replace('#', '');
@@ -469,50 +821,25 @@ export function TrainingModuleDetail({ module }) {
         if (hash === 'campaign_requests') return 'campaign_requests';
         return 'lessons';
     });
-    const shortDescription = module.short_description || '';
-    const [relatedHazard, setRelatedHazard] = React.useState(module.related_hazard || module.category || '');
-    const DELIVERY_METHOD_OPTIONS = React.useMemo(() => ([
-        { value: 'in_person', label: 'Face-to-Face' },
-        { value: 'online', label: 'Online' },
-    ]), []);
-    const ONLINE_PLATFORM_OPTIONS = React.useMemo(() => ([
-        { value: 'google_meet', label: 'Google Meet' },
-        { value: 'zoom', label: 'Zoom' },
-        { value: 'microsoft_teams', label: 'Microsoft Teams' },
-        { value: 'other', label: 'Other' },
-    ]), []);
+    const [relatedHazard] = React.useState(module.related_hazard || module.category || '');
+    const moduleTitle = String(module.title || '').trim();
+    const moduleShortDescription = String(module.short_description || module.description || '').trim();
     const [targetAudience, setTargetAudience] = React.useState(Array.isArray(module.target_audience) ? module.target_audience : []);
-    const [profileObjectives, setProfileObjectives] = React.useState(
-        Array.isArray(module.learning_objectives) && module.learning_objectives.length > 0
-            ? module.learning_objectives
-            : [''],
+    const [campaignRegistrationOpens, setCampaignRegistrationOpens] = React.useState(
+        toDateTimeLocalValue(module.campaign_registration_opens),
     );
-    const trainerOptions = React.useMemo(() => (
-        Array.isArray(module.qualified_trainers) ? module.qualified_trainers : []
-    ), [module.qualified_trainers]);
-    const [selectedTrainerId, setSelectedTrainerId] = React.useState('');
-    const [assignedTrainerIds, setAssignedTrainerIds] = React.useState(
-        Array.isArray(module.assigned_qualified_trainer_ids) && module.assigned_qualified_trainer_ids.length > 0
-            ? module.assigned_qualified_trainer_ids.map((id) => String(id))
-            : (module.lead_qualified_trainer_id ? [String(module.lead_qualified_trainer_id)] : []),
+    const [campaignRegistrationDeadline, setCampaignRegistrationDeadline] = React.useState(
+        toDateTimeLocalValue(module.campaign_registration_deadline),
     );
-    const [trainingSessions, setTrainingSessions] = React.useState(() => (
-        Array.isArray(module.available_training_sessions) && module.available_training_sessions.length > 0
-            ? module.available_training_sessions.map((item) => ({
-                title: item?.title || '',
-                date: item?.date || '',
-                start_time: item?.start_time || '',
-                end_time: item?.end_time || '',
-                delivery_method: item?.delivery_method || item?.deliveryMethod || 'in_person',
-                venue: item?.venue || '',
-                online_platform: item?.online_platform || item?.platform || 'google_meet',
-                meeting_link: item?.meeting_link || item?.meetingLink || '',
-                maximum_participants: item?.maximum_participants ?? item?.maximumParticipants ?? 20,
-            }))
-            : []
-    ));
-    const [sessionFieldErrors, setSessionFieldErrors] = React.useState({});
-    const [sessionValidationActive, setSessionValidationActive] = React.useState(false);
+    const [campaignTrainingCompletionDeadline, setCampaignTrainingCompletionDeadline] = React.useState(
+        toDateTimeLocalValue(module.campaign_training_completion_deadline),
+    );
+    const [campaignExpectedParticipants, setCampaignExpectedParticipants] = React.useState(
+        module.campaign_expected_participants ?? '',
+    );
+    const [campaignMaximumParticipants, setCampaignMaximumParticipants] = React.useState(
+        module.campaign_maximum_participants ?? '',
+    );
     const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false);
     const [campaignRequests, setCampaignRequests] = React.useState([]);
     const [isLoadingCampaignRequests, setIsLoadingCampaignRequests] = React.useState(false);
@@ -523,36 +850,6 @@ export function TrainingModuleDetail({ module }) {
         () => getRecommendedCommunityEntries(recommendations),
         [recommendations],
     );
-    const hazardTokens = React.useMemo(() => parseHazardTokens(relatedHazard || module.category), [relatedHazard, module.category]);
-    const activeTrainerOptions = React.useMemo(
-        () => trainerOptions.filter((trainer) => String(trainer.status || '').toLowerCase() === 'active'),
-        [trainerOptions],
-    );
-    const recommendedTrainerOptions = React.useMemo(() => {
-        if (hazardTokens.length === 0) {
-            return activeTrainerOptions;
-        }
-        return activeTrainerOptions.filter((trainer) => {
-            const specialization = String(trainer.specialization || '').toLowerCase();
-            return hazardTokens.some((token) => specialization.includes(token));
-        });
-    }, [activeTrainerOptions, hazardTokens]);
-    const fallbackTrainerOptions = React.useMemo(() => {
-        if (recommendedTrainerOptions.length > 0) {
-            return recommendedTrainerOptions;
-        }
-        return activeTrainerOptions;
-    }, [recommendedTrainerOptions, activeTrainerOptions]);
-    const assignedTrainers = React.useMemo(() => (
-        assignedTrainerIds
-            .map((id) => trainerOptions.find((trainer) => String(trainer.id) === String(id)))
-            .filter(Boolean)
-    ), [assignedTrainerIds, trainerOptions]);
-    const lessonQuizAvailable = lessons.some((lesson) => {
-        const config = lesson.lesson_quiz_config || lesson.lessonQuizConfig;
-        return Boolean(config?.is_enabled && config?.published_version_id);
-    });
-    const finalScenarioAvailable = Boolean(module.ai_scenario_config?.is_enabled && module.ai_scenario_config?.published_version_id);
 
     React.useEffect(() => {
         if (activeTab === 'intelligence') {
@@ -567,6 +864,74 @@ export function TrainingModuleDetail({ module }) {
             history.replaceState(null, '', window.location.pathname + window.location.search);
         }
     }, [activeTab]);
+
+    React.useEffect(() => {
+        registerAppAlert(({ title, description, icon }) => new Promise((resolve) => {
+            setAppAlert({
+                title,
+                description,
+                icon,
+                onClose: () => {
+                    setAppAlert(null);
+                    resolve();
+                },
+            });
+        }));
+
+        registerAppConfirm(({
+            title,
+            description,
+            confirmLabel,
+            cancelLabel,
+            confirmVariant,
+        }) => new Promise((resolve) => {
+            setAppConfirm({
+                title,
+                description,
+                confirmLabel,
+                cancelLabel,
+                confirmVariant,
+                onConfirm: () => {
+                    setAppConfirm(null);
+                    resolve(true);
+                },
+                onCancel: () => {
+                    setAppConfirm(null);
+                    resolve(false);
+                },
+            });
+        }));
+
+        registerAppChoice(({
+            title,
+            description,
+            icon,
+            buttons,
+        }) => new Promise((resolve) => {
+            setAppChoice({
+                title,
+                description,
+                icon,
+                buttons: buttons.map((button) => ({
+                    ...button,
+                    onClick: () => {
+                        setAppChoice(null);
+                        resolve(button.value ?? button.label);
+                    },
+                })),
+                onCancel: () => {
+                    setAppChoice(null);
+                    resolve(null);
+                },
+            });
+        }));
+
+        return () => {
+            registerAppAlert(null);
+            registerAppConfirm(null);
+            registerAppChoice(null);
+        };
+    }, []);
 
     const handleDragStart = (id) => setDraggedId(id);
 
@@ -606,7 +971,6 @@ export function TrainingModuleDetail({ module }) {
         setIsEditLessonMode(false);
         setIsEditResourceMode(false);
         setShowAddResource(false);
-        setLessonForm({ title: lesson.title || '', description: lesson.description || '' });
     };
 
     const handleLessonEdit = (lesson) => {
@@ -615,10 +979,58 @@ export function TrainingModuleDetail({ module }) {
         setIsEditLessonMode(true);
         setIsEditResourceMode(false);
         setShowAddResource(false);
-        setLessonForm({ title: lesson.title || '', description: lesson.description || '' });
+    };
+
+    const handleAddLessonModalChange = async (open) => {
+        if (open) {
+            setShowAddLessonModal(true);
+            return;
+        }
+
+        blurActiveElement();
+        const canClose = await addLessonFormRef.current?.requestClose?.();
+        if (canClose !== false) {
+            setShowAddLessonModal(false);
+        }
+    };
+
+    const handleLessonDialogChange = async (open) => {
+        if (open) {
+            return;
+        }
+
+        blurActiveElement();
+
+        if (isEditLessonMode) {
+            const canClose = await editLessonFormRef.current?.requestClose?.();
+            if (canClose === false) {
+                return;
+            }
+        }
+
+        setSelectedLesson(null);
+        setSelectedResource(null);
+        setIsEditLessonMode(false);
+        setIsEditResourceMode(false);
+        setShowAddResource(false);
+    };
+
+    const handleToggleEditLessonMode = async () => {
+        if (isEditLessonMode) {
+            blurActiveElement();
+            const canClose = await editLessonFormRef.current?.requestClose?.();
+            if (canClose === false) {
+                return;
+            }
+        }
+        setIsEditLessonMode((prev) => !prev);
+        setShowAddResource(false);
     };
 
     const handleResourceClick = (resource) => {
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
         setSelectedResource(resource);
         setIsEditResourceMode(false);
         setResourceForm({
@@ -629,19 +1041,38 @@ export function TrainingModuleDetail({ module }) {
         });
     };
 
+    const handleBackToLesson = () => {
+        blurActiveElement();
+        setSelectedResource(null);
+        setIsEditResourceMode(false);
+    };
 
     const handleDeleteLesson = async (e) => {
         e.preventDefault();
-        const ok = await Swal.fire({ title: 'Delete lesson and all its resources?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
-        if (!ok.isConfirmed) return;
-        await submitTrainingForm(e.currentTarget, module.id);
+        const form = e.currentTarget;
+        const ok = await showAppConfirm({
+            title: 'Delete lesson and all its resources?',
+            description: 'This action cannot be undone.',
+            confirmLabel: 'Delete lesson',
+            cancelLabel: 'Cancel',
+            confirmVariant: 'danger',
+        });
+        if (!ok) return;
+        await submitTrainingForm(form, module.id);
     };
 
     const handleDeleteResource = async (e) => {
         e.preventDefault();
-        const ok = await Swal.fire({ title: 'Delete this resource?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
-        if (!ok.isConfirmed) return;
-        await submitTrainingForm(e.currentTarget, module.id);
+        const form = e.currentTarget;
+        const ok = await showAppConfirm({
+            title: 'Delete this resource?',
+            description: 'This resource will be permanently removed from the lesson.',
+            confirmLabel: 'Delete resource',
+            cancelLabel: 'Cancel',
+            confirmVariant: 'danger',
+        });
+        if (!ok) return;
+        await submitTrainingForm(form, module.id);
     };
 
     const toggleAudience = (value) => {
@@ -649,55 +1080,6 @@ export function TrainingModuleDetail({ module }) {
             current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
         ));
     };
-
-    const addObjective = () => setProfileObjectives((current) => [...current, '']);
-    const updateObjective = (index, value) => setProfileObjectives((current) => current.map((item, idx) => idx === index ? value : item));
-    const removeObjective = (index) => setProfileObjectives((current) => {
-        const next = current.filter((_, idx) => idx !== index);
-        return next.length > 0 ? next : [''];
-    });
-    const moveObjective = (index, direction) => setProfileObjectives((current) => {
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= current.length) return current;
-        const next = [...current];
-        [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-        return next;
-    });
-
-    const addAssignedTrainer = () => {
-        if (!selectedTrainerId) return;
-        setAssignedTrainerIds((current) => (
-            current.includes(String(selectedTrainerId)) ? current : [...current, String(selectedTrainerId)]
-        ));
-        setSelectedTrainerId('');
-    };
-
-    const removeAssignedTrainer = (trainerId) => {
-        setAssignedTrainerIds((current) => current.filter((id) => String(id) !== String(trainerId)));
-    };
-
-    const addTrainingSession = () => setTrainingSessions((current) => {
-        const baseTitle = String(module.title || 'Training').trim() || 'Training';
-        const nextIndex = current.length + 1;
-        return [
-            ...current,
-            {
-                title: `${baseTitle} - Session ${nextIndex}`,
-                date: '',
-                start_time: '',
-                end_time: '',
-                delivery_method: 'in_person',
-                venue: '',
-                online_platform: 'google_meet',
-                meeting_link: '',
-                maximum_participants: 30,
-            },
-        ];
-    });
-    const updateTrainingSession = (index, field, value) => setTrainingSessions((current) => (
-        current.map((item, idx) => idx === index ? { ...item, [field]: value } : item)
-    ));
-    const removeTrainingSession = (index) => setTrainingSessions((current) => current.filter((_, idx) => idx !== index));
 
     const loadCampaignRequests = async () => {
         setIsLoadingCampaignRequests(true);
@@ -723,6 +1105,36 @@ export function TrainingModuleDetail({ module }) {
             await Swal.fire({ icon: 'error', title: 'Load failed', text: e?.message || 'Could not load campaign requests.' });
         } finally {
             setIsLoadingCampaignRequests(false);
+        }
+    };
+
+    const copyCampaignRegistrationLink = async (requestItem) => {
+        const link = requestItem?.registration_link;
+        if (!link) {
+            await Swal.fire({
+                icon: 'info',
+                title: 'Registration link unavailable',
+                text: 'Registration link becomes available after approval and while registration is open.',
+            });
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(link);
+            await Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Registration link copied',
+                showConfirmButton: false,
+                timer: 2200,
+            });
+        } catch {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Copy failed',
+                text: 'Unable to copy link. Please copy it manually from the details page.',
+            });
         }
     };
 
@@ -752,103 +1164,158 @@ export function TrainingModuleDetail({ module }) {
         }
     }, [activeTab]);
 
-    React.useEffect(() => {
-        if (!sessionValidationActive) {
-            return;
-        }
-
-        setSessionFieldErrors(computeTrainingSessionFieldErrors(trainingSessions));
-    }, [trainingSessions, sessionValidationActive]);
-
-    const activateSessionValidation = () => setSessionValidationActive(true);
-
-    const getSessionFieldError = (index, field) => (
-        sessionValidationActive ? sessionFieldErrors[index]?.[field] : undefined
-    );
-
-    const getNormalizedTrainingSessions = () => trainingSessions
-        .map((item) => ({
-            title: item.title || '',
-            date: item.date || '',
-            start_time: item.start_time || '',
-            end_time: item.end_time || '',
-            delivery_method: item.delivery_method || 'in_person',
-            venue: item.venue || '',
-            online_platform: item.online_platform || '',
-            meeting_link: item.meeting_link || '',
-            maximum_participants: Number(item.maximum_participants),
-        }))
-        .filter((item) => isTrainingSessionPartiallyFilled(item));
+    const campaignPlanningPreview = React.useMemo(() => ({
+        training_module_id: module.id,
+        training_title: moduleTitle,
+        short_description: moduleShortDescription,
+        recommended_communities: recommendations,
+        target_audience: targetAudience,
+        registration_opens: campaignRegistrationOpens || null,
+        registration_deadline: campaignRegistrationDeadline || null,
+        training_completion_deadline: campaignTrainingCompletionDeadline || null,
+        expected_participants: Number(campaignExpectedParticipants) > 0 ? Number(campaignExpectedParticipants) : null,
+        maximum_participants: Number(campaignMaximumParticipants) > 0 ? Number(campaignMaximumParticipants) : null,
+        registered_participants_count: 0,
+        registration_link: `${window.location.origin}/participant/register?campaign_request={campaign_request_id}`,
+        published_status: module.status || 'draft',
+        registration_enabled: Number(campaignMaximumParticipants) > 0
+            ? 0 < Number(campaignMaximumParticipants)
+            : true,
+    }), [
+        module.id,
+        module.status,
+        moduleTitle,
+        moduleShortDescription,
+        recommendations,
+        targetAudience,
+        campaignRegistrationOpens,
+        campaignRegistrationDeadline,
+        campaignTrainingCompletionDeadline,
+        campaignExpectedParticipants,
+        campaignMaximumParticipants,
+    ]);
 
     const validateIntelligenceProfile = () => {
-        const cleanedObjectives = profileObjectives.map((item) => item.trim()).filter(Boolean);
-        if (cleanedObjectives.length === 0) {
+        if (!moduleTitle) {
             return {
                 ok: false,
-                title: 'Missing objectives',
-                text: 'Please add at least one training objective.',
+                title: 'Missing training title',
+                text: 'Add a title to this training module in the module header above.',
             };
         }
 
-        if (!String(relatedHazard || '').trim()) {
+        if (!moduleShortDescription) {
             return {
                 ok: false,
-                title: 'Missing related hazard',
-                text: 'Please enter at least one Related Hazard(s).',
+                title: 'Missing description',
+                text: 'Add a description to this training module in the module header above.',
             };
         }
 
-        const normalizedSessions = getNormalizedTrainingSessions();
-        if (normalizedSessions.length === 0) {
+        if (targetAudience.length === 0) {
             return {
                 ok: false,
-                title: 'No training sessions',
-                text: 'Add at least one complete training session before saving and submitting to Campaign.',
-                activateSessionValidation: true,
+                title: 'Missing target audience',
+                text: 'Select at least one target audience.',
             };
         }
 
-        const nextSessionFieldErrors = computeTrainingSessionFieldErrors(trainingSessions);
-        if (Object.keys(nextSessionFieldErrors).length > 0) {
+        if (!campaignRegistrationOpens) {
             return {
                 ok: false,
-                title: 'Incomplete training session',
-                text: 'Please fill in all required session fields highlighted in red.',
-                activateSessionValidation: true,
-                sessionFieldErrors: nextSessionFieldErrors,
+                title: 'Missing registration opens date',
+                text: 'Set when participant registration opens.',
             };
         }
 
-        return { ok: true, cleanedObjectives, normalizedSessions };
+        if (!campaignRegistrationDeadline) {
+            return {
+                ok: false,
+                title: 'Missing registration deadline',
+                text: 'Set the registration deadline.',
+            };
+        }
+
+        if (!campaignTrainingCompletionDeadline) {
+            return {
+                ok: false,
+                title: 'Missing training completion deadline',
+                text: 'Set the deadline for participants to complete the online training.',
+            };
+        }
+
+        if (new Date(campaignRegistrationDeadline) < new Date(campaignRegistrationOpens)) {
+            return {
+                ok: false,
+                title: 'Invalid registration period',
+                text: 'Registration deadline must be on or after registration opens.',
+            };
+        }
+
+        if (new Date(campaignTrainingCompletionDeadline) <= new Date(campaignRegistrationDeadline)) {
+            return {
+                ok: false,
+                title: 'Invalid training completion deadline',
+                text: 'Training completion deadline must be later than the registration deadline.',
+            };
+        }
+
+        const maxParticipants = Number(campaignMaximumParticipants);
+        if (!Number.isFinite(maxParticipants) || maxParticipants < 2) {
+            return {
+                ok: false,
+                title: 'Missing maximum participants',
+                text: 'Enter a maximum participants value of at least 2.',
+            };
+        }
+
+        if (maxParticipants > 40) {
+            return {
+                ok: false,
+                title: 'Maximum participants too high',
+                text: 'Maximum participants cannot be more than 40.',
+            };
+        }
+
+        const expectedParticipants = Number(campaignExpectedParticipants);
+        if (!Number.isFinite(expectedParticipants) || expectedParticipants < 1) {
+            return {
+                ok: false,
+                title: 'Missing expected participants',
+                text: 'Enter the expected number of participants.',
+            };
+        }
+
+        if (expectedParticipants >= maxParticipants) {
+            return {
+                ok: false,
+                title: 'Expected participants exceed maximum',
+                text: 'Expected participants must be lower than maximum participants.',
+            };
+        }
+
+        return { ok: true };
     };
 
-    const persistIntelligenceProfile = async ({ cleanedObjectives, normalizedSessions }) => {
+    const persistIntelligenceProfile = async () => {
         const formData = new FormData();
         formData.append('_token', getCsrfToken());
         formData.append('_method', 'PUT');
-        formData.append('title', module.title || '');
+        formData.append('title', moduleTitle);
         formData.append('description', module.description || '');
-        formData.append('short_description', shortDescription);
+        formData.append('short_description', moduleShortDescription);
         formData.append('category', module.category || '');
         formData.append('related_hazard', relatedHazard);
         formData.append('estimated_duration_minutes', String(module.estimated_duration_minutes || ''));
         formData.append('visibility', module.visibility || 'all');
         formData.append('status', module.status || 'draft');
         formData.append('difficulty', module.difficulty || 'Beginner');
-        cleanedObjectives.forEach((item, index) => formData.append(`learning_objectives[${index}]`, item));
         targetAudience.forEach((item, index) => formData.append(`target_audience[${index}]`, item));
-        assignedTrainerIds.forEach((item, index) => formData.append(`assigned_qualified_trainer_ids[${index}]`, item));
-        normalizedSessions.forEach((item, index) => {
-            formData.append(`available_training_sessions[${index}][title]`, item.title);
-            formData.append(`available_training_sessions[${index}][date]`, item.date);
-            formData.append(`available_training_sessions[${index}][start_time]`, item.start_time);
-            formData.append(`available_training_sessions[${index}][end_time]`, item.end_time);
-            formData.append(`available_training_sessions[${index}][delivery_method]`, item.delivery_method);
-            formData.append(`available_training_sessions[${index}][venue]`, item.delivery_method === 'in_person' ? item.venue : '');
-            formData.append(`available_training_sessions[${index}][online_platform]`, item.delivery_method === 'online' ? item.online_platform : '');
-            formData.append(`available_training_sessions[${index}][meeting_link]`, item.delivery_method === 'online' ? item.meeting_link : '');
-            formData.append(`available_training_sessions[${index}][maximum_participants]`, String(item.maximum_participants));
-        });
+        formData.append('campaign_registration_opens', campaignRegistrationOpens);
+        formData.append('campaign_registration_deadline', campaignRegistrationDeadline);
+        formData.append('campaign_training_completion_deadline', campaignTrainingCompletionDeadline);
+        formData.append('campaign_expected_participants', String(campaignExpectedParticipants));
+        formData.append('campaign_maximum_participants', String(campaignMaximumParticipants));
 
         const response = await fetch(`/admin/training-modules/${module.id}`, {
             method: 'POST',
@@ -869,11 +1336,6 @@ export function TrainingModuleDetail({ module }) {
     const handleSaveAndSubmitProfile = async () => {
         const validation = validateIntelligenceProfile();
         if (!validation.ok) {
-            if (validation.activateSessionValidation) {
-                setSessionValidationActive(true);
-                setSessionFieldErrors(validation.sessionFieldErrors || computeTrainingSessionFieldErrors(trainingSessions));
-            }
-
             await Swal.fire({
                 icon: 'warning',
                 title: validation.title,
@@ -881,9 +1343,6 @@ export function TrainingModuleDetail({ module }) {
             });
             return;
         }
-
-        setSessionValidationActive(false);
-        setSessionFieldErrors({});
 
         const publishNote = String(module.status || '').toLowerCase() !== 'published'
             ? '<p class="mt-3 text-sm text-amber-700">Only published modules are available to the Campaign Management System.</p>'
@@ -906,10 +1365,7 @@ export function TrainingModuleDetail({ module }) {
 
         setIsSubmittingProfile(true);
         try {
-            await persistIntelligenceProfile({
-                cleanedObjectives: validation.cleanedObjectives,
-                normalizedSessions: validation.normalizedSessions,
-            });
+            await persistIntelligenceProfile();
 
             await handleSubmitToCampaign();
 
@@ -1046,244 +1502,102 @@ export function TrainingModuleDetail({ module }) {
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
-                        <div className="flex items-center gap-2 mb-3"><Target className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Training Objectives</h3></div>
-                        <div className="space-y-2">
-                            {profileObjectives.map((objective, index) => (
-                                <div key={`${index}-${objective}`} className="flex items-center gap-2">
-                                    <button type="button" onClick={() => moveObjective(index, 'up')} className="rounded-lg border border-slate-300 p-2"><ChevronUp className="w-3.5 h-3.5" /></button>
-                                    <button type="button" onClick={() => moveObjective(index, 'down')} className="rounded-lg border border-slate-300 p-2"><ChevronDown className="w-3.5 h-3.5" /></button>
-                                    <input value={objective} onChange={(e) => updateObjective(index, e.target.value)} className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                                    <button type="button" onClick={() => removeObjective(index)} className="rounded-lg border border-rose-200 p-2 text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
-                                </div>
-                            ))}
-                        </div>
-                        <button type="button" onClick={addObjective} className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"><Plus className="w-3.5 h-3.5" /> Add Objective</button>
-                    </AdminContentCard>
-
-                    <AdminContentCard className="p-5">
-                        <div className="flex items-center gap-2 mb-4"><UserRound className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Assigned Trainers</h3></div>
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                                <div className="flex-1">
-                                    <label className="block text-xs text-slate-500 mb-1">Assign Trainer</label>
-                                    <select
-                                        value={selectedTrainerId}
-                                        onChange={(e) => setSelectedTrainerId(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                    >
-                                        <option value="">Select a recommended trainer</option>
-                                        {fallbackTrainerOptions.map((trainer) => {
-                                            const isRecommended = recommendedTrainerOptions.some((item) => item.id === trainer.id);
-                                            return (
-                                                <option key={trainer.id} value={trainer.id}>
-                                                    {`${isRecommended ? '⭐ ' : ''}${trainer.name} • ${trainer.specialization || 'General'}`}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
-                                    {recommendedTrainerOptions.length === 0 && (
-                                        <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                                            No qualified trainer is currently available for this training specialization.
-                                        </p>
-                                    )}
-                                </div>
-                                <button type="button" onClick={addAssignedTrainer} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
-                                    <Plus className="w-4 h-4" /> Assign Trainer
-                                </button>
-                            </div>
-
-                            {assignedTrainers.length === 0 ? (
-                                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                                    No trainers assigned yet.
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {assignedTrainers.map((trainer) => (
-                                        <div key={trainer.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="space-y-2">
-                                                    <p className="text-sm font-semibold text-slate-900">{trainer.name}</p>
-                                                    <p className="text-xs text-slate-500">Role</p>
-                                                    <p className="text-sm text-slate-700">Trainer</p>
-                                                    <p className="text-xs text-slate-500">Specialization</p>
-                                                    <p className="text-sm text-slate-700">{trainer.specialization || '—'}</p>
-                                                    <p className="text-xs text-slate-500">Status</p>
-                                                    <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${String(trainer.status).toLowerCase() === 'active' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-700'}`}>
-                                                        {trainer.status || 'Inactive'}
-                                                    </span>
-                                                    <p className="text-xs text-slate-500">Certifications</p>
-                                                    <p className="text-sm text-slate-700">
-                                                        {Array.isArray(trainer.certifications) && trainer.certifications.length > 0
-                                                            ? trainer.certifications.join(', ')
-                                                            : '—'}
-                                                    </p>
-                                                </div>
-                                                <button type="button" onClick={() => removeAssignedTrainer(trainer.id)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </AdminContentCard>
-
-                    <AdminContentCard className="p-5">
-                        <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2 mb-4">
+                            <CalendarDays className="w-4 h-4 text-emerald-700" />
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-800">Available Training Sessions</h3>
-                                <p className="text-xs text-slate-500 mt-1">Proposed schedules only. Campaign Management will choose from these later. Fields marked with <span className="text-rose-500">*</span> are required.</p>
+                                <h3 className="text-sm font-semibold text-slate-800">Campaign Registration Settings</h3>
+                                <p className="text-xs text-slate-500 mt-1">Self-paced online training window shared with Campaign Planning for public registration and completion deadlines.</p>
                             </div>
-                            <button type="button" onClick={addTrainingSession} className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"><Plus className="w-3.5 h-3.5" /> Add Session</button>
                         </div>
-
-                        {trainingSessions.length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                                No proposed training sessions have been added yet.
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs text-slate-500 mb-1">Registration Opens <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="datetime-local"
+                                    value={campaignRegistrationOpens}
+                                    onChange={(e) => setCampaignRegistrationOpens(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                />
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {trainingSessions.map((session, index) => {
-                                    const sessionHasErrors = sessionValidationActive
-                                        && sessionFieldErrors[index]
-                                        && Object.keys(sessionFieldErrors[index]).length > 0;
-
-                                    return (
-                                    <div
-                                        key={`session-${index}`}
-                                        className={`rounded-2xl border p-4 ${sessionHasErrors ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
+                            <div>
+                                <label className="block text-xs text-slate-500 mb-1">Registration Deadline <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="datetime-local"
+                                    value={campaignRegistrationDeadline}
+                                    onChange={(e) => setCampaignRegistrationDeadline(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 mb-1">Training Completion Deadline <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="datetime-local"
+                                    value={campaignTrainingCompletionDeadline}
+                                    onChange={(e) => setCampaignTrainingCompletionDeadline(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 mb-1">Maximum Participants <span className="text-rose-500">*</span></label>
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    <select
+                                        value=""
+                                        onChange={(e) => {
+                                            if (e.target.value) {
+                                                setCampaignMaximumParticipants(e.target.value);
+                                            }
+                                        }}
+                                        className="w-full sm:w-52 rounded-xl border border-slate-300 px-3 py-2 text-sm"
                                     >
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Session Title</label>
-                                                <input type="text" value={session.title || ''} onChange={(e) => updateTrainingSession(index, 'title', e.target.value)} className={trainingSessionInputClass(false)} placeholder="Session title" />
-                                            </div>
-                                            <div>
-                                                <RequiredFieldLabel>Date</RequiredFieldLabel>
-                                                <input
-                                                    type="date"
-                                                    value={session.date || ''}
-                                                    onChange={(e) => updateTrainingSession(index, 'date', e.target.value)}
-                                                    onBlur={activateSessionValidation}
-                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'date')))}
-                                                />
-                                                <SessionFieldError message={getSessionFieldError(index, 'date')} />
-                                            </div>
-                                            <div>
-                                                <RequiredFieldLabel>Delivery Method</RequiredFieldLabel>
-                                                <select
-                                                    value={session.delivery_method || 'in_person'}
-                                                    onChange={(e) => updateTrainingSession(index, 'delivery_method', e.target.value)}
-                                                    onBlur={activateSessionValidation}
-                                                    className={trainingSessionInputClass(false)}
-                                                >
-                                                    {DELIVERY_METHOD_OPTIONS.map((opt) => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <RequiredFieldLabel>Start Time</RequiredFieldLabel>
-                                                <input
-                                                    type="time"
-                                                    value={session.start_time || ''}
-                                                    onChange={(e) => updateTrainingSession(index, 'start_time', e.target.value)}
-                                                    onBlur={activateSessionValidation}
-                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'start_time')))}
-                                                />
-                                                <SessionFieldError message={getSessionFieldError(index, 'start_time')} />
-                                            </div>
-                                            <div>
-                                                <RequiredFieldLabel>End Time</RequiredFieldLabel>
-                                                <input
-                                                    type="time"
-                                                    value={session.end_time || ''}
-                                                    onChange={(e) => updateTrainingSession(index, 'end_time', e.target.value)}
-                                                    onBlur={activateSessionValidation}
-                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'end_time')))}
-                                                />
-                                                <SessionFieldError message={getSessionFieldError(index, 'end_time')} />
-                                            </div>
-                                            {String(session.delivery_method || 'in_person') === 'in_person' ? (
-                                                <div>
-                                                    <RequiredFieldLabel>Venue</RequiredFieldLabel>
-                                                    <input
-                                                        type="text"
-                                                        value={session.venue || ''}
-                                                        onChange={(e) => updateTrainingSession(index, 'venue', e.target.value)}
-                                                        onBlur={activateSessionValidation}
-                                                        className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'venue')))}
-                                                        placeholder="Venue"
-                                                    />
-                                                    <SessionFieldError message={getSessionFieldError(index, 'venue')} />
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div>
-                                                        <RequiredFieldLabel>Platform</RequiredFieldLabel>
-                                                        <select
-                                                            value={session.online_platform || 'google_meet'}
-                                                            onChange={(e) => updateTrainingSession(index, 'online_platform', e.target.value)}
-                                                            onBlur={activateSessionValidation}
-                                                            className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'online_platform')))}
-                                                        >
-                                                            {ONLINE_PLATFORM_OPTIONS.map((opt) => (
-                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                            ))}
-                                                        </select>
-                                                        <SessionFieldError message={getSessionFieldError(index, 'online_platform')} />
-                                                    </div>
-                                                    <div className="xl:col-span-2">
-                                                        <RequiredFieldLabel>Meeting Link</RequiredFieldLabel>
-                                                        <input
-                                                            type="url"
-                                                            value={session.meeting_link || ''}
-                                                            onChange={(e) => updateTrainingSession(index, 'meeting_link', e.target.value)}
-                                                            onBlur={activateSessionValidation}
-                                                            className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'meeting_link')))}
-                                                            placeholder="https://..."
-                                                        />
-                                                        <SessionFieldError message={getSessionFieldError(index, 'meeting_link')} />
-                                                    </div>
-                                                </>
-                                            )}
-                                            <div>
-                                                <RequiredFieldLabel>Maximum Participants</RequiredFieldLabel>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="500"
-                                                    value={session.maximum_participants ?? 30}
-                                                    onChange={(e) => updateTrainingSession(index, 'maximum_participants', e.target.value)}
-                                                    onBlur={activateSessionValidation}
-                                                    className={trainingSessionInputClass(Boolean(getSessionFieldError(index, 'maximum_participants')))}
-                                                />
-                                                <SessionFieldError message={getSessionFieldError(index, 'maximum_participants')} />
-                                            </div>
-                                        </div>
-                                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                                            <div className="flex flex-wrap items-center gap-2 text-xs">
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-slate-700 border border-slate-200">
-                                                    <CalendarDays className="w-3.5 h-3.5" /> {formatDate(session.date)}
-                                                </span>
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-slate-700 border border-slate-200">
-                                                    <Clock3 className="w-3.5 h-3.5" /> {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                                                </span>
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700 border border-emerald-200">
-                                                    Capacity: {session.maximum_participants || '—'}
-                                                </span>
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 border border-slate-200">
-                                                    Remaining slots: future placeholder
-                                                </span>
-                                            </div>
-                                            <button type="button" onClick={() => removeTrainingSession(index)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Delete Session</button>
-                                        </div>
-                                    </div>
-                                    );
-                                })}
+                                        <option value="">Recommended</option>
+                                        {RECOMMENDED_PARTICIPANTS_OPTIONS.map((value) => (
+                                            <option key={value} value={value}>{value}</option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="40"
+                                        value={campaignMaximumParticipants}
+                                        onChange={(e) => setCampaignMaximumParticipants(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                        placeholder="Type maximum participants"
+                                    />
+                                </div>
+                                <p className="mt-1 text-xs text-slate-500">Use the recommended preset up to 30, or type any number from 2 to 40.</p>
                             </div>
-                        )}
+                            <div>
+                                <label className="block text-xs text-slate-500 mb-1">Expected Participants <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="number"
+                                    min="2"
+                                    max={Number(campaignMaximumParticipants) > 1 ? Number(campaignMaximumParticipants) - 1 : 39}
+                                    value={campaignExpectedParticipants}
+                                    onChange={(e) => {
+                                        const nextValue = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                        const nextNumber = Number(nextValue);
+                                        const currentMaximum = Number(campaignMaximumParticipants);
+
+                                        if (!nextValue) {
+                                            setCampaignExpectedParticipants('');
+                                            return;
+                                        }
+
+                                        if (Number.isFinite(currentMaximum) && currentMaximum > 1 && nextNumber >= currentMaximum) {
+                                            setCampaignExpectedParticipants(String(currentMaximum - 1));
+                                            return;
+                                        }
+
+                                        setCampaignExpectedParticipants(nextValue);
+                                    }}
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    placeholder="Up to current maximum"
+                                />
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Expected participants is your target and must stay lower than maximum participants. Registration automatically closes once actual registered participants reach maximum capacity.
+                                </p>
+                            </div>
+                        </div>
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
@@ -1325,47 +1639,27 @@ export function TrainingModuleDetail({ module }) {
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
-                        <div className="flex items-center gap-2 mb-3"><ShieldCheck className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Training Capabilities</h3></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                            {[
-                                { label: 'Lesson Quiz Available', enabled: lessonQuizAvailable },
-                                { label: 'Final AI Scenario Assessment Available', enabled: finalScenarioAvailable },
-                                { label: 'Evaluation & Scoring Available', enabled: lessons.length > 0 },
-                                { label: 'Certification Available', enabled: lessons.length > 0 },
-                            ].map((item) => (
-                                <div key={item.label} className="rounded-xl border border-slate-200 px-3 py-2 flex items-center justify-between">
-                                    <span>{item.label}</span>
-                                    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${item.enabled ? 'text-emerald-700' : 'text-slate-600'}`}>{item.enabled ? <CheckCircle2 className="w-3.5 h-3.5" /> : <CircleDashed className="w-3.5 h-3.5" />}{item.enabled ? 'Yes' : 'No'}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </AdminContentCard>
-
-                    <AdminContentCard className="p-5">
                         <div className="flex items-center gap-2 mb-2"><Workflow className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Integration Preview</h3></div>
-                        <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Hazard Assessment Profile → Recommended Communities → Campaign Planning & Scheduling → Participant Registration → Training Management → Final AI Scenario Assessment → Simulation Event Planning → Evaluation & Certification</p>
+                        <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Publish Training Module → Campaign Planning announcement &amp; registration → Participant completes self-paced online training → Eligible for Simulation Event Planning.</p>
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
-                        <div className="flex items-center gap-2 mb-2"><Database className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Campaign Integration Preview</h3></div>
-                        <p className="text-sm text-slate-700 mb-2">Future Data to Share:</p>
-                        <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
+                        <div className="flex items-center gap-2 mb-2"><Database className="w-4 h-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Campaign API Payload Preview</h3></div>
+                        <p className="text-sm text-slate-600 mb-3">Only campaign announcement and registration data is sent. Lessons, quizzes, trainers, and internal training configuration stay in Training Module Management.</p>
+                        <ul className="list-disc list-inside text-sm text-slate-600 space-y-1 mb-3">
                             <li>Training Module ID</li>
-                            <li>Training Title</li>
-                            <li>Short Description</li>
-                            <li>Related Hazard(s)</li>
-                            <li>Recommended Communities (auto-generated priorities)</li>
-                            <li>Recommended Audience</li>
-                            <li>Estimated Duration</li>
-                            <li>Total Lessons</li>
-                            <li>Assigned Trainers</li>
-                            <li>Available Training Sessions</li>
-                            <li>Maximum Participants</li>
+                            <li>Training Title &amp; Short Description (from module header)</li>
+                            <li>Recommended Communities</li>
+                            <li>Target Audience</li>
+                            <li>Registration Opens / Deadline / Training Completion Deadline</li>
+                            <li>Expected Participants and Maximum Participants</li>
+                            <li>Participant Registration Link</li>
+                            <li>Published Status and auto-calculated Registration Enabled</li>
                         </ul>
-                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
-                            <p><span className="font-semibold text-slate-700">Assigned Trainers:</span> {assignedTrainers.length > 0 ? assignedTrainers.map((trainer) => trainer.name).join(', ') : 'Not assigned'}</p>
-                            <p><span className="font-semibold text-slate-700">Proposed Sessions:</span> {trainingSessions.length}</p>
-                        </div>
+                        <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                            {JSON.stringify(campaignPlanningPreview, null, 2)}
+                        </pre>
+                        <p className="mt-2 text-xs text-slate-500">The registration link is generated when you submit and includes the campaign request ID for Group 6 to share with participants.</p>
                         <p className="mt-2 text-xs font-semibold text-amber-700">Only Published modules will be available to the Campaign Management System.</p>
                     </AdminContentCard>
 
@@ -1411,7 +1705,7 @@ export function TrainingModuleDetail({ module }) {
                                         <tr>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Request ID</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Training Module</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Proposed Session</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Registration Period</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Submitted To</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Submitted Date</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
@@ -1445,12 +1739,22 @@ export function TrainingModuleDetail({ module }) {
                                                     <CampaignRequestStatusBadge status={req.status} />
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap text-right">
-                                                    <a
-                                                        href={`/admin/campaign-requests/${req.id}`}
-                                                        className="inline-flex rounded-lg px-3 py-1.5 text-xs bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-                                                    >
-                                                        View
-                                                    </a>
+                                                    <div className="inline-flex items-center gap-2">
+                                                        <a
+                                                            href={`/admin/campaign-requests/${req.id}`}
+                                                            className="inline-flex rounded-lg px-3 py-1.5 text-xs bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                        >
+                                                            View
+                                                        </a>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => copyCampaignRegistrationLink(req)}
+                                                            disabled={!req.registration_link_active}
+                                                            className="inline-flex rounded-lg px-3 py-1.5 text-xs border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            Copy Link
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1557,12 +1861,11 @@ export function TrainingModuleDetail({ module }) {
                                                     />
                                                     <form
                                                         method="POST"
-                                                        action={`/admin/training-modules/${module.id}/contents/${lesson.id}`}
+                                                        action={`/admin/training-modules/${module.id}/contents/${lesson.id}/delete`}
                                                         onSubmit={handleDeleteLesson}
                                                         className="inline-flex"
                                                     >
                                                         <input type="hidden" name="_token" value={getCsrfToken()} />
-                                                        <input type="hidden" name="_method" value="DELETE" />
                                                         <AdminTableActionButton
                                                             icon={Trash2}
                                                             title="Delete Lesson"
@@ -1581,20 +1884,40 @@ export function TrainingModuleDetail({ module }) {
                 </div>
             </AdminContentCard>
 
-            <Dialog.Root open={showAddLessonModal} onOpenChange={setShowAddLessonModal}>
+            <Dialog.Root open={showAddLessonModal} onOpenChange={handleAddLessonModalChange}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[90vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col">
+                    <Dialog.Content
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(100%,80rem)] max-w-5xl max-h-[92vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col"
+                        onOpenAutoFocus={(event) => {
+                            event.preventDefault();
+                            focusDialogField(event.currentTarget);
+                        }}
+                    >
                         <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                            <Dialog.Title className="text-lg font-semibold text-slate-800">Add Lesson</Dialog.Title>
-                            <Dialog.Close asChild>
-                                <button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100" aria-label="Close">
-                                    <X className="w-4 h-4 mx-auto" />
-                                </button>
-                            </Dialog.Close>
+                            <div>
+                                <Dialog.Title className="text-lg font-semibold text-slate-800">Add Lesson</Dialog.Title>
+                                <Dialog.Description className="sr-only">
+                                    Create a new lesson for this training module.
+                                </Dialog.Description>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => handleAddLessonModalChange(false)}
+                                className="w-8 h-8 rounded-full hover:bg-slate-100"
+                                aria-label="Close"
+                            >
+                                <X className="w-4 h-4 mx-auto" />
+                            </button>
                         </div>
-                        <div className="p-6 overflow-y-auto">
-                            <AddLessonForm moduleId={module.id} onCancel={() => setShowAddLessonModal(false)} />
+                        <div className="p-6 overflow-y-auto overflow-x-visible">
+                            <LessonFormEditor
+                                ref={addLessonFormRef}
+                                mode="create"
+                                moduleId={module.id}
+                                onCancel={() => handleAddLessonModalChange(false)}
+                                onSubmitted={() => setShowAddLessonModal(false)}
+                            />
                         </div>
                     </Dialog.Content>
                 </Dialog.Portal>
@@ -1602,119 +1925,55 @@ export function TrainingModuleDetail({ module }) {
 
             <Dialog.Root
                 open={selectedLesson !== null}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setSelectedLesson(null);
-                        setIsEditLessonMode(false);
-                        setShowAddResource(false);
-                    }
-                }}
+                onOpenChange={handleLessonDialogChange}
             >
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl max-h-[90vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col">
-                        <Dialog.Title className="sr-only">Lesson Resources</Dialog.Title>
-                        {selectedLesson && (
+                    <Dialog.Content
+                        onOpenAutoFocus={(event) => {
+                            event.preventDefault();
+                            focusDialogField(event.currentTarget);
+                        }}
+                        onCloseAutoFocus={(event) => {
+                            event.preventDefault();
+                        }}
+                        className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(100%,80rem)] ${selectedResource ? 'max-w-4xl' : 'max-w-5xl'} max-h-[92vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col`}
+                    >
+                        <Dialog.Title className="sr-only">
+                            {selectedResource
+                                ? (isEditResourceMode ? 'Edit Resource' : selectedResource?.title || 'Resource')
+                                : (selectedLesson?.title || 'Lesson Resources')}
+                        </Dialog.Title>
+                        <Dialog.Description className="sr-only">
+                            {selectedResource
+                                ? 'View or edit the selected learning resource.'
+                                : 'View and manage learning resources for this lesson.'}
+                        </Dialog.Description>
+                        {selectedLesson && selectedResource ? (
                             <>
                                 <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                                    <div>
-                                        <h2 className="text-xl font-semibold text-slate-800">{selectedLesson.title}</h2>
-                                        {selectedLesson.description && <p className="text-sm text-slate-600 mt-1">{selectedLesson.description}</p>}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button type="button" onClick={() => setIsEditLessonMode(!isEditLessonMode)} className="rounded-md border border-emerald-500/60 bg-emerald-50 p-2">
-                                            <Pencil className="w-4 h-4 text-emerald-800" />
+                                    <div className="min-w-0">
+                                        <button
+                                            type="button"
+                                            onClick={handleBackToLesson}
+                                            className="mb-1 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+                                        >
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                            Back to {selectedLesson.title}
                                         </button>
-                                        <Dialog.Close asChild>
-                                            <button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100"><X className="w-4 h-4 mx-auto" /></button>
-                                        </Dialog.Close>
+                                        <h2 className="text-xl font-semibold text-slate-800 truncate">{isEditResourceMode ? 'Edit Resource' : selectedResource.title}</h2>
                                     </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                    {isEditLessonMode ? (
-                                        <form method="POST" action={`/admin/training-modules/${module.id}/contents/${selectedLesson.id}`} className="space-y-3" onSubmit={(e) => { e.preventDefault(); submitTrainingForm(e.currentTarget, module.id); }}>
-                                            <input type="hidden" name="_token" value={getCsrfToken()} />
-                                            <input type="hidden" name="_method" value="PUT" />
-                                            <input name="title" type="text" required value={lessonForm.title} onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-                                            <textarea name="description" rows={3} value={lessonForm.description} onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Lesson description (optional)" />
-                                            <button type="submit" className="rounded-md bg-emerald-600 text-white px-4 py-1.5 text-sm">Save Lesson</button>
-                                        </form>
-                                    ) : (
-                                        <>
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-semibold text-slate-800">Learning Resources</h3>
-                                                {!showAddResource && (
-                                                    <button type="button" onClick={() => setShowAddResource(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-xs font-semibold">
-                                                        <Plus className="w-3.5 h-3.5" /> Add Resource
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                            {showAddResource && (
-                                                <AddResourceForm moduleId={module.id} lessonId={selectedLesson.id} onCancel={() => setShowAddResource(false)} />
-                                            )}
-
-                                            {RESOURCE_GROUPS.map((group) => {
-                                                const items = groupedResources[group.key] || [];
-                                                if (items.length === 0) return null;
-                                                return (
-                                                    <div key={group.key} className="space-y-2">
-                                                        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</h4>
-                                                        <ul className="space-y-2">
-                                                            {items.map((resource) => (
-                                                                <li key={resource.id} className="rounded-xl border border-slate-200 p-3 bg-slate-50/50">
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <p className="font-medium text-slate-800 text-sm">{resource.title}</p>
-                                                                            <ResourceStatusBadge resource={resource} />
-                                                                        </div>
-                                                                        <div className="flex flex-wrap gap-1.5 shrink-0">
-                                                                            <button type="button" onClick={() => handleResourceClick(resource)} className="rounded-lg px-2 py-1 text-xs bg-white border border-slate-200 text-slate-700">View</button>
-                                                                            <form method="POST" action={`/admin/training-modules/${module.id}/contents/${selectedLesson.id}/resources/${resource.id}/reprocess`} onSubmit={(e) => { e.preventDefault(); submitTrainingForm(e.currentTarget, module.id); }}>
-                                                                                <input type="hidden" name="_token" value={getCsrfToken()} />
-                                                                                <button type="submit" className="rounded-lg px-2 py-1 text-xs bg-white border border-slate-200 text-violet-700 inline-flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Reprocess</button>
-                                                                            </form>
-                                                                            <form method="POST" action={`/admin/training-modules/${module.id}/contents/${selectedLesson.id}/resources/${resource.id}`} onSubmit={handleDeleteResource}>
-                                                                                <input type="hidden" name="_token" value={getCsrfToken()} />
-                                                                                <input type="hidden" name="_method" value="DELETE" />
-                                                                                <button type="submit" className="rounded-lg px-2 py-1 text-xs bg-white border border-rose-200 text-rose-700">Delete</button>
-                                                                            </form>
-                                                                        </div>
-                                                                    </div>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                );
-                                            })}
-
-                                            {(selectedLesson.resources || []).length === 0 && !showAddResource && (
-                                                <p className="text-sm text-slate-500">No learning resources yet. Click &quot;Add Resource&quot; to attach materials to this lesson.</p>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </Dialog.Content>
-                </Dialog.Portal>
-            </Dialog.Root>
-
-            <Dialog.Root open={selectedResource !== null} onOpenChange={(open) => !open && setSelectedResource(null)}>
-                <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[90vh] bg-white rounded-xl shadow-lg z-50 overflow-hidden flex flex-col">
-                        {selectedResource && selectedLesson && (
-                            <>
-                                <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                                    <h2 className="text-xl font-semibold text-slate-800">{isEditResourceMode ? 'Edit Resource' : selectedResource.title}</h2>
                                     <div className="flex items-center gap-2">
                                         {!isEditResourceMode && (
                                             <button type="button" onClick={() => setIsEditResourceMode(true)} className="rounded-md border border-emerald-500/60 bg-emerald-50 p-2">
                                                 <Pencil className="w-4 h-4 text-emerald-800" />
                                             </button>
                                         )}
-                                        <Dialog.Close asChild><button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100"><X className="w-4 h-4 mx-auto" /></button></Dialog.Close>
+                                        <Dialog.Close asChild>
+                                            <button type="button" className="w-8 h-8 rounded-full hover:bg-slate-100" aria-label="Close">
+                                                <X className="w-4 h-4 mx-auto" />
+                                            </button>
+                                        </Dialog.Close>
                                     </div>
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-6">
@@ -1730,7 +1989,13 @@ export function TrainingModuleDetail({ module }) {
                                                 <textarea name="body" rows={6} value={resourceForm.body} onChange={(e) => setResourceForm({ ...resourceForm, body: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
                                             )}
                                             {resourceForm.resource_type === 'youtube' && (
-                                                <input name="external_url" type="url" value={resourceForm.external_url} onChange={(e) => setResourceForm({ ...resourceForm, external_url: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                                <>
+                                                    <input name="external_url" type="url" value={resourceForm.external_url} onChange={(e) => setResourceForm({ ...resourceForm, external_url: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                                    <div>
+                                                        <label className="block text-xs text-slate-500 mb-1">Transcript (optional)</label>
+                                                        <textarea name="body" rows={6} value={resourceForm.body} onChange={(e) => setResourceForm({ ...resourceForm, body: e.target.value })} placeholder="Paste the video transcript here if auto-retrieval fails." className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                                    </div>
+                                                </>
                                             )}
                                             {['pdf', 'image'].includes(resourceForm.resource_type) && (
                                                 <div>
@@ -1748,12 +2013,180 @@ export function TrainingModuleDetail({ module }) {
                                     )}
                                 </div>
                             </>
-                        )}
+                        ) : selectedLesson ? (
+                            <>
+                                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                                    <h2 className="text-xl font-semibold text-slate-800">{selectedLesson.title}</h2>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleToggleEditLessonMode}
+                                            className={`rounded-md border p-2 ${isEditLessonMode ? 'border-emerald-600 bg-emerald-100' : 'border-emerald-500/60 bg-emerald-50'}`}
+                                            title={isEditLessonMode ? 'Switch to view mode' : 'Edit lesson'}
+                                        >
+                                            <Pencil className="w-4 h-4 text-emerald-800" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleLessonDialogChange(false)}
+                                            className="w-8 h-8 rounded-full hover:bg-slate-100"
+                                            aria-label="Close"
+                                        >
+                                            <X className="w-4 h-4 mx-auto" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto overflow-x-visible p-6 space-y-6">
+                                    {isEditLessonMode ? (
+                                        <>
+                                            <LessonFormEditor
+                                                ref={editLessonFormRef}
+                                                mode="edit"
+                                                moduleId={module.id}
+                                                lessonId={selectedLesson.id}
+                                                initialLesson={selectedLesson}
+                                                formId="lesson-edit-form"
+                                                showActions={false}
+                                                onSubmitted={() => setIsEditLessonMode(false)}
+                                            />
+
+                                            <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                                                <h3 className="text-sm font-semibold text-slate-800">Existing Resources</h3>
+                                                <button type="submit" form="lesson-edit-form" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-semibold">
+                                                    Save Lesson
+                                                </button>
+                                            </div>
+
+                                            {RESOURCE_GROUPS.map((group) => {
+                                                const textResource = getLessonTextResource(selectedLesson);
+                                                const items = (groupedResources[group.key] || []).filter((resource) => resource.id !== textResource?.id);
+                                                if (items.length === 0) return null;
+                                                return (
+                                                    <div key={group.key} className="space-y-2">
+                                                        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</h4>
+                                                        <ul className="space-y-2">
+                                                            {items.map((resource) => (
+                                                                <LessonSupplementaryResourceItem
+                                                                    key={resource.id}
+                                                                    resource={resource}
+                                                                    moduleId={module.id}
+                                                                    lessonId={selectedLesson.id}
+                                                                    editMode
+                                                                    onDelete={handleDeleteResource}
+                                                                />
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                );
+                                            })}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LessonAuditTrail lesson={selectedLesson} resources={selectedLesson.resources || []} />
+
+                                            {(() => {
+                                                const textResource = getLessonTextResource(selectedLesson);
+                                                if (!textResource) return null;
+                                                return (
+                                                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Training Content</p>
+                                                        {renderResourcePreview(textResource)}
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-slate-800">Learning Resources</h3>
+                                            </div>
+
+                                            {RESOURCE_GROUPS.map((group) => {
+                                                const textResource = getLessonTextResource(selectedLesson);
+                                                const items = (groupedResources[group.key] || []).filter((resource) => resource.id !== textResource?.id);
+                                                if (items.length === 0) return null;
+                                                return (
+                                                    <div key={group.key} className="space-y-2">
+                                                        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</h4>
+                                                        <ul className="space-y-2">
+                                                            {items.map((resource) => (
+                                                                <LessonSupplementaryResourceItem
+                                                                    key={resource.id}
+                                                                    resource={resource}
+                                                                    moduleId={module.id}
+                                                                    lessonId={selectedLesson.id}
+                                                                />
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {(() => {
+                                                const textResource = getLessonTextResource(selectedLesson);
+                                                const supplementaryCount = (selectedLesson.resources || []).filter((resource) => resource.id !== textResource?.id).length;
+                                                if (supplementaryCount > 0) return null;
+                                                return <p className="text-sm text-slate-500">No additional learning resources attached to this lesson yet.</p>;
+                                            })()}
+                                        </>
+                                    )}
+                                </div>
+                            </>
+                        ) : null}
                     </Dialog.Content>
                 </Dialog.Portal>
             </Dialog.Root>
             </>
             )}
+
+            <LessonConfirmDialog
+                open={Boolean(appAlert)}
+                title={appAlert?.title || ''}
+                description={appAlert?.description || ''}
+                icon={appAlert?.icon || 'warning'}
+                buttons={[
+                    { label: 'OK', variant: 'primary', onClick: () => appAlert?.onClose?.() },
+                ]}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        appAlert?.onClose?.();
+                    }
+                }}
+            />
+
+            <LessonConfirmDialog
+                open={Boolean(appConfirm)}
+                title={appConfirm?.title || ''}
+                description={appConfirm?.description || ''}
+                buttons={[
+                    {
+                        label: appConfirm?.confirmLabel || 'Confirm',
+                        variant: appConfirm?.confirmVariant || 'danger',
+                        onClick: () => appConfirm?.onConfirm?.(),
+                    },
+                    {
+                        label: appConfirm?.cancelLabel || 'Cancel',
+                        variant: 'secondary',
+                        onClick: () => appConfirm?.onCancel?.(),
+                    },
+                ]}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        appConfirm?.onCancel?.();
+                    }
+                }}
+            />
+
+            <LessonConfirmDialog
+                open={Boolean(appChoice)}
+                title={appChoice?.title || ''}
+                description={appChoice?.description || ''}
+                icon={appChoice?.icon || 'warning'}
+                buttons={appChoice?.buttons || []}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        appChoice?.onCancel?.();
+                    }
+                }}
+            />
         </div>
     );
 }

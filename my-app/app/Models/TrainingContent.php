@@ -13,7 +13,14 @@ class TrainingContent extends Model
         'training_module_id',
         'title',
         'description',
+        'learning_objectives',
         'sort_order',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected $casts = [
+        'learning_objectives' => 'array',
     ];
 
     public function module()
@@ -24,6 +31,16 @@ class TrainingContent extends Model
     public function resources()
     {
         return $this->hasMany(LessonResource::class)->orderBy('sort_order');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function lessonQuizConfig()

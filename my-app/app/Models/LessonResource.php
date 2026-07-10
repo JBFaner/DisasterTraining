@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\YouTubeTranscriptService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -57,6 +58,8 @@ class LessonResource extends Model
         'ai_processing_status',
         'ai_processing_error',
         'ai_processed_at',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -72,6 +75,16 @@ class LessonResource extends Model
     public function lesson()
     {
         return $this->belongsTo(TrainingContent::class, 'training_content_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function getDisplayUrlAttribute(): ?string
@@ -122,6 +135,20 @@ class LessonResource extends Model
             && trim($this->ai_processed_text) !== '';
     }
 
+    private function youtubeReadyLabel(): string
+    {
+        if (is_string($this->body) && trim($this->body) !== '') {
+            return 'Manual Transcript Ready';
+        }
+
+        if (is_string($this->ai_processed_text)
+            && str_starts_with($this->ai_processed_text, YouTubeTranscriptService::METADATA_MARKER)) {
+            return 'Description Used (no captions)';
+        }
+
+        return 'Transcript Ready';
+    }
+
     public function aiProcessingStatusLabel(): string
     {
         return match ($this->resource_type) {
@@ -144,7 +171,7 @@ class LessonResource extends Model
                 default => 'Pending OCR',
             },
             self::TYPE_YOUTUBE => match ($this->ai_processing_status) {
-                self::AI_STATUS_READY => 'Transcript Ready',
+                self::AI_STATUS_READY => $this->youtubeReadyLabel(),
                 self::AI_STATUS_FAILED => 'Transcript Unavailable',
                 self::AI_STATUS_PENDING, self::AI_STATUS_PROCESSING => 'Retrieving transcript…',
                 default => 'Pending transcript',

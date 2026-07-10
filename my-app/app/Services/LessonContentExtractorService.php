@@ -69,22 +69,21 @@ class LessonContentExtractorService
 
     public function buildAiSourceText(TrainingContent $lesson): string
     {
-        $lesson = $this->processingService->ensureLessonResourcesProcessed($lesson);
+        $lesson->loadMissing('resources');
+
+        $textResource = $lesson->resources->first(
+            fn (LessonResource $resource) => $resource->resource_type === LessonResource::TYPE_TEXT
+                && $resource->title === 'Training Content'
+        ) ?? $lesson->resources->first(
+            fn (LessonResource $resource) => $resource->resource_type === LessonResource::TYPE_TEXT
+        );
 
         $parts = [
             'Lesson Title: '.Utf8Sanitizer::clean($lesson->title),
         ];
 
-        if ($lesson->description) {
-            $parts[] = 'Lesson Description: '.LessonTextCleaner::cleanHtml($lesson->description);
-        }
-
-        foreach ($lesson->resources as $resource) {
-            if (! $resource->hasReadableAiContent()) {
-                continue;
-            }
-
-            $parts[] = $this->resourceSectionHeading($resource)."\n".$resource->ai_processed_text;
+        if ($textResource && trim(strip_tags((string) $textResource->body)) !== '') {
+            $parts[] = 'Training Content (Rich Text): '.LessonTextCleaner::cleanHtml((string) $textResource->body);
         }
 
         return trim(implode("\n\n", array_filter($parts)));

@@ -200,8 +200,12 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.training-modules.contents.store');
         Route::put('/training-modules/{trainingModule}/contents/{content}', [AdminTrainingModuleController::class, 'updateContent'])
             ->name('admin.training-modules.contents.update');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/update', [AdminTrainingModuleController::class, 'updateContent'])
+            ->name('admin.training-modules.contents.update.post');
         Route::delete('/training-modules/{trainingModule}/contents/{content}', [AdminTrainingModuleController::class, 'destroyContent'])
             ->name('admin.training-modules.contents.destroy');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/delete', [AdminTrainingModuleController::class, 'destroyContent'])
+            ->name('admin.training-modules.contents.destroy.post');
         Route::post('/training-modules/{trainingModule}/contents/reorder', [AdminTrainingModuleController::class, 'reorderContents'])
             ->name('admin.training-modules.contents.reorder');
         Route::post('/training-modules/{trainingModule}/contents/{content}/resources', [AdminTrainingModuleController::class, 'storeResource'])
@@ -210,6 +214,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.training-modules.resources.update');
         Route::delete('/training-modules/{trainingModule}/contents/{content}/resources/{resource}', [AdminTrainingModuleController::class, 'destroyResource'])
             ->name('admin.training-modules.resources.destroy');
+        Route::post('/training-modules/{trainingModule}/contents/{content}/resources/{resource}/delete', [AdminTrainingModuleController::class, 'destroyResource'])
+            ->name('admin.training-modules.resources.destroy.post');
         Route::post('/training-modules/{trainingModule}/contents/{content}/resources/reorder', [AdminTrainingModuleController::class, 'reorderResources'])
             ->name('admin.training-modules.resources.reorder');
         Route::post('/training-modules/{trainingModule}/contents/{content}/resources/{resource}/reprocess', [AdminTrainingModuleController::class, 'reprocessResource'])

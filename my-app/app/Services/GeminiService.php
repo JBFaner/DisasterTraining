@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\LessonTextCleaner;
 use App\Support\Utf8Sanitizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -215,6 +216,138 @@ class GeminiService
     }
 
     /**
+     * @return array{learning_objectives: list<string>}
+     */
+    public function generateLessonObjectivesFromContent(string $title, string $contentHtml): array
+    {
+        if ($this->apiKey === '') {
+            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
+        }
+
+        $plainContent = LessonTextCleaner::cleanHtml($contentHtml);
+        if (trim($plainContent) === '') {
+            throw new \Exception('Add training content before generating objectives.');
+        }
+
+        $prompt = "You are a disaster preparedness training expert. Based on the lesson title and training content below, generate clear, measurable learning objectives for participants.
+
+Lesson Title: {$title}
+
+Training Content:
+{$plainContent}
+
+Return the response ONLY as valid JSON (no markdown, no code blocks, no explanations):
+{
+  \"learning_objectives\": [
+    \"First specific learning objective.\",
+    \"Second specific learning objective.\",
+    \"Third specific learning objective.\"
+  ]
+}
+
+Important:
+- learning_objectives must be an array of short strings
+- Include 3 to 5 objectives
+- Each objective should start with an action verb (e.g. Identify, Explain, Demonstrate)
+- Base objectives strictly on the provided training content
+- Do NOT include markdown or numbering inside the strings";
+
+        try {
+            $generatedText = $this->generateContentText($prompt, [
+                'responseMimeType' => 'application/json',
+            ]);
+
+            return $this->parseLessonObjectivesFromText($generatedText);
+        } catch (\Exception $e) {
+            Log::error('Gemini lesson objectives generation failed', [
+                'error' => $e->getMessage(),
+                'title' => $title,
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array{learning_objectives: list<string>}
+     */
+    private function parseLessonObjectivesFromText(string $text): array
+    {
+        $cleanText = preg_replace('/```json\s*/i', '', $text);
+        $cleanText = preg_replace('/```\s*/', '', $cleanText);
+        $cleanText = trim($cleanText ?? '');
+
+        $jsonMatch = preg_match('/\{[\s\S]*\}/', $cleanText, $matches);
+        if ($jsonMatch) {
+            $json = json_decode($matches[0], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $objectives = $this->normalizeObjectiveList(
+                    $json['learning_objectives']
+                        ?? $json['objectives']
+                        ?? $json['learningObjectives']
+                        ?? [],
+                );
+
+                if ($objectives !== []) {
+                    return ['learning_objectives' => $objectives];
+                }
+            }
+        }
+
+        if (preg_match('/\[[\s\S]*\]/', $cleanText, $arrayMatches)) {
+            $arrayJson = json_decode($arrayMatches[0], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $objectives = $this->normalizeObjectiveList($arrayJson);
+                if ($objectives !== []) {
+                    return ['learning_objectives' => $objectives];
+                }
+            }
+        }
+
+        if (preg_match_all('/^\s*(?:[-*•]|\d+[.)])\s+(.+)$/m', $cleanText, $bulletMatches)) {
+            $objectives = $this->normalizeObjectiveList($bulletMatches[1]);
+            if ($objectives !== []) {
+                return ['learning_objectives' => $objectives];
+            }
+        }
+
+        $lineObjectives = $this->normalizeObjectiveList(
+            preg_split('/\r\n|\r|\n/', $cleanText) ?: [],
+        );
+        if (count($lineObjectives) >= 2) {
+            return ['learning_objectives' => $lineObjectives];
+        }
+
+        Log::warning('Gemini lesson objectives parse fallback failed', [
+            'response_preview' => mb_substr($cleanText, 0, 500),
+        ]);
+
+        throw new \Exception('AI did not return usable learning objectives. Please try again or add them manually.');
+    }
+
+    /**
+     * @param  mixed  $value
+     * @return list<string>
+     */
+    private function normalizeObjectiveList(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(function ($item) {
+            if (is_string($item)) {
+                return trim($item);
+            }
+
+            if (is_array($item) && isset($item['text']) && is_string($item['text'])) {
+                return trim($item['text']);
+            }
+
+            return '';
+        }, $value), fn ($item) => $item !== ''));
+    }
+
+    /**
      * Build the prompt for Gemini to generate a scenario from user input
      */
     private function buildScenarioPromptFromUserInput(string $userPrompt, ?string $disasterType, string $difficulty, ?string $hazardContext = null): string
@@ -413,7 +546,7 @@ Important:
         return $this->parseTrainingScenarioQuizFromText($generatedText, $questionCount);
     }
 
-    public function generateContentText(string $prompt): string
+    public function generateContentText(string $prompt, array $generationConfig = []): string
     {
         if ($this->apiKey === '') {
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
@@ -438,11 +571,17 @@ Important:
             $url = $this->baseUrl.'/'.$apiVersion.'/models/'.$model.':generateContent?key='.$this->apiKey;
 
             try {
-                $response = Http::timeout(120)->post($url, [
+                $payload = [
                     'contents' => [
                         ['parts' => [['text' => $prompt]]],
                     ],
-                ]);
+                ];
+
+                if ($generationConfig !== []) {
+                    $payload['generationConfig'] = $generationConfig;
+                }
+
+                $response = Http::timeout(120)->post($url, $payload);
 
                 if ($response->successful()) {
                     $text = $response->json('candidates.0.content.parts.0.text') ?? '';

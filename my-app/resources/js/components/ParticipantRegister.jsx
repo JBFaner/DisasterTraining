@@ -21,13 +21,35 @@ function formatTime(timeString) {
     return `${hour12}:${minute} ${ampm}`;
 }
 
+function parseMobileFromOldValues(oldValues = {}) {
+    if (oldValues.mobileNumber) {
+        return String(oldValues.mobileNumber);
+    }
+
+    const phone = String(oldValues.phone || '').trim();
+    if (!phone) {
+        return '';
+    }
+
+    const match = phone.match(/(\d{10})$/);
+    return match ? match[1] : phone.replace(/\D/g, '').slice(-10);
+}
+
 export function ParticipantRegister({ errors = {}, oldValues = {}, campaignContext = null }) {
+    const hasCampaignContext = Boolean(
+        campaignContext?.campaign_event_id || campaignContext?.campaign_request_id,
+    );
+    const campaignBadgeLabel = campaignContext?.campaign_event_id
+        ? `Event #${campaignContext.campaign_event_id}`
+        : campaignContext?.campaign_request_id
+            ? `Request #${campaignContext.campaign_request_id}`
+            : null;
     const [formData, setFormData] = useState({
         name: oldValues.name || '',
         organization: oldValues.organization || '',
         email: oldValues.email || '',
         countryCode: oldValues.countryCode || '+63',
-        mobileNumber: oldValues.mobileNumber || '',
+        mobileNumber: parseMobileFromOldValues(oldValues),
         street: oldValues.street || '',
         philippine_barangay_id: oldValues.philippine_barangay_id || '',
         region: oldValues.region || '',
@@ -64,21 +86,41 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
             newErrors.location = 'Please select your complete address (Region through Barangay).';
         }
 
+        if (!formData.password) {
+            newErrors.password = 'Password is required.';
+        } else if (formData.password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters.';
+        }
+
+        if (!formData.password_confirmation) {
+            newErrors.password_confirmation = 'Please confirm your password.';
+        } else if (formData.password !== formData.password_confirmation) {
+            newErrors.password_confirmation = 'Passwords do not match.';
+        }
+
         setClientErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!acceptedTerms) return;
+        if (!acceptedTerms) {
+            setClientErrors({ form: 'Please accept the Terms and Conditions before continuing.' });
+            return;
+        }
 
         if (!validateForm()) {
             return;
         }
 
         const barangayInput = e.target.querySelector('[name="philippine_barangay_id"]');
+        const barangayNameInput = e.target.querySelector('[name="barangay_name"]');
         if (!barangayInput?.value) {
             setClientErrors({ location: 'Please select your complete address (Region through Barangay).' });
+            return;
+        }
+        if (!barangayNameInput?.value) {
+            setClientErrors({ location: 'Please wait for the address to load after selecting your barangay, then try again.' });
             return;
         }
 
@@ -97,10 +139,43 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
         if (errors[fieldName] && Array.isArray(errors[fieldName])) {
             return errors[fieldName][0];
         }
+        if (errors[fieldName]) {
+            return errors[fieldName];
+        }
         return null;
     };
 
     const getClientError = (fieldName) => clientErrors[fieldName] || null;
+    const getMobileError = () => getClientError('mobileNumber') || getFieldError('phone');
+    const getPasswordError = () => getClientError('password') || getFieldError('password');
+    const getPasswordConfirmationError = () => getClientError('password_confirmation') || getFieldError('password_confirmation');
+    const getLocationError = () => getClientError('location')
+        || getFieldError('philippine_barangay_id')
+        || getFieldError('barangay_name')
+        || getFieldError('region')
+        || getFieldError('province')
+        || getFieldError('municipality_city');
+    const serverErrorMessages = Object.entries(errors).flatMap(([field, messages]) => {
+        const list = Array.isArray(messages) ? messages : [messages];
+        return list.filter(Boolean).map((message) => ({ field, message }));
+    });
+    const importantCampaignDetails = [
+        {
+            icon: CalendarDays,
+            label: 'Registration Opens',
+            value: formatDate(campaignContext?.registration_opens),
+        },
+        {
+            icon: CalendarDays,
+            label: 'Registration Deadline',
+            value: formatDate(campaignContext?.registration_deadline),
+        },
+        {
+            icon: Clock3,
+            label: 'Training Completion Deadline',
+            value: formatDate(campaignContext?.training_completion_deadline),
+        },
+    ];
 
     return (
         <div className="min-h-screen relative">
@@ -161,17 +236,68 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                         />
                                     </div>
                                 </div>
-                                <h2 className="text-2xl font-bold mb-4">
-                                    Disaster Preparedness Training &amp; Simulation
-                                </h2>
-                                <p className="text-sm text-emerald-50 mb-3">
-                                    A centralized platform designed for Barangays and Local Government Units to plan,
-                                    manage, and conduct disaster preparedness training and simulation exercises.
-                                </p>
-                                <p className="text-sm text-emerald-50">
-                                    This system supports training modules, simulation events, attendance tracking,
-                                    evaluation, and certification to help communities stay prepared and resilient.
-                                </p>
+                                {hasCampaignContext ? (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                                                Campaign Registration
+                                            </div>
+                                            <h2 className="mt-3 text-3xl font-bold leading-tight">
+                                                {campaignContext.training_title || 'Training Event'}
+                                            </h2>
+                                            <p className="mt-3 text-sm text-emerald-50/90 leading-6">
+                                                {campaignContext.short_description
+                                                    || 'Register for this published training module and complete the online learning requirements before the deadline.'}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-emerald-100/80">
+                                                        Important Details
+                                                    </div>
+                                                    <p className="mt-2 text-xs text-emerald-50/80">
+                                                        These details come from the Training Intelligence Profile submitted for this campaign.
+                                                    </p>
+                                                </div>
+                                                {campaignBadgeLabel ? (
+                                                    <span className="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[0.72rem] font-semibold text-white">
+                                                        {campaignBadgeLabel}
+                                                    </span>
+                                                ) : null}
+                                            </div>
+
+                                            <div className="mt-5 grid grid-cols-1 gap-3">
+                                                {importantCampaignDetails.map(({ icon: Icon, label, value }) => (
+                                                    <div key={label} className="rounded-xl border border-white/15 bg-slate-950/10 px-4 py-3">
+                                                        <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
+                                                            <Icon className="h-3.5 w-3.5" />
+                                                            {label}
+                                                        </div>
+                                                        <div className="mt-1.5 text-sm font-medium text-white">
+                                                            {value || '—'}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <h2 className="text-2xl font-bold mb-4">
+                                            Disaster Preparedness Training &amp; Simulation
+                                        </h2>
+                                        <p className="text-sm text-emerald-50 mb-3">
+                                            A centralized platform designed for Barangays and Local Government Units to plan,
+                                            manage, and conduct disaster preparedness training and simulation exercises.
+                                        </p>
+                                        <p className="text-sm text-emerald-50">
+                                            This system supports training modules, simulation events, attendance tracking,
+                                            evaluation, and certification to help communities stay prepared and resilient.
+                                        </p>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -197,20 +323,15 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                 </p>
                             </div>
 
-                {hasErrors && Object.keys(errors).some(key => !['name', 'email', 'phone', 'password', 'password_confirmation'].includes(key)) && (
+                {(hasErrors || clientErrors.form) && (
                     <div className="mb-4 rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">
                         <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                                {Object.entries(errors)
-                                    .filter(([key]) => !['name', 'email', 'phone', 'password', 'password_confirmation'].includes(key))
-                                    .map(([field, messages]) => (
-                                        <div key={field}>
-                                            {Array.isArray(messages) ? messages.map((msg, i) => (
-                                                <div key={i}>{msg}</div>
-                                            )) : <div>{messages}</div>}
-                                        </div>
-                                    ))}
+                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex-1 space-y-1">
+                                {clientErrors.form ? <div>{clientErrors.form}</div> : null}
+                                {serverErrorMessages.map(({ field, message }, index) => (
+                                    <div key={`${field}-${index}`}>{message}</div>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -222,55 +343,36 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                     {campaignContext?.campaign_event_id ? (
                         <input type="hidden" name="campaign_event" value={campaignContext.campaign_event_id} />
                     ) : null}
+                    {campaignContext?.campaign_request_id ? (
+                        <input type="hidden" name="campaign_request" value={campaignContext.campaign_request_id} />
+                    ) : null}
 
-                    {campaignContext?.campaign_event_id ? (
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                    {hasCampaignContext ? (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 lg:hidden">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
                                     <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Campaign Registration</div>
                                     <div className="mt-1 text-sm font-semibold text-slate-900">
                                         {campaignContext.training_title || 'Training Event'}
                                     </div>
-                                    <div className="mt-1 text-xs text-slate-600">
-                                        You are registering through Campaign Planning &amp; Scheduling. Details below are read-only.
-                                    </div>
                                 </div>
-                                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
-                                    Campaign #{campaignContext.campaign_event_id}
-                                </span>
+                                {campaignBadgeLabel ? (
+                                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
+                                        {campaignBadgeLabel}
+                                    </span>
+                                ) : null}
                             </div>
 
                             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
-                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                                        <CalendarDays className="h-3.5 w-3.5 text-emerald-600" />
-                                        Scheduled Date
+                                {importantCampaignDetails.map(({ icon: Icon, label, value }) => (
+                                    <div key={label} className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
+                                        <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                                            <Icon className="h-3.5 w-3.5 text-emerald-600" />
+                                            {label}
+                                        </div>
+                                        <div className="mt-1 text-sm font-medium text-slate-900">{value || '—'}</div>
                                     </div>
-                                    <div className="mt-1 text-sm font-medium text-slate-900">{formatDate(campaignContext.scheduled_date)}</div>
-                                </div>
-                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
-                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                                        <Clock3 className="h-3.5 w-3.5 text-emerald-600" />
-                                        Time
-                                    </div>
-                                    <div className="mt-1 text-sm font-medium text-slate-900">
-                                        {formatTime(campaignContext.start_time)} – {formatTime(campaignContext.end_time)}
-                                    </div>
-                                </div>
-                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 sm:col-span-2">
-                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                                        <MapPin className="h-3.5 w-3.5 text-emerald-600" />
-                                        Venue
-                                    </div>
-                                    <div className="mt-1 text-sm font-medium text-slate-900">{campaignContext.venue || '—'}</div>
-                                </div>
-                                <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 sm:col-span-2">
-                                    <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                                        <Building2 className="h-3.5 w-3.5 text-emerald-600" />
-                                        Training Module ID
-                                    </div>
-                                    <div className="mt-1 text-sm font-medium text-slate-900">{campaignContext.training_module_id || '—'}</div>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     ) : null}
@@ -379,12 +481,12 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                         setFormData(prev => ({ ...prev, mobileNumber: digitsOnly }));
                                     }}
                                     className={`w-full rounded-md border ${
-                                        getClientError('mobileNumber') ? 'border-rose-300' : 'border-slate-300'
+                                        getMobileError() ? 'border-rose-300' : 'border-slate-300'
                                     } pl-3 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463]`}
                                 />
                             </div>
-                            {getClientError('mobileNumber') && (
-                                <p className="mt-1 text-xs text-rose-600">{getClientError('mobileNumber')}</p>
+                            {getMobileError() && (
+                                <p className="mt-1 text-xs text-rose-600">{getMobileError()}</p>
                             )}
                         </div>
                     </div>
@@ -397,6 +499,7 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                         <PhilippineLocationSelect
                             required
                             apiBase="/api/locations"
+                            initialBarangayId={formData.philippine_barangay_id}
                             onResolved={(data) => {
                                 if (data) {
                                     setFormData((prev) => ({
@@ -407,11 +510,19 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                         municipality_city: data.location?.municipality_city || '',
                                         barangay_name: data.location?.barangay_name || '',
                                     }));
+                                    setClientErrors((prev) => {
+                                        if (!prev.location) {
+                                            return prev;
+                                        }
+                                        const next = { ...prev };
+                                        delete next.location;
+                                        return next;
+                                    });
                                 }
                             }}
                         />
-                        {getClientError('location') && (
-                            <p className="mt-1 text-xs text-rose-600">{getClientError('location')}</p>
+                        {getLocationError() && (
+                            <p className="mt-1 text-xs text-rose-600">{getLocationError()}</p>
                         )}
                     </div>
 
@@ -442,17 +553,18 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                 type="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                required
                                 minLength={8}
                                 className={`w-full rounded-md border ${
-                                    getFieldError('password') ? 'border-rose-300' : 'border-slate-300'
+                                    getPasswordError() ? 'border-rose-300' : 'border-slate-300'
                                 } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
                             />
                         </div>
-                        {getFieldError('password') && (
-                            <p className="mt-1 text-xs text-rose-600">{getFieldError('password')}</p>
+                        {getPasswordError() && (
+                            <p className="mt-1 text-xs text-rose-600">{getPasswordError()}</p>
                         )}
-                        <p className="mt-1 text-xs text-slate-500">Must be at least 8 characters</p>
+                        {!getPasswordError() ? (
+                            <p className="mt-1 text-xs text-slate-500">Must be at least 8 characters</p>
+                        ) : null}
                     </div>
 
                     <div>
@@ -467,14 +579,13 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                 type="password"
                                 value={formData.password_confirmation}
                                 onChange={handleChange}
-                                required
                                 className={`w-full rounded-md border ${
-                                    getFieldError('password_confirmation') ? 'border-rose-300' : 'border-slate-300'
+                                    getPasswordConfirmationError() ? 'border-rose-300' : 'border-slate-300'
                                 } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
                             />
                         </div>
-                        {getFieldError('password_confirmation') && (
-                            <p className="mt-1 text-xs text-rose-600">{getFieldError('password_confirmation')}</p>
+                        {getPasswordConfirmationError() && (
+                            <p className="mt-1 text-xs text-rose-600">{getPasswordConfirmationError()}</p>
                         )}
                     </div>
 
@@ -498,7 +609,7 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                     <button
                         type="submit"
                         disabled={isSubmitting || !acceptedTerms}
-                        className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-[#16A34A] hover:bg-[#1FA463] disabled:bg-[#16A34A]/60 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-all duration-200 ease-out transform-gpu hover:-translate-y-[1px] hover:shadow-[0_6px_14px_rgba(0,0,0,0.12)]"
+                        className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-[#16A34A] hover:bg-[#1FA463] disabled:bg-[#16A34A]/60 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 transition-all duration-200 ease-out transform-gpu hover:-translate-y-px hover:shadow-[0_6px_14px_rgba(0,0,0,0.12)]"
                     >
                         {isSubmitting ? (
                             <>

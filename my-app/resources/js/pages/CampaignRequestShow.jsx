@@ -5,6 +5,7 @@ import {
     CalendarDays,
     FileText,
     Info,
+    Link2,
     MapPin,
     ShieldCheck,
     UserRound,
@@ -26,6 +27,7 @@ import {
 
 export function CampaignRequestShow({ request }) {
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
+    const [copyStatus, setCopyStatus] = React.useState('');
 
     if (!request) {
         return (
@@ -40,8 +42,28 @@ export function CampaignRequestShow({ request }) {
         ? `/admin/training-modules/${moduleId}#campaign_requests`
         : '/admin/training-modules';
 
-    const sessions = request.payload?.available_training_sessions || [];
-    const description = request.payload?.short_description || '';
+    const planning = request.campaign_planning || request.payload || {};
+    const description = planning.short_description || request.payload?.short_description || '';
+    const registrationLinkActive = request.registration_link_active !== false;
+    const registrationLink = registrationLinkActive
+        ? (request.registration_link || request.payload?.registration_link || `${window.location.origin}/participant/register?campaign_request=${request.id}`)
+        : '';
+
+    const handleCopyRegistrationLink = async () => {
+        if (!registrationLinkActive || !registrationLink) {
+            setCopyStatus('Not active yet');
+            window.setTimeout(() => setCopyStatus(''), 2000);
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(registrationLink);
+            setCopyStatus('Copied');
+            window.setTimeout(() => setCopyStatus(''), 2000);
+        } catch {
+            setCopyStatus('Copy failed');
+        }
+    };
 
     return (
         <AdminPageShell>
@@ -108,26 +130,18 @@ export function CampaignRequestShow({ request }) {
                         </div>
                         <div className="mt-4 space-y-4">
                             <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Proposed Session Summary</div>
-                                <div className="mt-1 text-sm font-medium text-slate-900">{request.proposed_session_label || '—'}</div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registration Period</div>
+                                <div className="mt-1 text-sm font-medium text-slate-900">{request.registration_period_label || request.proposed_session_label || '—'}</div>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Related Hazards</div>
-                                    <div className="mt-1 text-sm text-slate-900">
-                                        {Array.isArray(request.payload?.related_hazards)
-                                            ? request.payload.related_hazards.join(', ')
-                                            : (request.payload?.related_hazards || '—')}
-                                    </div>
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Published Status</div>
+                                    <div className="mt-1 text-sm text-slate-900 capitalize">{planning.published_status || '—'}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lead Trainers</div>
-                                    <div className="mt-1 text-sm text-slate-900">
-                                        {Array.isArray(request.payload?.assigned_trainers)
-                                            ? request.payload.assigned_trainers.map((trainer) => trainer.name).filter(Boolean).join(', ')
-                                            : '—'}
-                                    </div>
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registration Enabled</div>
+                                    <div className="mt-1 text-sm text-slate-900">{planning.registration_enabled === false ? 'No' : 'Yes'}</div>
                                 </div>
                             </div>
 
@@ -167,50 +181,72 @@ export function CampaignRequestShow({ request }) {
                     </AdminContentCard>
 
                     <AdminContentCard className="p-5">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                <CalendarDays className="h-3.5 w-3.5" />
-                                Proposed Sessions
+                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            Campaign Schedule
+                        </div>
+
+                        <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registration Opens</dt>
+                                <dd className="mt-1 text-sm text-slate-900">{formatDateTime(planning.registration_opens)}</dd>
                             </div>
-                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                                {sessions.length} total
-                            </span>
-                        </div>
-
-                        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-                            {!sessions.length ? (
-                                <div className="bg-slate-50 px-4 py-6 text-sm text-slate-600">No sessions provided.</div>
-                            ) : (
-                                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                    <thead className="bg-slate-50">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Session Name</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Time</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Max Participants</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 bg-white">
-                                        {sessions.map((session, idx) => {
-                                            const maxParticipants = session?.maximum_participants ?? session?.maximumParticipants ?? '—';
-
-                                            return (
-                                                <tr key={`${session?.title || 'session'}-${idx}`} className="align-top">
-                                                    <td className="px-4 py-3 font-medium text-slate-900">{session?.title || '—'}</td>
-                                                    <td className="px-4 py-3 text-slate-700">{formatDate(session?.date)}</td>
-                                                    <td className="px-4 py-3 text-slate-700">{formatTimeRange(session?.start_time, session?.end_time)}</td>
-                                                    <td className="px-4 py-3 text-slate-700">{maxParticipants}</td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
+                            <div>
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registration Deadline</dt>
+                                <dd className="mt-1 text-sm text-slate-900">{formatDateTime(planning.registration_deadline)}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Training Completion Deadline</dt>
+                                <dd className="mt-1 text-sm text-slate-900">{formatDateTime(planning.training_completion_deadline)}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Maximum Participants</dt>
+                                <dd className="mt-1 text-sm text-slate-900">{planning.maximum_participants ?? '—'}</dd>
+                            </div>
+                        </dl>
                     </AdminContentCard>
                 </section>
 
                 <aside className="space-y-4">
+                    <AdminContentCard className="p-5">
+                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <Link2 className="h-3.5 w-3.5" />
+                            Participant Registration Link
+                        </div>
+                        <p className="mt-3 text-sm text-slate-600">
+                            Share this link with Group 6 once campaign status is approved.
+                        </p>
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            {registrationLinkActive && registrationLink ? (
+                                <a
+                                    href={registrationLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="break-all text-sm font-medium text-emerald-700 hover:text-emerald-800"
+                                >
+                                    {registrationLink}
+                                </a>
+                            ) : (
+                                <p className="text-sm text-amber-700">
+                                    Registration link is inactive until this campaign request is approved.
+                                </p>
+                            )}
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={handleCopyRegistrationLink}
+                                disabled={!registrationLinkActive || !registrationLink}
+                                className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                Copy link
+                            </button>
+                            {copyStatus ? (
+                                <span className="text-xs font-medium text-emerald-700">{copyStatus}</span>
+                            ) : null}
+                        </div>
+                    </AdminContentCard>
+
                     <AdminContentCard className="p-5">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <MapPin className="h-3.5 w-3.5" />
@@ -218,7 +254,7 @@ export function CampaignRequestShow({ request }) {
                         </div>
                         <div className="mt-4">
                             <CampaignCommunityRecommendationsPanel
-                                recommendedPayload={request.payload?.recommended_communities}
+                                recommendedPayload={planning.recommended_communities || request.payload?.recommended_communities}
                             />
                         </div>
                     </AdminContentCard>

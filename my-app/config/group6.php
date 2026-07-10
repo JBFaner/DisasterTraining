@@ -24,6 +24,7 @@ return [
         'endpoints' => [
             'participants' => env('GROUP6_ENDPOINT_PARTICIPANTS', '/api/v1/participants'),
             'trainers' => env('GROUP6_ENDPOINT_TRAINERS', '/api/v1/trainers'),
+            'campaign_requests' => env('GROUP6_ENDPOINT_CAMPAIGN_REQUESTS', '/api/integrations/group6/campaign-requests'),
         ],
     ],
 

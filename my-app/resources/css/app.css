@@ -30,6 +30,38 @@ body > #app {
     filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
 }
 
+.lesson-rich-editor__body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    line-height: 1.6;
+}
+
+.lesson-rich-editor__body:empty::before {
+    content: attr(data-placeholder);
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.lesson-rich-editor__body h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.lesson-rich-editor__body h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0.65rem 0 0.4rem;
+}
+
+.lesson-rich-editor__body p {
+    margin: 0.5rem 0;
+}
+
+.lesson-rich-editor__body ul,
+.lesson-rich-editor__body ol {
+    margin: 0.5rem 0 0.5rem 1.5rem;
+}
+
 /* Training Modules card grid: fade-in on load */
 @keyframes training-module-fade-in {
     from {

@@ -6,6 +6,7 @@ use App\Models\LessonResource;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use Cloudinary\Cloudinary;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 trait ManagesTrainingModuleAssets
@@ -27,28 +28,22 @@ trait ManagesTrainingModuleAssets
 
         $shouldUseCloudinary = false;
 
-        if ($storageTarget === 'cloudinary' && ($isVideo || $isImage)) {
-            $shouldUseCloudinary = true;
-        } elseif ($storageTarget === 'local') {
+        if ($storageTarget === 'local') {
             $shouldUseCloudinary = false;
+        } elseif ($storageTarget === 'cloudinary') {
+            $shouldUseCloudinary = $isVideo || $isImage;
         } else {
-            $shouldUseCloudinary = $isVideo;
+            // auto: images and videos use Cloudinary; PDF and other files stay local
+            $shouldUseCloudinary = $isVideo || $isImage;
         }
 
         if ($shouldUseCloudinary && ($isVideo || $isImage)) {
-            $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: null;
-            if (! $cloudinaryUrl) {
-                throw new \RuntimeException('Cloudinary is not configured. Set CLOUDINARY_URL in .env or choose local storage.');
+            $credentials = $this->resolveCloudinaryCredentials();
+            if (! $credentials) {
+                throw new \RuntimeException('Cloudinary is not configured. Add CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET to .env.');
             }
 
-            $parsed = parse_url($cloudinaryUrl);
-            $cloudName = $parsed['host'] ?? null;
-            $apiKey = $parsed['user'] ?? null;
-            $apiSecret = $parsed['pass'] ?? null;
-
-            if (! $cloudName || ! $apiKey || ! $apiSecret) {
-                throw new \RuntimeException('Cloudinary is misconfigured.');
-            }
+            ['cloudName' => $cloudName, 'apiKey' => $apiKey, 'apiSecret' => $apiSecret] = $credentials;
 
             $cloudinary = new Cloudinary([
                 'cloud' => [
@@ -85,6 +80,73 @@ trait ManagesTrainingModuleAssets
         $relativePath = $file->store($folder, 'public');
 
         return Storage::url($relativePath);
+    }
+
+    /**
+     * @return array{cloudName: string, apiKey: string, apiSecret: string}|null
+     */
+    protected function resolveCloudinaryCredentials(): ?array
+    {
+        $cloudinaryUrl = env('CLOUDINARY_URL');
+        if (is_string($cloudinaryUrl) && $cloudinaryUrl !== '') {
+            $parsed = parse_url($cloudinaryUrl);
+            $cloudName = $parsed['host'] ?? null;
+            $apiKey = $parsed['user'] ?? null;
+            $apiSecret = $parsed['pass'] ?? null;
+
+            if ($cloudName && $apiKey && $apiSecret) {
+                return [
+                    'cloudName' => $cloudName,
+                    'apiKey' => $apiKey,
+                    'apiSecret' => $apiSecret,
+                ];
+            }
+        }
+
+        $cloudName = env('CLOUDINARY_CLOUD_NAME');
+        $apiKey = env('CLOUDINARY_API_KEY');
+        $apiSecret = env('CLOUDINARY_API_SECRET');
+
+        if ($cloudName && $apiKey && $apiSecret) {
+            return [
+                'cloudName' => (string) $cloudName,
+                'apiKey' => (string) $apiKey,
+                'apiSecret' => (string) $apiSecret,
+            ];
+        }
+
+        return null;
+    }
+
+    protected function trainingModuleFormResponse(
+        Request $request,
+        TrainingModule $trainingModule,
+        string $message,
+        bool $success = true,
+        int $errorStatus = 422,
+        array $errors = [],
+    ) {
+        if ($request->expectsJson()) {
+            $payload = [
+                'success' => $success,
+                'message' => $message,
+            ];
+
+            if ($errors !== []) {
+                $payload['errors'] = $errors;
+            }
+
+            return response()->json($payload, $success ? 200 : $errorStatus);
+        }
+
+        if (! $success) {
+            return redirect()->back()
+                ->withErrors($errors !== [] ? $errors : ['form' => $message])
+                ->withInput();
+        }
+
+        return redirect()->route('admin.training-modules.show', $trainingModule)
+            ->with('status', $message);
     }
 
     protected function deleteStoredContentFile(?string $path): void

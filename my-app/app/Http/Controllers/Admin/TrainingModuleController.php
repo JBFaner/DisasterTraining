@@ -154,7 +154,10 @@ class TrainingModuleController extends Controller
     {
         $this->authorizeOwner($trainingModule);
         $trainingModule->load([
-            'contents.resources',
+            'contents.resources.creator',
+            'contents.resources.updater',
+            'contents.creator',
+            'contents.updater',
             'contents.lessonQuizConfig',
             'owner',
             'aiScenarioConfig',
@@ -214,12 +217,14 @@ class TrainingModuleController extends Controller
         $data['target_audience'] = array_values(array_filter($data['target_audience'] ?? $trainingModule->target_audience ?? []));
         $data['assigned_qualified_trainer_ids'] = $this->normalizeTrainerIds($data['assigned_qualified_trainer_ids'] ?? $trainingModule->assigned_qualified_trainer_ids ?? []);
         $data['available_training_sessions'] = $this->normalizeTrainingSessions($data['available_training_sessions'] ?? $trainingModule->available_training_sessions ?? []);
-        $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
 
-        if (empty($data['learning_objectives'])) {
-            return redirect()->back()
-                ->withErrors(['learning_objectives' => 'At least one learning objective is required.'])
-                ->withInput();
+        if (array_key_exists('learning_objectives', $data)) {
+            $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
+            if ($data['learning_objectives'] === []) {
+                $data['learning_objectives'] = null;
+            }
+        } else {
+            unset($data['learning_objectives']);
         }
 
         if ($request->boolean('remove_thumbnail') && $trainingModule->thumbnail_path) {
@@ -247,6 +252,13 @@ class TrainingModuleController extends Controller
             'old_values' => $old,
             'new_values' => $trainingModule->toArray(),
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Training module updated successfully.',
+            ]);
+        }
 
         return redirect()->route('admin.training-modules.show', $trainingModule)
             ->with('status', 'Training module updated successfully.');
@@ -377,16 +389,66 @@ class TrainingModuleController extends Controller
 
         $data = $request->validated();
         $sortOrder = ($trainingModule->contents()->max('sort_order') ?? 0) + 1;
+        $objectives = $this->normalizeObjectives($data['learning_objectives'] ?? []);
+        $storageTarget = $data['storage_target'] ?? 'auto';
 
-        TrainingContent::create([
+        if (trim((string) ($data['content_body'] ?? '')) === '') {
+            return $this->trainingModuleFormResponse(
+                $request,
+                $trainingModule,
+                'Training content is required.',
+                false,
+                422,
+                ['content_body' => ['Training content is required.']],
+            );
+        }
+
+        $lesson = TrainingContent::create([
             'training_module_id' => $trainingModule->id,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
+            'learning_objectives' => $objectives !== [] ? $objectives : null,
             'sort_order' => $sortOrder,
+            'created_by' => portal_id(),
+            'updated_by' => portal_id(),
         ]);
 
-        return redirect()->route('admin.training-modules.show', $trainingModule)
-            ->with('status', 'Lesson added to module.');
+        $processing = app(LessonResourceProcessingService::class);
+        $resourceOrder = 1;
+
+        if (trim((string) ($data['content_body'] ?? '')) !== '') {
+            $resource = LessonResource::create([
+                'training_content_id' => $lesson->id,
+                'title' => 'Training Content',
+                'resource_type' => LessonResource::TYPE_TEXT,
+                'body' => $data['content_body'],
+                'sort_order' => $resourceOrder++,
+                'created_by' => portal_id(),
+                'updated_by' => portal_id(),
+            ]);
+            $processing->afterResourceSaved($resource);
+        }
+
+        try {
+            $this->appendLessonUploads(
+                $request,
+                $lesson,
+                $data,
+                $storageTarget,
+                $resourceOrder,
+            );
+        } catch (\Throwable $e) {
+            return $this->trainingModuleFormResponse(
+                $request,
+                $trainingModule,
+                $e->getMessage(),
+                false,
+                422,
+                ['attachments' => [$e->getMessage()]],
+            );
+        }
+
+        return $this->trainingModuleFormResponse($request, $trainingModule, 'Lesson added to module.');
     }
 
     public function updateContent(
@@ -398,17 +460,156 @@ class TrainingModuleController extends Controller
         $this->assertContentBelongsToModule($trainingModule, $content);
 
         $data = $request->validated();
+        $objectives = $this->normalizeObjectives($data['learning_objectives'] ?? []);
+        $storageTarget = $data['storage_target'] ?? 'auto';
+
+        $processing = app(LessonResourceProcessingService::class);
+        $textResource = $content->resources()
+            ->where('resource_type', LessonResource::TYPE_TEXT)
+            ->orderBy('sort_order')
+            ->first();
+
+        $contentBody = trim((string) ($data['content_body'] ?? ''));
+        if ($contentBody === '' && $textResource) {
+            $contentBody = (string) ($textResource->body ?? '');
+        }
+
+        if (trim(strip_tags($contentBody)) === '') {
+            return $this->trainingModuleFormResponse(
+                $request,
+                $trainingModule,
+                'Training content is required.',
+                false,
+                422,
+                ['content_body' => ['Training content is required.']],
+            );
+        }
 
         $content->update([
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
+            'learning_objectives' => $objectives !== [] ? $objectives : null,
+            'updated_by' => portal_id(),
         ]);
 
-        return redirect()->route('admin.training-modules.show', $trainingModule)
-            ->with('status', 'Lesson updated successfully.');
+        if ($textResource) {
+            $textResource->update([
+                'body' => $contentBody,
+                'updated_by' => portal_id(),
+            ]);
+            $processing->afterResourceSaved($textResource->fresh());
+        } else {
+            $resource = LessonResource::create([
+                'training_content_id' => $content->id,
+                'title' => 'Training Content',
+                'resource_type' => LessonResource::TYPE_TEXT,
+                'body' => $contentBody,
+                'sort_order' => ($content->resources()->max('sort_order') ?? 0) + 1,
+                'created_by' => portal_id(),
+                'updated_by' => portal_id(),
+            ]);
+            $processing->afterResourceSaved($resource);
+        }
+
+        $resourceOrder = ($content->resources()->max('sort_order') ?? 0) + 1;
+        try {
+            $this->appendLessonUploads(
+                $request,
+                $content,
+                $data,
+                $storageTarget,
+                $resourceOrder,
+            );
+        } catch (\Throwable $e) {
+            return $this->trainingModuleFormResponse(
+                $request,
+                $trainingModule,
+                $e->getMessage(),
+                false,
+                422,
+                ['attachments' => [$e->getMessage()]],
+            );
+        }
+
+        return $this->trainingModuleFormResponse($request, $trainingModule, 'Lesson updated successfully.');
+    }
+
+    private function appendLessonUploads(
+        StoreTrainingLessonRequest|UpdateTrainingLessonRequest $request,
+        TrainingContent $lesson,
+        array $data,
+        string $storageTarget,
+        int $resourceOrder,
+    ): int {
+        $processing = app(LessonResourceProcessingService::class);
+
+        foreach ($request->file('images', []) ?? [] as $index => $file) {
+            try {
+                $resource = LessonResource::create([
+                    'training_content_id' => $lesson->id,
+                    'title' => 'Image '.($index + 1),
+                    'resource_type' => LessonResource::TYPE_IMAGE,
+                    'file_path' => $this->storeContentFile($file, LessonResource::TYPE_IMAGE, $storageTarget),
+                    'sort_order' => $resourceOrder++,
+                    'created_by' => portal_id(),
+                    'updated_by' => portal_id(),
+                ]);
+                $processing->afterResourceSaved($resource);
+            } catch (\Throwable $e) {
+                throw $e;
+            }
+        }
+
+        if (! empty($data['video_url'])) {
+            $resource = LessonResource::create([
+                'training_content_id' => $lesson->id,
+                'title' => 'Video',
+                'resource_type' => LessonResource::TYPE_YOUTUBE,
+                'external_url' => $data['video_url'],
+                'sort_order' => $resourceOrder++,
+                'created_by' => portal_id(),
+                'updated_by' => portal_id(),
+            ]);
+            $processing->afterResourceSaved($resource);
+        } elseif ($request->hasFile('video_file')) {
+            try {
+                $resource = LessonResource::create([
+                    'training_content_id' => $lesson->id,
+                    'title' => 'Video',
+                    'resource_type' => LessonResource::TYPE_VIDEO,
+                    'file_path' => $this->storeContentFile($request->file('video_file'), LessonResource::TYPE_VIDEO, $storageTarget),
+                    'sort_order' => $resourceOrder++,
+                    'created_by' => portal_id(),
+                    'updated_by' => portal_id(),
+                ]);
+                $processing->afterResourceSaved($resource);
+            } catch (\Throwable $e) {
+                throw $e;
+            }
+        }
+
+        foreach ($request->file('attachments', []) ?? [] as $index => $file) {
+            try {
+                $resource = LessonResource::create([
+                    'training_content_id' => $lesson->id,
+                    'title' => 'Attachment '.($index + 1),
+                    'resource_type' => LessonResource::TYPE_PDF,
+                    'file_path' => $this->storeContentFile($file, LessonResource::TYPE_PDF, $storageTarget),
+                    'sort_order' => $resourceOrder++,
+                    'created_by' => portal_id(),
+                    'updated_by' => portal_id(),
+                ]);
+                $processing->afterResourceSaved($resource);
+            } catch (\Throwable $e) {
+                throw $e;
+            }
+        }
+
+        return $resourceOrder;
     }
 
     public function destroyContent(
+        Request $request,
         TrainingModule $trainingModule,
         TrainingContent $content,
     ) {
@@ -421,6 +622,13 @@ class TrainingModuleController extends Controller
         }
 
         $content->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lesson removed from module.',
+            ]);
+        }
 
         return redirect()->route('admin.training-modules.show', $trainingModule)
             ->with('status', 'Lesson removed from module.');
@@ -444,6 +652,8 @@ class TrainingModuleController extends Controller
             'body' => $data['body'] ?? null,
             'external_url' => $data['external_url'] ?? null,
             'sort_order' => $sortOrder,
+            'created_by' => portal_id(),
+            'updated_by' => portal_id(),
         ];
 
         if ($request->hasFile('file')) {
@@ -454,17 +664,21 @@ class TrainingModuleController extends Controller
                     $data['storage_target'] ?? 'auto',
                 );
             } catch (\Throwable $e) {
-                return redirect()->back()
-                    ->withErrors(['file' => $e->getMessage()])
-                    ->withInput();
+                return $this->trainingModuleFormResponse(
+                    $request,
+                    $trainingModule,
+                    $e->getMessage(),
+                    false,
+                    422,
+                    ['file' => [$e->getMessage()]],
+                );
             }
         }
 
         $resource = LessonResource::create($payload);
         app(LessonResourceProcessingService::class)->afterResourceSaved($resource);
 
-        return redirect()->route('admin.training-modules.show', $trainingModule)
-            ->with('status', 'Learning resource added to lesson.');
+        return $this->trainingModuleFormResponse($request, $trainingModule, 'Learning resource added to lesson.');
     }
 
     public function updateResource(
@@ -484,6 +698,7 @@ class TrainingModuleController extends Controller
             'resource_type' => $data['resource_type'],
             'body' => $data['body'] ?? null,
             'external_url' => $data['external_url'] ?? null,
+            'updated_by' => portal_id(),
         ];
 
         if ($request->hasFile('file')) {
@@ -510,6 +725,7 @@ class TrainingModuleController extends Controller
     }
 
     public function destroyResource(
+        Request $request,
         TrainingModule $trainingModule,
         TrainingContent $content,
         LessonResource $resource,
@@ -520,6 +736,13 @@ class TrainingModuleController extends Controller
 
         $this->deleteStoredContentFile($resource->file_path);
         $resource->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Learning resource removed.',
+            ]);
+        }
 
         return redirect()->route('admin.training-modules.show', $trainingModule)
             ->with('status', 'Learning resource removed.');
@@ -631,7 +854,7 @@ class TrainingModuleController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
-            ], 500);
+            ], 422);
         }
     }
 

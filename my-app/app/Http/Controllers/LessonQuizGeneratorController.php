@@ -53,7 +53,9 @@ class LessonQuizGeneratorController extends Controller
         $this->authorizeAdmin();
 
         if ($content->training_module_id !== $trainingModule->id) {
-            abort(422, 'Lesson does not belong to this training module.');
+            return response()->json([
+                'message' => 'Lesson does not belong to this training module.',
+            ], 422);
         }
 
         $content->load('resources');

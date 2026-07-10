@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\CampaignRequest;
 use App\Models\TrainingModule;
 use App\Services\HazardAssessment\HazardTrainingRecommendationService;
-use App\Services\SimulationEventPlanningService;
+use App\Support\CampaignPlanningPayload;
+use App\Support\CampaignRegistrationLink;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class CampaignRequestController extends Controller
 {
@@ -17,6 +19,17 @@ class CampaignRequestController extends Controller
     private function serializeCampaignRequest(CampaignRequest $campaignRequest): array
     {
         $trainingModule = $campaignRequest->trainingModule;
+        $planning = self::campaignPlanningFieldsFromPayload($campaignRequest->payload);
+        $registeredParticipantsCount = $campaignRequest->registeredParticipantsCount();
+        $maximumParticipants = (int) ($planning['maximum_participants'] ?? 0);
+        $isApproved = (string) $campaignRequest->status === 'approved';
+        $registrationEnabled = $maximumParticipants > 0
+            ? $registeredParticipantsCount < $maximumParticipants
+            : true;
+        $registrationLinkActive = $isApproved && $registrationEnabled;
+        $registrationLink = $registrationLinkActive
+            ? ($campaignRequest->payload['registration_link'] ?? CampaignRegistrationLink::forCampaignRequest($campaignRequest))
+            : null;
 
         return [
             'id' => $campaignRequest->id,
@@ -24,16 +37,17 @@ class CampaignRequestController extends Controller
                 'id' => $trainingModule->id,
                 'title' => $trainingModule->title,
             ] : null,
-            'proposed_session_label' => $campaignRequest->proposed_session_label,
-            'proposed_sessions' => $this->normalizeProposedSessions(
-                is_array($campaignRequest->payload['available_training_sessions'] ?? null)
-                    ? $campaignRequest->payload['available_training_sessions']
-                    : [],
-            ),
+            'registration_period_label' => $this->normalizeRegistrationPeriodLabel($planning),
             'submitted_to' => $campaignRequest->submitted_to,
             'submitted_at' => $campaignRequest->submitted_at?->toIso8601String(),
             'status' => $campaignRequest->status,
             'payload' => $campaignRequest->payload,
+            'campaign_planning' => array_merge($planning, [
+                'registered_participants_count' => $registeredParticipantsCount,
+                'registration_enabled' => $registrationEnabled,
+            ]),
+            'registration_link_active' => $registrationLinkActive,
+            'registration_link' => $registrationLink,
             'remarks' => $campaignRequest->remarks,
             'created_at' => $campaignRequest->created_at?->toIso8601String(),
             'updated_at' => $campaignRequest->updated_at?->toIso8601String(),
@@ -44,67 +58,43 @@ class CampaignRequestController extends Controller
         ];
     }
 
-    private function normalizeProposedSessions(array $sessions): array
+    /**
+     * @param  array<string, mixed>  $planning
+     */
+    private function normalizeRegistrationPeriodLabel(array $planning): ?string
     {
-        return collect($sessions)
-            ->values()
-            ->map(function ($session, int $index) {
-                if (! is_array($session)) {
-                    return null;
-                }
+        $opens = $planning['registration_opens'] ?? null;
+        $deadline = $planning['registration_deadline'] ?? null;
 
-                $date = trim((string) ($session['date'] ?? ''));
-                $start = trim((string) ($session['start_time'] ?? ''));
-                $end = trim((string) ($session['end_time'] ?? ''));
-
-                return [
-                    'label' => 'Session '.($index + 1),
-                    'date' => $date !== '' ? $date : null,
-                    'time' => ($start !== '' && $end !== '') ? "{$start} - {$end}" : null,
-                ];
-            })
-            ->filter()
-            ->values()
-            ->all();
-    }
-
-    private function normalizeProposedSessionLabel(TrainingModule $trainingModule): ?string
-    {
-        $sessions = is_array($trainingModule->available_training_sessions)
-            ? $trainingModule->available_training_sessions
-            : [];
-
-        $first = $sessions[0] ?? null;
-        if (! is_array($first)) {
-            return null;
+        if (! $opens && ! $deadline) {
+            return $planning['training_title'] ?? null;
         }
 
-        $title = trim((string) ($first['title'] ?? ''));
-        $date = trim((string) ($first['date'] ?? ''));
-        $start = trim((string) ($first['start_time'] ?? ''));
-        $end = trim((string) ($first['end_time'] ?? ''));
+        $openLabel = $opens ? Carbon::parse($opens)->format('M j, Y') : '—';
+        $deadlineLabel = $deadline ? Carbon::parse($deadline)->format('M j, Y') : '—';
 
-        if ($date === '' || $start === '' || $end === '') {
-            return $title !== '' ? $title : null;
-        }
-
-        $parts = [];
-        if ($title !== '') {
-            $parts[] = $title;
-        }
-        $parts[] = $date;
-        $parts[] = "{$start} - {$end}";
-
-        return implode(' • ', $parts);
+        return "Registration: {$openLabel} – {$deadlineLabel}";
     }
 
     private function buildPayload(TrainingModule $trainingModule): array
     {
-        $hazardRecommendations = app(HazardTrainingRecommendationService::class)
+        $recommendedCommunities = app(HazardTrainingRecommendationService::class)
             ->recommendCommunitiesForTraining($trainingModule);
-        $trainingModule->recommended_communities = $hazardRecommendations;
 
-        return $trainingModule->toIntegrationArray();
+        return array_merge(
+            [
+                'submitted_at' => now()->toIso8601String(),
+            ],
+            $trainingModule->toCampaignPlanningPayload($recommendedCommunities),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function campaignPlanningFieldsFromPayload(?array $payload): array
+    {
+        return CampaignPlanningPayload::fieldsFromStoredPayload($payload);
     }
 
     public function index(Request $request, TrainingModule $trainingModule)
@@ -129,32 +119,55 @@ class CampaignRequestController extends Controller
     {
         $this->authorizeOwner($trainingModule);
 
+        if ($trainingModule->status !== 'published') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only published training modules can be submitted to Campaign Planning.',
+            ], 422);
+        }
+
         $payload = $this->buildPayload($trainingModule);
-        $proposedSessionLabel = $this->normalizeProposedSessionLabel($trainingModule);
-        $sessions = is_array($trainingModule->available_training_sessions)
-            ? $trainingModule->available_training_sessions
-            : [];
-        $thresholds = SimulationEventPlanningService::resolveParticipantThresholds($sessions);
+        $planning = self::campaignPlanningFieldsFromPayload($payload);
+        $maximumParticipants = (int) ($planning['maximum_participants'] ?? 0);
+        $expectedParticipants = (int) ($planning['expected_participants'] ?? 0);
+        if ($expectedParticipants <= 0) {
+            $expectedParticipants = $maximumParticipants > 0 ? $maximumParticipants : 0;
+        }
+        if ($maximumParticipants > 0 && $expectedParticipants > $maximumParticipants) {
+            $expectedParticipants = $maximumParticipants;
+        }
+        $expectedParticipants = $expectedParticipants > 0 ? $expectedParticipants : null;
+        $minimumQualified = $expectedParticipants
+            ? (int) max(1, round($expectedParticipants * 0.67))
+            : null;
 
         $campaignRequest = CampaignRequest::create([
             'training_module_id' => $trainingModule->id,
             'submitted_to' => 'Public Safety Campaign Management System',
-            'proposed_session_label' => $proposedSessionLabel,
+            'proposed_session_label' => $this->normalizeRegistrationPeriodLabel($planning),
             'submitted_at' => now(),
             'status' => 'waiting_for_approval',
-            'expected_participants' => $thresholds['expected_participants'],
-            'minimum_qualified_participants' => $thresholds['minimum_qualified_participants'],
+            'expected_participants' => $expectedParticipants,
+            'minimum_qualified_participants' => $minimumQualified,
             'session_index' => 0,
             'payload' => $payload,
             'remarks' => null,
             'submitted_by_id' => $request->user()?->id,
         ]);
 
+        $registrationLink = CampaignRegistrationLink::forCampaignRequest($campaignRequest);
+        $payload = array_merge($payload, [
+            'registration_link' => $registrationLink,
+            'registration_form_path' => '/participant/register',
+        ]);
+        $campaignRequest->update(['payload' => $payload]);
+
         return response()->json([
             'success' => true,
             'campaign_request' => [
                 'id' => $campaignRequest->id,
                 'status' => $campaignRequest->status,
+                'registration_link' => $registrationLink,
             ],
         ]);
     }
@@ -178,4 +191,3 @@ class CampaignRequestController extends Controller
         ]);
     }
 }
-

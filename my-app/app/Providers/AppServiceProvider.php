@@ -7,11 +7,14 @@ use App\Contracts\Group6\Group6DataConsumerInterface;
 use App\Contracts\Group6\Group6EventReferenceProviderInterface;
 use App\Contracts\Group6\Group6InboundReceiverInterface;
 use App\Mail\CustomMailManager;
+use App\Models\TrainingContent;
+use App\Models\TrainingModule;
 use App\Services\Group6\Group6EventReferenceProvider;
 use App\Services\Group6\Group6InboundReceiver;
 use App\Services\Group6\PlaceholderGroup6ApiClient;
 use App\Services\Group6\PlaceholderGroup6DataConsumer;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 
@@ -56,6 +59,22 @@ class AppServiceProvider extends ServiceProvider
         if (request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {
             URL::forceScheme('https');
         }
+
+        Route::bind('content', function (string $value, $route) {
+            $module = $route->parameter('trainingModule');
+            if (! $module instanceof TrainingModule) {
+                $module = TrainingModule::query()->findOrFail($module);
+            }
+
+            return TrainingContent::query()
+                ->where('training_module_id', $module->id)
+                ->whereKey($value)
+                ->firstOrFail();
+        });
+
+        Route::pattern('trainingModule', '[0-9]+');
+        Route::pattern('content', '[0-9]+');
+        Route::pattern('resource', '[0-9]+');
 
         // Don't force a specific domain - let Laravel use the request's domain
         // This allows each subdomain to work independently

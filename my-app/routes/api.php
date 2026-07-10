@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceApiController;
 use App\Http\Controllers\Api\Group6InboundController;
+use App\Http\Controllers\Api\Group6CampaignPlanningController;
 use App\Http\Controllers\Api\ResourceAllocationInventoryController;
 use App\Models\Resource;
 
@@ -55,6 +56,10 @@ Route::prefix('integrations/group6')
         Route::post('/participants', [Group6InboundController::class, 'receiveParticipants'])->name('participants');
         Route::post('/trainers', [Group6InboundController::class, 'receiveTrainers'])->name('trainers');
         Route::get('/event-references', [Group6InboundController::class, 'listEventReferences'])->name('event-references');
+
+        Route::get('/campaign-requests', [Group6CampaignPlanningController::class, 'index'])->name('campaign-requests.index');
+        Route::get('/campaign-requests/{campaignRequest}', [Group6CampaignPlanningController::class, 'show'])->name('campaign-requests.show');
+        Route::patch('/campaign-requests/{campaignRequest}/status', [Group6CampaignPlanningController::class, 'updateStatus'])->name('campaign-requests.update-status');
     });
 
 // Public Philippine location master data (cascading dropdowns)

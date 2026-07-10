@@ -179,7 +179,7 @@ class LessonResourceProcessingService
         return match ($resourceType) {
             LessonResource::TYPE_PDF => 'Unable to extract text from the uploaded PDF.',
             LessonResource::TYPE_IMAGE => 'Unable to extract text from the uploaded image.',
-            LessonResource::TYPE_YOUTUBE => 'Unable to retrieve a transcript for this YouTube video.',
+            LessonResource::TYPE_YOUTUBE => 'Unable to retrieve a transcript for this YouTube video. Paste a manual transcript in the Transcript field, or use a video with captions enabled on YouTube.',
             default => 'No readable lesson content is available for AI Question Bank generation.',
         };
     }
@@ -216,12 +216,18 @@ class LessonResourceProcessingService
 
     private function processYouTube(LessonResource $resource): ?string
     {
-        $transcript = $this->youtubeTranscript->fetchTranscript($resource->external_url);
-        if ($transcript === null || trim($transcript) === '') {
+        if (is_string($resource->body) && trim($resource->body) !== '') {
+            $text = LessonTextCleaner::clean($resource->body);
+
+            return $text !== '' ? $text : null;
+        }
+
+        $result = $this->youtubeTranscript->fetchWithFallback($resource->external_url);
+        if ($result === null || trim($result['text']) === '') {
             return null;
         }
 
-        $text = LessonTextCleaner::clean($transcript);
+        $text = LessonTextCleaner::clean($result['text']);
 
         return $text !== '' ? $text : null;
     }

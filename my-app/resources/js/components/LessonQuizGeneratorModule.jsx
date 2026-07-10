@@ -410,10 +410,23 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
     }, [selectedConfig?.id, selectedConfig?.latest_generation_job]);
 
     React.useEffect(() => {
-        if (!selectedLessonId && lessons[0]) {
+        if (!selectedModuleId) {
+            setSelectedLessonId('');
+            return;
+        }
+        if (lessons.length === 0) {
+            setSelectedLessonId('');
+            return;
+        }
+        const lessonBelongsToModule = lessons.some((lesson) => String(lesson.id) === String(selectedLessonId));
+        if (!lessonBelongsToModule) {
             setSelectedLessonId(String(lessons[0].id));
         }
-    }, [lessons, selectedLessonId]);
+    }, [selectedModuleId, lessons, selectedLessonId]);
+
+    const selectedLessonBelongsToModule = lessons.some(
+        (lesson) => String(lesson.id) === String(selectedLessonId),
+    );
 
     const participantQuizSizeOptions = React.useMemo(
         () => buildParticipantQuizSizeOptions(bankQuestionCount),
@@ -506,7 +519,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
     }, [buildPayload, savedPayloadKey]);
 
     React.useEffect(() => {
-        if (!selectedModuleId || !selectedLessonId) {
+        if (!selectedModuleId || !selectedLessonId || !selectedLessonBelongsToModule) {
             setLessonResources(null);
             return undefined;
         }
@@ -518,7 +531,12 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
             return fetch(`/admin/ai-scenario-training/lesson-quiz-generator/modules/${selectedModuleId}/lessons/${selectedLessonId}/resources`, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             })
-                .then((res) => res.json())
+                .then(async (res) => {
+                    if (!res.ok) {
+                        throw new Error(`Failed to load lesson resources (${res.status})`);
+                    }
+                    return res.json();
+                })
                 .then((data) => {
                     if (!cancelled) {
                         setLessonResources(data.resources || null);
@@ -541,10 +559,10 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         return () => {
             cancelled = true;
         };
-    }, [selectedModuleId, selectedLessonId]);
+    }, [selectedModuleId, selectedLessonId, selectedLessonBelongsToModule]);
 
     React.useEffect(() => {
-        if (!selectedModuleId || !selectedLessonId || !lessonResources) {
+        if (!selectedModuleId || !selectedLessonId || !selectedLessonBelongsToModule || !lessonResources) {
             return undefined;
         }
 
@@ -560,13 +578,18 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
             fetch(`/admin/ai-scenario-training/lesson-quiz-generator/modules/${selectedModuleId}/lessons/${selectedLessonId}/resources`, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             })
-                .then((res) => res.json())
-                .then((data) => setLessonResources(data.resources || null))
+                .then(async (res) => {
+                    if (!res.ok) return null;
+                    return res.json();
+                })
+                .then((data) => {
+                    if (data) setLessonResources(data.resources || null);
+                })
                 .catch(() => {});
         }, 4000);
 
         return () => window.clearInterval(intervalId);
-    }, [selectedModuleId, selectedLessonId, lessonResources?.resources]);
+    }, [selectedModuleId, selectedLessonId, selectedLessonBelongsToModule, lessonResources?.resources]);
 
     const canGenerateAiContent = Boolean(lessonResources?.has_readable_content);
 

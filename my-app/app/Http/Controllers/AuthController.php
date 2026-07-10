@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Admin\CampaignRequestController;
+use App\Models\CampaignRequest;
 use App\Models\User;
 use App\Models\SimulationEvent;
 use App\Models\EventRegistration;
@@ -17,6 +19,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -24,6 +28,129 @@ class AuthController extends Controller
     private const PARTICIPANT_EMAIL_VERIFICATION_EXPIRY_MINUTES = 15;
     private const PARTICIPANT_EMAIL_RESEND_COOLDOWN_SECONDS = 60;
     private const CAMPAIGN_REGISTRATION_SOURCE = 'campaign_planning_scheduling';
+
+    private function resolveCampaignRequestContext(int $campaignRequestId): ?array
+    {
+        $campaignRequest = CampaignRequest::query()
+            ->with('trainingModule')
+            ->find($campaignRequestId);
+
+        if (! $campaignRequest) {
+            return null;
+        }
+
+        $planning = CampaignRequestController::campaignPlanningFieldsFromPayload($campaignRequest->payload);
+        $maximumParticipants = (int) ($planning['maximum_participants'] ?? 0);
+        $registeredParticipantsCount = $campaignRequest->registeredParticipantsCount();
+        $registrationEnabled = $maximumParticipants > 0
+            ? $registeredParticipantsCount < $maximumParticipants
+            : true;
+        $isApproved = (string) $campaignRequest->status === 'approved';
+
+        if (! $isApproved || ! $registrationEnabled) {
+            return null;
+        }
+
+        return [
+            'campaign_request_id' => $campaignRequest->id,
+            'training_module_id' => $campaignRequest->training_module_id,
+            'training_title' => $planning['training_title'] ?? $campaignRequest->trainingModule?->title,
+            'short_description' => $planning['short_description'] ?? null,
+            'registration_opens' => $planning['registration_opens'] ?? null,
+            'registration_deadline' => $planning['registration_deadline'] ?? null,
+            'training_completion_deadline' => $planning['training_completion_deadline'] ?? null,
+            'maximum_participants' => $planning['maximum_participants'] ?? null,
+            'expected_participants' => $planning['expected_participants'] ?? null,
+            'registered_participants_count' => $registeredParticipantsCount,
+            'scheduled_date' => $planning['registration_deadline'] ?? $planning['registration_opens'] ?? null,
+            'start_time' => null,
+            'end_time' => null,
+            'venue' => null,
+        ];
+    }
+
+    private function resolveCampaignEventContext(int $campaignEventId): ?array
+    {
+        $event = SimulationEvent::query()
+            ->with('scenario.trainingModule')
+            ->whereKey($campaignEventId)
+            ->where('status', 'published')
+            ->first();
+
+        if (! $event) {
+            return null;
+        }
+
+        return [
+            'campaign_event_id' => $event->id,
+            'training_module_id' => $event->training_module_id,
+            'training_title' => $event->scenario?->trainingModule?->title ?? $event->title,
+            'scheduled_date' => optional($event->event_date)->toDateString(),
+            'start_time' => $event->start_time,
+            'end_time' => $event->end_time,
+            'venue' => $event->venue ?: $event->location,
+        ];
+    }
+
+    private function resolveCampaignRegistrationContext(Request $request): ?array
+    {
+        $campaignEventId = $request->query('campaign_event');
+        if ($campaignEventId) {
+            return $this->resolveCampaignEventContext((int) $campaignEventId);
+        }
+
+        $campaignRequestId = $request->query('campaign_request');
+        if ($campaignRequestId) {
+            return $this->resolveCampaignRequestContext((int) $campaignRequestId);
+        }
+
+        return null;
+    }
+
+    private function registrationCampaignIdFromContext(?array $campaignContext): ?string
+    {
+        if (empty($campaignContext)) {
+            return null;
+        }
+
+        if (! empty($campaignContext['campaign_event_id'])) {
+            return (string) $campaignContext['campaign_event_id'];
+        }
+
+        if (! empty($campaignContext['campaign_request_id'])) {
+            return 'campaign-request:'.$campaignContext['campaign_request_id'];
+        }
+
+        return null;
+    }
+
+    private function participantRegisterReturnUrl(Request $request): string
+    {
+        $sessionContext = $request->session()->get('campaign_registration_context');
+
+        $campaignRequestId = $request->input('campaign_request')
+            ?? $request->query('campaign_request')
+            ?? ($sessionContext['campaign_request_id'] ?? null);
+        $campaignEventId = $request->input('campaign_event')
+            ?? $request->query('campaign_event')
+            ?? ($sessionContext['campaign_event_id'] ?? null);
+
+        return route('participant.register', array_filter([
+            'campaign_request' => $campaignRequestId,
+            'campaign_event' => $campaignEventId,
+        ]));
+    }
+
+    private function redirectBackToParticipantRegister(Request $request, array $errors = [])
+    {
+        $redirect = redirect($this->participantRegisterReturnUrl($request));
+
+        if ($errors !== []) {
+            $redirect->withErrors($errors);
+        }
+
+        return $redirect->withInput();
+    }
 
     private function createCampaignEventRegistrationIfNeeded(User $user, ?array $campaignContext): void
     {
@@ -347,29 +474,19 @@ class AuthController extends Controller
 
     public function showParticipantRegister(Request $request)
     {
-        $campaignEventId = $request->query('campaign_event');
-        $campaignContext = null;
+        $campaignContextFromLink = $this->resolveCampaignRegistrationContext($request);
+        if ($request->filled('campaign_request') && ! $campaignContextFromLink) {
+            $request->session()->forget('campaign_registration_context');
 
-        if ($campaignEventId) {
-            $event = SimulationEvent::query()
-                ->with('scenario.trainingModule')
-                ->whereKey($campaignEventId)
-                ->where('status', 'published')
-                ->first();
+            return redirect()->route('participant.register')
+                ->withErrors(['form' => 'Registration is not open for this campaign request yet.']);
+        }
 
-            if ($event) {
-                $campaignContext = [
-                    'campaign_event_id' => $event->id,
-                    'training_module_id' => $event->training_module_id,
-                    'training_title' => $event->scenario?->trainingModule?->title ?? $event->title,
-                    'scheduled_date' => optional($event->event_date)->toDateString(),
-                    'start_time' => $event->start_time,
-                    'end_time' => $event->end_time,
-                    'venue' => $event->venue ?: $event->location,
-                ];
+        $campaignContext = $campaignContextFromLink
+            ?? $request->session()->get('campaign_registration_context');
 
-                $request->session()->put('campaign_registration_context', $campaignContext);
-            }
+        if ($campaignContext) {
+            $request->session()->put('campaign_registration_context', $campaignContext);
         }
 
         return view('auth.participant-register', [
@@ -382,7 +499,7 @@ class AuthController extends Controller
      */
     public function participantRegisterStart(Request $request)
     {
-        $data = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'organization' => ['nullable', 'string', 'max:255'],
             'email' => [
@@ -408,24 +525,53 @@ class AuthController extends Controller
             'municipality_city' => ['required', 'string', 'max:255'],
             'barangay_name' => ['required', 'string', 'max:255'],
             'password' => ['required', 'confirmed', 'min:8'],
+            'campaign_event' => ['nullable', 'integer'],
+            'campaign_request' => ['nullable', 'integer', 'exists:campaign_requests,id'],
         ], [
             'email.unique' => 'This email is already registered. Please log in or use a different one.',
             'phone.unique' => 'This phone number is already registered. Please log in or use a different one.',
+            'barangay_name.required' => 'Please select your barangay and wait for the address to load before continuing.',
+            'philippine_barangay_id.required' => 'Please select your complete address (Region through Barangay).',
         ]);
+
+        if ($validator->fails()) {
+            throw (new ValidationException($validator))
+                ->redirectTo($this->participantRegisterReturnUrl($request));
+        }
+
+        $data = $validator->validated();
 
         $campaignContext = $request->session()->get('campaign_registration_context');
 
+        if ($request->filled('campaign_event')) {
+            $resolved = $this->resolveCampaignEventContext((int) $request->input('campaign_event'));
+            if ($resolved) {
+                $campaignContext = $resolved;
+                $request->session()->put('campaign_registration_context', $campaignContext);
+            }
+        } elseif ($request->filled('campaign_request')) {
+            $resolved = $this->resolveCampaignRequestContext((int) $request->input('campaign_request'));
+            if ($resolved) {
+                $campaignContext = $resolved;
+                $request->session()->put('campaign_registration_context', $campaignContext);
+            } else {
+                return $this->redirectBackToParticipantRegister($request, [
+                    'form' => 'Registration is not open for this campaign request yet.',
+                ]);
+            }
+        }
+
         // Check if email or phone already exists with friendly message
         if (isset($data['email']) && User::where('email', $data['email'])->exists()) {
-            return back()
-                ->withErrors(['email' => 'This email is already registered. Please log in or use a different one.'])
-                ->withInput();
+            return $this->redirectBackToParticipantRegister($request, [
+                'email' => 'This email is already registered. Please log in or use a different one.',
+            ]);
         }
 
         if (isset($data['phone']) && User::where('phone', $data['phone'])->exists()) {
-            return back()
-                ->withErrors(['phone' => 'This phone number is already registered. Please log in or use a different one.'])
-                ->withInput();
+            return $this->redirectBackToParticipantRegister($request, [
+                'phone' => 'This phone number is already registered. Please log in or use a different one.',
+            ]);
         }
 
         $participantId = $this->generateParticipantId();
@@ -451,7 +597,7 @@ class AuthController extends Controller
             'status' => 'pending_email_verification',
             'registered_at' => now(),
             'registration_source' => ! empty($campaignContext) ? self::CAMPAIGN_REGISTRATION_SOURCE : 'direct_registration',
-            'registration_campaign_id' => ! empty($campaignContext['campaign_event_id']) ? (string) $campaignContext['campaign_event_id'] : null,
+            'registration_campaign_id' => $this->registrationCampaignIdFromContext($campaignContext),
             'registration_campaign_title' => ! empty($campaignContext['training_title']) ? (string) $campaignContext['training_title'] : null,
             'registration_campaign_registered_at' => ! empty($campaignContext) ? now() : null,
         ]);
@@ -461,9 +607,9 @@ class AuthController extends Controller
         } catch (\Throwable $e) {
             \Log::error('Failed to send participant verification email: '.$e->getMessage());
 
-            return back()
-                ->withErrors(['email' => 'We could not send the verification email. Please try again later.'])
-                ->withInput();
+            return $this->redirectBackToParticipantRegister($request, [
+                'email' => 'We could not send the verification email. Please try again later.',
+            ]);
         }
 
         $request->session()->put('participant_registration_verify', [
