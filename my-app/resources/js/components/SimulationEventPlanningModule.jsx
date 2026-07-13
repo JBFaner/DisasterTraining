@@ -25,6 +25,7 @@ import {
 import { deriveSimulationEventStatus } from '../utils/simulationEventStatus';
 import { ApprovedCampaignSchedulesTable } from './ApprovedCampaignSchedulesTable';
 import { SimulationExerciseTemplateModule } from './SimulationExerciseTemplateModule';
+import { SimulationPlanningEventsTab } from './SimulationPlanningEventsTab';
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -56,6 +57,7 @@ function getInitialTab() {
     if (tab === 'history') return 'history';
     if (tab === 'events') return 'events';
     if (tab === 'templates') return 'templates';
+    if (tab === 'schedules') return 'schedules';
     return 'schedules';
 }
 
@@ -308,22 +310,16 @@ export function SimulationEventPlanningModule({
     approvedSchedules = [],
     exerciseTemplates = [],
     exerciseTemplateSummary = {},
-    role,
-    SimulationEventsTable,
 }) {
     const [activeTab, setActiveTab] = React.useState(getInitialTab);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         const url = new URL(window.location.href);
-        if (tabId === 'events') {
-            url.searchParams.set('tab', 'events');
-        } else if (tabId === 'history') {
-            url.searchParams.set('tab', 'history');
-        } else if (tabId === 'templates') {
-            url.searchParams.set('tab', 'templates');
-        } else {
+        if (tabId === 'schedules') {
             url.searchParams.delete('tab');
+        } else {
+            url.searchParams.set('tab', tabId);
         }
         window.history.replaceState({}, '', url);
     };
@@ -339,7 +335,7 @@ export function SimulationEventPlanningModule({
                         : activeTab === 'templates'
                         ? 'Create and reuse standardized disaster training exercise plans for drills and full-scale simulations.'
                         : activeTab === 'events'
-                        ? 'Monitor draft, published, and ongoing simulation events generated from approved schedules.'
+                        ? 'Monitor simulation events created from published exercise plans and approved campaigns.'
                         : 'Browse completed simulations with evaluation and attendance summaries.'
                 }
                 actions={
@@ -390,8 +386,11 @@ export function SimulationEventPlanningModule({
                     embedded
                 />
             )}
-            {activeTab === 'events' && SimulationEventsTable && (
-                <SimulationEventsTable events={events} role={role} embedded activeOnly />
+            {activeTab === 'events' && (
+                <SimulationPlanningEventsTab
+                    events={events}
+                    onSwitchTab={handleTabChange}
+                />
             )}
             {activeTab === 'history' && <CompletedEventHistoryTab events={events} />}
         </AdminPageShell>

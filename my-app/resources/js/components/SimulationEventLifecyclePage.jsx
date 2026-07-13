@@ -20,6 +20,7 @@ import {
     AdminSecondaryButton,
 } from './admin/AdminLayout';
 import { deriveSimulationEventStatus, getEventDateTime } from '../utils/simulationEventStatus';
+import { isExercisePlanEvent } from '../utils/simulationEventNavigation';
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -66,12 +67,18 @@ function monitoringStatusTone(status) {
     return map[status] || 'bg-slate-50 text-slate-700 border-slate-200';
 }
 
-function getInitialTab() {
+function getInitialTab(event) {
     if (typeof window === 'undefined') return 'planning';
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     const allowed = ['planning', 'readiness', 'monitoring', 'execution', 'attendance', 'evaluation'];
-    return allowed.includes(tab) ? tab : 'planning';
+    if (allowed.includes(tab)) {
+        return tab;
+    }
+    if (isExercisePlanEvent(event)) {
+        return 'readiness';
+    }
+    return 'planning';
 }
 
 function StatCard({ label, value, hint }) {
@@ -87,7 +94,7 @@ function StatCard({ label, value, hint }) {
 export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycle, role }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [lifecycle, setLifecycle] = React.useState(initialLifecycle || null);
-    const [activeTab, setActiveTab] = React.useState(getInitialTab);
+    const [activeTab, setActiveTab] = React.useState(() => getInitialTab(event));
     const [isSaving, setIsSaving] = React.useState(false);
     const [evaluationForm, setEvaluationForm] = React.useState(
         initialLifecycle?.post_evaluation || {
@@ -125,6 +132,9 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
     const isCompleted = ['completed', 'ended', 'archived'].includes(event.status);
     const isOngoing = event.status === 'ongoing';
     const isPublished = event.status === 'published';
+    const isDraft = event.status === 'draft';
+    const fromExercisePlan = isExercisePlanEvent(event);
+    const exercisePlan = event.simulation_exercise_template;
 
     const now = new Date();
     const startDt = getEventDateTime(event.event_date, event.start_time);
@@ -273,10 +283,46 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                 description={`${formatDate(event.event_date)} • ${formatTime(event.start_time)} – ${formatTime(event.end_time)} • ${event.location || 'Location TBD'}`}
                 actions={
                     <div className="flex flex-wrap gap-2">
-                        {event.status === 'draft' && (
+                        {isDraft && !fromExercisePlan && (
                             <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/edit`}>
                                 <Pencil className="w-4 h-4" /> Edit Planning
                             </AdminSecondaryButton>
+                        )}
+                        {isDraft && fromExercisePlan && (
+                            <form
+                                method="POST"
+                                action={`/admin/simulation-events/${event.id}/publish`}
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const form = e.currentTarget;
+                                    const result = await Swal.fire({
+                                        title: 'Publish simulation event?',
+                                        text: 'Participants can register once this event is published.',
+                                        icon: 'question',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Publish',
+                                        cancelButtonText: 'Cancel',
+                                        confirmButtonColor: '#16a34a',
+                                    });
+                                    if (!result.isConfirmed) return;
+                                    try {
+                                        const response = await fetch(form.action, {
+                                            method: 'POST',
+                                            body: new FormData(form),
+                                            headers: { Accept: 'application/json' },
+                                        });
+                                        if (!response.ok) throw new Error('Publish failed');
+                                        window.location.href = `/admin/simulation-events/${event.id}?tab=monitoring`;
+                                    } catch {
+                                        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to publish event.' });
+                                    }
+                                }}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <AdminPrimaryButton type="submit" disabled={isSaving}>
+                                    Publish Event
+                                </AdminPrimaryButton>
+                            </form>
                         )}
                         {canStartEvent && (
                             <form method="POST" action={`/admin/simulation-events/${event.id}/start`} onSubmit={handleStartEvent}>
@@ -309,8 +355,17 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                     {trainingModule?.title && (
                         <span className="text-sm text-slate-500">Module: {trainingModule.title}</span>
                     )}
+                    {fromExercisePlan && exercisePlan?.title && (
+                        <span className="text-sm text-violet-700">Exercise Plan: {exercisePlan.title}</span>
+                    )}
                 </div>
             </div>
+
+            {fromExercisePlan ? (
+                <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+                    This simulation event was generated from an exercise plan. Review readiness, publish when ready, then continue in <strong>Simulation Monitoring</strong>.
+                </div>
+            ) : null}
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 w-full overflow-x-auto">
                 <div className="flex gap-1 flex-wrap min-w-max">
@@ -346,9 +401,11 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
                         <h3 className="text-sm font-semibold text-slate-900">Planning Actions</h3>
                         <div className="flex flex-wrap gap-2">
-                            <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/edit`}>
-                                <Pencil className="w-4 h-4" /> Edit Event
-                            </AdminSecondaryButton>
+                            {!fromExercisePlan ? (
+                                <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/edit`}>
+                                    <Pencil className="w-4 h-4" /> Edit Event
+                                </AdminSecondaryButton>
+                            ) : null}
                             <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/registrations`}>
                                 <Users className="w-4 h-4" /> Manage Participants
                             </AdminSecondaryButton>
@@ -408,15 +465,23 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                     <ul className="space-y-3">
                         {(readiness?.items || []).map((item) => (
                             <li key={item.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-4 py-3">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-start gap-3 min-w-0">
                                     {item.completed ? (
-                                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                                     ) : (
-                                        <span className="w-5 h-5 rounded-full border-2 border-slate-300 shrink-0" />
+                                        <span className="w-5 h-5 rounded-full border-2 border-slate-300 shrink-0 mt-0.5" />
                                     )}
-                                    <span className={`text-sm font-medium ${item.completed ? 'text-slate-800' : 'text-slate-600'}`}>
-                                        {item.label}
-                                    </span>
+                                    <div className="min-w-0">
+                                        <span className={`text-sm font-medium ${item.completed ? 'text-slate-800' : 'text-slate-600'}`}>
+                                            {item.label}
+                                            {item.automatic && (
+                                                <span className="ml-2 text-xs font-normal text-slate-500">(Automatic)</span>
+                                            )}
+                                        </span>
+                                        {item.detail && (
+                                            <p className="text-xs text-slate-500 mt-0.5">{item.detail}</p>
+                                        )}
+                                    </div>
                                 </div>
                                 {(item.key === 'venue_confirmed' || item.key === 'schedule_confirmed') && !item.completed && (
                                     <button

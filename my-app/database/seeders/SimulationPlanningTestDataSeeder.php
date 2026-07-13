@@ -14,6 +14,7 @@ class SimulationPlanningTestDataSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            SimulationEventPlanningDemoSeeder::class,
             SimulationPlanningReadyCampaignSeeder::class,
             SimulationPlanningUnderQuotaCampaignsSeeder::class,
         ]);

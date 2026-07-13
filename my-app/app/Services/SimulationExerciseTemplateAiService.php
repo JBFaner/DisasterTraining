@@ -225,12 +225,14 @@ PROMPT;
         }
 
         $scenario = is_array($parsed['scenario'] ?? null) ? $parsed['scenario'] : [];
+        $timelineItems = $this->normalizeTimeline($parsed['timeline_items'] ?? [], $activities);
+        $activities = $this->applyTimelineToActivities($activities, $timelineItems);
 
         return [
             'objectives' => trim((string) ($parsed['objectives'] ?? '')),
             'estimated_duration_minutes' => $estimated > 0 ? $estimated : null,
             'activities' => $activities,
-            'timeline_items' => $this->normalizeTimeline($parsed['timeline_items'] ?? [], $activities),
+            'timeline_items' => $timelineItems,
             'personnel' => $this->normalizePersonnel($parsed['personnel'] ?? []),
             'scenario_summary' => trim((string) ($scenario['scenario_summary'] ?? '')),
             'expected_hazards' => trim((string) ($scenario['expected_hazards'] ?? '')),
@@ -257,7 +259,12 @@ PROMPT;
                 'activities' => $this->normalizeActivities($parsed['activities'] ?? [], $resources),
                 'estimated_duration_minutes' => collect($this->normalizeActivities($parsed['activities'] ?? [], $resources))->sum('duration_minutes'),
             ],
-            'timeline' => ['timeline_items' => $this->normalizeTimeline($parsed['timeline_items'] ?? [], $activities)],
+            'timeline' => [
+                'activities' => $this->applyTimelineToActivities(
+                    $activities,
+                    $this->normalizeTimeline($parsed['timeline_items'] ?? [], $activities),
+                ),
+            ],
             'personnel' => ['personnel' => $this->normalizePersonnel($parsed['personnel'] ?? [])],
             'equipment' => [
                 'activities' => $this->mergeEquipmentIntoActivities($activities, $parsed['activities'] ?? [], $resources),
@@ -305,6 +312,7 @@ PROMPT;
                     'title' => trim((string) $row['title']),
                     'description' => trim((string) ($row['description'] ?? '')),
                     'duration_minutes' => max(1, (int) ($row['duration_minutes'] ?? 15)),
+                    'start_time' => ! empty($row['start_time']) ? (string) $row['start_time'] : null,
                     'sort_order' => $index + 1,
                     'equipment' => $equipment,
                 ];
@@ -338,6 +346,38 @@ PROMPT;
                 ];
             })
             ->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $activities
+     * @param  list<array<string, mixed>>  $timelineItems
+     * @return list<array<string, mixed>>
+     */
+    private function applyTimelineToActivities(array $activities, array $timelineItems): array
+    {
+        if ($activities === []) {
+            return [];
+        }
+
+        $result = $activities;
+
+        foreach ($timelineItems as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $index = isset($item['activity_index']) && is_numeric($item['activity_index'])
+                ? (int) $item['activity_index']
+                : null;
+
+            if ($index === null || ! isset($result[$index])) {
+                continue;
+            }
+
+            $result[$index]['start_time'] = (string) ($item['start_time'] ?? $result[$index]['start_time'] ?? '08:00');
+        }
+
+        return $result;
     }
 
     /**

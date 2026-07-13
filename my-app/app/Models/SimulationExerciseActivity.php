@@ -13,6 +13,7 @@ class SimulationExerciseActivity extends Model
         'title',
         'description',
         'duration_minutes',
+        'start_time',
         'sort_order',
     ];
 

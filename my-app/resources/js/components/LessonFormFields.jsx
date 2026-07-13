@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import * as Dialog from '@radix-ui/react-dialog';
-import { AlertCircle, HelpCircle, Plus } from 'lucide-react';
+import { AlertCircle, CheckCircle2, HelpCircle, Plus } from 'lucide-react';
 import { hasRichTextContent, LessonRichTextEditor } from './LessonRichTextEditor';
 import { showAppChoice } from '../utils/appAlert';
 
@@ -19,7 +19,11 @@ export function LessonConfirmDialog({
 }) {
   const iconNode = icon === 'error'
         ? <AlertCircle className="mx-auto mb-3 h-12 w-12 text-red-500" />
-        : <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-amber-400 text-2xl text-amber-500">!</span>;
+        : icon === 'success'
+            ? <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-500" />
+            : icon === 'question'
+                ? <HelpCircle className="mx-auto mb-3 h-12 w-12 text-sky-500" />
+                : <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-amber-400 text-2xl text-amber-500">!</span>;
 
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -30,7 +34,7 @@ export function LessonConfirmDialog({
                         {iconNode}
                         <Dialog.Title className="text-lg font-semibold text-slate-800">{title}</Dialog.Title>
                         {description ? (
-                            <Dialog.Description className="mt-2 text-sm text-slate-600">
+                            <Dialog.Description className="mt-2 text-sm text-slate-600 whitespace-pre-line">
                                 {description}
                             </Dialog.Description>
                         ) : (

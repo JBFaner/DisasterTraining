@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import './bootstrap';
 import '../css/app.css';
 import { SidebarLayout } from './components/SidebarLayout';
+import { AppDialogHost } from './components/AppDialogHost';
 import { SessionTimeout } from './components/SessionTimeout';
 import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } from './components/ParticipantSimulationEvents';
 import { SimulationEventLifecyclePage } from './components/SimulationEventLifecyclePage';
@@ -1662,6 +1663,7 @@ if (rootElement) {
         <React.StrictMode>
             <Toast.Provider swipeDirection="right">
                 <SessionTimeout timeoutMinutes={sessionTimeoutMinutes} warningSeconds={warningBeforeLogoutSeconds} />
+                <AppDialogHost />
                 <SidebarLayout
                     role={role}
                     currentSection={navSection}
@@ -1762,8 +1764,6 @@ if (rootElement) {
                                     approvedSchedules={approvedSchedules}
                                     exerciseTemplates={exerciseTemplates}
                                     exerciseTemplateSummary={exerciseTemplateSummary}
-                                    role={role}
-                                    SimulationEventsTable={SimulationEventsTable}
                                 />
                             )
                         )}

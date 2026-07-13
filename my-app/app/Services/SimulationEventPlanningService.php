@@ -8,6 +8,7 @@ use App\Models\EventRegistration;
 use App\Models\LessonCompletion;
 use App\Models\Scenario;
 use App\Models\SimulationEvent;
+use App\Models\SimulationExerciseTemplate;
 use App\Models\SimulationPlan;
 use App\Models\TrainingModule;
 use App\Models\User;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Log;
 
 class SimulationEventPlanningService
 {
+    private static ?int $publishedExercisePlanCount = null;
+
     public function __construct(
         private readonly GeminiService $geminiService,
     ) {}
@@ -109,7 +112,8 @@ class SimulationEventPlanningService
             'can_create_plan' => $canCreatePlan,
             'create_plan_disabled_reason' => $createPlanDisabledReason,
             'is_ready_for_simulation' => $simulationReadiness['key'] === 'ready',
-            'has_simulation_plan' => $request->simulationPlan !== null,
+            'has_simulation_plan' => $request->simulation_event_id !== null,
+            'published_exercise_plans_available' => $this->publishedExercisePlanCount() > 0,
             'simulation_event_status' => $request->simulationEvent?->status,
             'planning_href' => '/admin/simulation-planning/'.$request->id,
             'simulation_event_href' => $request->simulation_event_id
@@ -586,7 +590,7 @@ PROMPT;
                 $plan->emergency_contact_person ? 'Emergency Contact: '.$plan->emergency_contact_person : null,
             ]))),
             'scenario_id' => $scenarioId,
-            'self_registration_enabled' => true,
+            'self_registration_enabled' => false,
             'approval_required' => false,
             'created_by' => $userId,
         ]);
@@ -600,6 +604,8 @@ PROMPT;
             'simulation_event_id' => $event->id,
             'status' => 'scheduled',
         ]);
+
+        $this->syncQualifiedParticipantsToEvent($event, $userId);
 
         return $event;
     }
@@ -744,6 +750,20 @@ PROMPT;
     /**
      * @return array{key:string,label:string,tone:string}
      */
+    protected function publishedExercisePlanCount(): int
+    {
+        if (self::$publishedExercisePlanCount === null) {
+            self::$publishedExercisePlanCount = SimulationExerciseTemplate::query()
+                ->where('status', SimulationExerciseTemplate::STATUS_PUBLISHED)
+                ->count();
+        }
+
+        return self::$publishedExercisePlanCount;
+    }
+
+    /**
+     * @return array{key:string,label:string,tone:string}
+     */
     protected function resolveDashboardPlanStatus(CampaignRequest $request, array $readiness): array
     {
         $event = $request->simulationEvent;
@@ -763,26 +783,10 @@ PROMPT;
             ];
         }
 
-        if (! $request->simulationPlan) {
-            return [
-                'key' => 'not_created',
-                'label' => 'Not Created',
-                'tone' => 'slate',
-            ];
-        }
-
-        if (($readiness['can_generate'] ?? false) === true) {
-            return [
-                'key' => 'ready',
-                'label' => 'Ready',
-                'tone' => 'emerald',
-            ];
-        }
-
         return [
-            'key' => 'draft',
-            'label' => 'Draft',
-            'tone' => 'amber',
+            'key' => 'not_created',
+            'label' => 'Not Created',
+            'tone' => 'slate',
         ];
     }
 
@@ -796,7 +800,7 @@ PROMPT;
         int $qualified,
         int $minimum,
     ): array {
-        if ($request->simulationPlan || $request->simulation_event_id) {
+        if ($request->simulation_event_id) {
             return [false, null];
         }
 
@@ -1053,5 +1057,96 @@ PROMPT;
             'simulation_title' => $title,
             'objectives' => $objectives,
         ];
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    public function qualifiedParticipantIdsForCampaign(CampaignRequest $request): Collection
+    {
+        $trainingModuleId = (int) $request->training_module_id;
+        $participantIds = $this->registeredParticipantIdsForCampaign($request);
+        $totalLessons = TrainingModule::query()->withCount('contents')->find($trainingModuleId)?->contents_count ?? 0;
+
+        return $participantIds
+            ->filter(fn (int $userId) => $this->resolveModuleTrainingStatus($userId, $trainingModuleId, $totalLessons) === 'Completed')
+            ->values();
+    }
+
+    public function syncQualifiedParticipantsToEvent(SimulationEvent $event, ?int $approvedBy = null): int
+    {
+        if (! $event->campaign_request_id || ! $event->training_module_id) {
+            return 0;
+        }
+
+        $campaign = CampaignRequest::query()->find($event->campaign_request_id);
+        if (! $campaign) {
+            return 0;
+        }
+
+        $qualifiedIds = $this->qualifiedParticipantIdsForCampaign($campaign);
+        if ($qualifiedIds->isEmpty()) {
+            return 0;
+        }
+
+        $now = now();
+        $synced = 0;
+
+        foreach ($qualifiedIds as $userId) {
+            $registration = EventRegistration::query()->firstOrNew([
+                'simulation_event_id' => $event->id,
+                'user_id' => $userId,
+            ]);
+
+            if ($registration->exists && $registration->status === 'approved') {
+                continue;
+            }
+
+            $registration->fill([
+                'status' => 'approved',
+                'registered_at' => $registration->registered_at ?? $now,
+                'approved_at' => $registration->approved_at ?? $now,
+                'approved_by' => $registration->approved_by ?? $approvedBy,
+            ]);
+            $registration->save();
+            $synced++;
+        }
+
+        return $synced;
+    }
+
+    public function isModuleTrainingCompleted(int $userId, int $trainingModuleId): bool
+    {
+        $totalLessons = TrainingModule::query()->withCount('contents')->find($trainingModuleId)?->contents_count ?? 0;
+
+        return $this->resolveModuleTrainingStatus($userId, $trainingModuleId, $totalLessons) === 'Completed';
+    }
+
+    public function syncQualifiedParticipantAcrossCampaignEvents(int $userId, int $trainingModuleId): void
+    {
+        $user = User::query()->find($userId);
+        $campaignKey = (string) ($user?->registration_campaign_id ?? '');
+        if ($user?->role !== 'PARTICIPANT' || $campaignKey === '') {
+            return;
+        }
+
+        if (! preg_match('/^campaign-request:(\d+)$/', $campaignKey, $matches)) {
+            return;
+        }
+
+        $campaign = CampaignRequest::query()->find((int) $matches[1]);
+        if (! $campaign || (int) $campaign->training_module_id !== $trainingModuleId) {
+            return;
+        }
+
+        if (! $this->qualifiedParticipantIdsForCampaign($campaign)->contains($userId)) {
+            return;
+        }
+
+        SimulationEvent::query()
+            ->where('campaign_request_id', $campaign->id)
+            ->where('training_module_id', $trainingModuleId)
+            ->whereNotIn('status', ['completed', 'ended', 'archived', 'cancelled'])
+            ->each(fn (SimulationEvent $event) => $this->syncQualifiedParticipantsToEvent($event));
     }
 }

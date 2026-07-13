@@ -23,7 +23,8 @@ import {
 } from './admin/AdminCollapsibleFilterBar';
 import { AdminDataTable } from './admin/AdminDataTable';
 import { getCsrfHeaders } from '../utils/csrf';
-import { showAppAlert, showAppConfirm } from '../utils/appAlert';
+import { showAppAlert, showAppConfirm, formatApiErrors } from '../utils/appAlert';
+import { simulationEventHref } from '../utils/simulationEventNavigation';
 
 const STATUS_TONES = {
     draft: 'bg-amber-50 text-amber-800 border-amber-200',
@@ -50,8 +51,9 @@ export function SimulationExerciseTemplateModule({
     const [filterCategory, setFilterCategory] = React.useState('');
     const [filterStatus, setFilterStatus] = React.useState('');
     const [filterType, setFilterType] = React.useState('');
-    const [reuseTarget, setReuseTarget] = React.useState(null);
+    const [reuseModalOpen, setReuseModalOpen] = React.useState(false);
     const [reuseForm, setReuseForm] = React.useState({
+        template_id: '',
         campaign_request_id: '',
         event_date: '',
         start_time: '08:00',
@@ -61,29 +63,73 @@ export function SimulationExerciseTemplateModule({
     const [isReusing, setIsReusing] = React.useState(false);
     const [templateRows, setTemplateRows] = React.useState(templates);
     const [publishingId, setPublishingId] = React.useState(null);
+    const [reuseCampaignHandled, setReuseCampaignHandled] = React.useState(false);
+
+    const publishedTemplates = React.useMemo(
+        () => templateRows.filter((item) => item.status === 'published'),
+        [templateRows],
+    );
+
+    const selectedReuseTemplate = React.useMemo(
+        () => publishedTemplates.find((item) => String(item.id) === String(reuseForm.template_id)) || null,
+        [publishedTemplates, reuseForm.template_id],
+    );
+
+    const openReuseModal = React.useCallback(({
+        templateId = '',
+        campaignRequestId = '',
+    } = {}) => {
+        const defaultTemplateId = templateId
+            || (publishedTemplates[0] ? String(publishedTemplates[0].id) : '');
+
+        setReuseModalOpen(true);
+        setReuseForm({
+            template_id: defaultTemplateId,
+            campaign_request_id: campaignRequestId ? String(campaignRequestId) : '',
+            event_date: '',
+            start_time: '08:00',
+            end_time: '12:00',
+            venue: '',
+        });
+    }, [publishedTemplates]);
 
     React.useEffect(() => {
         setTemplateRows(templates);
     }, [templates]);
 
     React.useEffect(() => {
-        if (typeof window === 'undefined') return;
+        if (typeof window === 'undefined' || reuseCampaignHandled) return;
+
         const params = new URLSearchParams(window.location.search);
         const campaignId = params.get('reuse_campaign');
-        if (!campaignId || templates.length === 0) return;
+        if (!campaignId) return;
 
-        const published = templates.find((item) => item.status === 'published');
-        if (!published) return;
+        setReuseCampaignHandled(true);
 
-        setReuseTarget(published);
-        setReuseForm({
-            campaign_request_id: campaignId,
-            event_date: '',
-            start_time: '08:00',
-            end_time: '12:00',
-            venue: '',
-        });
-    }, [templates]);
+        if (publishedTemplates.length === 0) {
+            showAppAlert({
+                title: 'No published exercise plans',
+                description: 'Create and submit an exercise plan before scheduling a simulation event for this campaign.',
+                icon: 'warning',
+            });
+            params.delete('reuse_campaign');
+            const nextSearch = params.toString();
+            const nextUrl = nextSearch
+                ? `${window.location.pathname}?${nextSearch}`
+                : window.location.pathname;
+            window.history.replaceState({}, '', nextUrl);
+            return;
+        }
+
+        openReuseModal({ campaignRequestId: campaignId });
+
+        params.delete('reuse_campaign');
+        const nextSearch = params.toString();
+        const nextUrl = nextSearch
+            ? `${window.location.pathname}?${nextSearch}`
+            : window.location.pathname;
+        window.history.replaceState({}, '', nextUrl);
+    }, [openReuseModal, publishedTemplates, reuseCampaignHandled]);
 
     const categories = React.useMemo(
         () => [...new Set(templateRows.map((item) => item.category).filter(Boolean))].sort(),
@@ -119,12 +165,17 @@ export function SimulationExerciseTemplateModule({
             });
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to publish exercise plan.');
+                throw new Error(formatApiErrors(data, 'Failed to publish exercise plan.'));
             }
 
             setTemplateRows((prev) => prev.map((item) => (
                 item.id === row.id ? { ...item, ...data.template } : item
             )));
+            showAppAlert({
+                title: 'Exercise plan published',
+                description: `"${row.title}" is now available for Use Template when scheduling simulation events.`,
+                icon: 'success',
+            });
         } catch (error) {
             showAppAlert({
                 title: 'Publish failed',
@@ -137,10 +188,18 @@ export function SimulationExerciseTemplateModule({
     };
 
     const handleReuse = async () => {
-        if (!reuseTarget) return;
+        if (!reuseForm.template_id) {
+            showAppAlert({
+                title: 'Select an exercise plan',
+                description: 'Choose a published exercise plan to create the simulation event.',
+                icon: 'warning',
+            });
+            return;
+        }
+
         setIsReusing(true);
         try {
-            const response = await fetch(`/admin/simulation-exercise-templates/${reuseTarget.id}/reuse`, {
+            const response = await fetch(`/admin/simulation-exercise-templates/${reuseForm.template_id}/reuse`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -149,13 +208,24 @@ export function SimulationExerciseTemplateModule({
                 },
                 body: JSON.stringify(reuseForm),
             });
-            const payload = await response.json();
-            if (!response.ok) {
-                throw new Error(payload.message || 'Failed to create simulation event.');
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch {
+                payload = {};
             }
-            window.location.href = payload.redirect || `/admin/simulation-events/${payload.event_id}`;
+
+            if (!response.ok) {
+                throw new Error(formatApiErrors(payload, `Failed to create simulation event (${response.status}).`));
+            }
+            window.location.href = payload.redirect || simulationEventHref({ id: payload.event_id, simulation_exercise_template_id: reuseForm.template_id }, { tab: 'readiness' });
         } catch (error) {
-            window.alert(error.message || 'Failed to reuse template.');
+            showAppAlert({
+                title: 'Reuse failed',
+                description: error.message || 'Failed to create simulation event from exercise plan.',
+                icon: 'error',
+            });
         } finally {
             setIsReusing(false);
         }
@@ -177,11 +247,6 @@ export function SimulationExerciseTemplateModule({
         },
         { key: 'category', label: 'Category', render: (row) => row.category || '—' },
         { key: 'exercise_type', label: 'Exercise Type', render: (row) => row.exercise_type || '—' },
-        {
-            key: 'difficulty_level',
-            label: 'Difficulty',
-            render: (row) => row.difficulty_level || '—',
-        },
         {
             key: 'estimated_duration_minutes',
             label: 'Duration',
@@ -271,16 +336,7 @@ export function SimulationExerciseTemplateModule({
                         {row.status === 'published' ? (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setReuseTarget(row);
-                                    setReuseForm({
-                                        campaign_request_id: '',
-                                        event_date: '',
-                                        start_time: '08:00',
-                                        end_time: '12:00',
-                                        venue: '',
-                                    });
-                                }}
+                                onClick={() => openReuseModal({ templateId: row.id })}
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100"
                             >
                                 <Rocket className="w-3.5 h-3.5" />
@@ -291,14 +347,39 @@ export function SimulationExerciseTemplateModule({
                 )}
             />
 
-            {reuseTarget ? (
+            {reuseModalOpen ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
                     <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-                        <h3 className="text-lg font-semibold text-slate-900">Reuse Template</h3>
+                        <h3 className="text-lg font-semibold text-slate-900">Use Exercise Plan</h3>
                         <p className="mt-1 text-sm text-slate-600">
-                            Create a new simulation event from <strong>{reuseTarget.title}</strong>. The template stays unchanged.
+                            Create a simulation event from a published exercise plan. The exercise plan stays unchanged.
                         </p>
                         <div className="mt-4 space-y-3">
+                            <label className="block text-sm">
+                                <span className="font-medium text-slate-700">Exercise Plan</span>
+                                <select
+                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    value={reuseForm.template_id}
+                                    onChange={(e) => setReuseForm((prev) => ({ ...prev, template_id: e.target.value }))}
+                                >
+                                    <option value="">Select exercise plan...</option>
+                                    {publishedTemplates.map((template) => (
+                                        <option key={template.id} value={template.id}>
+                                            {template.title}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            {selectedReuseTemplate ? (
+                                <p className="text-xs text-slate-500">
+                                    {selectedReuseTemplate.category || 'Uncategorized'}
+                                    {' · '}
+                                    {selectedReuseTemplate.exercise_type || 'Exercise'}
+                                    {selectedReuseTemplate.estimated_duration_minutes
+                                        ? ` · ${selectedReuseTemplate.estimated_duration_minutes} min`
+                                        : ''}
+                                </p>
+                            ) : null}
                             <label className="block text-sm">
                                 <span className="font-medium text-slate-700">Campaign (optional)</span>
                                 <select
@@ -307,11 +388,14 @@ export function SimulationExerciseTemplateModule({
                                     onChange={(e) => setReuseForm((prev) => ({ ...prev, campaign_request_id: e.target.value }))}
                                 >
                                     <option value="">No campaign link</option>
-                                    {approvedSchedules.map((schedule) => (
-                                        <option key={schedule.campaign_id} value={schedule.campaign_id}>
-                                            #{schedule.campaign_id} — {schedule.campaign_title}
-                                        </option>
-                                    ))}
+                                    {approvedSchedules.map((schedule) => {
+                                        const scheduleId = schedule.campaign_request_id || schedule.campaign_id;
+                                        return (
+                                            <option key={scheduleId} value={scheduleId}>
+                                                #{scheduleId} — {schedule.campaign_title}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </label>
                             <div className="grid grid-cols-2 gap-3">
@@ -357,10 +441,10 @@ export function SimulationExerciseTemplateModule({
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end gap-2">
-                            <AdminSecondaryButton onClick={() => setReuseTarget(null)} disabled={isReusing}>
+                            <AdminSecondaryButton onClick={() => setReuseModalOpen(false)} disabled={isReusing}>
                                 Cancel
                             </AdminSecondaryButton>
-                            <AdminPrimaryButton onClick={handleReuse} disabled={isReusing}>
+                            <AdminPrimaryButton onClick={handleReuse} disabled={isReusing || !reuseForm.template_id}>
                                 {isReusing ? 'Creating...' : 'Create Simulation Event'}
                             </AdminPrimaryButton>
                         </div>

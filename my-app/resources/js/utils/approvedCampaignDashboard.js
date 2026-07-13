@@ -22,8 +22,13 @@ export function campaignPlanHref(row) {
 }
 
 export function campaignSimulationHref(row) {
-    return row.simulation_event_href
-        || (row.simulation_event_id ? `/admin/simulation-events/${row.simulation_event_id}` : null);
+    if (row.simulation_event_href) {
+        return row.simulation_event_href;
+    }
+    if (!row.simulation_event_id) {
+        return null;
+    }
+    return `/admin/simulation-events/${row.simulation_event_id}?tab=monitoring`;
 }
 
 export function computeDashboardSummary(schedules = []) {
@@ -31,7 +36,7 @@ export function computeDashboardSummary(schedules = []) {
         approved: schedules.length,
         ready: schedules.filter((row) => row.is_ready_for_simulation).length,
         waitingRegistration: schedules.filter((row) => row.simulation_readiness === 'registration_open').length,
-        withPlan: schedules.filter((row) => row.has_simulation_plan || row.simulation_event_id).length,
+        withPlan: schedules.filter((row) => row.simulation_event_id).length,
     };
 }
 
@@ -88,9 +93,7 @@ export function filterApprovedCampaigns(schedules = [], filters = {}) {
 }
 
 export function resolveRowAction(row) {
-    const planHref = campaignPlanHref(row);
     const simulationHref = campaignSimulationHref(row);
-    const planBadge = row.simulation_plan_badge || 'not_created';
 
     if (simulationHref) {
         return {
@@ -102,46 +105,32 @@ export function resolveRowAction(row) {
         };
     }
 
-    if (planBadge === 'ready') {
-        return {
-            type: 'view_plan',
-            href: planHref,
-            label: 'View Plan',
-            variant: 'view',
-            icon: 'eye',
-        };
-    }
-
-    if (row.has_simulation_plan || planBadge === 'draft') {
-        return {
-            type: 'continue_planning',
-            href: planHref,
-            label: 'Continue Planning',
-            variant: 'edit',
-            icon: 'edit',
-        };
-    }
-
     if (row.can_create_plan) {
-        const campaignId = row.campaign_request_id || row.campaign_id || row.id;
+        const campaignId = campaignRowId(row);
+        const hasPublishedPlans = row.published_exercise_plans_available !== false;
+
         return {
             type: 'use_template',
-            href: `/admin/simulation-events?tab=templates&reuse_campaign=${campaignId}`,
+            href: hasPublishedPlans
+                ? `/admin/simulation-events?tab=templates&reuse_campaign=${campaignId}`
+                : null,
             label: 'Use Template',
             variant: 'edit',
             icon: 'plus',
-            disabled: false,
-            tooltip: null,
+            disabled: !hasPublishedPlans,
+            tooltip: hasPublishedPlans
+                ? null
+                : 'Publish an exercise plan in the Exercise Plans tab first.',
         };
     }
 
     return {
         type: 'create_plan',
-        href: planHref,
+        href: null,
         label: 'Create Plan',
         variant: 'edit',
         icon: 'plus',
         disabled: true,
-        tooltip: row.create_plan_disabled_reason || null,
+        tooltip: row.create_plan_disabled_reason || 'Requirements not yet met.',
     };
 }

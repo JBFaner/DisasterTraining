@@ -244,6 +244,14 @@ class LessonQuizAttemptService
                     ],
                     ['completed_at' => now()],
                 );
+
+                $planningService = app(SimulationEventPlanningService::class);
+                if ($planningService->isModuleTrainingCompleted((int) $attempt->user_id, (int) $attempt->training_module_id)) {
+                    $planningService->syncQualifiedParticipantAcrossCampaignEvents(
+                        (int) $attempt->user_id,
+                        (int) $attempt->training_module_id,
+                    );
+                }
             }
 
             return $attempt->fresh();

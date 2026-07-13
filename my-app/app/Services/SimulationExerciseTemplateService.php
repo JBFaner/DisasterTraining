@@ -89,11 +89,17 @@ class SimulationExerciseTemplateService
                 'events_count' => $template->events()->count(),
                 'updated_at' => $template->updated_at?->toIso8601String(),
             ],
-            'activities' => $template->activities->map(fn (SimulationExerciseActivity $activity) => [
+            'activities' => $template->activities->map(function (SimulationExerciseActivity $activity) use ($template) {
+                $timelineTime = $template->timelineItems
+                    ->firstWhere('activity_id', $activity->id)
+                    ?->start_time;
+
+                return [
                 'id' => $activity->id,
                 'title' => $activity->title,
                 'description' => $activity->description,
                 'duration_minutes' => $activity->duration_minutes,
+                'start_time' => $activity->start_time ?? $timelineTime,
                 'sort_order' => $activity->sort_order,
                 'equipment' => $activity->equipment->map(fn ($item) => $this->serializeEquipment($item))->values()->all(),
                 'evaluation_objectives' => $activity->evaluationObjectives->map(fn ($item) => [
@@ -102,7 +108,8 @@ class SimulationExerciseTemplateService
                     'objective_text' => $item->objective_text,
                     'sort_order' => $item->sort_order,
                 ])->values()->all(),
-            ])->values()->all(),
+            ];
+            })->values()->all(),
             'equipment' => $template->equipment->map(fn ($item) => $this->serializeEquipment($item))->values()->all(),
             'personnel' => $template->personnel->map(fn (SimulationExercisePersonnel $item) => [
                 'id' => $item->id,
@@ -198,7 +205,8 @@ class SimulationExerciseTemplateService
             $this->syncActivities($template, $data['activities'] ?? []);
             $this->syncPersonnel($template, $data['personnel'] ?? []);
             $this->syncPersonnelAssignments($template, $data['personnel_assignments'] ?? []);
-            $this->syncTimeline($template, $data['timeline_items'] ?? []);
+            $template->refresh();
+            $this->syncTimelineFromActivities($template);
             $this->syncEvaluationObjectives($template, $data['evaluation_objectives'] ?? []);
 
             return $template->fresh();
@@ -213,6 +221,72 @@ class SimulationExerciseTemplateService
         ]);
 
         return $template->fresh();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function validatePublishable(SimulationExerciseTemplate $template): array
+    {
+        $template->loadMissing(['activities', 'personnel', 'evaluationObjectives']);
+
+        $errors = [];
+
+        if ($template->status === SimulationExerciseTemplate::STATUS_PUBLISHED) {
+            return ['This exercise plan is already published.'];
+        }
+
+        if ($template->status === SimulationExerciseTemplate::STATUS_ARCHIVED) {
+            return ['Archived exercise plans cannot be published. Create a new plan instead.'];
+        }
+
+        if (trim((string) $template->title) === '') {
+            $errors[] = 'Exercise title is required.';
+        }
+
+        if (! in_array((string) $template->category, SimulationExerciseTemplate::CATEGORIES, true)) {
+            $errors[] = 'Exercise category is required.';
+        }
+
+        if (! in_array((string) $template->exercise_type, SimulationExerciseTemplate::EXERCISE_TYPES, true)) {
+            $errors[] = 'Exercise type is required.';
+        }
+
+        if ((int) ($template->estimated_duration_minutes ?? 0) < 15) {
+            $errors[] = 'Estimated duration must be at least 15 minutes.';
+        }
+
+        if (trim((string) ($template->objectives ?? '')) === '') {
+            $errors[] = 'Exercise objectives are required.';
+        }
+
+        if (trim((string) ($template->scenario_summary ?? '')) === '') {
+            $errors[] = 'Scenario brief is required.';
+        }
+
+        $activities = $template->activities->filter(
+            fn (SimulationExerciseActivity $activity) => trim((string) $activity->title) !== ''
+                && (int) $activity->duration_minutes > 0
+        );
+        if ($activities->isEmpty()) {
+            $errors[] = 'Add at least one exercise activity with a title and duration.';
+        }
+
+        $personnel = $template->personnel->filter(
+            fn (SimulationExercisePersonnel $row) => trim((string) $row->role) !== ''
+        );
+        if ($personnel->isEmpty()) {
+            $errors[] = 'Add at least one recommended personnel role.';
+        }
+
+        $evaluationObjectives = $template->evaluationObjectives->filter(
+            fn (SimulationExerciseEvaluationObjective $row) => trim((string) $row->objective_text) !== ''
+        );
+        if ($evaluationObjectives->isEmpty()) {
+            $errors[] = 'Add at least one evaluation objective.';
+        }
+
+        return $errors;
     }
 
     public function archive(SimulationExerciseTemplate $template, ?int $userId = null): SimulationExerciseTemplate
@@ -304,6 +378,34 @@ class SimulationExerciseTemplateService
             ?->qualifiedTrainer
             ?? $template->personnelAssignments->first(fn ($item) => $item->qualified_trainer_id)?->qualifiedTrainer;
 
+        $targetAudience = $campaignRequest?->trainingModule?->target_audience;
+        $targetAudienceLabel = is_array($targetAudience) && $targetAudience !== []
+            ? implode(', ', $targetAudience)
+            : (is_string($targetAudience) && trim($targetAudience) !== '' ? trim($targetAudience) : null);
+
+        $campaignPayload = is_array($campaignRequest?->payload) ? $campaignRequest->payload : [];
+        $registrationDeadline = $campaignPayload['registration_deadline'] ?? null;
+
+        return DB::transaction(function () use (
+            $template,
+            $data,
+            $userId,
+            $campaignRequest,
+            $eventDate,
+            $startTime,
+            $endTime,
+            $venue,
+            $personnelSummary,
+            $equipmentSummary,
+            $activitySummary,
+            $evaluationSummary,
+            $timelineEntries,
+            $eventPhases,
+            $scenario,
+            $leadTrainer,
+            $targetAudienceLabel,
+            $registrationDeadline,
+        ) {
         $event = SimulationEvent::create([
             'title' => trim((string) ($data['title'] ?? $template->title)),
             'disaster_type' => $template->category,
@@ -320,9 +422,11 @@ class SimulationExerciseTemplateService
             'campaign_request_id' => $campaignRequest?->id,
             'simulation_exercise_template_id' => $template->id,
             'assigned_trainer_id' => $leadTrainer?->id,
-            'target_audience' => $campaignRequest?->trainingModule?->target_audience,
+            'target_audience' => $targetAudienceLabel,
             'max_participants' => $campaignRequest?->expected_participants,
-            'registration_deadline' => $campaignRequest?->payload['registration_deadline'] ?? null,
+            'registration_deadline' => $registrationDeadline,
+            'self_registration_enabled' => false,
+            'approval_required' => false,
             'facilitator_instructions' => implode("\n\n", array_filter([
                 'Exercise Template: '.$template->title,
                 'Recommended Personnel: '.$personnelSummary,
@@ -344,7 +448,10 @@ class SimulationExerciseTemplateService
             ]);
         }
 
+        app(SimulationEventPlanningService::class)->syncQualifiedParticipantsToEvent($event, $userId);
+
         return $event;
+        });
     }
 
     /**
@@ -368,6 +475,7 @@ class SimulationExerciseTemplateService
                 'title' => $title,
                 'description' => $row['description'] ?? null,
                 'duration_minutes' => max(1, (int) ($row['duration_minutes'] ?? 15)),
+                'start_time' => ! empty($row['start_time']) ? (string) $row['start_time'] : null,
                 'sort_order' => $index + 1,
             ];
 
@@ -507,6 +615,25 @@ class SimulationExerciseTemplateService
         }
 
         $template->timelineItems()->whereNotIn('id', $keptIds)->delete();
+    }
+
+    private function syncTimelineFromActivities(SimulationExerciseTemplate $template): void
+    {
+        $timeline = $template->activities()
+            ->orderBy('sort_order')
+            ->get()
+            ->filter(fn (SimulationExerciseActivity $activity) => filled($activity->start_time))
+            ->values()
+            ->map(fn (SimulationExerciseActivity $activity, int $index) => [
+                'start_time' => (string) $activity->start_time,
+                'label' => (string) $activity->title,
+                'description' => $activity->description,
+                'activity_id' => $activity->id,
+                'sort_order' => $index + 1,
+            ])
+            ->all();
+
+        $this->syncTimeline($template, $timeline);
     }
 
     /**

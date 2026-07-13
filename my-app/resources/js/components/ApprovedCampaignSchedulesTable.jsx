@@ -400,8 +400,6 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
                 >
                     <option value="">All Plan Status</option>
                     <option value="not_created">Not Created</option>
-                    <option value="draft">Draft</option>
-                    <option value="ready">Ready</option>
                     <option value="generated">Generated</option>
                     <option value="completed">Completed</option>
                 </AdminFilterSelect>

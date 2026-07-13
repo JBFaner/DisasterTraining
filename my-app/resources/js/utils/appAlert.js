@@ -16,12 +16,21 @@ export function registerAppChoice(handler) {
     choiceHandler = handler;
 }
 
+export function formatApiErrors(data, fallback = 'Something went wrong.') {
+    if (Array.isArray(data?.errors) && data.errors.length > 0) {
+        return data.errors.map((item) => `• ${item}`).join('\n');
+    }
+
+    return data?.message || fallback;
+}
+
 export function showAppAlert({ title, description, icon = 'warning' }) {
     blurAllFocus();
     if (alertHandler) {
         return alertHandler({ title, description, icon });
     }
 
+    window.alert([title, description].filter(Boolean).join('\n\n'));
     return Promise.resolve();
 }
 
@@ -37,7 +46,7 @@ export function showAppConfirm({
         return confirmHandler({ title, description, confirmLabel, cancelLabel, confirmVariant });
     }
 
-    return Promise.resolve(false);
+    return Promise.resolve(window.confirm([title, description].filter(Boolean).join('\n\n')));
 }
 
 export function showAppChoice({

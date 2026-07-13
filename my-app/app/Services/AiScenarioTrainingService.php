@@ -168,6 +168,10 @@ class AiScenarioTrainingService
 
             if ($freshAttempt->passed) {
                 app(TrainingCertificateService::class)->issueForPassedAttempt($freshAttempt, $evaluation);
+                app(SimulationEventPlanningService::class)->syncQualifiedParticipantAcrossCampaignEvents(
+                    (int) $freshAttempt->user_id,
+                    (int) $freshAttempt->training_module_id,
+                );
             } else {
                 app(TrainingRetakePolicyService::class)->handleFailedAttempt($freshAttempt);
             }

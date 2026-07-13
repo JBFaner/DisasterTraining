@@ -180,6 +180,15 @@ class SimulationExerciseTemplateController extends Controller
     {
         $this->authorizeAccess();
 
+        $errors = $this->templateService->validatePublishable($simulationExerciseTemplate);
+        if ($errors !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Complete the exercise plan before publishing.',
+                'errors' => $errors,
+            ], 422);
+        }
+
         $template = $this->templateService->publish($simulationExerciseTemplate, $request->user()?->id);
 
         return response()->json([
@@ -223,7 +232,7 @@ class SimulationExerciseTemplateController extends Controller
             return response()->json([
                 'success' => true,
                 'event_id' => $event->id,
-                'redirect' => '/admin/simulation-events/'.$event->id,
+                'redirect' => '/admin/simulation-events/'.$event->id.'?tab=readiness',
             ]);
         }
 
@@ -276,6 +285,7 @@ class SimulationExerciseTemplateController extends Controller
             'activities.*.title' => ['nullable', 'string', 'max:255'],
             'activities.*.description' => ['nullable', 'string'],
             'activities.*.duration_minutes' => ['nullable', 'integer', 'min:1', 'max:480'],
+            'activities.*.start_time' => ['nullable', 'string', 'max:10'],
             'activities.*.equipment' => ['nullable', 'array'],
             'activities.*.equipment.*.id' => ['nullable', 'integer'],
             'activities.*.equipment.*.resource_id' => ['nullable', 'integer', 'exists:resources,id'],

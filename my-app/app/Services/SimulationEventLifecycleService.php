@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Models\CampaignRequest;
 use App\Models\SimulationEvent;
 use Carbon\Carbon;
 
 class SimulationEventLifecycleService
 {
+    public function __construct(
+        protected SimulationEventPlanningService $planningService,
+    ) {}
     public const EXECUTION_STEP_DEFINITIONS = [
         ['key' => 'pre_briefing', 'label' => 'Pre-Briefing'],
         ['key' => 'attendance_verification', 'label' => 'Attendance Verification'],
@@ -71,13 +75,32 @@ class SimulationEventLifecycleService
     public function buildReadinessChecklist(SimulationEvent $event): array
     {
         $confirmations = $event->readiness_confirmations ?? [];
+        $isCampaignEvent = (bool) $event->campaign_request_id;
+
+        if ($isCampaignEvent && $event->training_module_id) {
+            $this->planningService->syncQualifiedParticipantsToEvent($event);
+            $event->unsetRelation('registrations');
+            $event->load('registrations');
+        }
 
         $hasVenueData = filled($event->location) || filled($event->venue) || filled($event->building);
         $hasScheduleData = filled($event->event_date) && filled($event->start_time) && filled($event->end_time);
         $hasTrainer = (bool) $event->assigned_trainer_id;
-        $hasParticipants = $event->relationLoaded('registrations')
-            ? $event->registrations->where('status', 'approved')->count() > 0
-            : $event->approvedRegistrations()->exists();
+        $approvedRegistrationCount = $event->relationLoaded('registrations')
+            ? $event->registrations->where('status', 'approved')->count()
+            : $event->approvedRegistrations()->count();
+
+        if ($isCampaignEvent) {
+            $campaign = $event->relationLoaded('campaignRequest')
+                ? $event->campaignRequest
+                : CampaignRequest::query()->find($event->campaign_request_id);
+            $minimum = (int) ($campaign?->minimum_qualified_participants ?? 0);
+            $hasParticipants = $minimum > 0
+                ? $approvedRegistrationCount >= $minimum
+                : $approvedRegistrationCount > 0;
+        } else {
+            $hasParticipants = $approvedRegistrationCount > 0;
+        }
         $resourceCollection = $event->relationLoaded('resources')
             ? $event->resources
             : $event->resources()->get();
@@ -88,8 +111,6 @@ class SimulationEventLifecycleService
 
             return $needed === 0 || $assigned >= $needed;
         });
-        $hasScenario = (bool) $event->scenario_id;
-
         $items = [
             [
                 'key' => 'trainer_assigned',
@@ -102,6 +123,14 @@ class SimulationEventLifecycleService
                 'label' => 'Participants Registered',
                 'completed' => $hasParticipants,
                 'required' => true,
+                'automatic' => $isCampaignEvent,
+                'detail' => $isCampaignEvent
+                    ? sprintf(
+                        '%d qualified participant%s auto-registered from completed training',
+                        $approvedRegistrationCount,
+                        $approvedRegistrationCount === 1 ? '' : 's',
+                    )
+                    : null,
             ],
             [
                 'key' => 'equipment_assigned',
@@ -119,12 +148,6 @@ class SimulationEventLifecycleService
                 'key' => 'schedule_confirmed',
                 'label' => 'Schedule Confirmed',
                 'completed' => (bool) ($confirmations['schedule_confirmed'] ?? false) || $hasScheduleData,
-                'required' => true,
-            ],
-            [
-                'key' => 'hazard_scenario_assigned',
-                'label' => 'Hazard Scenario Assigned',
-                'completed' => $hasScenario,
                 'required' => true,
             ],
         ];

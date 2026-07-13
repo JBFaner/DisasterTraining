@@ -62,6 +62,10 @@ class SimulationEventController extends Controller
             'scenario.trainingModule',
             'assignedTrainer',
             'creator',
+            'trainingModule:id,title',
+            'simulationExerciseTemplate:id,title,category,exercise_type',
+            'campaignRequest:id,training_module_id,expected_participants,status',
+            'campaignRequest.trainingModule:id,title',
             'resources' => function ($query) {
                 $query->withPivot('quantity_needed', 'quantity_assigned', 'status', 'notes');
             },
@@ -241,6 +245,14 @@ class SimulationEventController extends Controller
     public function edit(SimulationEvent $simulationEvent)
     {
         $this->authorizeEventAccess();
+
+        if ($simulationEvent->simulation_exercise_template_id) {
+            $tab = in_array($simulationEvent->status, ['published', 'ongoing'], true)
+                ? 'monitoring'
+                : 'readiness';
+
+            return redirect("/admin/simulation-events/{$simulationEvent->id}?tab={$tab}");
+        }
 
         // Prevent editing of published, cancelled, or archived events
         if (in_array($simulationEvent->status, ['published', 'cancelled', 'archived'], true)) {
@@ -452,7 +464,7 @@ class SimulationEventController extends Controller
             ->with('status', 'Simulation event deleted permanently.');
     }
 
-    public function publish(SimulationEvent $simulationEvent)
+    public function publish(Request $request, SimulationEvent $simulationEvent)
     {
         $this->authorizeEventAccess();
 
@@ -476,7 +488,18 @@ class SimulationEventController extends Controller
             'new_values' => $simulationEvent->toArray(),
         ]);
 
-        return redirect()->route('admin.simulation-events.index')
+        $redirect = $simulationEvent->simulation_exercise_template_id
+            ? '/admin/simulation-events/'.$simulationEvent->id.'?tab=monitoring'
+            : route('admin.simulation-events.index');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'redirect' => $redirect,
+            ]);
+        }
+
+        return redirect($redirect)
             ->with('status', 'Simulation event published and resources assigned successfully.');
     }
 
@@ -812,6 +835,10 @@ class SimulationEventController extends Controller
                 $query->orderBy('order');
             },
             'assignedTrainer',
+            'trainingModule:id,title',
+            'simulationExerciseTemplate:id,title,category,exercise_type,estimated_duration_minutes',
+            'campaignRequest:id,training_module_id,expected_participants,status',
+            'campaignRequest.trainingModule:id,title',
             'registrations.user',
             'resources',
             'assignedResources.resource',
