@@ -677,6 +677,7 @@ export function ResourceBudgetProposalDetail({ proposal, options = {}, role = ''
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Qty</th>
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Unit Cost</th>
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Total</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Inventory</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -690,12 +691,26 @@ export function ResourceBudgetProposalDetail({ proposal, options = {}, role = ''
                                             <td className="px-5 py-3 text-right text-slate-700">{item.quantity}</td>
                                             <td className="px-5 py-3 text-right text-slate-700">{formatCurrency(item.unit_cost)}</td>
                                             <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(item.total_cost)}</td>
+                                            <td className="px-5 py-3">
+                                                {item.resource_id ? (
+                                                    <a
+                                                        href="/admin/resources"
+                                                        className="text-xs font-medium text-emerald-700 hover:underline"
+                                                    >
+                                                        {item.resource?.status === 'Pending Approval' || Number(item.resource?.pending_quantity || 0) > 0
+                                                            ? 'Pending in inventory'
+                                                            : 'Available in inventory'}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">Not synced yet</span>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot>
                                     <tr className="bg-emerald-50/50 border-t border-emerald-100">
-                                        <td colSpan={4} className="px-5 py-3 text-right text-sm font-semibold text-slate-700">Estimated Total</td>
+                                        <td colSpan={5} className="px-5 py-3 text-right text-sm font-semibold text-slate-700">Estimated Total</td>
                                         <td className="px-5 py-3 text-right text-lg font-bold text-emerald-700">{formatCurrency(proposal.total_estimated_cost)}</td>
                                     </tr>
                                 </tfoot>
@@ -706,6 +721,31 @@ export function ResourceBudgetProposalDetail({ proposal, options = {}, role = ''
                     {proposal.justification && (
                         <CardSection title="Justification" icon={FileText}>
                             <p className="p-5 text-sm text-slate-700 whitespace-pre-wrap">{proposal.justification}</p>
+                        </CardSection>
+                    )}
+
+                    {['submitted', 'approved', 'rejected'].includes(proposal.status) && (
+                        <CardSection title="Inventory Impact" icon={Package}>
+                            <div className="p-5 space-y-2 text-sm">
+                                {proposal.status === 'submitted' && (
+                                    <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                        These items are shown in Resource Inventory as pending until the proposal is approved.
+                                    </p>
+                                )}
+                                {proposal.status === 'approved' && (
+                                    <p className="text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                                        Approved items have been added to Resource Inventory as available stock.
+                                    </p>
+                                )}
+                                {proposal.status === 'rejected' && (
+                                    <p className="text-rose-800 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                                        Pending inventory created by this proposal was removed or reverted.
+                                    </p>
+                                )}
+                                <AdminSecondaryButton href="/admin/resources">
+                                    Open Resource Inventory
+                                </AdminSecondaryButton>
+                            </div>
                         </CardSection>
                     )}
                 </div>

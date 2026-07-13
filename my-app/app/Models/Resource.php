@@ -19,6 +19,7 @@ class Resource extends Model
         'reserved_quantity',
         'in_use_quantity',
         'needs_repair_quantity',
+        'pending_quantity',
         'condition',
         'status',
         'location',
@@ -31,6 +32,8 @@ class Resource extends Model
         'last_inspection_date',
         'created_by',
         'updated_by',
+        'resource_budget_proposal_id',
+        'resource_budget_proposal_item_id',
     ];
 
     protected $casts = [
@@ -41,6 +44,7 @@ class Resource extends Model
         'reserved_quantity' => 'integer',
         'in_use_quantity' => 'integer',
         'needs_repair_quantity' => 'integer',
+        'pending_quantity' => 'integer',
     ];
 
     public function movements()
@@ -142,6 +146,26 @@ class Resource extends Model
     public function maintenanceLogs()
     {
         return $this->hasMany(ResourceMaintenanceLog::class)->orderBy('created_at', 'desc');
+    }
+
+    public function budgetProposal()
+    {
+        return $this->belongsTo(ResourceBudgetProposal::class, 'resource_budget_proposal_id');
+    }
+
+    public function budgetProposalItem()
+    {
+        return $this->belongsTo(ResourceBudgetProposalItem::class, 'resource_budget_proposal_item_id');
+    }
+
+    public function isPendingApproval(): bool
+    {
+        return $this->status === 'Pending Approval';
+    }
+
+    public function hasPendingRestock(): bool
+    {
+        return (int) ($this->pending_quantity ?? 0) > 0;
     }
 
     /**

@@ -131,7 +131,7 @@ export function ResourceInventory() {
         maintenance_history: [],
     });
     const resourceTypes = ['PPE', 'Fire Equipment', 'Medical', 'Communication', 'Vehicles', 'Tools', 'Other'];
-    const statusOptions = ['Available', 'In Use', 'Under Maintenance', 'Damaged', 'Missing', 'Reserved'];
+    const statusOptions = ['Available', 'Pending Approval', 'In Use', 'Under Maintenance', 'Damaged', 'Missing', 'Reserved'];
     const conditionOptions = ['New', 'Good', 'Needs Repair', 'Damaged'];
 
     // Fetch resources from API on component mount
@@ -232,6 +232,8 @@ export function ResourceInventory() {
         switch (status) {
             case 'Available':
                 return <CheckCircle className="w-4 h-4 text-emerald-500" />;
+            case 'Pending Approval':
+                return <Clock className="w-4 h-4 text-amber-500" />;
             case 'In Use':
                 return <Clock className="w-4 h-4 text-blue-500" />;
             case 'Under Maintenance':
@@ -248,6 +250,8 @@ export function ResourceInventory() {
         switch (status) {
             case 'Available':
                 return 'bg-emerald-100 text-emerald-800';
+            case 'Pending Approval':
+                return 'bg-amber-100 text-amber-800';
             case 'In Use':
                 return 'bg-blue-100 text-blue-800';
             case 'Under Maintenance':
@@ -281,6 +285,8 @@ export function ResourceInventory() {
         switch (status) {
             case 'Available':
                 return 'bg-emerald-100 text-emerald-800 ' + base;
+            case 'Pending Approval':
+                return 'bg-amber-100 text-amber-800 ' + base;
             case 'In Use':
             case 'Fully Assigned':
                 return 'bg-blue-100 text-blue-800 ' + base;
@@ -314,6 +320,9 @@ export function ResourceInventory() {
         
         // Handle special 'in_use_all' filter for all assigned statuses
         let matchesStatus = statusFilter === 'all' || resource.status === statusFilter;
+        if (statusFilter === 'Pending Approval') {
+            matchesStatus = resource.status === 'Pending Approval' || Number(resource.pending_quantity || 0) > 0;
+        }
         if (statusFilter === 'in_use_all') {
             matchesStatus = resource.status === 'In Use' || resource.status === 'Partially Assigned' || resource.status === 'Fully Assigned';
         }
@@ -911,7 +920,8 @@ export function ResourceInventory() {
 
     const stats = {
         total: resources.length,
-        available: resources.filter((r) => r.status === 'Available').length,
+        available: resources.filter((r) => r.status === 'Available' && Number(r.pending_quantity || 0) === 0).length,
+        pendingApproval: resources.filter((r) => r.status === 'Pending Approval' || Number(r.pending_quantity || 0) > 0).length,
         reserved: resources.filter((r) => r.status === 'Reserved').length,
         inUse: resources.filter((r) => r.status === 'In Use' || r.status === 'Partially Assigned' || r.status === 'Fully Assigned').length,
         needsRepair: resources.filter((r) => r.condition === 'Needs Repair').length,
@@ -948,7 +958,7 @@ export function ResourceInventory() {
             />
 
             {/* Summary Cards - Certification style (premium KPI cards) */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6">
                 <div
                     className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'all' && resourceTypeFilter === 'all' && conditionFilter === 'all' ? 'border-slate-300 ring-2 ring-emerald-500/30' : 'border-slate-200'}`}
                     onClick={() => { setStatusFilter('all'); setResourceTypeFilter('all'); setConditionFilter('all'); }}
@@ -970,6 +980,17 @@ export function ResourceInventory() {
                     <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Available</p>
                     <p className="text-[32px] font-bold text-emerald-800 mt-1">{stats.available}</p>
                     <p className="text-xs text-slate-500 mt-1">{stats.total ? `${availablePct}%` : '0%'}</p>
+                </div>
+                <div
+                    className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'Pending Approval' ? 'border-amber-300 ring-2 ring-emerald-500/30' : 'border-amber-200'}`}
+                    onClick={() => setStatusFilter('Pending Approval')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter('Pending Approval'); } }}
+                >
+                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Pending Approval</p>
+                    <p className="text-[32px] font-bold text-amber-800 mt-1">{stats.pendingApproval}</p>
+                    <p className="text-xs text-slate-500 mt-1">From budget proposals</p>
                 </div>
                 <div
                     className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'Reserved' ? 'border-violet-300 ring-2 ring-emerald-500/30' : 'border-slate-200'}`}
@@ -1103,13 +1124,28 @@ export function ResourceInventory() {
                                                 </span>
                                             </div>
                                             <div className="text-slate-900 font-medium">
-                                                {resource.available ?? resource.quantity}/{resource.quantity}
+                                                {resource.status === 'Pending Approval'
+                                                    ? `0/${resource.quantity}`
+                                                    : `${resource.available ?? resource.quantity}/${resource.quantity}`}
+                                                {Number(resource.pending_quantity || 0) > 0 && (
+                                                    <span className="block text-[11px] font-normal text-amber-700">
+                                                        +{resource.pending_quantity} pending restock
+                                                    </span>
+                                                )}
                                             </div>
                                             <div>
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(resource.status)}`}>
-                                                    {getStatusIcon(resource.status)}
-                                                    {resource.status}
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(resource.status === 'Pending Approval' ? resource.status : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Approval' : resource.status))}`}>
+                                                    {getStatusIcon(resource.status === 'Pending Approval' ? resource.status : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Approval' : resource.status))}
+                                                    {resource.status === 'Pending Approval' ? resource.status : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Restock' : resource.status)}
                                                 </span>
+                                                {resource.budget_proposal?.reference_number && (
+                                                    <a
+                                                        href={`/admin/resource-budget-proposals/${resource.resource_budget_proposal_id}`}
+                                                        className="block text-[11px] text-emerald-700 hover:underline mt-1"
+                                                    >
+                                                        {resource.budget_proposal.reference_number}
+                                                    </a>
+                                                )}
                                             </div>
                                             <div>
                                                 <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${getConditionColor(resource.condition)}`}>

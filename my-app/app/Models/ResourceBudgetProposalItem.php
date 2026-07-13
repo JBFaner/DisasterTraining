@@ -15,6 +15,7 @@ class ResourceBudgetProposalItem extends Model
         'unit_cost',
         'total_cost',
         'notes',
+        'resource_id',
     ];
 
     protected $casts = [
@@ -26,5 +27,10 @@ class ResourceBudgetProposalItem extends Model
     public function proposal(): BelongsTo
     {
         return $this->belongsTo(ResourceBudgetProposal::class, 'resource_budget_proposal_id');
+    }
+
+    public function resource(): BelongsTo
+    {
+        return $this->belongsTo(Resource::class);
     }
 }

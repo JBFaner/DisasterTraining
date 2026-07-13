@@ -63,6 +63,11 @@ class ResourceBudgetProposal extends Model
         return $this->belongsTo(BarangayProfile::class);
     }
 
+    public function createdResources(): HasMany
+    {
+        return $this->hasMany(Resource::class, 'resource_budget_proposal_id');
+    }
+
     public function recalculateTotal(): void
     {
         $this->total_estimated_cost = $this->items()->sum('total_cost');

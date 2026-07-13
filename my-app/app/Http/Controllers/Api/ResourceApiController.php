@@ -37,13 +37,17 @@ class ResourceApiController
                 $query->where('condition', $request->condition);
             }
 
-            $resources = $query->get();
+            $resources = $query->with(['budgetProposal:id,reference_number,title,status'])->get();
 
             return response()->json([
                 'resources' => $resources,
                 'stats' => [
                     'total' => Resource::count(),
-                    'available' => Resource::where('status', 'Available')->count(),
+                    'available' => Resource::where('status', 'Available')->where('pending_quantity', 0)->count(),
+                    'pendingApproval' => Resource::where(function ($query) {
+                        $query->where('status', 'Pending Approval')
+                            ->orWhere('pending_quantity', '>', 0);
+                    })->count(),
                     'reserved' => Resource::where('status', 'Reserved')->count(),
                     'inUse' => Resource::where('status', 'In Use')->count(),
                     'partiallyAssigned' => Resource::where('status', 'Partially Assigned')->count(),
@@ -58,6 +62,7 @@ class ResourceApiController
                 'stats' => [
                     'total' => 0,
                     'available' => 0,
+                    'pendingApproval' => 0,
                     'reserved' => 0,
                     'inUse' => 0,
                     'partiallyAssigned' => 0,

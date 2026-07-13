@@ -7,12 +7,17 @@ use App\Models\Resource;
 use App\Models\ResourceBudgetProposal;
 use App\Models\SimulationEvent;
 use App\Services\AuditLogger;
+use App\Services\ResourceBudgetProposalInventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ResourceBudgetProposalController extends Controller
 {
+    public function __construct(
+        protected ResourceBudgetProposalInventoryService $inventoryService
+    ) {
+    }
     public function apiIndex(Request $request)
     {
         $this->authorizeAccess();
@@ -84,12 +89,13 @@ class ResourceBudgetProposalController extends Controller
         $this->authorizeAccess();
 
         $resourceBudgetProposal->load([
-            'items',
+            'items.resource',
             'creator',
             'reviewer',
             'resource',
             'simulationEvent',
             'barangayProfile',
+            'createdResources',
         ]);
 
         if (request()->expectsJson()) {
@@ -132,6 +138,8 @@ class ResourceBudgetProposalController extends Controller
         $data = $this->validatedProposalData($request);
 
         DB::transaction(function () use ($resourceBudgetProposal, $data) {
+            $this->inventoryService->cleanupBeforeItemResync($resourceBudgetProposal);
+
             $resourceBudgetProposal->update([
                 ...$data['proposal'],
                 'status' => 'draft',
@@ -196,6 +204,8 @@ class ResourceBudgetProposalController extends Controller
             'submitted_at' => now(),
         ]);
 
+        $this->inventoryService->syncOnSubmit($resourceBudgetProposal->fresh('items'));
+
         AuditLogger::log([
             'action' => 'Submitted resource budget proposal',
             'module' => 'Resource Budget Proposal',
@@ -203,7 +213,7 @@ class ResourceBudgetProposalController extends Controller
             'description' => $resourceBudgetProposal->reference_number,
         ]);
 
-        return back()->with('status', 'Budget proposal submitted for review.');
+        return back()->with('status', 'Budget proposal submitted for review. Pending items are now visible in Resource Inventory.');
     }
 
     public function approve(Request $request, ResourceBudgetProposal $resourceBudgetProposal)
@@ -225,6 +235,8 @@ class ResourceBudgetProposalController extends Controller
             'review_notes' => $data['review_notes'] ?? null,
         ]);
 
+        $this->inventoryService->fulfillOnApprove($resourceBudgetProposal->fresh('items'));
+
         AuditLogger::log([
             'action' => 'Approved resource budget proposal',
             'module' => 'Resource Budget Proposal',
@@ -232,7 +244,7 @@ class ResourceBudgetProposalController extends Controller
             'description' => $resourceBudgetProposal->reference_number,
         ]);
 
-        return back()->with('status', 'Budget proposal approved.');
+        return back()->with('status', 'Budget proposal approved. Inventory has been updated.');
     }
 
     public function reject(Request $request, ResourceBudgetProposal $resourceBudgetProposal)
@@ -254,6 +266,8 @@ class ResourceBudgetProposalController extends Controller
             'review_notes' => $data['review_notes'],
         ]);
 
+        $this->inventoryService->revertOnReject($resourceBudgetProposal->fresh('items'));
+
         AuditLogger::log([
             'action' => 'Rejected resource budget proposal',
             'module' => 'Resource Budget Proposal',
@@ -270,7 +284,7 @@ class ResourceBudgetProposalController extends Controller
     protected function buildListResponse(Request $request): array
     {
         $query = ResourceBudgetProposal::query()
-            ->with(['creator', 'items'])
+            ->with(['creator', 'items.resource'])
             ->withCount('items');
 
         if ($search = trim((string) $request->input('search'))) {
