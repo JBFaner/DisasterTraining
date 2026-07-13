@@ -19,6 +19,10 @@ class SimulationPlan extends Model
         'simulation_scenario',
         'simulation_objectives',
         'simulation_description',
+        'event_date',
+        'start_time',
+        'end_time',
+        'venue',
         'team_assignments',
         'lead_coordinator',
         'planning_officer',
@@ -42,6 +46,7 @@ class SimulationPlan extends Model
 
     protected $casts = [
         'team_assignments' => 'array',
+        'event_date' => 'date',
         'estimated_responders' => 'integer',
         'estimated_observers' => 'integer',
         'estimated_evaluators' => 'integer',

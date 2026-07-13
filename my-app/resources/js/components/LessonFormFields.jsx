@@ -138,7 +138,7 @@ const EXTRA_RESOURCE_OPTIONS = [
     { value: 'pdf', label: 'PDF Attachment' },
 ];
 
-function ExtraResourceBlock({ resource, onRemove }) {
+function ExtraResourceBlock({ resource, onRemove, fieldErrors = {}, onClearFieldError }) {
     if (resource.type === 'image') {
         return (
             <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-2">
@@ -159,7 +159,9 @@ function ExtraResourceBlock({ resource, onRemove }) {
                     <span className="text-xs font-semibold text-slate-700">YouTube Link</span>
                     <button type="button" onClick={onRemove} className="text-xs text-rose-600 hover:text-rose-700">Remove</button>
                 </div>
-                <input name="video_url" type="url" placeholder="https://www.youtube.com/watch?v=..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                <input name="video_url" type="url" placeholder="https://www.youtube.com/watch?v=..." className={`w-full rounded-xl border px-3 py-2 text-sm ${fieldErrors.video_url ? 'border-rose-400' : 'border-slate-300'}`} onChange={() => onClearFieldError?.('video_url')} />
+                {fieldErrors.video_url ? <p className="text-xs text-rose-600">{fieldErrors.video_url}</p> : null}
+                <p className="text-xs text-slate-500">Reference video only. AI quiz generation uses the lesson rich text content above.</p>
             </div>
         );
     }
@@ -171,7 +173,8 @@ function ExtraResourceBlock({ resource, onRemove }) {
                     <span className="text-xs font-semibold text-slate-700">Video File</span>
                     <button type="button" onClick={onRemove} className="text-xs text-rose-600 hover:text-rose-700">Remove</button>
                 </div>
-                <input name="video_file" type="file" accept="video/mp4,video/quicktime,video/x-msvideo" className="w-full text-sm" />
+                <input name="video_file" type="file" accept="video/mp4,video/quicktime,video/x-msvideo" className="w-full text-sm" onChange={() => onClearFieldError?.('video_file')} />
+                {fieldErrors.video_file ? <p className="text-xs text-rose-600">{fieldErrors.video_file}</p> : null}
             </div>
         );
     }
@@ -188,7 +191,7 @@ function ExtraResourceBlock({ resource, onRemove }) {
     );
 }
 
-export function LessonExtraResourcesField({ resources, onChange }) {
+export function LessonExtraResourcesField({ resources, onChange, fieldErrors = {}, onClearFieldError }) {
     const [selectedType, setSelectedType] = React.useState('');
 
     const addResource = () => {
@@ -256,12 +259,53 @@ export function LessonExtraResourcesField({ resources, onChange }) {
                             key={resource.id}
                             resource={resource}
                             onRemove={() => removeResource(resource.id)}
+                            fieldErrors={fieldErrors}
+                            onClearFieldError={onClearFieldError}
                         />
                     ))}
                 </div>
             )}
         </div>
     );
+}
+
+export function validateLessonForm({
+    lessonTitle,
+    contentBody,
+    form = null,
+    extraResources = [],
+    mode = 'create',
+}) {
+    const errors = {};
+    const trimmedTitle = String(lessonTitle || '').trim();
+
+    if (!trimmedTitle) {
+        errors.title = 'Lesson title is required.';
+    } else if (trimmedTitle.length > 255) {
+        errors.title = 'Lesson title must be 255 characters or less.';
+    }
+
+    const resolvedContent = resolveLessonContentBody(form, contentBody);
+    if (mode === 'create' && !hasRichTextContent(resolvedContent)) {
+        errors.content_body = 'Training content is required. Add lesson text in the rich text editor.';
+    }
+
+    if (form && (extraResources || []).length > 0) {
+        const videoUrl = form.querySelector('input[name="video_url"]')?.value?.trim();
+        if (extraResources.some((item) => item.type === 'youtube') && !videoUrl) {
+            errors.video_url = 'YouTube URL is required when a YouTube resource is added.';
+        }
+
+        const videoFileInput = form.querySelector('input[name="video_file"]');
+        if (extraResources.some((item) => item.type === 'video') && !(videoFileInput?.files?.length > 0)) {
+            errors.video_file = 'Please select a video file for the video resource.';
+        }
+    }
+
+    return {
+        valid: Object.keys(errors).length === 0,
+        errors,
+    };
 }
 
 export function resolveLessonContentBody(form, contentBody) {
@@ -365,15 +409,21 @@ export function clearLessonDraft(key) {
     window.localStorage.removeItem(key);
 }
 
-export function useLessonClosePrompt({ isDirty, onSaveDraft, onDiscard }) {
+export function useLessonClosePrompt({
+    isDirty,
+    onSaveDraft,
+    onDiscard,
+    title = 'Unsaved changes',
+    description = 'You have unsaved lesson changes. What would you like to do?',
+}) {
     const requestClose = React.useCallback(async () => {
         if (!isDirty) {
             return true;
         }
 
         const choice = await showAppChoice({
-            title: 'Unsaved changes',
-            description: 'You have unsaved lesson changes. What would you like to do?',
+            title,
+            description,
             buttons: [
                 { label: 'Save as draft', variant: 'primary', value: 'draft' },
                 { label: 'Discard changes', variant: 'danger', value: 'discard' },
@@ -382,8 +432,8 @@ export function useLessonClosePrompt({ isDirty, onSaveDraft, onDiscard }) {
         });
 
         if (choice === 'draft') {
-            onSaveDraft?.();
-            return true;
+            const saved = await Promise.resolve(onSaveDraft?.());
+            return saved !== false;
         }
 
         if (choice === 'discard') {
@@ -392,7 +442,7 @@ export function useLessonClosePrompt({ isDirty, onSaveDraft, onDiscard }) {
         }
 
         return false;
-    }, [isDirty, onDiscard, onSaveDraft]);
+    }, [description, isDirty, onDiscard, onSaveDraft, title]);
 
     return { requestClose, dialog: null };
 }
@@ -452,6 +502,8 @@ export function LessonFormFields({
     setContentBody,
     extraResources,
     setExtraResources,
+    fieldErrors = {},
+    onClearFieldError,
 }) {
     return (
         <>
@@ -462,24 +514,46 @@ export function LessonFormFields({
                     type="text"
                     required
                     value={lessonTitle}
-                    onChange={(e) => setLessonTitle(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    onChange={(e) => {
+                        setLessonTitle(e.target.value);
+                        onClearFieldError?.('title');
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2 text-sm ${
+                        fieldErrors.title ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200' : 'border-slate-300'
+                    }`}
                     placeholder="Enter lesson title"
+                    aria-invalid={fieldErrors.title ? 'true' : 'false'}
                 />
+                {fieldErrors.title ? (
+                    <p className="mt-1 text-xs text-rose-600">{fieldErrors.title}</p>
+                ) : null}
             </div>
 
             <div>
                 <FieldLabel required tip="Write the main lesson content here, including learning objectives. This is the primary source for AI quiz question and answer generation.">
                     Training Content (Rich Text)
                 </FieldLabel>
-                <LessonRichTextEditor
-                    value={contentBody}
-                    onChange={setContentBody}
-                    placeholder="Type lesson content with headings, lists, objectives, and formatting…"
-                />
+                <div className={fieldErrors.content_body ? 'rounded-xl ring-2 ring-rose-300' : ''}>
+                    <LessonRichTextEditor
+                        value={contentBody}
+                        onChange={(value) => {
+                            setContentBody(value);
+                            onClearFieldError?.('content_body');
+                        }}
+                        placeholder="Type lesson content with headings, lists, objectives, and formatting…"
+                    />
+                </div>
+                {fieldErrors.content_body ? (
+                    <p className="mt-1 text-xs text-rose-600">{fieldErrors.content_body}</p>
+                ) : null}
             </div>
 
-            <LessonExtraResourcesField resources={extraResources} onChange={setExtraResources} />
+            <LessonExtraResourcesField
+                resources={extraResources}
+                onChange={setExtraResources}
+                fieldErrors={fieldErrors}
+                onClearFieldError={onClearFieldError}
+            />
         </>
     );
 }

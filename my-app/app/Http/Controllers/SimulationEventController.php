@@ -13,6 +13,7 @@ use App\Services\AuditLogger;
 use App\Services\DatabaseBackupService;
 use App\Services\SimulationEventLifecycleService;
 use App\Services\SimulationEventPlanningService;
+use App\Services\SimulationExerciseTemplateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -89,10 +90,20 @@ class SimulationEventController extends Controller
                 ->all();
         });
 
+        $templateService = app(SimulationExerciseTemplateService::class);
+        $exerciseTemplates = $templateService->listForDashboard()->values()->all();
+
         return view('app', [
             'section' => 'simulation',
             'events' => $events,
             'approved_schedules' => $this->planningService->listApprovedSchedules()->values()->all(),
+            'exercise_templates' => $exerciseTemplates,
+            'exercise_template_summary' => [
+                'total' => count($exerciseTemplates),
+                'published' => collect($exerciseTemplates)->where('status', 'published')->count(),
+                'draft' => collect($exerciseTemplates)->where('status', 'draft')->count(),
+                'archived' => collect($exerciseTemplates)->where('status', 'archived')->count(),
+            ],
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
         ]);
     }

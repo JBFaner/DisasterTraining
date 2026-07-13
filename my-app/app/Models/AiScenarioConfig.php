@@ -14,6 +14,12 @@ class AiScenarioConfig extends Model
 
     public const QUESTION_COUNTS = [10, 15, 20];
 
+    public const BANK_QUESTION_COUNTS = [10, 20, 30];
+
+    public const DEFAULT_BANK_QUESTION_COUNT = 20;
+
+    public const DEFAULT_QUIZ_QUESTION_COUNT = 10;
+
     public const LANGUAGES = ['en', 'fil'];
 
     public const FAIL_POLICY_REQUIRE_LESSON_REVIEW = 'require_lesson_review';
@@ -29,6 +35,8 @@ class AiScenarioConfig extends Model
         'training_module_id',
         'difficulty',
         'number_of_questions',
+        'bank_question_count',
+        'quiz_question_count',
         'generation_language',
         'is_enabled',
         'scenario_title',
@@ -66,6 +74,8 @@ class AiScenarioConfig extends Model
         'generated_at' => 'datetime',
         'translated_at' => 'datetime',
         'number_of_questions' => 'integer',
+        'bank_question_count' => 'integer',
+        'quiz_question_count' => 'integer',
         'time_limit_minutes' => 'integer',
         'max_attempts' => 'integer',
         'passing_score' => 'integer',
@@ -113,10 +123,6 @@ class AiScenarioConfig extends Model
 
     public function isReady(): bool
     {
-        if (! $this->is_enabled) {
-            return false;
-        }
-
         $published = $this->publishedVersion;
         if (! $published || $published->status !== AiScenarioAssessmentVersion::STATUS_PUBLISHED) {
             return false;

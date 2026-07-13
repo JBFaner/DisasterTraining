@@ -26,7 +26,56 @@ const DIFFICULTIES = [
     { value: 'hard', label: 'Hard' },
 ];
 
-const QUESTION_COUNTS = [10, 15, 20];
+const BANK_COUNTS = [10, 20, 30];
+const DEFAULT_BANK_COUNT = 20;
+
+const BANK_COUNT_LABELS = {
+    10: '10',
+    20: '20 (Recommended)',
+    30: '30 (Maximum)',
+};
+
+function recommendedQuizSizeForBank(bankCount) {
+    const normalized = normalizeBankCount(bankCount);
+    if (normalized === 10) return 5;
+    if (normalized === 20) return 10;
+    if (normalized === 30) return 15;
+
+    return 10;
+}
+
+function buildParticipantQuizSizeOptions(poolSize) {
+    const options = [];
+    for (let size = 5; size <= poolSize; size += 5) {
+        options.push(size);
+    }
+    return options;
+}
+
+function normalizeBankCount(count) {
+    const parsed = Number(count);
+    if (BANK_COUNTS.includes(parsed)) {
+        return parsed;
+    }
+
+    if (parsed > 30) {
+        return 30;
+    }
+
+    return DEFAULT_BANK_COUNT;
+}
+
+function normalizeQuizSize(count, bankCount) {
+    const normalizedBank = normalizeBankCount(bankCount);
+    const options = buildParticipantQuizSizeOptions(normalizedBank);
+    const parsed = Number(count);
+
+    if (options.includes(parsed)) {
+        return parsed;
+    }
+
+    return recommendedQuizSizeForBank(normalizedBank);
+}
 
 const GENERATION_LANGUAGES = [
     { value: 'en', label: 'English' },
@@ -47,16 +96,16 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
         modules[0]?.id ? String(modules[0].id) : '',
     );
     const [difficulty, setDifficulty] = React.useState('medium');
-    const [questionCount, setQuestionCount] = React.useState(10);
+    const [bankQuestionCount, setBankQuestionCount] = React.useState(DEFAULT_BANK_COUNT);
+    const [quizQuestionCount, setQuizQuestionCount] = React.useState(recommendedQuizSizeForBank(DEFAULT_BANK_COUNT));
+    const [quizSizePoolNotice, setQuizSizePoolNotice] = React.useState('');
     const [generationLanguage, setGenerationLanguage] = React.useState(AI_SCENARIO_DEFAULT_LANGUAGE);
     const [displayLanguage, setDisplayLanguage] = React.useState(AI_SCENARIO_DEFAULT_LANGUAGE);
-    const [isEnabled, setIsEnabled] = React.useState(true);
     const [timeLimitMinutes, setTimeLimitMinutes] = React.useState(60);
     const [maxAttempts, setMaxAttempts] = React.useState(3);
     const [passingScore, setPassingScore] = React.useState(75);
     const [failRetakePolicy, setFailRetakePolicy] = React.useState('require_lesson_review');
     const [autoSubmitOnExpire, setAutoSubmitOnExpire] = React.useState(true);
-    const [allowResumeAttempt, setAllowResumeAttempt] = React.useState(true);
     const [shuffleQuestions, setShuffleQuestions] = React.useState(true);
     const [shuffleAnswerChoices, setShuffleAnswerChoices] = React.useState(true);
     const [saving, setSaving] = React.useState(false);
@@ -67,30 +116,31 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
         const existing = configByModuleId[Number(selectedModuleId)];
         if (existing) {
             setDifficulty(existing.difficulty || 'medium');
-            setQuestionCount(existing.number_of_questions || 10);
+            const bankCount = normalizeBankCount(existing.bank_question_count || existing.number_of_questions || DEFAULT_BANK_COUNT);
+            setBankQuestionCount(bankCount);
+            setQuizQuestionCount(normalizeQuizSize(existing.quiz_question_count, bankCount));
+            setQuizSizePoolNotice('');
             setGenerationLanguage(existing.generation_language || existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
             setDisplayLanguage(existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
-            setIsEnabled(existing.is_enabled !== false);
             setTimeLimitMinutes(existing.time_limit_minutes ?? 60);
             setMaxAttempts(existing.max_attempts ?? 3);
             setPassingScore(existing.passing_score ?? 75);
             setFailRetakePolicy(existing.fail_retake_policy || 'require_lesson_review');
             setAutoSubmitOnExpire(existing.auto_submit_on_expire !== false);
-            setAllowResumeAttempt(existing.allow_resume_attempt !== false);
             setShuffleQuestions(existing.shuffle_questions !== false);
             setShuffleAnswerChoices(existing.shuffle_answer_choices !== false);
         } else {
             setDifficulty('medium');
-            setQuestionCount(10);
+            setBankQuestionCount(DEFAULT_BANK_COUNT);
+            setQuizQuestionCount(recommendedQuizSizeForBank(DEFAULT_BANK_COUNT));
+            setQuizSizePoolNotice('');
             setGenerationLanguage(AI_SCENARIO_DEFAULT_LANGUAGE);
             setDisplayLanguage(AI_SCENARIO_DEFAULT_LANGUAGE);
-            setIsEnabled(true);
             setTimeLimitMinutes(60);
             setMaxAttempts(3);
             setPassingScore(75);
             setFailRetakePolicy('require_lesson_review');
             setAutoSubmitOnExpire(true);
-            setAllowResumeAttempt(true);
             setShuffleQuestions(true);
             setShuffleAnswerChoices(true);
         }
@@ -113,18 +163,33 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
     const buildPayload = () => ({
         training_module_id: Number(selectedModuleId),
         difficulty,
-        number_of_questions: questionCount,
+        bank_question_count: bankQuestionCount,
+        quiz_question_count: Number(quizQuestionCount),
         generation_language: generationLanguage,
-        is_enabled: isEnabled,
         time_limit_minutes: timeLimitMinutes,
         max_attempts: maxAttempts,
         passing_score: passingScore,
         fail_retake_policy: failRetakePolicy,
         auto_submit_on_expire: autoSubmitOnExpire,
-        allow_resume_attempt: allowResumeAttempt,
         shuffle_questions: shuffleQuestions,
         shuffle_answer_choices: shuffleAnswerChoices,
     });
+
+    const handleBankQuestionCountChange = (nextBank) => {
+        const normalizedBank = normalizeBankCount(nextBank);
+        const previousQuiz = Number(quizQuestionCount);
+        const recommended = recommendedQuizSizeForBank(normalizedBank);
+        const exceeded = Number.isFinite(previousQuiz) && previousQuiz > normalizedBank;
+
+        setBankQuestionCount(normalizedBank);
+        setQuizQuestionCount(recommended);
+
+        if (exceeded) {
+            setQuizSizePoolNotice('The participant quiz size has been adjusted because it exceeded the available AI question pool.');
+        } else {
+            setQuizSizePoolNotice('');
+        }
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -175,7 +240,7 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                     'X-CSRF-TOKEN': csrf,
                     Accept: 'application/json',
                 },
-                body: JSON.stringify({ ...buildPayload(), is_enabled: true }),
+                body: JSON.stringify(buildPayload()),
             });
             const saveData = await saveRes.json();
             if (!saveRes.ok) throw new Error(saveData.message || 'Failed to save configuration');
@@ -194,7 +259,6 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
             if (!genRes.ok) throw new Error(genData.message || 'Generation failed');
 
             refreshConfig(genData.config);
-            setIsEnabled(true);
             setDisplayLanguage(genData.config?.generated_language || generationLanguage);
             Swal.fire({
                 icon: 'success',
@@ -254,16 +318,34 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Number of Questions</label>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">AI Questions to Generate</label>
                             <select
                                 className={adminCompactInputClass}
-                                value={questionCount}
-                                onChange={(e) => setQuestionCount(Number(e.target.value))}
+                                value={bankQuestionCount}
+                                onChange={(e) => handleBankQuestionCountChange(Number(e.target.value))}
                             >
-                                {QUESTION_COUNTS.map((n) => (
-                                    <option key={n} value={n}>{n} questions</option>
+                                {BANK_COUNTS.map((n) => (
+                                    <option key={n} value={n}>{BANK_COUNT_LABELS[n] || n}</option>
                                 ))}
                             </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Participant Quiz Size</label>
+                            <select
+                                className={adminCompactInputClass}
+                                value={String(quizQuestionCount)}
+                                onChange={(e) => {
+                                    setQuizQuestionCount(Number(e.target.value));
+                                    setQuizSizePoolNotice('');
+                                }}
+                            >
+                                {buildParticipantQuizSizeOptions(bankQuestionCount).map((n) => (
+                                    <option key={n} value={n}>{n}</option>
+                                ))}
+                            </select>
+                            {quizSizePoolNotice && (
+                                <p className="text-xs text-slate-600 mt-1">{quizSizePoolNotice}</p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Generation Language</label>
@@ -277,15 +359,6 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                 ))}
                             </select>
                         </div>
-                        <label className="flex items-center gap-2 text-sm text-slate-700">
-                            <input
-                                type="checkbox"
-                                checked={isEnabled}
-                                onChange={(e) => setIsEnabled(e.target.checked)}
-                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            Enable for participants
-                        </label>
 
                         <div className="pt-4 border-t border-slate-200">
                             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Training Policy</h3>
@@ -370,15 +443,6 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                         className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                     />
                                     Auto submit when time expires
-                                </label>
-                                <label className="flex items-center gap-2 text-sm text-slate-700">
-                                    <input
-                                        type="checkbox"
-                                        checked={allowResumeAttempt}
-                                        onChange={(e) => setAllowResumeAttempt(e.target.checked)}
-                                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                    />
-                                    Allow resume attempt
                                 </label>
                                 <label className="flex items-center gap-2 text-sm text-slate-700">
                                     <input
@@ -516,7 +580,7 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                             {c.training_module?.title || `Module #${c.training_module_id}`}
                                         </td>
                                         <td className="py-2 pr-4 capitalize">{c.difficulty}</td>
-                                        <td className="py-2 pr-4">{c.number_of_questions}</td>
+                                        <td className="py-2 pr-4">{c.bank_question_count || c.number_of_questions} / {c.quiz_question_count || '—'}</td>
                                         <td className="py-2 pr-4 capitalize">{c.generated_language || 'en'}</td>
                                         <td className="py-2 pr-4">{c.passing_score ?? 75}%</td>
                                         <td className="py-2 pr-4">{c.max_attempts ?? 3}</td>
@@ -526,7 +590,7 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                                 : 'Lesson Review'}
                                         </td>
                                         <td className="py-2 pr-4">
-                                            {c.is_enabled && (c.title_en || c.generated_scenario) ? (
+                                            {c.published_version_id && (c.title_en || c.generated_scenario) ? (
                                                 <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-medium">
                                                     <CheckCircle2 className="w-3.5 h-3.5" /> Ready
                                                 </span>

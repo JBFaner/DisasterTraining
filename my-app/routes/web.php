@@ -38,6 +38,7 @@ use App\Http\Controllers\LessonQuizAttemptController;
 use App\Http\Controllers\Admin\Group6IntegrationController;
 use App\Http\Controllers\Admin\CampaignRequestController;
 use App\Http\Controllers\Admin\SimulationEventPlanningController;
+use App\Http\Controllers\Admin\SimulationExerciseTemplateController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
 
@@ -250,6 +251,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::prefix('lesson-quiz-config/{config}/versions/{version}')->group(function () {
             Route::get('/', [LessonQuizWorkflowController::class, 'show'])
                 ->name('admin.lesson-quiz-workflow.show');
+            Route::post('/questions', [LessonQuizWorkflowController::class, 'storeQuestion'])
+                ->name('admin.lesson-quiz-workflow.questions.store');
             Route::patch('/questions/{questionNumber}', [LessonQuizWorkflowController::class, 'updateQuestion'])
                 ->whereNumber('questionNumber')
                 ->name('admin.lesson-quiz-workflow.questions.update');
@@ -344,6 +347,22 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-planning/{campaignRequest}/plan', [SimulationEventPlanningController::class, 'savePlan'])->name('admin.simulation-planning.plan');
         Route::post('/simulation-planning/{campaignRequest}/ai-draft', [SimulationEventPlanningController::class, 'generateAiDraft'])->name('admin.simulation-planning.ai-draft');
         Route::post('/simulation-planning/{campaignRequest}/generate', [SimulationEventPlanningController::class, 'generateEvent'])->name('admin.simulation-planning.generate');
+        Route::get('/simulation-planning/{campaignRequest}/training-summary', [SimulationEventPlanningController::class, 'trainingSummary'])->name('admin.simulation-planning.training-summary');
+
+        // Simulation Exercise Templates (reusable exercise blueprints)
+        Route::post('/simulation-exercise-templates/generate-plan', [SimulationExerciseTemplateController::class, 'generatePlan'])->name('admin.simulation-exercise-templates.generate-plan');
+        Route::post('/simulation-exercise-templates/regenerate-section', [SimulationExerciseTemplateController::class, 'regenerateSection'])->name('admin.simulation-exercise-templates.regenerate-section');
+        Route::get('/simulation-exercise-templates', [SimulationExerciseTemplateController::class, 'index'])->name('admin.simulation-exercise-templates.index');
+        Route::get('/simulation-exercise-templates/create', [SimulationExerciseTemplateController::class, 'create'])->name('admin.simulation-exercise-templates.create');
+        Route::post('/simulation-exercise-templates', [SimulationExerciseTemplateController::class, 'store'])->name('admin.simulation-exercise-templates.store');
+        Route::get('/simulation-exercise-templates/{simulationExerciseTemplate}', [SimulationExerciseTemplateController::class, 'show'])->name('admin.simulation-exercise-templates.show');
+        Route::get('/simulation-exercise-templates/{simulationExerciseTemplate}/edit', [SimulationExerciseTemplateController::class, 'edit'])->name('admin.simulation-exercise-templates.edit');
+        Route::put('/simulation-exercise-templates/{simulationExerciseTemplate}', [SimulationExerciseTemplateController::class, 'update'])->name('admin.simulation-exercise-templates.update');
+        Route::post('/simulation-exercise-templates/{simulationExerciseTemplate}/publish', [SimulationExerciseTemplateController::class, 'publish'])->name('admin.simulation-exercise-templates.publish');
+        Route::post('/simulation-exercise-templates/{simulationExerciseTemplate}/archive', [SimulationExerciseTemplateController::class, 'archive'])->name('admin.simulation-exercise-templates.archive');
+        Route::post('/simulation-exercise-templates/{simulationExerciseTemplate}/reuse', [SimulationExerciseTemplateController::class, 'reuse'])->name('admin.simulation-exercise-templates.reuse');
+        Route::delete('/simulation-exercise-templates/{simulationExerciseTemplate}', [SimulationExerciseTemplateController::class, 'destroy'])->name('admin.simulation-exercise-templates.destroy');
+
         Route::get('/simulation-events/create', [SimulationEventController::class, 'create'])->name('admin.simulation-events.create');
         Route::post('/simulation-events', [SimulationEventController::class, 'store'])->name('admin.simulation-events.store');
         Route::get('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'show'])->name('admin.simulation-events.show');

@@ -68,7 +68,7 @@ class AiScenarioTrainingService
         $result = $this->gemini->generateTrainingScenarioQuiz(
             $module,
             $difficulty,
-            $config->number_of_questions,
+            (int) ($config->bank_question_count ?? $config->number_of_questions),
             $sourceLocale,
             $hazardContext,
         );

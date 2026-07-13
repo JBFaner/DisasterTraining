@@ -951,7 +951,7 @@ Lesson Content (merged from all processed learning resources):
 
 Requirements:
 - Base every question strictly on the lesson content provided.
-- If a YouTube transcript is included, prioritize it over generic video assumptions.
+- Use the rich text training content as the primary source. Ignore embedded videos or attachments unless their text is explicitly included above.
 - Generate exactly {$questionCount} questions numbered 1 through {$questionCount}.
 - Each question must have exactly four choices labeled A, B, C, and D.
 - Each question must have one correct answer and a brief explanation.

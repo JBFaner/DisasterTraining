@@ -30,6 +30,7 @@ class SimulationEvent extends Model
         'scenario_is_required',
         'training_module_id',
         'campaign_request_id',
+        'simulation_exercise_template_id',
         'barangay_profile_id',
         'facilitators',
         'assigned_trainer_id',
@@ -103,6 +104,11 @@ class SimulationEvent extends Model
     public function campaignRequest()
     {
         return $this->belongsTo(CampaignRequest::class);
+    }
+
+    public function simulationExerciseTemplate()
+    {
+        return $this->belongsTo(SimulationExerciseTemplate::class);
     }
 
     public function barangayProfile()

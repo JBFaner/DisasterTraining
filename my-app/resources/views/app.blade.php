@@ -52,6 +52,15 @@
             @isset($approved_schedules)
                 data-approved-schedules='@json($approved_schedules)'
             @endisset
+            @isset($exercise_templates)
+                data-exercise-templates='@json($exercise_templates)'
+            @endisset
+            @isset($exercise_template_summary)
+                data-exercise-template-summary='@json($exercise_template_summary)'
+            @endisset
+            @isset($exercise_template_form)
+                data-exercise-template-form='@json($exercise_template_form)'
+            @endisset
             @isset($simulation_planning)
                 data-simulation-planning='@json($simulation_planning)'
             @endisset

@@ -25,7 +25,7 @@ class LessonContentExtractorService
             ->values()
             ->all();
 
-        $hasReadable = collect($resources)->contains(fn (array $resource) => $resource['has_readable_content'] === true);
+        $hasReadable = $this->lessonHasAiSourceText($lesson);
 
         return [
             'id' => $lesson->id,
@@ -89,6 +89,24 @@ class LessonContentExtractorService
         return trim(implode("\n\n", array_filter($parts)));
     }
 
+    public function lessonHasAiSourceText(TrainingContent $lesson): bool
+    {
+        $lesson->loadMissing('resources');
+
+        $textResource = $lesson->resources->first(
+            fn (LessonResource $resource) => $resource->resource_type === LessonResource::TYPE_TEXT
+                && $resource->title === 'Training Content'
+        ) ?? $lesson->resources->first(
+            fn (LessonResource $resource) => $resource->resource_type === LessonResource::TYPE_TEXT
+        );
+
+        if (! $textResource) {
+            return false;
+        }
+
+        return trim(strip_tags((string) $textResource->body)) !== '';
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -110,7 +128,7 @@ class LessonContentExtractorService
             LessonResource::TYPE_TEXT => 'Rich Text ('.$resource->title.')',
             LessonResource::TYPE_PDF => 'PDF ('.$resource->title.')',
             LessonResource::TYPE_IMAGE => 'Image OCR ('.$resource->title.')',
-            LessonResource::TYPE_YOUTUBE => 'YouTube Transcript ('.$resource->title.')',
+            LessonResource::TYPE_YOUTUBE => 'YouTube Video ('.$resource->title.')',
             default => $resource->title,
         };
     }

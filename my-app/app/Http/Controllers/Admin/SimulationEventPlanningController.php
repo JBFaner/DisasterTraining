@@ -58,6 +58,10 @@ class SimulationEventPlanningController extends Controller
             'simulation_scenario' => ['nullable', 'string', 'max:255'],
             'simulation_objectives' => ['nullable', 'string'],
             'simulation_description' => ['nullable', 'string'],
+            'event_date' => ['nullable', 'date'],
+            'start_time' => ['nullable', 'string', 'max:20'],
+            'end_time' => ['nullable', 'string', 'max:20'],
+            'venue' => ['nullable', 'string', 'max:255'],
             'team_assignments' => ['nullable', 'array'],
             'lead_coordinator' => ['nullable', 'string', 'max:255'],
             'planning_officer' => ['nullable', 'string', 'max:255'],
@@ -131,6 +135,27 @@ class SimulationEventPlanningController extends Controller
             'success' => true,
             'message' => 'AI draft generated successfully.',
             'draft' => $draft,
+        ]);
+    }
+
+    public function trainingSummary(Request $request, CampaignRequest $campaignRequest)
+    {
+        $this->authorizeAccess();
+        abort_unless($campaignRequest->status === 'approved', 422, 'Only approved campaigns can be used for simulation planning.');
+
+        $schedule = $this->planningService->serializeSchedule($campaignRequest);
+        $summary = $this->planningService->buildTrainingSummaryForCampaign($campaignRequest);
+        $readiness = $this->planningService->buildReadiness(
+            $schedule,
+            $summary,
+            $this->planningService->serializePlan($campaignRequest->simulationPlan),
+        );
+
+        return response()->json([
+            'success' => true,
+            'training_summary' => $summary,
+            'readiness' => $readiness,
+            'planning' => $this->planningService->buildDetail($campaignRequest->fresh(['trainingModule', 'simulationPlan', 'simulationEvent'])),
         ]);
     }
 

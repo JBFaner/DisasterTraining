@@ -816,7 +816,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
 
             {meta.all_lessons_completed && !meta.is_configured && (
                 <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                    Your administrator has not enabled the Final AI Scenario Assessment for this module yet.
+                    Your administrator has not published the Final AI Scenario Assessment for this module yet.
                 </div>
             )}
 

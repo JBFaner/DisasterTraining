@@ -8,6 +8,7 @@ import { SessionTimeout } from './components/SessionTimeout';
 import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } from './components/ParticipantSimulationEvents';
 import { SimulationEventLifecyclePage } from './components/SimulationEventLifecyclePage';
 import { SimulationEventPlanningModule } from './components/SimulationEventPlanningModule';
+import { SimulationExerciseTemplateForm } from './pages/SimulationExerciseTemplateForm';
 import { SimulationEventCreateForm } from './components/SimulationEventCreateForm';
 import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
@@ -349,6 +350,9 @@ if (rootElement) {
     const scenarioJson = rootElement.getAttribute('data-scenario');
     const eventsJson = rootElement.getAttribute('data-events');
     const approvedSchedulesJson = rootElement.getAttribute('data-approved-schedules');
+    const exerciseTemplatesJson = rootElement.getAttribute('data-exercise-templates');
+    const exerciseTemplateSummaryJson = rootElement.getAttribute('data-exercise-template-summary');
+    const exerciseTemplateFormJson = rootElement.getAttribute('data-exercise-template-form');
     const simulationPlanningJson = rootElement.getAttribute('data-simulation-planning');
     const eventJson = rootElement.getAttribute('data-event');
     const eventLifecycleJson = rootElement.getAttribute('data-event-lifecycle');
@@ -378,6 +382,9 @@ if (rootElement) {
     let currentScenario = null;
     let events = [];
     let approvedSchedules = [];
+    let exerciseTemplates = [];
+    let exerciseTemplateSummary = {};
+    let exerciseTemplateForm = null;
     let currentEvent = null;
     let currentEventLifecycle = null;
     let participants = [];
@@ -460,6 +467,27 @@ if (rootElement) {
             approvedSchedules = JSON.parse(approvedSchedulesJson);
         } catch (e) {
             console.error('Failed to parse approved schedules JSON', e);
+        }
+    }
+    if (exerciseTemplatesJson) {
+        try {
+            exerciseTemplates = JSON.parse(exerciseTemplatesJson);
+        } catch (e) {
+            console.error('Failed to parse exercise templates JSON', e);
+        }
+    }
+    if (exerciseTemplateSummaryJson) {
+        try {
+            exerciseTemplateSummary = JSON.parse(exerciseTemplateSummaryJson);
+        } catch (e) {
+            console.error('Failed to parse exercise template summary JSON', e);
+        }
+    }
+    if (exerciseTemplateFormJson) {
+        try {
+            exerciseTemplateForm = JSON.parse(exerciseTemplateFormJson);
+        } catch (e) {
+            console.error('Failed to parse exercise template form JSON', e);
         }
     }
     if (eventJson) {
@@ -1154,7 +1182,7 @@ if (rootElement) {
         },
         simulation: {
             title: 'Simulation Event Planning',
-            description: 'Plan, prepare, monitor, and complete disaster simulation events end to end.',
+            description: 'Plan approved campaigns, design exercise templates, assign personnel, and schedule simulation events.',
         },
         participants: {
             title: 'Participant Registration & Attendance',
@@ -1732,6 +1760,8 @@ if (rootElement) {
                                 <SimulationEventPlanningModule
                                     events={events}
                                     approvedSchedules={approvedSchedules}
+                                    exerciseTemplates={exerciseTemplates}
+                                    exerciseTemplateSummary={exerciseTemplateSummary}
                                     role={role}
                                     SimulationEventsTable={SimulationEventsTable}
                                 />
@@ -2132,6 +2162,13 @@ if (rootElement) {
 
                         {sectionAttr === 'simulation_planning_show' && simulationPlanning && (
                             <SimulationEventPlanningDetail planning={simulationPlanning} />
+                        )}
+
+                        {(sectionAttr === 'simulation_exercise_template_create' || sectionAttr === 'simulation_exercise_template_edit' || sectionAttr === 'simulation_exercise_template_show') && exerciseTemplateForm && (
+                            <SimulationExerciseTemplateForm
+                                formData={exerciseTemplateForm}
+                                mode={sectionAttr === 'simulation_exercise_template_create' ? 'create' : 'edit'}
+                            />
                         )}
 
                         {sectionAttr === 'evaluation_participants' && (

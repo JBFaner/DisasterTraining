@@ -754,6 +754,52 @@ class LessonQuizWorkflowService
         return $version->fresh();
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function addManualQuestion(LessonQuizVersion $version, array $data = []): LessonQuizVersion
+    {
+        $this->assertEditable($version);
+
+        $sourceLocale = $this->localeService->resolveLocale($version->generated_language ?? 'en');
+        $questions = $version->generated_questions ?? [];
+        $maxNumber = collect($questions)->max(fn ($q) => (int) ($q['number'] ?? 0)) ?: 0;
+
+        $newQuestion = $this->localeService->normalizeQuestionToBilingual([
+            'number' => $maxNumber + 1,
+            'competency' => $data['competency'] ?? 'knowledge',
+            'question' => (string) ($data['question_en'] ?? ''),
+            'explanation' => (string) ($data['explanation_en'] ?? ''),
+            'correct_answer' => strtoupper((string) ($data['correct_answer'] ?? 'A')),
+            'choices' => [
+                'A' => (string) ($data['choice_a_en'] ?? ''),
+                'B' => (string) ($data['choice_b_en'] ?? ''),
+                'C' => (string) ($data['choice_c_en'] ?? ''),
+                'D' => (string) ($data['choice_d_en'] ?? ''),
+            ],
+            'question_fil' => (string) ($data['question_fil'] ?? ''),
+            'explanation_fil' => (string) ($data['explanation_fil'] ?? ''),
+            'choice_a_fil' => (string) ($data['choice_a_fil'] ?? ''),
+            'choice_b_fil' => (string) ($data['choice_b_fil'] ?? ''),
+            'choice_c_fil' => (string) ($data['choice_c_fil'] ?? ''),
+            'choice_d_fil' => (string) ($data['choice_d_fil'] ?? ''),
+        ], $sourceLocale);
+
+        $questions[] = $newQuestion;
+
+        $languageVersions = $version->language_versions ?? $this->defaultLanguageVersions($sourceLocale);
+        $this->markTranslationsOutdated($languageVersions, $sourceLocale);
+
+        $version->update([
+            'generated_questions' => $this->normalizeQuestionsForStorage($questions, $sourceLocale),
+            'language_versions' => $languageVersions,
+            'last_edited_by' => portal_id(),
+            'last_edited_at' => now(),
+        ]);
+
+        return $version->fresh();
+    }
+
     public function duplicateQuestion(LessonQuizVersion $version, int $questionNumber): LessonQuizVersion
     {
         $this->assertEditable($version);

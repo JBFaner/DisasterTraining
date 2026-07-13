@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ResourceApiController;
+use App\Http\Controllers\Api\Group6SimulationPlanningController;
 use App\Http\Controllers\Api\Group6InboundController;
 use App\Http\Controllers\Api\Group6CampaignPlanningController;
 use App\Http\Controllers\Api\ResourceAllocationInventoryController;
@@ -60,6 +61,10 @@ Route::prefix('integrations/group6')
         Route::get('/campaign-requests', [Group6CampaignPlanningController::class, 'index'])->name('campaign-requests.index');
         Route::get('/campaign-requests/{campaignRequest}', [Group6CampaignPlanningController::class, 'show'])->name('campaign-requests.show');
         Route::patch('/campaign-requests/{campaignRequest}/status', [Group6CampaignPlanningController::class, 'updateStatus'])->name('campaign-requests.update-status');
+
+        Route::get('/simulation-planning/approved-campaigns', [Group6SimulationPlanningController::class, 'index'])->name('simulation-planning.approved-campaigns.index');
+        Route::get('/simulation-planning/approved-campaigns/{campaignRequest}', [Group6SimulationPlanningController::class, 'show'])->name('simulation-planning.approved-campaigns.show');
+        Route::get('/simulation-planning/approved-campaigns/{campaignRequest}/training-summary', [Group6SimulationPlanningController::class, 'trainingSummary'])->name('simulation-planning.approved-campaigns.training-summary');
     });
 
 // Public Philippine location master data (cascading dropdowns)

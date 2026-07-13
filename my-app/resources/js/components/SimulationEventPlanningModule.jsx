@@ -4,6 +4,7 @@ import {
     History,
     Download,
     Eye,
+    Layers,
     ShieldCheck,
 } from 'lucide-react';
 import {
@@ -23,6 +24,7 @@ import {
 } from './admin/AdminDataTable';
 import { deriveSimulationEventStatus } from '../utils/simulationEventStatus';
 import { ApprovedCampaignSchedulesTable } from './ApprovedCampaignSchedulesTable';
+import { SimulationExerciseTemplateModule } from './SimulationExerciseTemplateModule';
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -53,11 +55,13 @@ function getInitialTab() {
     const tab = params.get('tab');
     if (tab === 'history') return 'history';
     if (tab === 'events') return 'events';
+    if (tab === 'templates') return 'templates';
     return 'schedules';
 }
 
 const PLANNING_TABS = [
-    { id: 'schedules', label: 'Approved Campaign Schedules', icon: ShieldCheck },
+    { id: 'schedules', label: 'Approved Campaigns', icon: ShieldCheck },
+    { id: 'templates', label: 'Exercise Plans', icon: Layers },
     { id: 'events', label: 'Simulation Events', icon: CalendarClock },
     { id: 'history', label: 'Completed Event History', icon: History },
 ];
@@ -299,7 +303,14 @@ function CompletedEventHistoryTab({ events = [] }) {
     );
 }
 
-export function SimulationEventPlanningModule({ events, approvedSchedules = [], role, SimulationEventsTable }) {
+export function SimulationEventPlanningModule({
+    events,
+    approvedSchedules = [],
+    exerciseTemplates = [],
+    exerciseTemplateSummary = {},
+    role,
+    SimulationEventsTable,
+}) {
     const [activeTab, setActiveTab] = React.useState(getInitialTab);
 
     const handleTabChange = (tabId) => {
@@ -309,6 +320,8 @@ export function SimulationEventPlanningModule({ events, approvedSchedules = [], 
             url.searchParams.set('tab', 'events');
         } else if (tabId === 'history') {
             url.searchParams.set('tab', 'history');
+        } else if (tabId === 'templates') {
+            url.searchParams.set('tab', 'templates');
         } else {
             url.searchParams.delete('tab');
         }
@@ -322,13 +335,19 @@ export function SimulationEventPlanningModule({ events, approvedSchedules = [], 
                 title="Simulation Event Planning"
                 description={
                     activeTab === 'schedules'
-                        ? 'Review approved campaign schedules and prepare simulation events based on training readiness.'
+                        ? 'Review approved campaigns and prepare simulation events based on training readiness.'
+                        : activeTab === 'templates'
+                        ? 'Create and reuse standardized disaster training exercise plans for drills and full-scale simulations.'
                         : activeTab === 'events'
                         ? 'Monitor draft, published, and ongoing simulation events generated from approved schedules.'
                         : 'Browse completed simulations with evaluation and attendance summaries.'
                 }
                 actions={
-                    activeTab === 'history' ? (
+                    activeTab === 'templates' ? (
+                        <AdminPrimaryButton href="/admin/simulation-exercise-templates/create">
+                            New Exercise Plan
+                        </AdminPrimaryButton>
+                    ) : activeTab === 'history' ? (
                         <AdminSecondaryButton disabled title="Export coming soon">
                             <Download className="w-4 h-4" />
                             Export
@@ -362,6 +381,14 @@ export function SimulationEventPlanningModule({ events, approvedSchedules = [], 
 
             {activeTab === 'schedules' && (
                 <ApprovedCampaignSchedulesTable schedules={approvedSchedules} />
+            )}
+            {activeTab === 'templates' && (
+                <SimulationExerciseTemplateModule
+                    templates={exerciseTemplates}
+                    summary={exerciseTemplateSummary}
+                    approvedSchedules={approvedSchedules}
+                    embedded
+                />
             )}
             {activeTab === 'events' && SimulationEventsTable && (
                 <SimulationEventsTable events={events} role={role} embedded activeOnly />

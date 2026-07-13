@@ -14,17 +14,21 @@ use Smalot\PdfParser\Parser;
 class LessonResourceProcessingService
 {
     public function __construct(
-        private readonly YouTubeTranscriptService $youtubeTranscript,
         private readonly GeminiService $gemini,
     ) {}
 
     public function supportsAiProcessing(string $resourceType): bool
     {
+        return $resourceType === LessonResource::TYPE_TEXT;
+    }
+
+    private function isSupplementaryResource(string $resourceType): bool
+    {
         return in_array($resourceType, [
-            LessonResource::TYPE_TEXT,
             LessonResource::TYPE_PDF,
             LessonResource::TYPE_IMAGE,
             LessonResource::TYPE_YOUTUBE,
+            LessonResource::TYPE_VIDEO,
         ], true);
     }
 
@@ -53,6 +57,12 @@ class LessonResourceProcessingService
 
     public function reprocess(LessonResource $resource): void
     {
+        if ($this->isSupplementaryResource($resource->resource_type)) {
+            $this->markReferenceOnly($resource);
+
+            return;
+        }
+
         $resource->update([
             'ai_processed_text' => null,
             'ai_processing_status' => LessonResource::AI_STATUS_PENDING,
@@ -79,6 +89,14 @@ class LessonResourceProcessingService
     {
         $resource->refresh();
 
+        if ($this->isSupplementaryResource($resource->resource_type)) {
+            if ($resource->ai_processing_status !== LessonResource::AI_STATUS_NOT_APPLICABLE) {
+                $this->markReferenceOnly($resource);
+            }
+
+            return $resource->refresh();
+        }
+
         if (! $this->supportsAiProcessing($resource->resource_type)) {
             if ($resource->ai_processing_status === null) {
                 $this->process($resource);
@@ -99,12 +117,14 @@ class LessonResourceProcessingService
             || $resource->ai_processing_status === LessonResource::AI_STATUS_PENDING) {
             if ($resource->resource_type === LessonResource::TYPE_TEXT) {
                 $this->process($resource);
-            } else {
+            } elseif ($this->supportsAiProcessing($resource->resource_type)) {
                 $resource->update([
                     'ai_processing_status' => LessonResource::AI_STATUS_PENDING,
                     'ai_processing_error' => null,
                 ]);
                 ProcessLessonResourceForAiJob::dispatch($resource->id);
+            } else {
+                $this->process($resource);
             }
 
             $resource->refresh();
@@ -145,9 +165,6 @@ class LessonResourceProcessingService
         try {
             $text = match ($resource->resource_type) {
                 LessonResource::TYPE_TEXT => $this->processRichText($resource),
-                LessonResource::TYPE_PDF => $this->processPdf($resource),
-                LessonResource::TYPE_IMAGE => $this->processImage($resource),
-                LessonResource::TYPE_YOUTUBE => $this->processYouTube($resource),
                 default => null,
             };
 
@@ -176,12 +193,7 @@ class LessonResourceProcessingService
 
     public function failureMessage(string $resourceType): string
     {
-        return match ($resourceType) {
-            LessonResource::TYPE_PDF => 'Unable to extract text from the uploaded PDF.',
-            LessonResource::TYPE_IMAGE => 'Unable to extract text from the uploaded image.',
-            LessonResource::TYPE_YOUTUBE => 'Unable to retrieve a transcript for this YouTube video. Paste a manual transcript in the Transcript field, or use a video with captions enabled on YouTube.',
-            default => 'No readable lesson content is available for AI Question Bank generation.',
-        };
+        return 'No readable lesson content is available for AI Question Bank generation.';
     }
 
     private function processRichText(LessonResource $resource): ?string
@@ -214,22 +226,14 @@ class LessonResourceProcessingService
         return LessonTextCleaner::clean($text) ?: null;
     }
 
-    private function processYouTube(LessonResource $resource): ?string
+    private function markReferenceOnly(LessonResource $resource): void
     {
-        if (is_string($resource->body) && trim($resource->body) !== '') {
-            $text = LessonTextCleaner::clean($resource->body);
-
-            return $text !== '' ? $text : null;
-        }
-
-        $result = $this->youtubeTranscript->fetchWithFallback($resource->external_url);
-        if ($result === null || trim($result['text']) === '') {
-            return null;
-        }
-
-        $text = LessonTextCleaner::clean($result['text']);
-
-        return $text !== '' ? $text : null;
+        $resource->update([
+            'ai_processed_text' => null,
+            'ai_processing_status' => LessonResource::AI_STATUS_NOT_APPLICABLE,
+            'ai_processing_error' => null,
+            'ai_processed_at' => now(),
+        ]);
     }
 
     private function extractPdfText(?string $filePath): ?string

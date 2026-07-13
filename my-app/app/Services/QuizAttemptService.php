@@ -37,7 +37,7 @@ class QuizAttemptService
 
         $base = [
             'all_lessons_completed' => $module->participantHasCompletedAllContents($user->id),
-            'is_enabled' => (bool) ($config?->is_enabled),
+            'is_enabled' => (bool) ($config?->isReady()),
             'is_configured' => $config?->isReady() ?? false,
             'is_unlocked' => false,
         ];
@@ -176,9 +176,14 @@ class QuizAttemptService
         }
 
         $questions = $snapshot['generated_questions'] ?? [];
-        $questionOrder = $this->buildQuestionOrder($questions, (bool) $config->shuffle_questions);
-        $shuffledChoices = $this->buildShuffledChoices($questions, $questionOrder, (bool) $config->shuffle_answer_choices);
-        $orderedQuestions = $this->applyQuestionOrder($questions, $questionOrder, $shuffledChoices);
+        $quizCount = min(
+            (int) ($config->quiz_question_count ?? count($questions)),
+            count($questions),
+        );
+        $selectedQuestions = $this->selectRandomQuestions($questions, $quizCount);
+        $questionOrder = $this->buildQuestionOrder($selectedQuestions, (bool) $config->shuffle_questions);
+        $shuffledChoices = $this->buildShuffledChoices($selectedQuestions, $questionOrder, (bool) $config->shuffle_answer_choices);
+        $orderedQuestions = $this->applyQuestionOrder($selectedQuestions, $questionOrder, $shuffledChoices);
         $firstQuestionNumber = (int) ($orderedQuestions[0]['number'] ?? 1);
         $now = now();
 
@@ -218,7 +223,7 @@ class QuizAttemptService
                 'question_order' => $questionOrder,
                 'shuffled_choices' => $shuffledChoices,
                 'difficulty' => $config->difficulty,
-                'number_of_questions' => $config->number_of_questions,
+                'number_of_questions' => count($orderedQuestions),
                 'time_limit_minutes' => $timeLimit,
                 'time_remaining_seconds' => $timeLimit * 60,
                 'started_at' => $now,
@@ -630,10 +635,24 @@ class QuizAttemptService
             'passing_score' => (int) ($config->passing_score ?? 75),
             'fail_retake_policy' => $config->fail_retake_policy ?? AiScenarioConfig::FAIL_POLICY_REQUIRE_LESSON_REVIEW,
             'auto_submit_on_expire' => (bool) ($config->auto_submit_on_expire ?? true),
-            'allow_resume_attempt' => (bool) ($config->allow_resume_attempt ?? true),
+            'allow_resume_attempt' => true,
+            'bank_question_count' => (int) ($config->bank_question_count ?? $config->number_of_questions ?? 20),
+            'quiz_question_count' => (int) ($config->quiz_question_count ?? 10),
             'shuffle_questions' => (bool) ($config->shuffle_questions ?? true),
             'shuffle_answer_choices' => (bool) ($config->shuffle_answer_choices ?? true),
         ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $bank
+     * @return array<int, array<string, mixed>>
+     */
+    protected function selectRandomQuestions(array $bank, int $count): array
+    {
+        $pool = array_values($bank);
+        shuffle($pool);
+
+        return array_slice($pool, 0, min($count, count($pool)));
     }
 
     protected function resolveDashboardStatus(

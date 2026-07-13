@@ -2,7 +2,7 @@
 
 This document uses the **same naming** as the left sidebar modules so other groups can quickly map responsibilities.
 
-> Status: **Draft / Generalized** (fields and flows may change as the system evolves)
+> Status: **Living document** — Campaign Planning (Group 6) and Simulation Event Planning integrations are implemented; other sections remain generalized.
 
 ---
 
@@ -24,23 +24,151 @@ This document uses the **same naming** as the left sidebar modules so other grou
 
 ### 1.2 Campaign Request Submission (Training → Campaign Request)
 **Purpose**
-- Submit a training proposal to the campaign approval workflow and scheduling pipeline.
+- Submit a published training module to the campaign approval workflow. The outbound payload is **announcement/registration intelligence only** — trainers, lesson lists, and session schedules are **not** sent to Group 6.
 
-**Data Sent (Internal)**
+**Data Sent (Internal → stored on `campaign_requests.payload`)**
 - Campaign Request ID
 - Training Module ID
-- Training Title
-- Proposed Training Sessions (schedule options)
-- Expected Participants
-- Minimum Qualified Participants (threshold)
+- Training Title / Short Description
 - Recommended Communities (hazard-aware)
 - Target Audience
-- Assigned Trainers (list)
+- Registration Opens / Registration Deadline / Training Completion Deadline
+- Expected Participants / Maximum Participants
+- Published Status
+- `registration_enabled` (computed: registered count less than maximum)
+- Registration Link (generated when applicable)
 
 **Data Received (Internal)**
-- Approval Status (e.g., waiting_for_approval / approved / rejected)
-- Approved Session Index / Approved Schedule
-- Approval Remarks / Decision Metadata
+- Approval Status: `waiting_for_approval` → `approved` | `rejected` → `scheduled` (after simulation event generated)
+- Approval Remarks / Decision Metadata (`approved_at`, reviewer note)
+
+**Registration Link Rules**
+- `registration_link_active` = `true` only when `status === approved` **and** capacity is not full.
+- Copy Link on the training module UI is disabled when the link is inactive.
+- Participant registration page rejects unapproved or invalid campaign context.
+
+**Implementation**
+- Payload DTO: `app/Support/CampaignPlanningPayload.php`
+- Link helper: `app/Support/CampaignRegistrationLink.php`
+- Participants are tied to a campaign via `registration_campaign_id = campaign-request:{id}`.
+
+### 1.3 FROM/TO External: Campaign Planning & Scheduling (Group 6)
+**Purpose**
+- Group 6 pulls submitted campaign requests from this app, approves/rejects them, and uses registration metadata for their scheduling workflow.
+
+**Auth**
+- Header: `X-Group6-Api-Key: {GROUP6_INBOUND_API_KEY}`
+- Base URL: `{APP_URL}/api/integrations/group6`
+- Feature flag: `GROUP6_INTEGRATION_ENABLED=true`
+
+**Endpoints (Group 6 → our app)**
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/campaign-requests` | List requests. Optional `?status=waiting_for_approval\|approved\|rejected` |
+| `GET` | `/campaign-requests/{id}` | Single request with `campaign_planning` payload |
+| `PATCH` | `/campaign-requests/{id}/status` | Approve/reject. Body: `{ "status": "approved"\|"rejected", "note": "optional" }` |
+
+**`campaign_planning` payload fields (outbound)**
+- `training_module_id`, `training_title`, `short_description`
+- `recommended_communities`, `target_audience`
+- `registration_opens`, `registration_deadline`, `training_completion_deadline`
+- `expected_participants`, `maximum_participants`
+- `published_status`, `registered_participants_count`
+- `registration_enabled`, `registration_link_active`, `registration_link`
+- `registration_form_path` (e.g. `/participant/register`)
+
+Legacy trainer/session fields are omitted from the main payload; original request metadata may appear under `response.legacy`.
+
+**Controller:** `app/Http/Controllers/Api/Group6CampaignPlanningController.php`
+
+### 1.4 Admin Endpoints (Training Module Management)
+**Purpose**
+- Internal admin/trainer routes for authoring training modules, lessons, resources, and submitting campaign requests. Used by the React admin UI.
+
+**Auth**
+- Laravel session (`auth.portal` + `portal.admin` middleware)
+- Roles: `LGU_ADMIN`, `LGU_TRAINER`
+- Base URL: `{APP_URL}/admin`
+- Mutating requests require CSRF token (`X-CSRF-TOKEN` or `_token`)
+- Send `Accept: application/json` (or `X-Requested-With: XMLHttpRequest`) to receive JSON instead of HTML redirects
+
+**Controller:** `app/Http/Controllers/Admin/TrainingModuleController.php`
+
+#### Training Modules
+
+| Method | Path | Description | JSON response |
+|--------|------|-------------|---------------|
+| `GET` | `/training-modules` | List modules (paginated). Query: `?search=&status=&category=` | `{ modules, pagination }` |
+| `GET` | `/training-modules/create` | Create form shell (HTML) | — |
+| `POST` | `/training-modules` | Create draft module | Redirect (HTML) |
+| `GET` | `/training-modules/{id}` | Module detail with lessons/resources (HTML) | — |
+| `GET` | `/training-modules/{id}/edit` | Edit form shell (HTML) | — |
+| `PUT` | `/training-modules/{id}` | Update module metadata, campaign fields, sessions | `{ success, message }` |
+| `POST` | `/training-modules/{id}/publish` | Publish module (requires title, category, difficulty, ≥1 lesson) | `{ success, message }` or `422` with `errors` |
+| `POST` | `/training-modules/{id}/archive` | Archive module | Redirect |
+| `DELETE` | `/training-modules/{id}` | Delete module (blocked if published) | `{ message }` or `422` |
+| `POST` | `/training-modules/generate-ai` | AI draft from title. Body: `{ title, difficulty?, category? }` | `{ success, data }` |
+
+**Key module fields (create/update)**
+- `title`, `short_description`, `description`, `learning_objectives[]`
+- `category`, `related_hazard`, `difficulty`, `delivery_method`
+- `target_audience[]`, `lead_qualified_trainer_id`, `assigned_qualified_trainer_ids[]`
+- `available_training_sessions[]` (date, start/end time, venue/platform, capacity)
+- Campaign planning (update): `campaign_registration_opens`, `campaign_registration_deadline`, `campaign_training_completion_deadline`, `campaign_expected_participants`, `campaign_maximum_participants`
+- `status`, `visibility`, `thumbnail` (file upload)
+
+#### Lessons (Contents)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/training-modules/{id}/contents` | Add lesson (+ text body, file uploads) |
+| `PUT` | `/training-modules/{id}/contents/{content_id}` | Update lesson |
+| `POST` | `/training-modules/{id}/contents/{content_id}/update` | Update lesson (POST fallback for multipart) |
+| `DELETE` | `/training-modules/{id}/contents/{content_id}` | Delete lesson |
+| `POST` | `/training-modules/{id}/contents/{content_id}/delete` | Delete lesson (POST fallback) |
+| `POST` | `/training-modules/{id}/contents/reorder` | Reorder lessons. Body: `{ order: [content_id, ...] }` → `{ success, message }` |
+
+**Lesson fields:** `title`, `description`, `learning_objectives[]`, `content_body` (rich text), file attachments (`attachments[]`)
+
+#### Learning Resources (per lesson)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/training-modules/{id}/contents/{content_id}/resources` | Add resource (PDF, image, video link, text) |
+| `PUT` | `/training-modules/{id}/contents/{content_id}/resources/{resource_id}` | Update resource |
+| `DELETE` | `/training-modules/{id}/contents/{content_id}/resources/{resource_id}` | Delete resource |
+| `POST` | `/training-modules/{id}/contents/{content_id}/resources/{resource_id}/delete` | Delete resource (POST fallback) |
+| `POST` | `/training-modules/{id}/contents/{content_id}/resources/reorder` | Reorder resources → `{ success, message }` |
+| `POST` | `/training-modules/{id}/contents/{content_id}/resources/{resource_id}/reprocess` | Re-run text extraction on resource |
+
+#### Campaign Requests (nested under training module)
+
+**Controller:** `app/Http/Controllers/Admin/CampaignRequestController.php`
+
+| Method | Path | Description | JSON response |
+|--------|------|-------------|---------------|
+| `GET` | `/training-modules/{id}/campaign-requests` | List campaign requests for module | `{ requests: [...] }` |
+| `POST` | `/training-modules/{id}/campaign-requests` | Submit to Campaign Planning (module must be `published`) | `{ success, campaign_request: { id, status, registration_link } }` |
+| `GET` | `/campaign-requests/{id}` | Campaign request detail | `{ request }` (JSON) or HTML page |
+
+**Campaign request object includes:** `id`, `status`, `payload`, `campaign_planning`, `registration_link_active`, `registration_link`, `submitted_at`, `submitted_by`
+
+### 1.5 Participant Endpoints (Training Consumption)
+**Purpose**
+- Self-paced training access for registered participants.
+
+**Auth:** Session (`auth.portal` + `portal.participant`). Base URL: `{APP_URL}/participant`
+
+**Controller:** `app/Http/Controllers/Participant/TrainingModuleController.php`
+
+| Method | Path | Description | JSON response |
+|--------|------|-------------|---------------|
+| `GET` | `/training-modules` | List published modules. Query: `?search=&category=` | `{ modules, pagination }` |
+| `GET` | `/training-modules/{id}` | Module detail with lessons (published only) | HTML or JSON |
+| `POST` | `/training-modules/{id}/contents/{content_id}/completion` | Toggle lesson completion | JSON |
+| `POST` | `/training-modules/{id}/lessons/{content_id}/completion` | Toggle lesson completion (alias) | JSON |
+
+**Legacy redirects:** `/training-modules/*` (no portal prefix) redirect to the correct admin or participant URL based on role.
 
 ---
 
@@ -74,52 +202,111 @@ This document uses the **same naming** as the left sidebar modules so other grou
 
 ## 3. Simulation Event Planning
 
-### 3.1 Approved Schedule Intake (Campaign Request → Planning Workspace)
-**Purpose**
-- Convert an approved training campaign request into a simulation planning workspace.
+> **No manual campaign creation.** The Approved Campaigns list imports only `status = approved` campaign requests from Campaign Planning.
 
-**Data Received**
-- Approved Schedule details (date/time/venue/capacity)
-- Training Module reference
-- Target Community context
-- Minimum Qualified Participants threshold
-- Assigned Trainers list (from campaign payload, if provided)
-
-### 3.2 Planning Inputs (Simulation Details)
+### 3.1 Approved Campaign Intake (Campaign Request → Planning Workspace)
 **Purpose**
-- Collect planning details needed to generate a simulation event.
+- Convert an approved campaign request into a simulation planning workspace.
+
+**Import contract** (`app/Support/SimulationPlanningCampaignImport.php`)
+
+| Field | Description |
+|-------|-------------|
+| `campaign_id` / `campaign_request_id` | Campaign Request ID |
+| `campaign_title` | Campaign/training title |
+| `training_module_id` / `training_title` | Linked self-paced training module |
+| `recommended_community` | Primary barangay from hazard recommendation |
+| `target_audience` / `target_audience_label` | Audience tags |
+| `expected_participants` | Campaign capacity target |
+| `minimum_qualified_participants` | Threshold (stored or default 67% of expected) |
+| `registration_deadline` | ISO datetime |
+| `campaign_status` | Always `Approved` for imported rows |
+| `approved_at` | Approval timestamp |
+| `disaster_type` | Hazard/category from training module |
+| `simulation_plan_status` | `Not Yet Created` / `Saved` / `Generated` |
+| `simulation_event_id` | Set after event generation |
+
+**Admin UI**
+- List: `/admin/simulation-events` → tab **Approved Campaigns**
+- Workspace: `/admin/simulation-planning/{campaign_request_id}`
+
+### 3.2 Training Summary (Participant Readiness)
+**Purpose**
+- Count only participants registered under this campaign (`registration_campaign_id = campaign-request:{id}`).
+
+**Per-participant training status** (`SimulationEventPlanningService::resolveModuleTrainingStatus`)
+| Status | Rule |
+|--------|------|
+| **Not Started** | No lesson completions and no completed AI scenario |
+| **In Progress** | Some progress but not yet qualified |
+| **Completed (Qualified)** | AI scenario completed **OR** all lessons done **OR** ≥ 3 lessons completed |
+
+**Summary counts**
+- `registered_participants`
+- `not_started` / `in_progress` / `completed`
+- `qualified_for_simulation` (= completed count)
+
+**API:** `GET /admin/simulation-planning/{id}/training-summary` (admin, authenticated)
+
+### 3.3 Planning Inputs (Simulation Details)
+**Purpose**
+- Collect details needed to generate a simulation event. Event **date, start/end time, and venue** are set on the plan at generation time (not imported from campaign sessions).
 
 **Core Data Captured**
-- Simulation Type (e.g., Drill / Functional Exercise / Full-Scale Exercise)
-- Disaster Scenario (template/library/custom)
-- Simulation Title (auto/manual; optional AI draft)
-- Objectives (list; standardized prefix formatting on save)
-- Trainer / Lead Coordinator (auto-fetch from assigned trainers; editable)
+- Simulation Type (`exercise_type`: Drill / Functional Exercise / Full-Scale Exercise)
+- Disaster Scenario (`simulation_scenario`)
+- Simulation Title (`simulation_title`; optional AI draft)
+- Objectives (`simulation_objectives`; standardized prefix formatting on save)
+- Event Date / Start Time / End Time / Venue (on `simulation_plans`)
+- Equipment / resource selections (if enabled)
 
-### 3.3 AI Draft (Optional)
+### 3.4 AI Draft (Optional)
 **Purpose**
 - Speed up planning using AI suggestions.
 
-**AI Inputs**
-- Simulation Type
-- Disaster Scenario
-- Campaign context (title/disaster/community)
+**AI Inputs:** Simulation Type, Disaster Scenario, campaign context (title/disaster/community)
 
-**AI Outputs**
-- Suggested Simulation Title
-- Suggested Objectives list (clean text; no bullets/prefix in payload)
+**AI Outputs:** Suggested Simulation Title, Suggested Objectives list
 
-### 3.4 Readiness Gate (Before “Generate Simulation Event”)
+### 3.5 Readiness Gate (Before “Generate Simulation Event”)
 **Purpose**
-- Prevent generation until minimum requirements are satisfied.
+- Prevent generation until business rules and plan fields are satisfied.
 
-**Typical Gate Checks**
-- Approved schedule exists
-- Simulation Type selected
-- Scenario selected
-- Objectives provided
-- Minimum qualified participants reached
-- Plan saved (latest version)
+**Gate checks**
+| Check | Requirement |
+|-------|-------------|
+| Approved Campaign | `campaign_status === Approved` |
+| Registration Deadline Passed | Current time is after `registration_deadline` |
+| Training Available | Linked training module exists |
+| Simulation Type | Selected |
+| Disaster Type | Present on plan |
+| Objectives | Present on plan |
+| Minimum Qualified Participants | `qualified_for_simulation` ≥ `minimum_qualified_participants` |
+| Plan Saved | Simulation plan record exists |
+
+**Validation messages (examples)**
+- *"Registration is still open. Simulation planning will be available after the registration deadline."*
+- *"Only X qualified participants. A minimum of Y qualified participants is required."*
+
+**Generate button** is disabled until `readiness.is_ready === true`.
+
+**After generation:** campaign request status moves to `scheduled`; `simulation_event_id` is linked.
+
+### 3.6 FROM/TO External: Simulation Planning API (Group 6)
+**Purpose**
+- Allow Group 6 (or other consumers) to read approved campaigns and training readiness without using the admin UI.
+
+**Auth:** Same as §1.3 (`X-Group6-Api-Key`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/simulation-planning/approved-campaigns` | All approved campaigns (import contract) |
+| `GET` | `/simulation-planning/approved-campaigns/{id}` | Single campaign + workspace metadata |
+| `GET` | `/simulation-planning/approved-campaigns/{id}/training-summary` | Training summary + readiness checklist |
+
+**Controller:** `app/Http/Controllers/Api/Group6SimulationPlanningController.php`
+
+**Service:** `app/Services/SimulationEventPlanningService.php`
 
 ---
 
@@ -127,13 +314,17 @@ This document uses the **same naming** as the left sidebar modules so other grou
 
 ### 4.1 Participant Registration
 **Purpose**
-- Register participants in the platform and optionally associate them with campaign/event context.
+- Register participants in the platform and associate them with an approved campaign when registering via campaign link.
 
 **Core Data**
 - Participant ID
 - Name / Contact
 - Community (Barangay/City)
-- Registration Source (direct / campaign context)
+- Registration Source (`registration_campaign_id`, e.g. `campaign-request:6`)
+
+**Campaign context rules**
+- Registration link is active only for **approved** campaigns with available capacity.
+- Unapproved or full campaigns are blocked at registration time.
 
 ### 4.2 Attendance Tracking (Simulation Events)
 **Purpose**
@@ -304,10 +495,64 @@ This document uses the **same naming** as the left sidebar modules so other grou
 - Simulation Plan ID
 - Simulation Event ID
 - Participant/User ID
+- Registration Campaign Key: `campaign-request:{campaign_request_id}`
 
 **Common Status Values (Examples)**
-- Campaign Request: waiting_for_approval / approved / scheduled
-- Plan: saved / generated
-- Attempt: not_started / in_progress / completed
-- Event: draft / published / ongoing / completed
+- Campaign Request: `waiting_for_approval` / `approved` / `rejected` / `scheduled`
+- Plan: `not_created` / `saved` / `generated`
+- Training (per participant): `Not Started` / `In Progress` / `Completed`
+- AI Attempt: `not_started` / `in_progress` / `completed`
+- Event: `draft` / `published` / `ongoing` / `completed`
+
+---
+
+## 9. Group 6 Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `GROUP6_INTEGRATION_ENABLED` | Master switch for inbound Group 6 APIs |
+| `GROUP6_INBOUND_API_KEY` | Shared secret for `X-Group6-Api-Key` header |
+| `GROUP6_INBOUND_API_HEADER` | Header name (default: `X-Group6-Api-Key`) |
+| `GROUP6_API_BASE_URL` | Outbound Group 6 base URL (when we call them) |
+| `GROUP6_API_KEY` | Outbound API key |
+| `GROUP6_API_TIMEOUT` | HTTP timeout (seconds) |
+
+See `env.template` for inline endpoint documentation.
+
+---
+
+## 10. Simulation Planning Test Seeders
+
+Use these seeders to populate **Approved Campaigns** scenarios for QA and demos. Requires at least one **published** training module with lessons (`TrainingModuleSeeder`).
+
+**Run all test campaigns:**
+```bash
+php artisan db:seed --class=SimulationPlanningTestDataSeeder
+```
+
+| Seeder | Purpose |
+|--------|---------|
+| `SimulationPlanningReadyCampaignSeeder` | Approved, registration deadline **passed**, quota **met** — ready to generate |
+| `SimulationPlanningUnderQuotaCampaignsSeeder` | **3** approved campaigns that **fail** the qualified threshold |
+| `SimulationPlanningBlockedCampaignSeeder` | Single blocked scenario (open registration + under quota) |
+| `SimulationPlanningQuotaTestSeeder` | Legacy quota test with past deadline |
+
+**Ready campaign** (`SEEDER: Simulation Planning Ready Test`)
+- Expected 25, minimum qualified 17 (67%)
+- 21 Completed, 3 In Progress, 2 Not Started
+- Emails: `sim-ready.{bucket}.{n}@example.com`
+
+**Under-quota campaigns** (3 examples)
+
+| Label | Scenario |
+|-------|----------|
+| `SEEDER: Under Quota - Registration Open` | Approved, deadline **+7 days**, 4 qualified / 15 min |
+| `SEEDER: Under Quota - Low Completion` | Approved, deadline **passed**, 6 qualified / 18 min |
+| `SEEDER: Under Quota - Almost Ready` | Approved, deadline **passed**, 13 qualified / 15 min (2 short) |
+
+Emails: `sim-underquota.{slug}.{bucket}.{n}@example.com`
+
+**Test password for all seeded participants:** `password`
+
+Seeders are idempotent-friendly: re-running updates the same labelled test campaigns rather than duplicating them.
 

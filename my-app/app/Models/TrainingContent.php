@@ -68,12 +68,7 @@ class TrainingContent extends Model
         }
 
         return $this->resources()
-            ->whereIn('resource_type', [
-                LessonResource::TYPE_TEXT,
-                LessonResource::TYPE_PDF,
-                LessonResource::TYPE_IMAGE,
-                LessonResource::TYPE_YOUTUBE,
-            ])
+            ->where('resource_type', LessonResource::TYPE_TEXT)
             ->exists();
     }
 }

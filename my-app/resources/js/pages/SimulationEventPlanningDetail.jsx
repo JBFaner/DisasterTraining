@@ -2,7 +2,7 @@ import React from 'react';
 import Swal from 'sweetalert2';
 import { ArrowLeft, Bot, ChevronDown, ChevronUp, ClipboardList, FileText, Plus, Rocket, Save, ShieldAlert, Target, Trash2, Waves } from 'lucide-react';
 import { AdminPageShell, AdminPageHeader, AdminContentCard, AdminPrimaryButton, AdminSecondaryButton } from '../components/admin/AdminLayout';
-import { formatDate, formatScheduleTimeRange } from '../components/campaign/CampaignRequestUi';
+import { formatDate, formatDateTime } from '../components/campaign/CampaignRequestUi';
 import { getCsrfHeaders } from '../utils/csrf';
 
 const TYPE_BADGES = {
@@ -17,6 +17,11 @@ const EMPTY_PLAN = {
     simulation_scenario: '',
     simulation_objectives: '',
     lead_coordinator: '',
+    event_date: '',
+    start_time: '',
+    end_time: '',
+    venue: '',
+    required_equipment: '',
 };
 
 function resolveDisasterTypeFromSchedule(schedule, scenarioTemplates = {}, scenarioLibrary = []) {
@@ -79,7 +84,6 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
     const [isGenerating, setIsGenerating] = React.useState(false);
     const [isAiGenerating, setIsAiGenerating] = React.useState(false);
     const [isTitleManual, setIsTitleManual] = React.useState(() => Boolean(initialPlanning?.simulation_plan?.simulation_title));
-    const [selectedTrainerId, setSelectedTrainerId] = React.useState('');
     const [scenarioMode, setScenarioMode] = React.useState(() => {
         const savedScenario = initialPlanning?.simulation_plan?.simulation_scenario;
         if (savedScenario) {
@@ -117,7 +121,30 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
     const exerciseTypeMetadata = planning?.exercise_type_metadata || {};
     const scenarioTemplates = planning?.scenario_templates || {};
     const scenarioLibrary = planning?.scenario_library || [];
-    const trainerOptions = planning?.trainer_options || [];
+
+    React.useEffect(() => {
+        const requestId = schedule?.campaign_request_id || schedule?.campaign_id || schedule?.id;
+        if (!requestId) return undefined;
+
+        const refreshTrainingSummary = async () => {
+            try {
+                const response = await fetch(`/admin/simulation-planning/${requestId}/training-summary`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json' },
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data?.planning) {
+                    setPlanning(data.planning);
+                }
+            } catch {
+                // Ignore background refresh errors.
+            }
+        };
+
+        const intervalId = window.setInterval(refreshTrainingSummary, 30000);
+        return () => window.clearInterval(intervalId);
+    }, [schedule?.campaign_request_id, schedule?.campaign_id, schedule?.id]);
 
     React.useEffect(() => {
         if (!schedule || String(form.simulation_scenario || '').trim()) return;
@@ -137,13 +164,16 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
         );
     }
 
-    const campaignRequestId = schedule.campaign_request_id || schedule.id;
+    const campaignRequestId = schedule.campaign_request_id || schedule.campaign_id || schedule.id;
     const isReady = Boolean(readiness?.is_ready);
+    const canGenerate = Boolean(readiness?.can_generate) && isReady;
     const hasGeneratedEvent = Boolean(schedule.simulation_event_id);
     const backHref = '/admin/simulation-events';
     const selectedExerciseType = form.exercise_type || readiness?.exercise_type || '';
     const minimumQualified = Number(schedule.minimum_qualified_participants ?? 0);
     const qualifiedCount = Number(summary?.qualified_for_simulation ?? 0);
+    const registrationDeadlinePassed = Boolean(readiness?.registration_deadline_passed);
+    const validationMessages = readiness?.validation_messages || [];
     const hasObjectives = objectiveItems.some((item) => item.trim());
     const fieldErrors = showValidation ? {
         ...(!String(form.exercise_type || '').trim() ? { exercise_type: true } : {}),
@@ -239,22 +269,6 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
         }
     };
 
-    const handleTrainerSelect = (trainerId) => {
-        setSelectedTrainerId(trainerId);
-        const trainer = trainerOptions.find((item) => String(item.id) === String(trainerId));
-        if (trainer?.name) {
-            updateField('lead_coordinator', trainer.name);
-        }
-    };
-
-    React.useEffect(() => {
-        if (!form.lead_coordinator) return;
-        const matched = trainerOptions.find((item) => item.name === form.lead_coordinator);
-        if (matched) {
-            setSelectedTrainerId(String(matched.id));
-        }
-    }, [form.lead_coordinator, trainerOptions]);
-
     const handleSavePlan = async () => {
         setIsSaving(true);
         try {
@@ -291,12 +305,12 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
         const missingObjectives = !hasObjectives;
         const insufficientQualified = minimumQualified > 0 && qualifiedCount < minimumQualified;
 
-        if (missingExerciseType || missingDisasterType || missingObjectives || insufficientQualified) {
+        if (!registrationDeadlinePassed || missingExerciseType || missingDisasterType || missingObjectives || insufficientQualified) {
             setShowValidation(true);
             return;
         }
 
-        if (!isReady) {
+        if (!canGenerate) {
             setShowValidation(true);
             return;
         }
@@ -351,7 +365,7 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
             <AdminPageHeader
                 icon={ClipboardList}
                 title="Simulation Event Planning"
-                description={[schedule.campaign_title, schedule.disaster_type, schedule.community].filter(Boolean).join(' · ')}
+                description={[schedule.campaign_title, schedule.training_title, schedule.recommended_community || schedule.community].filter(Boolean).join(' · ')}
             />
 
             {selectedExerciseType ? (
@@ -365,20 +379,19 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
             <AdminContentCard className="p-5">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <FileText className="h-4 w-4" />
-                    Approved Schedule
+                    Approved Campaign Information
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <InfoField label="Campaign ID" value={`#${schedule.campaign_id || schedule.campaign_request_id || schedule.id}`} />
                     <InfoField label="Campaign Title" value={schedule.campaign_title} />
-                    <InfoField label="Disaster Type" value={schedule.disaster_type} />
-                    <InfoField label="Community" value={schedule.community} />
-                    <InfoField label="Training Schedule" value={schedule.training_schedule} />
-                    <InfoField label="Start Date" value={formatDate(schedule.start_date)} />
-                    <InfoField label="End Date" value={formatDate(schedule.end_date)} />
-                    <InfoField label="Time" value={formatScheduleTimeRange(schedule.time)} />
-                    <InfoField label="Venue" value={schedule.venue} />
-                    <InfoField label="Expected Participants" value={String(schedule.expected_participants ?? 0)} />
+                    <InfoField label="Training Module ID" value={String(schedule.training_module_id ?? '—')} />
+                    <InfoField label="Training Title" value={schedule.training_title || schedule.campaign_title} />
+                    <InfoField label="Recommended Community" value={schedule.recommended_community || schedule.community} />
+                    <InfoField label="Target Audience" value={schedule.target_audience_label || '—'} />
+                    <InfoField label="Expected Participants" value={String(schedule.expected_participants ?? '—')} />
+                    <InfoField label="Registration Deadline" value={formatDateTime(schedule.registration_deadline)} />
+                    <InfoField label="Campaign Status" value={schedule.campaign_status || schedule.approval_status || 'Approved'} />
                     <InfoField label="Minimum Qualified Participants" value={String(schedule.minimum_qualified_participants ?? 0)} />
-                    <InfoField label="Approval Status" value={schedule.approval_status} />
                 </div>
             </AdminContentCard>
 
@@ -396,7 +409,27 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
                         <StatCard label="Qualified" value={summary?.qualified_for_simulation ?? 0} />
                     </div>
                 </div>
+                <p className="mt-3 text-xs text-slate-500">Training summary refreshes automatically every 30 seconds.</p>
             </AdminContentCard>
+
+            {(validationMessages.length > 0 || !registrationDeadlinePassed || (minimumQualified > 0 && qualifiedCount < minimumQualified)) ? (
+                <AdminContentCard className="p-5">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                        <ShieldAlert className="h-4 w-4" />
+                        Validation Messages
+                    </div>
+                    <div className="mt-4 space-y-2">
+                        {(validationMessages.length > 0 ? validationMessages : [
+                            readiness?.registration_validation_message,
+                            readiness?.qualified_validation_message,
+                        ].filter(Boolean)).map((message) => (
+                            <p key={message} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                {message}
+                            </p>
+                        ))}
+                    </div>
+                </AdminContentCard>
+            ) : null}
 
             <AdminContentCard className="p-5">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -421,31 +454,66 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
                         ) : null}
                     </div>
                     <div>
-                        <label className="block text-xs text-slate-500 mb-1">Assign Trainer</label>
-                        <select
-                            value={selectedTrainerId}
-                            onChange={(e) => handleTrainerSelect(e.target.value)}
-                            disabled={hasGeneratedEvent}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                            <option value="">Select trainer (auto-fetched from approved campaign)</option>
-                            {trainerOptions.map((trainer) => (
-                                <option key={trainer.id} value={trainer.id}>
-                                    {`${trainer.name}${trainer.specialization ? ` • ${trainer.specialization}` : ''}`}
-                                </option>
-                            ))}
-                        </select>
-                        {trainerOptions.length === 0 ? (
-                            <p className="mt-1 text-xs text-amber-700">No trainer found from approved campaign payload yet.</p>
-                        ) : null}
-                    </div>
-                    <div>
                         <label className="block text-xs text-slate-500 mb-1">Lead Coordinator</label>
                         <input
                             type="text"
                             value={form.lead_coordinator || ''}
                             onChange={(e) => updateField('lead_coordinator', e.target.value)}
                             disabled={hasGeneratedEvent}
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                            <label className="block text-xs text-slate-500 mb-1">Event Date</label>
+                            <input
+                                type="date"
+                                value={form.event_date || ''}
+                                onChange={(e) => updateField('event_date', e.target.value)}
+                                disabled={hasGeneratedEvent}
+                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 mb-1">Start Time</label>
+                            <input
+                                type="time"
+                                value={form.start_time || ''}
+                                onChange={(e) => updateField('start_time', e.target.value)}
+                                disabled={hasGeneratedEvent}
+                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-500 mb-1">End Time</label>
+                            <input
+                                type="time"
+                                value={form.end_time || ''}
+                                onChange={(e) => updateField('end_time', e.target.value)}
+                                disabled={hasGeneratedEvent}
+                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-slate-500 mb-1">Venue</label>
+                        <input
+                            type="text"
+                            value={form.venue || ''}
+                            onChange={(e) => updateField('venue', e.target.value)}
+                            disabled={hasGeneratedEvent}
+                            placeholder="Simulation venue or assembly area"
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs text-slate-500 mb-1">Equipment Recommendations</label>
+                        <textarea
+                            value={form.required_equipment || ''}
+                            onChange={(e) => updateField('required_equipment', e.target.value)}
+                            disabled={hasGeneratedEvent}
+                            rows={3}
+                            placeholder="List recommended equipment for this simulation"
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                         />
                     </div>
@@ -573,12 +641,17 @@ export function SimulationEventPlanningDetail({ planning: initialPlanning }) {
                     <AdminPrimaryButton
                         type="button"
                         onClick={handleGenerateEvent}
-                        disabled={hasGeneratedEvent || isGenerating}
+                        disabled={hasGeneratedEvent || isGenerating || !canGenerate}
                     >
                         <Rocket className="h-4 w-4" />
                         {isGenerating ? 'Generating…' : 'Generate Simulation Event'}
                     </AdminPrimaryButton>
                 </div>
+                {!canGenerate && !hasGeneratedEvent ? (
+                    <p className="mt-3 text-sm text-amber-700">
+                        Generate Simulation Event becomes available after registration closes and minimum qualified participants are met.
+                    </p>
+                ) : null}
             </AdminContentCard>
         </AdminPageShell>
     );

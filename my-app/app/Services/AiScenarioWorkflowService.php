@@ -415,6 +415,7 @@ class AiScenarioWorkflowService
             $config->update([
                 'published_version_id' => $version->id,
                 'current_version_id' => $version->id,
+                'is_enabled' => true,
                 'scenario_title' => $version->scenario_title,
                 'title_en' => $version->title_en,
                 'title_fil' => $version->title_fil,

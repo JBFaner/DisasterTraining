@@ -10,10 +10,6 @@ class YouTubeTranscriptService
 {
     public const METADATA_MARKER = '[YouTube video description - auto-generated captions were not available]';
 
-    private const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
-
-    private const CLIENT_VERSION = '2.20250218.01.00';
-
     public function extractVideoId(?string $url): ?string
     {
         if (! $url) {
@@ -499,7 +495,7 @@ class YouTubeTranscriptService
     {
         $client = [
             'clientName' => 'WEB',
-            'clientVersion' => self::CLIENT_VERSION,
+            'clientVersion' => $this->innertubeClientVersion(),
             'hl' => 'en',
         ];
 
@@ -529,6 +525,21 @@ class YouTubeTranscriptService
 
     private function innertubeUrl(string $endpoint): string
     {
-        return "https://www.youtube.com/youtubei/v1/{$endpoint}?key=".self::INNERTUBE_KEY;
+        $apiKey = $this->innertubeApiKey();
+        if ($apiKey === '') {
+            throw new \RuntimeException('YouTube Innertube API key is not configured.');
+        }
+
+        return "https://www.youtube.com/youtubei/v1/{$endpoint}?key=".$apiKey;
+    }
+
+    private function innertubeApiKey(): string
+    {
+        return trim((string) config('services.youtube.innertube_api_key', ''));
+    }
+
+    private function innertubeClientVersion(): string
+    {
+        return trim((string) config('services.youtube.innertube_client_version', '2.20260708.00.00'));
     }
 }

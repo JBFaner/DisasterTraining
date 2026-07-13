@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\YouTubeTranscriptService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -120,12 +119,7 @@ class LessonResource extends Model
 
     public function supportsAiQuestionGeneration(): bool
     {
-        return in_array($this->resource_type, [
-            self::TYPE_TEXT,
-            self::TYPE_PDF,
-            self::TYPE_IMAGE,
-            self::TYPE_YOUTUBE,
-        ], true);
+        return $this->resource_type === self::TYPE_TEXT;
     }
 
     public function hasReadableAiContent(): bool
@@ -133,20 +127,6 @@ class LessonResource extends Model
         return $this->ai_processing_status === self::AI_STATUS_READY
             && is_string($this->ai_processed_text)
             && trim($this->ai_processed_text) !== '';
-    }
-
-    private function youtubeReadyLabel(): string
-    {
-        if (is_string($this->body) && trim($this->body) !== '') {
-            return 'Manual Transcript Ready';
-        }
-
-        if (is_string($this->ai_processed_text)
-            && str_starts_with($this->ai_processed_text, YouTubeTranscriptService::METADATA_MARKER)) {
-            return 'Description Used (no captions)';
-        }
-
-        return 'Transcript Ready';
     }
 
     public function aiProcessingStatusLabel(): string
@@ -159,22 +139,16 @@ class LessonResource extends Model
                 default => 'Pending',
             },
             self::TYPE_PDF => match ($this->ai_processing_status) {
-                self::AI_STATUS_READY => 'Text Extracted',
-                self::AI_STATUS_FAILED => 'Extraction Failed',
-                self::AI_STATUS_PENDING, self::AI_STATUS_PROCESSING => 'Extracting text…',
-                default => 'Pending extraction',
+                self::AI_STATUS_NOT_APPLICABLE => 'Supplementary PDF',
+                default => 'Supplementary PDF',
             },
             self::TYPE_IMAGE => match ($this->ai_processing_status) {
-                self::AI_STATUS_READY => 'OCR Completed',
-                self::AI_STATUS_FAILED => 'OCR Failed',
-                self::AI_STATUS_PENDING, self::AI_STATUS_PROCESSING => 'Running OCR…',
-                default => 'Pending OCR',
+                self::AI_STATUS_NOT_APPLICABLE => 'Supplementary image',
+                default => 'Supplementary image',
             },
             self::TYPE_YOUTUBE => match ($this->ai_processing_status) {
-                self::AI_STATUS_READY => $this->youtubeReadyLabel(),
-                self::AI_STATUS_FAILED => 'Transcript Unavailable',
-                self::AI_STATUS_PENDING, self::AI_STATUS_PROCESSING => 'Retrieving transcript…',
-                default => 'Pending transcript',
+                self::AI_STATUS_NOT_APPLICABLE => 'Reference video',
+                default => 'Reference video',
             },
             default => match ($this->ai_processing_status) {
                 self::AI_STATUS_NOT_APPLICABLE => 'Not supported for AI',

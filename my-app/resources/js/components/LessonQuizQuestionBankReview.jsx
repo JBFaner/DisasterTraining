@@ -6,13 +6,13 @@ import {
     X,
     Undo2,
     Redo2,
-    Trash2,
     Copy,
     Sparkles,
     Loader2,
     Columns2,
     Square,
     Globe,
+    Plus,
 } from 'lucide-react';
 import {
     AdminPrimaryButton,
@@ -271,7 +271,6 @@ function QuestionReviewCard({
     onCancel,
     onUndo,
     onRedo,
-    onDelete,
     onDuplicate,
     onRegenerate,
     onFieldChange,
@@ -298,7 +297,6 @@ function QuestionReviewCard({
                                 <AdminTableActionButton icon={Pencil} title="Edit" variant="edit" onClick={onEdit} disabled={busy} />
                                 <AdminTableActionButton icon={Copy} title="Duplicate" variant="view" onClick={onDuplicate} disabled={busy} />
                                 <AdminTableActionButton icon={Sparkles} title="Regenerate Question" variant="view" onClick={onRegenerate} disabled={busy} />
-                                <AdminTableActionButton icon={Trash2} title="Delete" variant="danger" onClick={onDelete} disabled={busy} />
                             </>
                         )}
                     </div>
@@ -378,6 +376,7 @@ export function LessonQuizQuestionBankReview({
     const [editSession, setEditSession] = React.useState(null);
     const [saving, setSaving] = React.useState(false);
     const [actionBusy, setActionBusy] = React.useState(false);
+    const pendingEditRef = React.useRef(null);
 
     const questions = React.useMemo(() => activeQuestions(version), [version]);
     const questionSignature = React.useMemo(
@@ -389,8 +388,23 @@ export function LessonQuizQuestionBankReview({
         const drafts = questionsToDrafts(questions);
         setLocalDrafts(drafts);
         setBaselineDrafts(drafts);
-        setEditingNumber(null);
-        setEditSession(null);
+
+        const editNumber = pendingEditRef.current;
+        if (editNumber != null) {
+            const draft = drafts.find((item) => item.number === editNumber);
+            if (draft) {
+                setEditingNumber(editNumber);
+                setEditSession({ draft: { ...draft }, past: [], future: [] });
+            } else {
+                setEditingNumber(null);
+                setEditSession(null);
+            }
+            pendingEditRef.current = null;
+        } else {
+            setEditingNumber(null);
+            setEditSession(null);
+        }
+
         setDisplayLanguage(version?.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
     }, [version?.id, questionSignature]);
 
@@ -540,11 +554,14 @@ export function LessonQuizQuestionBankReview({
         }
     };
 
-    const handleDelete = async (number) => {
-        if (!window.confirm('Delete this question from the bank?')) return;
-
+    const handleAddQuestion = async () => {
         await runAction(async () => {
-            const data = await apiFetch(workflowUrl(`/questions/${number}`), { method: 'DELETE' });
+            const data = await apiFetch(workflowUrl('/questions'), {
+                method: 'POST',
+                body: JSON.stringify({}),
+            });
+            const newNumber = Math.max(0, ...activeQuestions(data.version).map((item) => item.number));
+            pendingEditRef.current = newNumber;
             applyVersion(data);
         });
     };
@@ -603,7 +620,20 @@ export function LessonQuizQuestionBankReview({
                     {languageVersionsPanel}
 
                     <div>
-                        <h4 className="text-sm font-semibold text-slate-800 mb-3">Questions ({displayDrafts.length})</h4>
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                            <h4 className="text-sm font-semibold text-slate-800">Questions ({displayDrafts.length})</h4>
+                            {editable && !readOnly ? (
+                                <AdminSecondaryButton
+                                    type="button"
+                                    onClick={handleAddQuestion}
+                                    disabled={busy}
+                                    className="inline-flex items-center gap-1.5 text-xs"
+                                >
+                                    {actionBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                    Add Question and Answer
+                                </AdminSecondaryButton>
+                            ) : null}
+                        </div>
                         <div className="space-y-4 pb-20">
                             {displayDrafts.map((draft) => {
                                 const isEditing = editingNumber === draft.number;
@@ -626,7 +656,6 @@ export function LessonQuizQuestionBankReview({
                                         onCancel={cancelEdit}
                                         onUndo={undoEdit}
                                         onRedo={redoEdit}
-                                        onDelete={() => handleDelete(draft.number)}
                                         onDuplicate={() => handleDuplicate(draft.number)}
                                         onRegenerate={() => handleRegenerate(draft.number)}
                                         onFieldChange={(field, value) => updateEditDraft((current) => ({ ...current, [field]: value }))}

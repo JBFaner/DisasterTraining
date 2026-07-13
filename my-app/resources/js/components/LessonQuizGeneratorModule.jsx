@@ -260,17 +260,23 @@ function LessonResourcesPanel({ resources, loading }) {
         );
     }
 
-    const resourceItems = resources.resources || [];
+    const resourceItems = (resources.resources || []).filter((resource) => resource.resource_type === 'text');
+    const supplementaryCount = (resources.resources || []).filter(
+        (resource) => ['pdf', 'image', 'youtube', 'video'].includes(resource.resource_type),
+    ).length;
 
     return (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4 text-sm">
             <div>
                 <p className="font-semibold text-slate-800">{resources.title}</p>
                 {resources.description && <p className="text-slate-600 mt-1">{resources.description}</p>}
+                <p className="text-xs text-slate-500 mt-2">
+                    AI quiz generation uses the lesson rich text training content only.
+                </p>
             </div>
 
             {resourceItems.length === 0 ? (
-                <p className="text-amber-700">No learning resources attached to this lesson yet.</p>
+                <p className="text-amber-700">No rich text training content found for this lesson yet.</p>
             ) : (
                 <ul className="space-y-3">
                     {resourceItems.map((resource) => {
@@ -306,9 +312,15 @@ function LessonResourcesPanel({ resources, loading }) {
                 </ul>
             )}
 
+            {supplementaryCount > 0 ? (
+                <p className="text-xs text-slate-500 border-t border-slate-200 pt-3">
+                    {supplementaryCount} supplementary file{supplementaryCount === 1 ? '' : 's'} (PDF, image, video) attached to this lesson but not used for AI quiz generation.
+                </p>
+            ) : null}
+
             {!resources.has_readable_content && (
                 <p className="text-xs text-amber-700 border-t border-slate-200 pt-3">
-                    No readable lesson content is available for AI Question Bank generation.
+                    Add rich text training content to this lesson before generating AI quiz questions.
                 </p>
             )}
         </div>
@@ -566,7 +578,9 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
             return undefined;
         }
 
-        const isProcessing = (lessonResources.resources || []).some((resource) =>
+        const isProcessing = (lessonResources.resources || [])
+            .filter((resource) => resource.resource_type === 'text')
+            .some((resource) =>
             resource.ai_processing_status === 'pending' || resource.ai_processing_status === 'processing',
         );
 
@@ -1172,9 +1186,9 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                                         disabled={!selectedModuleId || lessons.length === 0}
                                     >
                                         <option value="">Select lesson…</option>
-                                        {lessons.map((lesson, index) => (
+                                        {lessons.map((lesson) => (
                                             <option key={lesson.id} value={lesson.id}>
-                                                #{index + 1} — {lesson.title}
+                                                {lesson.title}
                                             </option>
                                         ))}
                                     </select>

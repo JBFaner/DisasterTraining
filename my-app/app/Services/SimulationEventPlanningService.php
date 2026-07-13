@@ -11,6 +11,8 @@ use App\Models\SimulationEvent;
 use App\Models\SimulationPlan;
 use App\Models\TrainingModule;
 use App\Models\User;
+use App\Support\SimulationPlanningCampaignImport;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -56,7 +58,64 @@ class SimulationEventPlanningService
             ->orderByDesc('approved_at')
             ->orderByDesc('id')
             ->get()
-            ->map(fn (CampaignRequest $request) => $this->serializeSchedule($request));
+            ->map(fn (CampaignRequest $request) => $this->serializeScheduleForDashboard($request));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function serializeScheduleForDashboard(CampaignRequest $request): array
+    {
+        $request->loadMissing(['trainingModule', 'simulationPlan', 'simulationEvent']);
+
+        $schedule = $this->serializeSchedule($request);
+        $summary = $this->buildTrainingSummaryForCampaign($request);
+        $planData = $this->serializePlan($request->simulationPlan);
+        $readiness = $this->buildReadiness($schedule, $summary, $planData);
+
+        $registrationPassed = (bool) ($readiness['registration_deadline_passed'] ?? false);
+        $trainingCompletionPassed = $this->trainingCompletionDeadlineHasPassed(
+            $schedule['training_completion_deadline'] ?? null,
+        );
+        $qualified = (int) ($summary['qualified_for_simulation'] ?? 0);
+        $minimum = (int) ($schedule['minimum_qualified_participants'] ?? 0);
+        $simulationReadiness = $this->resolveDashboardReadiness(
+            $request,
+            $registrationPassed,
+            $trainingCompletionPassed,
+            $qualified,
+            $minimum,
+        );
+        $simulationPlanBadge = $this->resolveDashboardPlanStatus($request, $readiness);
+        [$canCreatePlan, $createPlanDisabledReason] = $this->resolveCreatePlanAccess(
+            $request,
+            $registrationPassed,
+            $trainingCompletionPassed,
+            $qualified,
+            $minimum,
+        );
+
+        return array_merge($schedule, [
+            'registered_participants_count' => (int) ($summary['total_registered'] ?? 0),
+            'qualified_participants' => $qualified,
+            'registration_deadline_passed' => $registrationPassed,
+            'training_completion_deadline_passed' => $trainingCompletionPassed,
+            'simulation_readiness' => $simulationReadiness['key'],
+            'simulation_readiness_label' => $simulationReadiness['label'],
+            'simulation_readiness_tone' => $simulationReadiness['tone'],
+            'simulation_plan_badge' => $simulationPlanBadge['key'],
+            'simulation_plan_badge_label' => $simulationPlanBadge['label'],
+            'simulation_plan_badge_tone' => $simulationPlanBadge['tone'],
+            'can_create_plan' => $canCreatePlan,
+            'create_plan_disabled_reason' => $createPlanDisabledReason,
+            'is_ready_for_simulation' => $simulationReadiness['key'] === 'ready',
+            'has_simulation_plan' => $request->simulationPlan !== null,
+            'simulation_event_status' => $request->simulationEvent?->status,
+            'planning_href' => '/admin/simulation-planning/'.$request->id,
+            'simulation_event_href' => $request->simulation_event_id
+                ? '/admin/simulation-events/'.$request->simulation_event_id
+                : null,
+        ]);
     }
 
     /**
@@ -64,49 +123,18 @@ class SimulationEventPlanningService
      */
     public function serializeSchedule(CampaignRequest $request): array
     {
-        $payload = is_array($request->payload) ? $request->payload : [];
-        $sessions = is_array($payload['available_training_sessions'] ?? null)
-            ? $payload['available_training_sessions']
-            : [];
-        $sessionIndex = (int) ($request->session_index ?? 0);
-        $session = is_array($sessions[$sessionIndex] ?? null) ? $sessions[$sessionIndex] : ($sessions[0] ?? []);
-        $community = $this->resolvePrimaryCommunity($payload);
-        $hazard = $payload['related_hazards'] ?? $request->trainingModule?->related_hazard ?? $request->trainingModule?->category;
-        $disasterType = is_array($hazard) ? implode(', ', $hazard) : (string) $hazard;
-        $startDate = trim((string) ($session['date'] ?? ''));
-        $startTime = trim((string) ($session['start_time'] ?? ''));
-        $endTime = trim((string) ($session['end_time'] ?? ''));
-        $timeLabel = ($startTime !== '' && $endTime !== '') ? "{$startTime} - {$endTime}" : ($startTime ?: '—');
-        $planStatus = $request->simulationPlan?->status ?? 'not_created';
-        if ($request->simulation_event_id) {
-            $planStatus = 'generated';
-        } elseif ($planStatus === 'not_created') {
-            $planStatus = 'Not Yet Created';
-        } elseif ($planStatus === 'saved') {
-            $planStatus = 'Saved';
-        }
+        return SimulationPlanningCampaignImport::fromCampaignRequest($request);
+    }
 
-        return [
-            'id' => $request->id,
-            'campaign_request_id' => $request->id,
-            'campaign_title' => $payload['training_title'] ?? $request->trainingModule?->title ?? '—',
-            'disaster_type' => $disasterType !== '' ? $disasterType : '—',
-            'community' => $community,
-            'training_schedule' => $session['title'] ?? $request->proposed_session_label ?? 'Session '.($sessionIndex + 1),
-            'start_date' => $startDate !== '' ? $startDate : null,
-            'end_date' => $startDate !== '' ? $startDate : null,
-            'time' => $timeLabel,
-            'venue' => $session['venue'] ?? $session['online_platform'] ?? '—',
-            'expected_participants' => (int) ($request->expected_participants ?? $session['maximum_participants'] ?? 0),
-            'minimum_qualified_participants' => (int) ($request->minimum_qualified_participants ?? 0),
-            'approval_status' => 'Approved',
-            'approved_at' => $request->approved_at?->toIso8601String(),
-            'training_module_id' => $request->training_module_id,
-            'simulation_plan_status' => $planStatus,
-            'simulation_event_id' => $request->simulation_event_id,
-            'session' => $session,
-            'payload' => $payload,
-        ];
+    /**
+     * @return array<string, int>
+     */
+    public function buildTrainingSummaryForCampaign(CampaignRequest $request): array
+    {
+        return $this->buildTrainingSummary(
+            (int) $request->training_module_id,
+            $request,
+        );
     }
 
     /**
@@ -116,11 +144,11 @@ class SimulationEventPlanningService
     {
         $schedule = $this->serializeSchedule($request);
         $trainingModuleId = (int) $request->training_module_id;
-        $summary = $this->buildTrainingSummary($trainingModuleId, (string) ($schedule['community'] ?? ''));
+        $summary = $this->buildTrainingSummaryForCampaign($request);
         $plan = $request->simulationPlan;
         $planData = $this->serializePlan($plan);
         $readiness = $this->buildReadiness($schedule, $summary, $planData);
-        $participants = $this->buildParticipantRows($trainingModuleId, (string) ($schedule['community'] ?? ''));
+        $participants = $this->buildParticipantRows($trainingModuleId, $request);
 
         return [
             'schedule' => $schedule,
@@ -143,8 +171,18 @@ class SimulationEventPlanningService
                 ])
                 ->values()
                 ->all(),
-            'trainer_options' => $this->trainerOptions($request),
+            'trainer_options' => [],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function serializePlanningWorkspace(CampaignRequest $request): array
+    {
+        $request->loadMissing(['trainingModule', 'simulationPlan', 'simulationEvent']);
+
+        return $this->buildDetail($request);
     }
 
     /**
@@ -213,9 +251,11 @@ PROMPT;
     /**
      * @return array<string, int>
      */
-    public function buildTrainingSummary(int $trainingModuleId, string $community = ''): array
+    public function buildTrainingSummary(int $trainingModuleId, CampaignRequest|string $campaignRequestOrCommunity = ''): array
     {
-        $participantIds = $this->registeredParticipantIds($trainingModuleId, $community);
+        $participantIds = $campaignRequestOrCommunity instanceof CampaignRequest
+            ? $this->registeredParticipantIdsForCampaign($campaignRequestOrCommunity)
+            : $this->registeredParticipantIds($trainingModuleId, (string) $campaignRequestOrCommunity);
         $totalLessons = TrainingModule::query()->withCount('contents')->find($trainingModuleId)?->contents_count ?? 0;
 
         $completed = 0;
@@ -253,6 +293,23 @@ PROMPT;
         $expected = (int) ($schedule['expected_participants'] ?? 0);
         $minimum = (int) ($schedule['minimum_qualified_participants'] ?? 0);
         $qualified = (int) ($summary['qualified_for_simulation'] ?? 0);
+        $registrationDeadlinePassed = $this->registrationDeadlineHasPassed($schedule['registration_deadline'] ?? null);
+        $trainingCompletionDeadlinePassed = $this->trainingCompletionDeadlineHasPassed(
+            $schedule['training_completion_deadline'] ?? null,
+        );
+        $registrationValidationMessage = $registrationDeadlinePassed
+            ? null
+            : 'Registration is still open. Simulation planning will be available after the registration deadline.';
+        $trainingCompletionValidationMessage = $trainingCompletionDeadlinePassed
+            ? null
+            : 'Training completion period has not ended.';
+        $qualifiedValidationMessage = ($minimum > 0 && $qualified < $minimum)
+            ? sprintf(
+                'Only %d qualified participants. A minimum of %d qualified participants is required.',
+                $qualified,
+                $minimum,
+            )
+            : null;
         $trainingAvailable = TrainingModule::query()->whereKey($schedule['training_module_id'] ?? 0)->exists();
         $exerciseType = (string) ($plan['exercise_type'] ?? '');
         $checklist = [
@@ -264,9 +321,21 @@ PROMPT;
             ),
             $this->checkItem(
                 'approved_schedule',
-                'Approved Schedule',
-                ($schedule['approval_status'] ?? '') === 'Approved',
-                'Campaign schedule has not been approved yet.'
+                'Approved Campaign',
+                ($schedule['campaign_status'] ?? $schedule['approval_status'] ?? '') === 'Approved',
+                'Campaign has not been approved yet.'
+            ),
+            $this->checkItem(
+                'registration_deadline_passed',
+                'Registration Deadline Passed',
+                $registrationDeadlinePassed,
+                $registrationValidationMessage ?? 'Registration deadline has not passed yet.'
+            ),
+            $this->checkItem(
+                'training_completion_deadline_passed',
+                'Training Completion Deadline Passed',
+                $trainingCompletionDeadlinePassed,
+                $trainingCompletionValidationMessage ?? 'Training completion period has not ended.'
             ),
             $this->checkItem(
                 'training_available',
@@ -284,9 +353,7 @@ PROMPT;
                 'minimum_qualified_participants',
                 'Minimum Qualified Participants Reached',
                 $minimum > 0 && $qualified >= $minimum,
-                $minimum <= 0
-                    ? 'Minimum qualified participants is not configured.'
-                    : 'Insufficient qualified participants.'
+                $qualifiedValidationMessage ?? 'Insufficient qualified participants.'
             ),
             $this->checkItem(
                 'simulation_objectives',
@@ -306,7 +373,10 @@ PROMPT;
             ->values()
             ->all();
         $hasSavedPlan = $plan !== null;
-        $isReady = count($blockers) === 0 && $hasSavedPlan;
+        $requirementsMet = $registrationDeadlinePassed
+            && $trainingCompletionDeadlinePassed
+            && ($minimum <= 0 || $qualified >= $minimum);
+        $isReady = count($blockers) === 0 && $hasSavedPlan && $requirementsMet;
         $planStatus = $hasSavedPlan
             ? (($schedule['simulation_event_id'] ?? null) ? 'Generated' : 'Saved')
             : 'Not Yet Created';
@@ -314,6 +384,14 @@ PROMPT;
 
         return [
             'approved_schedule' => true,
+            'registration_deadline_passed' => $registrationDeadlinePassed,
+            'registration_validation_message' => $registrationValidationMessage,
+            'qualified_validation_message' => $qualifiedValidationMessage,
+            'validation_messages' => array_values(array_filter([
+                $registrationValidationMessage,
+                $trainingCompletionValidationMessage,
+                $qualifiedValidationMessage,
+            ])),
             'training_available' => $trainingAvailable,
             'expected_participants' => $expected,
             'minimum_qualified_participants' => $minimum,
@@ -341,9 +419,11 @@ PROMPT;
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function buildParticipantRows(int $trainingModuleId, string $community = ''): array
+    public function buildParticipantRows(int $trainingModuleId, CampaignRequest|string $campaignRequestOrCommunity = ''): array
     {
-        $participantIds = $this->registeredParticipantIds($trainingModuleId, $community);
+        $participantIds = $campaignRequestOrCommunity instanceof CampaignRequest
+            ? $this->registeredParticipantIdsForCampaign($campaignRequestOrCommunity)
+            : $this->registeredParticipantIds($trainingModuleId, (string) $campaignRequestOrCommunity);
         $totalLessons = TrainingModule::query()->withCount('contents')->find($trainingModuleId)?->contents_count ?? 0;
 
         return User::query()
@@ -407,6 +487,10 @@ PROMPT;
                 'simulation_scenario' => $data['simulation_scenario'] ?? null,
                 'simulation_objectives' => $data['simulation_objectives'] ?? null,
                 'simulation_description' => $data['simulation_description'] ?? null,
+                'event_date' => $data['event_date'] ?? null,
+                'start_time' => $data['start_time'] ?? null,
+                'end_time' => $data['end_time'] ?? null,
+                'venue' => $data['venue'] ?? null,
                 'team_assignments' => $data['team_assignments'] ?? null,
                 'lead_coordinator' => $data['lead_coordinator'] ?? null,
                 'planning_officer' => $data['planning_officer'] ?? null,
@@ -436,42 +520,50 @@ PROMPT;
         abort_if($request->simulation_event_id, 422, 'A simulation event has already been generated for this schedule.');
 
         $schedule = $this->serializeSchedule($request);
-        $summary = $this->buildTrainingSummary((int) $request->training_module_id);
+        $summary = $this->buildTrainingSummaryForCampaign($request);
         $plan = $request->simulationPlan;
         abort_if(! $plan, 422, 'Save a simulation plan before generating the simulation event.');
         $planData = $this->serializePlan($plan);
         $readiness = $this->buildReadiness($schedule, $summary, $planData);
-        abort_unless($readiness['is_ready'], 422, implode(' ', $readiness['blockers'] ?: [$readiness['validation_message']]));
+        abort_unless($readiness['is_ready'], 422, implode(' ', $readiness['validation_messages'] ?: $readiness['blockers'] ?: [$readiness['validation_message']]));
 
         $payload = is_array($request->payload) ? $request->payload : [];
-        $session = is_array($schedule['session'] ?? null) ? $schedule['session'] : [];
         $module = $request->trainingModule;
-        $hazard = $payload['related_hazards'] ?? $module?->related_hazard ?? $module?->category;
-        $disasterType = is_array($hazard) ? ($hazard[0] ?? 'General') : (string) ($hazard ?: 'General');
+        $disasterType = (string) ($schedule['disaster_type'] ?? 'General');
+        if ($disasterType === '—' || $disasterType === '') {
+            $hazard = $module?->related_hazard ?? $module?->category;
+            $disasterType = is_array($hazard) ? ($hazard[0] ?? 'General') : (string) ($hazard ?: 'General');
+        }
+
+        $targetAudience = $schedule['target_audience'] ?? [];
+        $targetAudienceLabel = is_array($targetAudience) && $targetAudience !== []
+            ? implode(', ', $targetAudience)
+            : null;
+        $registrationDeadline = $schedule['registration_deadline'] ?? null;
 
         $scenarioId = Scenario::query()
             ->where('status', 'published')
-            ->when($disasterType !== '', fn ($query) => $query->where('disaster_type', $disasterType))
+            ->when($plan->simulation_scenario, fn ($query) => $query->where('disaster_type', $plan->simulation_scenario))
+            ->when(! $plan->simulation_scenario && $disasterType !== '' && $disasterType !== 'General', fn ($query) => $query->where('disaster_type', $disasterType))
             ->orderBy('title')
             ->value('id');
 
         $event = SimulationEvent::create([
             'title' => $plan->simulation_title ?: $plan->simulation_scenario ?: (($module?->title ?? 'Training').' Simulation'),
-            'disaster_type' => $disasterType,
+            'disaster_type' => $plan->simulation_scenario ?: $disasterType,
             'description' => $plan->simulation_description,
             'event_category' => $this->mapExerciseTypeToEventCategory($plan->exercise_type),
             'status' => 'draft',
-            'event_date' => $session['date'] ?? now()->toDateString(),
-            'start_time' => $session['start_time'] ?? '08:00',
-            'end_time' => $session['end_time'] ?? '12:00',
-            'location' => $session['venue'] ?? null,
-            'venue' => $session['venue'] ?? null,
+            'event_date' => $plan->event_date ?? ($registrationDeadline ? Carbon::parse($registrationDeadline)->addDay()->toDateString() : now()->toDateString()),
+            'start_time' => $plan->start_time ?? '08:00',
+            'end_time' => $plan->end_time ?? '12:00',
+            'location' => $plan->venue,
+            'venue' => $plan->venue,
             'training_module_id' => $request->training_module_id,
             'campaign_request_id' => $request->id,
             'max_participants' => $schedule['expected_participants'] ?: null,
-            'target_audience' => is_array($payload['recommended_audience'] ?? null)
-                ? implode(', ', $payload['recommended_audience'])
-                : ($payload['recommended_audience'] ?? null),
+            'target_audience' => $targetAudienceLabel,
+            'registration_deadline' => $registrationDeadline,
             'facilitators' => array_values(array_filter([
                 $plan->lead_coordinator,
                 $plan->planning_officer,
@@ -510,6 +602,17 @@ PROMPT;
         ]);
 
         return $event;
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    protected function registeredParticipantIdsForCampaign(CampaignRequest $request): Collection
+    {
+        return User::query()
+            ->where('role', 'PARTICIPANT')
+            ->where('registration_campaign_id', 'campaign-request:'.$request->id)
+            ->pluck('id');
     }
 
     /**
@@ -570,8 +673,151 @@ PROMPT;
         return 'In Progress';
     }
 
+    protected function registrationDeadlineHasPassed(?string $deadline): bool
+    {
+        if (! $deadline) {
+            return false;
+        }
+
+        try {
+            return now()->greaterThan(Carbon::parse($deadline));
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    protected function trainingCompletionDeadlineHasPassed(?string $deadline): bool
+    {
+        if (! $deadline) {
+            return true;
+        }
+
+        try {
+            return now()->greaterThan(Carbon::parse($deadline));
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @return array{key:string,label:string,tone:string}
+     */
+    protected function resolveDashboardReadiness(
+        CampaignRequest $request,
+        bool $registrationPassed,
+        bool $trainingCompletionPassed,
+        int $qualified,
+        int $minimum,
+    ): array {
+        if ($request->simulation_event_id) {
+            return [
+                'key' => 'simulation_created',
+                'label' => 'Simulation Created',
+                'tone' => 'blue',
+            ];
+        }
+
+        if (! $registrationPassed) {
+            return [
+                'key' => 'registration_open',
+                'label' => 'Registration Open',
+                'tone' => 'amber',
+            ];
+        }
+
+        $qualificationMet = $minimum <= 0 || $qualified >= $minimum;
+        if (! $qualificationMet || ! $trainingCompletionPassed) {
+            return [
+                'key' => 'waiting_qualification',
+                'label' => 'Waiting Qualification',
+                'tone' => 'orange',
+            ];
+        }
+
+        return [
+            'key' => 'ready',
+            'label' => 'Ready',
+            'tone' => 'emerald',
+        ];
+    }
+
+    /**
+     * @return array{key:string,label:string,tone:string}
+     */
+    protected function resolveDashboardPlanStatus(CampaignRequest $request, array $readiness): array
+    {
+        $event = $request->simulationEvent;
+        if ($event && in_array((string) $event->status, ['completed', 'ended', 'archived'], true)) {
+            return [
+                'key' => 'completed',
+                'label' => 'Completed',
+                'tone' => 'slate',
+            ];
+        }
+
+        if ($request->simulation_event_id) {
+            return [
+                'key' => 'generated',
+                'label' => 'Generated',
+                'tone' => 'blue',
+            ];
+        }
+
+        if (! $request->simulationPlan) {
+            return [
+                'key' => 'not_created',
+                'label' => 'Not Created',
+                'tone' => 'slate',
+            ];
+        }
+
+        if (($readiness['can_generate'] ?? false) === true) {
+            return [
+                'key' => 'ready',
+                'label' => 'Ready',
+                'tone' => 'emerald',
+            ];
+        }
+
+        return [
+            'key' => 'draft',
+            'label' => 'Draft',
+            'tone' => 'amber',
+        ];
+    }
+
+    /**
+     * @return array{0:bool,1:?string}
+     */
+    protected function resolveCreatePlanAccess(
+        CampaignRequest $request,
+        bool $registrationPassed,
+        bool $trainingCompletionPassed,
+        int $qualified,
+        int $minimum,
+    ): array {
+        if ($request->simulationPlan || $request->simulation_event_id) {
+            return [false, null];
+        }
+
+        if (! $registrationPassed) {
+            return [false, 'Registration is still open.'];
+        }
+
+        if (! $trainingCompletionPassed) {
+            return [false, 'Training completion period has not ended.'];
+        }
+
+        if ($minimum > 0 && $qualified < $minimum) {
+            return [false, 'Minimum qualified participants have not been reached.'];
+        }
+
+        return [true, null];
+    }
+
     /**
      * @param  array<string, mixed>  $payload
+     * @deprecated Use SimulationPlanningCampaignImport::resolveRecommendedCommunity()
      */
     protected function resolvePrimaryCommunity(array $payload): string
     {
@@ -602,7 +848,7 @@ PROMPT;
         ];
     }
 
-    protected function serializePlan(?SimulationPlan $plan): ?array
+    public function serializePlan(?SimulationPlan $plan): ?array
     {
         if (! $plan) {
             return null;
@@ -619,6 +865,10 @@ PROMPT;
             'simulation_scenario' => $plan->simulation_scenario,
             'simulation_objectives' => $plan->simulation_objectives,
             'simulation_description' => $plan->simulation_description,
+            'event_date' => optional($plan->event_date)->toDateString(),
+            'start_time' => $plan->start_time,
+            'end_time' => $plan->end_time,
+            'venue' => $plan->venue,
             'team_assignments' => $plan->team_assignments ?? [],
             'lead_coordinator' => $plan->lead_coordinator ?? $plan->team_leader,
             'planning_officer' => $plan->planning_officer,

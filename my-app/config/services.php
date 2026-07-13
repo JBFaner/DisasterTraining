@@ -56,6 +56,11 @@ return [
         'api_version' => env('GEMINI_API_VERSION', 'v1beta'),
     ],
 
+    'youtube' => [
+        'innertube_api_key' => env('YOUTUBE_INNERTUBE_API_KEY'),
+        'innertube_client_version' => env('YOUTUBE_INNERTUBE_CLIENT_VERSION', '2.20260708.00.00'),
+    ],
+
     'centralized_login' => [
         'url' => env('CENTRALIZED_LOGIN_URL', 'https://login.alertaraqc.com'),
         'api_endpoint' => env('AUTH_API_ENDPOINT', 'https://login.alertaraqc.com/api/auth/validate'),

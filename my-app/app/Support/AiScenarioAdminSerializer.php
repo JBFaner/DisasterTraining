@@ -46,6 +46,8 @@ class AiScenarioAdminSerializer
             'training_module' => $config->trainingModule,
             'difficulty' => $config->difficulty,
             'number_of_questions' => $config->number_of_questions,
+            'bank_question_count' => $config->bank_question_count,
+            'quiz_question_count' => $config->quiz_question_count,
             'generation_language' => $config->generation_language,
             'is_enabled' => $config->is_enabled,
             'time_limit_minutes' => $config->time_limit_minutes,

@@ -26,6 +26,34 @@ class LessonQuizWorkflowController extends Controller
         ]);
     }
 
+    public function storeQuestion(Request $request, LessonQuizConfig $config, LessonQuizVersion $version)
+    {
+        $this->authorizeAdmin();
+        $this->assertVersionBelongsToConfig($version, $config);
+
+        $data = $request->validate([
+            'question_en' => ['nullable', 'string'],
+            'question_fil' => ['nullable', 'string'],
+            'choice_a_en' => ['nullable', 'string'],
+            'choice_b_en' => ['nullable', 'string'],
+            'choice_c_en' => ['nullable', 'string'],
+            'choice_d_en' => ['nullable', 'string'],
+            'choice_a_fil' => ['nullable', 'string'],
+            'choice_b_fil' => ['nullable', 'string'],
+            'choice_c_fil' => ['nullable', 'string'],
+            'choice_d_fil' => ['nullable', 'string'],
+            'correct_answer' => ['nullable', Rule::in(['A', 'B', 'C', 'D', 'a', 'b', 'c', 'd'])],
+            'explanation_en' => ['nullable', 'string'],
+            'explanation_fil' => ['nullable', 'string'],
+            'competency' => ['nullable', 'string', 'max:64'],
+        ]);
+
+        $version = $this->workflowService->addManualQuestion($version, $data);
+        $this->logAction('Added manual lesson quiz question', $config, $version);
+
+        return $this->versionResponse('Question added.', $config, $version);
+    }
+
     public function updateQuestion(
         Request $request,
         LessonQuizConfig $config,

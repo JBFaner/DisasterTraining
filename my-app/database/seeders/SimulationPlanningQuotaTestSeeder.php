@@ -66,11 +66,21 @@ class SimulationPlanningQuotaTestSeeder extends Seeder
             $inProgressCount = 3;
             $notStartedCount = 2;
 
-            // Ensure the request's minimum reflects what we will seed (so quota becomes met).
+            // Ensure registration deadline is in the past for simulation planning tests.
             $request->update([
                 'minimum_qualified_participants' => $minimumQualified,
                 'expected_participants' => max((int) ($request->expected_participants ?? 0), $minimumQualified + $inProgressCount + $notStartedCount),
             ]);
+
+            $payload = is_array($request->payload) ? $request->payload : [];
+            $payload['registration_deadline'] = now()->subDay()->toIso8601String();
+            $request->update(['payload' => $payload]);
+
+            if ($request->trainingModule) {
+                $request->trainingModule->update([
+                    'campaign_registration_deadline' => now()->subDay(),
+                ]);
+            }
 
             $created = [
                 'completed' => 0,
@@ -80,7 +90,7 @@ class SimulationPlanningQuotaTestSeeder extends Seeder
 
             $nowStamp = now()->format('YmdHis');
 
-            $makeParticipant = function (string $suffix) use ($community, $nowStamp): User {
+            $makeParticipant = function (string $suffix) use ($community, $nowStamp, $request): User {
                 $participantId = $this->uniqueParticipantId();
                 return User::create([
                     'name' => "Planning {$suffix} {$nowStamp}",
@@ -90,6 +100,10 @@ class SimulationPlanningQuotaTestSeeder extends Seeder
                     'status' => 'active',
                     'participant_id' => $participantId,
                     'registered_at' => now(),
+                    'registration_source' => 'campaign_planning_scheduling',
+                    'registration_campaign_id' => 'campaign-request:'.$request->id,
+                    'registration_campaign_title' => $request->trainingModule?->title,
+                    'registration_campaign_registered_at' => now(),
                     'barangay' => $community !== '—' ? $community : null,
                 ]);
             };

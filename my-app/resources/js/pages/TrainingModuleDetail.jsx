@@ -40,6 +40,7 @@ import {
     readLessonDraft,
     resolveResourceStorageTarget,
     useLessonClosePrompt,
+    validateLessonForm,
     writeLessonDraft,
 } from '../components/LessonFormFields';
 import { AdminContentCard } from '../components/admin/AdminLayout';
@@ -98,8 +99,12 @@ function parseHazardTokens(value) {
         .filter(Boolean);
 }
 
+function resourcesAffectingLessonStatus(resources = []) {
+    return resources.filter((resource) => resource.resource_type === 'text');
+}
+
 function getLessonStatus(lesson) {
-    const resources = lesson.resources || [];
+    const resources = resourcesAffectingLessonStatus(lesson.resources || []);
 
     if (resources.length === 0) {
         return { label: 'No Resources', className: 'bg-slate-100 text-slate-600 border-slate-200' };
@@ -235,8 +240,8 @@ function getPdfDownloadLabel(resource) {
     return title ? `${title}.pdf` : 'Download PDF';
 }
 
-function shouldShowAiProcessingStatus(resource) {
-    return resource.resource_type === 'youtube';
+function shouldShowAiProcessingStatus() {
+    return false;
 }
 
 function ResourceDownloadLink({ resource }) {
@@ -398,22 +403,16 @@ function ResourceStatusBadge({ resource }) {
     const isReady = resource.ai_processing_status === 'ready' && resource.has_readable_content;
     const isProcessing = ['pending', 'processing'].includes(resource.ai_processing_status);
     const isFailed = resource.ai_processing_status === 'failed';
-    const isMetadataFallback = isReady
-        && resource.resource_type === 'youtube'
-        && resource.ai_processing_status_label === 'Description Used (no captions)';
 
     return (
         <div className="flex items-start gap-2 text-xs">
             {isProcessing && <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-600 mt-0.5" />}
-            {isReady && <CheckCircle2 className={`w-3.5 h-3.5 mt-0.5 ${isMetadataFallback ? 'text-amber-600' : 'text-emerald-600'}`} />}
+            {isReady && <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 text-emerald-600" />}
             {isFailed && <AlertCircle className="w-3.5 h-3.5 text-red-600 mt-0.5" />}
             <div>
-                <span className={isReady ? (isMetadataFallback ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium') : isFailed ? 'text-red-700' : 'text-slate-600'}>
+                <span className={isReady ? 'text-emerald-700 font-medium' : isFailed ? 'text-red-700' : 'text-slate-600'}>
                     {isReady ? `✅ ${resource.ai_processing_status_label}` : resource.ai_processing_status_label}
                 </span>
-                {isMetadataFallback && (
-                    <p className="text-amber-700 mt-0.5">Used the video description because captions could not be retrieved. For better AI quiz quality, paste the transcript below and click Reprocess.</p>
-                )}
                 {isFailed && resource.ai_processing_error && (
                     <p className="text-red-600 mt-0.5">❌ {resource.ai_processing_error}</p>
                 )}
@@ -593,10 +592,7 @@ function AddResourceForm({ moduleId, lessonId, onCancel }) {
                         <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">YouTube URL *</label>
                         <input name="external_url" type="url" required placeholder="https://www.youtube.com/watch?v=..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
                     </div>
-                    <div>
-                        <label className="block text-[0.7rem] font-semibold text-slate-600 mb-1">Transcript (optional)</label>
-                        <textarea name="body" rows={4} placeholder="Paste the video transcript here if auto-retrieval fails or captions are unavailable." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                    </div>
+                    <p className="text-xs text-slate-500">YouTube videos are reference materials only. AI quiz generation uses the lesson rich text content.</p>
                 </>
             )}
             {['pdf', 'image'].includes(resourceType) && (
@@ -636,6 +632,8 @@ const LessonFormEditor = React.forwardRef(function LessonFormEditor({
     const [contentBody, setContentBody] = React.useState(() => baseline?.contentBody || '');
     const [extraResources, setExtraResources] = React.useState([]);
     const [draftPromptDone, setDraftPromptDone] = React.useState(false);
+    const [fieldErrors, setFieldErrors] = React.useState({});
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     React.useEffect(() => {
         if (draftPromptDone) {
@@ -718,13 +716,49 @@ const LessonFormEditor = React.forwardRef(function LessonFormEditor({
         e.preventDefault();
         const form = e.currentTarget;
 
-        const ok = await submitTrainingForm(form, moduleId, {
-            fieldOverrides: buildLessonFormOverrides(form, contentBody),
+        const validation = validateLessonForm({
+            lessonTitle,
+            contentBody,
+            form,
+            extraResources,
+            mode,
         });
-        if (ok) {
-            clearLessonDraft(draftKey);
-            onSubmitted?.();
+
+        if (!validation.valid) {
+            setFieldErrors(validation.errors);
+            await showAppAlert({
+                icon: 'warning',
+                title: 'Please complete required fields',
+                description: Object.values(validation.errors).join('\n'),
+            });
+            return;
         }
+
+        setFieldErrors({});
+        setIsSubmitting(true);
+
+        try {
+            const ok = await submitTrainingForm(form, moduleId, {
+                fieldOverrides: buildLessonFormOverrides(form, contentBody),
+            });
+            if (ok) {
+                clearLessonDraft(draftKey);
+                onSubmitted?.();
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleClearFieldError = (field) => {
+        setFieldErrors((prev) => {
+            if (!prev[field]) {
+                return prev;
+            }
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
     };
 
     const handleCancel = async () => {
@@ -758,6 +792,8 @@ const LessonFormEditor = React.forwardRef(function LessonFormEditor({
                 setContentBody={setContentBody}
                 extraResources={extraResources}
                 setExtraResources={setExtraResources}
+                fieldErrors={fieldErrors}
+                onClearFieldError={handleClearFieldError}
             />
 
             {showActions ? (
@@ -765,15 +801,17 @@ const LessonFormEditor = React.forwardRef(function LessonFormEditor({
                     <button
                         type="button"
                         onClick={handleCancel}
-                        className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        disabled={isSubmitting}
+                        className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5"
+                        disabled={isSubmitting}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Plus className="w-4 h-4" />
+                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                         {submitLabel || (mode === 'edit' ? 'Save Lesson' : 'Add Lesson')}
                     </button>
                 </div>
@@ -809,6 +847,7 @@ export function TrainingModuleDetail({ module }) {
     const [showAddLessonModal, setShowAddLessonModal] = React.useState(false);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
     const [draggedId, setDraggedId] = React.useState(null);
+    const lessonRowRefs = React.useRef({});
     const addLessonFormRef = React.useRef(null);
     const editLessonFormRef = React.useRef(null);
     const [appAlert, setAppAlert] = React.useState(null);
@@ -933,12 +972,28 @@ export function TrainingModuleDetail({ module }) {
         };
     }, []);
 
-    const handleDragStart = (id) => setDraggedId(id);
+    const handleDragStart = (event, id) => {
+        event.stopPropagation();
+        setDraggedId(id);
+        const row = lessonRowRefs.current[id];
+        if (row) {
+            event.dataTransfer.setDragImage(row, 24, 24);
+        }
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(id));
+    };
+
+    const handleDragEnd = () => {
+        setDraggedId(null);
+    };
 
     const handleDragOver = (e) => e.preventDefault();
 
     const handleDrop = async (targetId) => {
-        if (!draggedId || draggedId === targetId) return;
+        if (!draggedId || draggedId === targetId) {
+            setDraggedId(null);
+            return;
+        }
         const current = [...lessons];
         const fromIndex = current.findIndex((c) => c.id === draggedId);
         const toIndex = current.findIndex((c) => c.id === targetId);
@@ -1812,15 +1867,29 @@ export function TrainingModuleDetail({ module }) {
                                     return (
                                         <tr
                                             key={lesson.id}
-                                            draggable
-                                            onDragStart={() => handleDragStart(lesson.id)}
+                                            ref={(element) => {
+                                                if (element) {
+                                                    lessonRowRefs.current[lesson.id] = element;
+                                                } else {
+                                                    delete lessonRowRefs.current[lesson.id];
+                                                }
+                                            }}
                                             onDragOver={handleDragOver}
                                             onDrop={() => handleDrop(lesson.id)}
-                                            className={`bg-white hover:bg-slate-50/80 transition-colors ${draggedId === lesson.id ? 'opacity-50' : ''}`}
+                                            className={`bg-white hover:bg-slate-50/80 transition-colors ${
+                                                draggedId === lesson.id ? 'bg-emerald-50/70 shadow-[inset_0_0_0_2px_rgba(16,185,129,0.35)]' : ''
+                                            }`}
                                         >
                                             <td className="px-5 py-4 whitespace-nowrap">
                                                 <div className="inline-flex items-center gap-2 text-slate-500">
-                                                    <button type="button" className="cursor-grab text-slate-400 hover:text-slate-600" aria-label="Drag to reorder">
+                                                    <button
+                                                        type="button"
+                                                        draggable
+                                                        onDragStart={(event) => handleDragStart(event, lesson.id)}
+                                                        onDragEnd={handleDragEnd}
+                                                        className="cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+                                                        aria-label="Drag to reorder"
+                                                    >
                                                         <GripVertical className="w-4 h-4" />
                                                     </button>
                                                     <span className="font-medium text-slate-700">{index + 1}</span>
@@ -1991,10 +2060,7 @@ export function TrainingModuleDetail({ module }) {
                                             {resourceForm.resource_type === 'youtube' && (
                                                 <>
                                                     <input name="external_url" type="url" value={resourceForm.external_url} onChange={(e) => setResourceForm({ ...resourceForm, external_url: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-                                                    <div>
-                                                        <label className="block text-xs text-slate-500 mb-1">Transcript (optional)</label>
-                                                        <textarea name="body" rows={6} value={resourceForm.body} onChange={(e) => setResourceForm({ ...resourceForm, body: e.target.value })} placeholder="Paste the video transcript here if auto-retrieval fails." className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-                                                    </div>
+                                                    <p className="text-xs text-slate-500">YouTube videos are reference materials only. AI quiz generation uses the lesson rich text content.</p>
                                                 </>
                                             )}
                                             {['pdf', 'image'].includes(resourceForm.resource_type) && (
