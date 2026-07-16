@@ -3193,6 +3193,24 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                             <Brain className="w-4 h-4" />
                             Training Intelligence Profile
                         </a>
+                        {String(openModule.status || '').toLowerCase() !== 'published' && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    close();
+                                    const form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = trainingModulePublish(openModule.id);
+                                    form.innerHTML = `<input type="hidden" name="_token" value="${csrf}">`;
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50"
+                            >
+                                <Send className="w-4 h-4" />
+                                Publish Module
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={async () => {

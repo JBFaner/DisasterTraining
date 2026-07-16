@@ -23,8 +23,10 @@ import {
     CheckCircle2,
     AlertCircle,
     Sparkles,
+    Send,
 } from 'lucide-react';
 import { getCsrfHeaders, getCsrfToken, pingSessionActivity } from '../utils/csrf';
+import { trainingModulePublish } from '../utils/trainingModuleRoutes';
 import { showAppAlert, showAppChoice, showAppConfirm } from '../utils/appAlert';
 import {
     LessonAuditTrail,
@@ -1381,6 +1383,32 @@ export function TrainingModuleDetail({ module }) {
         }
     };
 
+    const handlePublishModule = async () => {
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'Publish training module?',
+            html: `
+                <p class="text-sm text-slate-600">Once published, this module can be used for campaign requests and participant self-paced training.</p>
+                <p class="mt-2 text-sm text-amber-700">Requirements: title, disaster category, difficulty, and at least one lesson.</p>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Yes, publish',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#059669',
+        });
+
+        if (!confirm.isConfirmed) {
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = trainingModulePublish(module.id);
+        form.innerHTML = `<input type="hidden" name="_token" value="${getCsrfToken()}">`;
+        document.body.appendChild(form);
+        form.submit();
+    };
+
     const groupedResources = React.useMemo(() => {
         if (!selectedLesson?.resources) return {};
         return RESOURCE_GROUPS.reduce((acc, group) => {
@@ -1393,10 +1421,20 @@ export function TrainingModuleDetail({ module }) {
 
     return (
         <div className="py-2 space-y-6">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1 gap-3">
                 <a href="/admin/training-modules" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
                     <ChevronLeft className="w-4 h-4" /> Back to Training Modules
                 </a>
+                {String(module.status || '').toLowerCase() !== 'published' && (
+                    <button
+                        type="button"
+                        onClick={handlePublishModule}
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 shadow-sm"
+                    >
+                        <Send className="w-4 h-4" />
+                        Publish Module
+                    </button>
+                )}
             </div>
 
             {flashStatus && <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{flashStatus}</div>}
