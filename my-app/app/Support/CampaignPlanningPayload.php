@@ -69,7 +69,9 @@ class CampaignPlanningPayload
             'expected_participants' => $this->expectedParticipants,
             'maximum_participants' => $this->maximumParticipants,
             'registration_link' => $this->registrationLink,
-            'registration_form_path' => $this->registrationLink ? '/participant/register' : null,
+            'registration_form_path' => $this->registrationLink
+                ? (parse_url((string) $this->registrationLink, PHP_URL_PATH) ?: '/campaigns/register')
+                : null,
             'published_status' => $this->publishedStatus,
             'registration_enabled' => $this->registrationEnabled,
         ], fn ($value) => $value !== null);

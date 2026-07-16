@@ -6,6 +6,10 @@ export function isParticipantRole(role) {
     return role === 'PARTICIPANT';
 }
 
+export function dashboardIndex(role) {
+    return isParticipantRole(role) ? '/participant/dashboard' : '/admin/dashboard';
+}
+
 export function evaluationsIndex(role) {
     return isParticipantRole(role) ? '/participant/evaluations' : '/admin/evaluations';
 }

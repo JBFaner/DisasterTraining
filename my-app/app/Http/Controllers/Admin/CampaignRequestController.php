@@ -158,7 +158,7 @@ class CampaignRequestController extends Controller
         $registrationLink = CampaignRegistrationLink::forCampaignRequest($campaignRequest);
         $payload = array_merge($payload, [
             'registration_link' => $registrationLink,
-            'registration_form_path' => '/participant/register',
+            'registration_form_path' => '/campaigns/'.$campaignRequest->id.'/register',
         ]);
         $campaignRequest->update(['payload' => $payload]);
 

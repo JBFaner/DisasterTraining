@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\Group6IntegrationController;
 use App\Http\Controllers\Admin\CampaignRequestController;
 use App\Http\Controllers\Admin\SimulationEventPlanningController;
 use App\Http\Controllers\Admin\SimulationExerciseTemplateController;
+use App\Http\Controllers\CampaignRegistrationController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
 
@@ -51,6 +52,12 @@ Route::view('/privacy', 'privacy')->name('privacy');
 Route::view('/terms', 'terms')->name('terms');
 Route::view('/data-protection', 'data-protection')->name('data.protection');
 Route::view('/accessibility', 'accessibility')->name('accessibility');
+
+// Campaign registration (must be registered before the generic /campaigns/{simulationEvent} route)
+Route::get('/campaigns/{campaignRequest}/register/success', [CampaignRegistrationController::class, 'showSuccess'])
+    ->name('campaigns.register.success');
+Route::get('/campaigns/{campaignRequest}/register', [CampaignRegistrationController::class, 'showRegister'])
+    ->name('campaigns.register');
 
 // Public campaign landing pages (live campaigns are published Simulation Events)
 Route::get('/campaigns/{simulationEvent}', [SimulationEventController::class, 'publicCampaignShow'])
@@ -117,40 +124,13 @@ Route::post('/password/reset', [App\Http\Controllers\PasswordResetController::cl
 Route::get('/auth/centralized/logout', [CentralizedLoginController::class, 'logout'])
     ->name('centralized.login.logout');
 
-// Dashboard route - handles both centralized login tokens and regular authenticated access
-// Must be outside auth middleware to allow token-based authentication
-Route::get('/dashboard', function (Request $request) {
-    \Log::info('Dashboard hit', [
-        'auth' => portal_check(),
-        'user_id' => portal_id(),
-        'portal' => PortalSession::currentPortal(),
-        'admin_authenticated' => Auth::guard(PortalAuth::ADMIN_GUARD)->check(),
-        'participant_authenticated' => Auth::guard(PortalAuth::PARTICIPANT_GUARD)->check(),
-        'active_guard' => PortalAuth::activeGuard(),
-        'session_id' => $request->session()->getId(),
-        'session_cookie' => config('session.cookie'),
-        'has_token' => $request->has('token'),
-        'token_len' => $request->has('token') ? strlen($request->query('token')) : 0,
-    ]);
-
-    // If token is present and user is not authenticated, handle centralized login
+// Dashboard routes — portal-specific URLs so admin and participant sessions stay isolated in separate tabs.
+$renderDashboard = function (Request $request) {
     if ($request->has('token') && ! portal_check()) {
-        \Log::info('Dashboard handling centralized token', [
-            'session_id' => $request->session()->getId(),
-        ]);
-
         return app(CentralizedLoginController::class)->handle($request);
     }
 
-    // If not authenticated and no token, redirect to the appropriate login page
     if (! portal_check()) {
-        \Log::warning('Dashboard unauthenticated redirect', [
-            'session_id' => $request->session()->getId(),
-            'portal' => PortalSession::currentPortal(),
-            'session_cookie' => config('session.cookie'),
-            'has_token' => $request->has('token'),
-        ]);
-
         $loginRoute = PortalSession::currentPortal() === PortalSession::PARTICIPANT
             ? 'participant.login'
             : 'admin.login';
@@ -160,8 +140,24 @@ Route::get('/dashboard', function (Request $request) {
 
     PortalAuth::syncDefaultGuard();
 
-    // Regular authenticated dashboard access – data-driven operations command center
     return app(\App\Http\Controllers\DashboardController::class)->index($request);
+};
+
+Route::get('/admin/dashboard', $renderDashboard)->name('admin.dashboard');
+Route::get('/participant/dashboard', $renderDashboard)->name('participant.dashboard');
+
+// Legacy /dashboard URL → redirect to the portal resolved for this request (token auth, referer, or header).
+Route::get('/dashboard', function (Request $request) {
+    if ($request->has('token') && ! portal_check()) {
+        return app(CentralizedLoginController::class)->handle($request);
+    }
+
+    $portal = PortalSession::resolvePortal($request);
+    $target = $portal === PortalSession::PARTICIPANT
+        ? 'participant.dashboard'
+        : 'admin.dashboard';
+
+    return redirect()->route($target, $request->query());
 })->name('dashboard');
 
 // Protected app routes (session inactivity checked on every request)
@@ -622,6 +618,9 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
 
         // My Attendance
         Route::get('/my-attendance', [ParticipantController::class, 'myAttendance'])->name('participant.my-attendance.index');
+
+        // My Trainings
+        Route::get('/my-trainings', [CampaignRegistrationController::class, 'myTrainings'])->name('participant.my-trainings.index');
     });
 
     // Profile (shared across portals)
@@ -664,5 +663,6 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     Route::get('/barangay-profile/{barangayProfile}', [LegacyPortalRedirectController::class, 'barangayProfile'])->name('legacy.barangay-profile.show');
     Route::get('/audit-logs', [LegacyPortalRedirectController::class, 'auditLogs'])->name('legacy.audit-logs');
     Route::get('/my-attendance', [LegacyPortalRedirectController::class, 'myAttendance'])->name('legacy.my-attendance');
+    Route::get('/my-trainings', [LegacyPortalRedirectController::class, 'myTrainings'])->name('legacy.my-trainings');
 });
 

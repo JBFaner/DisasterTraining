@@ -19,6 +19,7 @@
             id="app"
             data-role="{{ portal_check() ? (portal_user()->role ?? 'PARTICIPANT') : (($section ?? 'dashboard') === 'campaign_public' ? 'GUEST' : 'PARTICIPANT') }}"
             data-auth-guard="{{ portal_check() ? (\App\Support\PortalAuth::activeGuard() ?? '') : '' }}"
+            data-portal-session="{{ \App\Support\PortalSession::currentPortal() }}"
             data-section="{{ $section ?? 'dashboard' }}"
             data-session-timeout-minutes="{{ config('security.session_timeout_minutes', 10) }}"
             data-warning-before-logout-seconds="{{ config('security.warning_before_logout_seconds', 60) }}"
@@ -96,6 +97,9 @@
             @endisset
             @isset($participant)
                 data-participant='@json($participant)'
+            @endisset
+            @isset($trainings)
+                data-trainings='@json($trainings)'
             @endisset
             @isset($users)
                 data-users='@json($users)'

@@ -46,7 +46,7 @@ export function CampaignRequestShow({ request }) {
     const description = planning.short_description || request.payload?.short_description || '';
     const registrationLinkActive = request.registration_link_active !== false;
     const registrationLink = registrationLinkActive
-        ? (request.registration_link || request.payload?.registration_link || `${window.location.origin}/participant/register?campaign_request=${request.id}`)
+        ? (request.registration_link || request.payload?.registration_link || `${window.location.origin}/campaigns/${request.id}/register`)
         : '';
 
     const handleCopyRegistrationLink = async () => {

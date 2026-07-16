@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CampaignRequest;
+use App\Models\CampaignRegistration;
 use App\Models\LessonCompletion;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
@@ -111,7 +112,7 @@ class SimulationPlanningReadyCampaignSeeder extends Seeder
             $campaignRequest->update([
                 'payload' => array_merge($payload, [
                     'registration_link' => $registrationLink,
-                    'registration_form_path' => '/participant/register',
+                    'registration_form_path' => '/campaigns/'.$campaignRequest->id.'/register',
                 ]),
             ]);
 
@@ -133,11 +134,11 @@ class SimulationPlanningReadyCampaignSeeder extends Seeder
                 'not_started' => 0,
             ];
 
-            $createParticipant = function (string $bucket, int $index) use ($campaignKey, $module, $community): User {
+            $createParticipant = function (string $bucket, int $index) use ($campaignKey, $module, $community, $campaignRequest): User {
                 $email = "sim-ready.{$bucket}.{$index}@example.com";
                 $existing = User::query()->where('email', $email)->first();
 
-                return User::updateOrCreate(
+                $user = User::updateOrCreate(
                     ['email' => $email],
                     [
                         'name' => 'Sim Ready '.ucfirst(str_replace('_', ' ', $bucket))." {$index}",
@@ -153,6 +154,23 @@ class SimulationPlanningReadyCampaignSeeder extends Seeder
                         'barangay' => $community !== '—' ? $community : 'Barangay Demo',
                     ],
                 );
+
+                CampaignRegistration::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'campaign_request_id' => $campaignRequest->id,
+                    ],
+                    [
+                        'training_module_id' => $module->id,
+                        'registration_status' => CampaignRegistration::STATUS_REGISTERED,
+                        'registered_at' => now()->subDays(10),
+                        'attendance_status' => CampaignRegistration::ATTENDANCE_NOT_STARTED,
+                        'evaluation_status' => CampaignRegistration::EVALUATION_NOT_STARTED,
+                        'certificate_status' => CampaignRegistration::CERTIFICATE_NOT_ISSUED,
+                    ],
+                );
+
+                return $user;
             };
 
             $seedCompletions = function (User $user, int $lessonCount) use ($module, $contents): void {

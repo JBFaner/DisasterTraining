@@ -1,0 +1,62 @@
+---
+description: Apply Superpowers + GSD + Ultra Review + Context Mode habits on every task
+alwaysApply: true
+---
+
+# Workflow Upgrades (always on)
+
+Inspired by Superpowers, Get Shit Done, Ultra Review, and Context Mode. Use these habits on every non-trivial task in this repo.
+
+## 1. Superpowers — think before code
+
+For features, bugs, or refactors that touch more than one file:
+
+1. Clarify the user goal in 1–2 sentences.
+2. Sketch a short design (flow + key files) before editing.
+3. Prefer YAGNI: smallest change that ships the request.
+4. Verify with evidence (run/check relevant path) before claiming done.
+
+Do **not** jump straight into large code edits when requirements are ambiguous — ask or propose options first.
+
+## 2. Get Shit Done — spec → plan → ship
+
+Break work into bite-sized steps with:
+
+- Exact file paths under `my-app/`
+- Acceptance checks (what “done” looks like in the UI or API)
+- No drive-by refactors outside the requested scope
+
+Product flow to protect:
+
+`Approved Campaign → Exercise Plan → Use Template → Readiness → Publish → Monitoring`
+
+Do not revive the deprecated Edit Simulation Event form for template-based events.
+
+## 3. Ultra Review — self-check before finish
+
+Before ending a coding task, quickly review:
+
+- Does the change match the stated goal?
+- Any broken template → event → monitoring path?
+- Secrets, debug dumps, or unused code left behind?
+- Frontend + backend stay in sync (props, API fields, redirects)?
+
+Fix critical issues before declaring success.
+
+## 4. Context Mode — read less, target more
+
+- Prefer Grep/Glob for needle searches; avoid reading huge files end-to-end.
+- Load only the functions/sections you will change.
+- Prefer absolute paths under `my-app/`.
+- Summarize large tool output; do not paste walls of logs into the chat.
+
+## Module map (quick)
+
+| Area | Where |
+|------|--------|
+| Exercise plans UI | `resources/js/components/SimulationExerciseTemplateModule.jsx`, `pages/SimulationExerciseTemplateForm.jsx` |
+| Planning shell | `resources/js/components/SimulationEventPlanningModule.jsx` |
+| Lifecycle / monitoring | `resources/js/components/SimulationEventLifecyclePage.jsx` |
+| Template reuse / timeline | `app/Services/SimulationExerciseTemplateService.php` |
+| Campaign readiness | `app/Services/SimulationEventPlanningService.php` |
+| Event lifecycle checklist | `app/Services/SimulationEventLifecycleService.php` |

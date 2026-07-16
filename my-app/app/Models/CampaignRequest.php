@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Services\DatabaseBackupService;
 use App\Models\User;
+use App\Models\CampaignRegistration;
 
 class CampaignRequest extends Model
 {
@@ -64,11 +65,16 @@ class CampaignRequest extends Model
         });
     }
 
+    public function campaignRegistrations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CampaignRegistration::class);
+    }
+
     public function registeredParticipantsCount(): int
     {
-        return User::query()
-            ->where('role', 'PARTICIPANT')
-            ->where('registration_campaign_id', 'campaign-request:'.$this->id)
+        return CampaignRegistration::query()
+            ->where('campaign_request_id', $this->id)
+            ->where('registration_status', CampaignRegistration::STATUS_REGISTERED)
             ->count();
     }
 }

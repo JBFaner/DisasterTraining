@@ -44,7 +44,7 @@
                     </div>
                 </div>
                 <div class="flex flex-col items-start md:items-end gap-3">
-                    <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">
+                    <a href="{{ ($user->role ?? '') === 'PARTICIPANT' ? route('participant.dashboard') : route('admin.dashboard') }}" class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">
                         <span class="text-base">←</span>
                         Back to dashboard
                     </a>

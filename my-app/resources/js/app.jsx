@@ -40,6 +40,7 @@ import {
     QualifiedTrainerDetail,
 } from './components/ParticipantAttendanceModule';
 import { ParticipantRegistryProfile } from './components/ParticipantRegistryProfile';
+import { MyTrainings } from './components/MyTrainings';
 import {
     HazardAssessmentList,
     HazardAssessmentDetail,
@@ -80,6 +81,7 @@ import {
     hazardAssessmentProfileIndex,
     settingsAutoApproval,
     adminCertificationApi,
+    dashboardIndex,
 } from './utils/portalRoutes';
 import {
     AdminPageShell,
@@ -366,6 +368,7 @@ if (rootElement) {
     const qualifiedTrainersSummaryJson = rootElement.getAttribute('data-qualified-trainers-summary');
     const qualifiedTrainerJson = rootElement.getAttribute('data-qualified-trainer');
     const participantJson = rootElement.getAttribute('data-participant');
+    const trainingsJson = rootElement.getAttribute('data-trainings');
     const registrationsJson = rootElement.getAttribute('data-registrations');
     const usersJson = rootElement.getAttribute('data-users');
     const rolesJson = rootElement.getAttribute('data-roles');
@@ -398,6 +401,7 @@ if (rootElement) {
     let currentQualifiedTrainer = null;
     let users = [];
     let currentParticipant = null;
+    let myTrainings = [];
     let registrations = [];
     let flashErrors = [];
     if (modulesJson) {
@@ -597,6 +601,13 @@ if (rootElement) {
             currentParticipant = JSON.parse(participantJson);
         } catch (e) {
             console.error('Failed to parse participant JSON', e);
+        }
+    }
+    if (trainingsJson) {
+        try {
+            myTrainings = JSON.parse(trainingsJson);
+        } catch (e) {
+            console.error('Failed to parse trainings JSON', e);
         }
     }
     if (registrationsJson) {
@@ -1230,6 +1241,7 @@ if (rootElement) {
                         sectionAttr.startsWith('event_registration') ? 'participants' :
                             sectionAttr.startsWith('event_attendance') ? 'participants' :
                                 sectionAttr.startsWith('my_attendance') ? 'participants' :
+                                sectionAttr === 'my_trainings' ? 'my_trainings' :
                                     sectionAttr.startsWith('evaluation_results_participant') ? 'evaluation' :
                                         sectionAttr === 'training_evaluation_results' ? 'evaluation' :
                                         sectionAttr === 'evaluation_result_detail' ? 'evaluation' :
@@ -1247,7 +1259,7 @@ if (rootElement) {
     // Breadcrumb configuration
     const getBreadcrumbs = () => {
         if (sectionAttr === 'dashboard') {
-            return [{ label: 'Dashboard', href: '/dashboard' }];
+            return [{ label: 'Dashboard', href: dashboardIndex(role) }];
         }
 
         if (sectionAttr === 'audit_logs') {
@@ -1355,6 +1367,11 @@ if (rootElement) {
         if (sectionAttr === 'my_attendance') {
             return [
                 { label: 'My Attendance', href: '/participant/my-attendance' },
+            ];
+        }
+        if (sectionAttr === 'my_trainings') {
+            return [
+                { label: 'My Trainings', href: '/participant/my-trainings' },
             ];
         }
         if (sectionAttr === 'event_registrations') {
@@ -1531,7 +1548,7 @@ if (rootElement) {
             ];
         }
 
-        return [{ label: 'Dashboard', href: '/dashboard' }];
+        return [{ label: 'Dashboard', href: dashboardIndex(role) }];
     };
 
     const breadcrumbs = getBreadcrumbs();
@@ -1819,6 +1836,10 @@ if (rootElement) {
 
                         {sectionAttr === 'my_attendance' && currentParticipant && (
                             <ParticipantSelfAttendance participant={currentParticipant} />
+                        )}
+
+                        {sectionAttr === 'my_trainings' && (
+                            <MyTrainings trainings={myTrainings} />
                         )}
 
                         {sectionAttr === 'certification' && (
@@ -9981,6 +10002,8 @@ function EventRegistrationsTable({ event, registrations = [] }) {
 
 function EventAttendanceTable({ event, registrations = [] }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const [nameSearch, setNameSearch] = React.useState('');
+    const [statusFilter, setStatusFilter] = React.useState('all');
 
     // Calculate attendance statistics
     const approvedRegistrations = registrations.filter(reg => reg.status === 'approved');
@@ -9991,6 +10014,25 @@ function EventAttendanceTable({ event, registrations = [] }) {
     const excusedCount = approvedRegistrations.filter(reg => reg.attendance?.status === 'excused').length;
     const notMarkedCount = approvedRegistrations.filter(reg => !reg.attendance || !reg.attendance.status).length;
     const attendanceRate = totalRegistered > 0 ? Math.round(((presentCount + lateCount) / totalRegistered) * 100) : 0;
+
+    const getAttendanceStatusKey = (reg) => {
+        const status = reg.attendance?.status;
+        return status || 'not_marked';
+    };
+
+    const filteredRegistrations = approvedRegistrations.filter((reg) => {
+        const name = String(reg.user?.name || '').toLowerCase();
+        const query = nameSearch.trim().toLowerCase();
+        if (query && !name.includes(query)) {
+            return false;
+        }
+
+        const statusKey = getAttendanceStatusKey(reg);
+        if (statusFilter === 'all') {
+            return true;
+        }
+        return statusKey === statusFilter;
+    });
 
     return (
         <div>
@@ -10119,36 +10161,82 @@ function EventAttendanceTable({ event, registrations = [] }) {
                     
                     {/* Status Counters */}
                     <div className="space-y-3">
-                        <div className="bg-white rounded-lg p-4 border border-emerald-200">
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('present')}
+                            className={`w-full bg-white rounded-lg p-4 border text-left transition ${statusFilter === 'present' ? 'border-emerald-400 ring-2 ring-emerald-100' : 'border-emerald-200 hover:border-emerald-300'}`}
+                        >
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">🟢 Present</span>
+                                <span className="text-sm text-slate-600">Present</span>
                                 <span className="text-xl font-bold text-emerald-600">{presentCount}</span>
                             </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 border border-amber-200">
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('late')}
+                            className={`w-full bg-white rounded-lg p-4 border text-left transition ${statusFilter === 'late' ? 'border-amber-400 ring-2 ring-amber-100' : 'border-amber-200 hover:border-amber-300'}`}
+                        >
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">🟡 Late</span>
+                                <span className="text-sm text-slate-600">Late</span>
                                 <span className="text-xl font-bold text-amber-600">{lateCount}</span>
                             </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 border border-red-200">
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('absent')}
+                            className={`w-full bg-white rounded-lg p-4 border text-left transition ${statusFilter === 'absent' ? 'border-red-400 ring-2 ring-red-100' : 'border-red-200 hover:border-red-300'}`}
+                        >
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">🔴 Absent</span>
+                                <span className="text-sm text-slate-600">Absent</span>
                                 <span className="text-xl font-bold text-red-600">{absentCount}</span>
                             </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('not_marked')}
+                            className={`w-full bg-white rounded-lg p-4 border text-left transition ${statusFilter === 'not_marked' ? 'border-slate-400 ring-2 ring-slate-100' : 'border-slate-200 hover:border-slate-300'}`}
+                        >
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">⚪ Not Marked</span>
+                                <span className="text-sm text-slate-600">Not Marked</span>
                                 <span className="text-xl font-bold text-slate-600">{notMarkedCount}</span>
                             </div>
-                        </div>
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Attendance Table */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                        <label className="sr-only" htmlFor="attendance-name-search">Search participant</label>
+                        <input
+                            id="attendance-name-search"
+                            type="search"
+                            value={nameSearch}
+                            onChange={(e) => setNameSearch(e.target.value)}
+                            placeholder="Search participant name..."
+                            className="w-full sm:max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                        />
+                        <label className="sr-only" htmlFor="attendance-status-filter">Filter by status</label>
+                        <select
+                            id="attendance-status-filter"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                        >
+                            <option value="all">All statuses</option>
+                            <option value="not_marked">Not marked ({notMarkedCount})</option>
+                            <option value="present">Present ({presentCount})</option>
+                            <option value="late">Late ({lateCount})</option>
+                            <option value="absent">Absent ({absentCount})</option>
+                            <option value="excused">Excused ({excusedCount})</option>
+                        </select>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                        Showing {filteredRegistrations.length} of {totalRegistered} participants
+                    </p>
+                </div>
                 <table className="min-w-full text-sm">
                     <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
                         <tr>
@@ -10160,10 +10248,12 @@ function EventAttendanceTable({ event, registrations = [] }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {registrations.filter(reg => reg.status === 'approved').length === 0 ? (
+                        {approvedRegistrations.length === 0 ? (
                             <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">No approved registrations for this event.</td></tr>
+                        ) : filteredRegistrations.length === 0 ? (
+                            <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500 text-sm">No participants match your search or filter.</td></tr>
                         ) : (
-                            registrations.filter(reg => reg.status === 'approved').map((reg) => {
+                            filteredRegistrations.map((reg) => {
                                 const attendance = reg.attendance;
                                 const isMarked = attendance && attendance.status;
                                 return (
@@ -11025,7 +11115,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                                 {submittedEvaluations.map((pe) => {
                                                     const name = pe.user?.name || attendances?.find(a => String(a.user_id) === String(pe.user_id))?.user?.name || 'Unknown';
                                                     const attendance = attendances?.find(a => String(a.user_id) === String(pe.user_id));
-                                                    const isPresent = attendance?.status === 'present' || attendance?.status === 'completed';
+                                                    const isPresent = attendance?.status === 'present' || attendance?.status === 'late' || attendance?.status === 'completed';
                                                     const totalScore = parseFloat(pe.total_score) || 0;
                                                     const maxScore = criteria ? criteria.length * 10 : 0;
                                                     const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(0) : 0;
@@ -11108,7 +11198,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                     <div className="space-y-3">
                                         {pending.map((p) => {
                                             const status = getEvaluationStatus(p.user_id);
-                                            const isPresent = p.attendance_status === 'present' || p.attendance_status === 'completed';
+                                            const isPresent = p.attendance_status === 'present' || p.attendance_status === 'late' || p.attendance_status === 'completed';
                                             const name = p.user?.name || 'Unknown';
                                             const initials = getInitials(name);
                                             const avatarColor = getAvatarColor(name);
@@ -11207,7 +11297,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
                                             <tbody>
                                                 {submittedEvaluations.map((pe) => {
                                                     const attendance = attendances?.find(a => String(a.user_id) === String(pe.user_id));
-                                                    const isPresent = attendance?.status === 'present' || attendance?.status === 'completed';
+                                                    const isPresent = attendance?.status === 'present' || attendance?.status === 'late' || attendance?.status === 'completed';
                                                     const totalScore = parseFloat(pe.total_score) || 0;
                                                     const maxScore = criteria ? criteria.length * 10 : 0;
                                                     const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(2) : '0.00';

@@ -44,14 +44,14 @@ function formatTime(timeString) {
 }
 
 function formatTimelineTime(timeString, recordedAt) {
+    if (recordedAt) {
+        return new Date(recordedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
     if (timeString) {
         const [hours, minutes] = timeString.split(':').map((v) => parseInt(v, 10) || 0);
         const dt = new Date();
         dt.setHours(hours, minutes, 0, 0);
         return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-    if (recordedAt) {
-        return new Date(recordedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
     return '—';
 }
@@ -135,6 +135,18 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
     const isDraft = event.status === 'draft';
     const fromExercisePlan = isExercisePlanEvent(event);
     const exercisePlan = event.simulation_exercise_template;
+
+    const registeredCount = Number(attendance.registered ?? 0);
+    const checkedInCount = Number(attendance.checked_in ?? 0);
+    const attendanceCompletionRate = Number(attendance.completion_rate ?? 0);
+    const attendanceVerificationStep = executionProgress.find((step) => step.key === 'attendance_verification');
+    const attendanceReadyForVerification =
+        registeredCount > 0 && (attendanceCompletionRate >= 80 || checkedInCount >= registeredCount);
+    const showAttendanceVerificationHint =
+        isOngoing &&
+        attendanceReadyForVerification &&
+        attendanceVerificationStep &&
+        !attendanceVerificationStep.completed;
 
     const now = new Date();
     const startDt = getEventDateTime(event.event_date, event.start_time);
@@ -595,22 +607,58 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                         </div>
 
                         {!isOngoing && !isCompleted && (
-                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
                                 Start the simulation to begin tracking execution steps.
                             </p>
                         )}
 
+                        {showAttendanceVerificationHint && (
+                            <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                                <p className="text-sm font-medium text-emerald-900">
+                                    Attendance looks ready to verify
+                                </p>
+                                <p className="mt-1 text-xs text-emerald-800">
+                                    {checkedInCount} of {registeredCount} participants are marked
+                                    ({attendanceCompletionRate}% completion). You can mark{' '}
+                                    <span className="font-semibold">Attendance Verification</span> complete when ready.
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={isSaving}
+                                        onClick={() => handleCompleteStep('attendance_verification', 'Attendance Verification')}
+                                        className="inline-flex items-center rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+                                    >
+                                        Mark Attendance Verification Complete
+                                    </button>
+                                    <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/attendance`}>
+                                        Open Attendance Management
+                                    </AdminSecondaryButton>
+                                </div>
+                            </div>
+                        )}
+
                         <ul className="space-y-3">
-                            {executionProgress.map((step) => (
+                            {executionProgress.map((step) => {
+                                const isAttendanceStep = step.key === 'attendance_verification';
+
+                                return (
                                 <li key={step.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-4 py-3">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
                                         {step.completed ? (
                                             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                                         ) : (
                                             <span className="w-5 h-5 rounded-full border-2 border-slate-300 shrink-0" />
                                         )}
-                                        <div>
+                                        <div className="min-w-0">
                                             <p className="text-sm font-medium text-slate-800">{step.label}</p>
+                                            {isAttendanceStep && !step.completed && isOngoing && (
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    {attendanceReadyForVerification
+                                                        ? 'Suggested: attendance threshold reached — confirm manually.'
+                                                        : `Manual step. Marked so far: ${checkedInCount}/${registeredCount || 0}.`}
+                                                </p>
+                                            )}
                                             {step.completed_at && (
                                                 <p className="text-xs text-slate-500">
                                                     Completed {new Date(step.completed_at).toLocaleString()}
@@ -618,18 +666,29 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                             )}
                                         </div>
                                     </div>
-                                    {isOngoing && !step.completed && (
-                                        <button
-                                            type="button"
-                                            disabled={isSaving}
-                                            onClick={() => handleCompleteStep(step.key, step.label)}
-                                            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-50"
-                                        >
-                                            Mark Complete
-                                        </button>
-                                    )}
+                                    <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                                        {isAttendanceStep && (
+                                            <a
+                                                href={`/admin/simulation-events/${event.id}/attendance`}
+                                                className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50"
+                                            >
+                                                Open Attendance Management
+                                            </a>
+                                        )}
+                                        {isOngoing && !step.completed && (
+                                            <button
+                                                type="button"
+                                                disabled={isSaving}
+                                                onClick={() => handleCompleteStep(step.key, step.label)}
+                                                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-50"
+                                            >
+                                                Mark Complete
+                                            </button>
+                                        )}
+                                    </div>
                                 </li>
-                            ))}
+                                );
+                            })}
                         </ul>
                     </div>
                 </div>
@@ -644,13 +703,38 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                         <StatCard label="Late" value={attendance.late ?? 0} />
                         <StatCard label="Completion Rate" value={`${attendance.completion_rate ?? 0}%`} />
                     </div>
+
+                    {Number(attendance.checked_in ?? 0) === 0 ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            Mark at least one participant as <span className="font-semibold">Present</span> (or Late)
+                            in Attendance Management before Evaluation & Scoring. Absent participants cannot be scored.
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                            {attendance.checked_in} participant{Number(attendance.checked_in) === 1 ? '' : 's'} ready for scoring.
+                            Criteria follow PH drill practice (BFP / NSED-style): alarm response, evacuation discipline,
+                            accountability, PPE/safety, instructions, teamwork, and participation.
+                        </div>
+                    )}
+
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-wrap gap-2">
                         <AdminPrimaryButton href={`/admin/simulation-events/${event.id}/attendance`}>
                             Open Attendance Management
                         </AdminPrimaryButton>
-                        <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
-                            Send to Evaluation & Scoring
-                        </AdminSecondaryButton>
+                        {Number(attendance.checked_in ?? 0) > 0 ? (
+                            <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
+                                Send to Evaluation & Scoring
+                            </AdminSecondaryButton>
+                        ) : (
+                            <button
+                                type="button"
+                                disabled
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 bg-slate-100 text-slate-400 rounded-lg font-medium text-sm cursor-not-allowed"
+                                title="Mark Present participants first"
+                            >
+                                Send to Evaluation & Scoring
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

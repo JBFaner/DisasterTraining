@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CampaignRequest;
+use App\Models\CampaignRegistration;
 use App\Models\LessonCompletion;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
@@ -80,7 +81,7 @@ class SimulationPlanningMakePlanReadySeeder extends Seeder
             $module->fresh()->toCampaignPlanningPayload($recommendedCommunities),
             [
                 'registration_link' => CampaignRegistrationLink::forCampaignRequest($campaignRequest),
-                'registration_form_path' => '/participant/register',
+                'registration_form_path' => '/campaigns/'.$campaignRequest->id.'/register',
                 '_test_seeder' => 'simulation_planning_make_plan_ready',
             ],
         );
@@ -153,6 +154,21 @@ class SimulationPlanningMakePlanReadySeeder extends Seeder
                 ],
             );
 
+            CampaignRegistration::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'campaign_request_id' => $campaignRequest->id,
+                ],
+                [
+                    'training_module_id' => $module->id,
+                    'registration_status' => CampaignRegistration::STATUS_REGISTERED,
+                    'registered_at' => now()->subDays(10),
+                    'attendance_status' => CampaignRegistration::ATTENDANCE_NOT_STARTED,
+                    'evaluation_status' => CampaignRegistration::EVALUATION_NOT_STARTED,
+                    'certificate_status' => CampaignRegistration::CERTIFICATE_NOT_ISSUED,
+                ],
+            );
+
             foreach ($contents as $content) {
                 LessonCompletion::updateOrCreate(
                     [
@@ -175,10 +191,10 @@ class SimulationPlanningMakePlanReadySeeder extends Seeder
         TrainingModule $module,
         int $totalLessons,
     ): int {
-        $participantIds = User::query()
-            ->where('role', 'PARTICIPANT')
-            ->where('registration_campaign_id', 'campaign-request:'.$campaignRequest->id)
-            ->pluck('id');
+        $participantIds = CampaignRegistration::query()
+            ->where('campaign_request_id', $campaignRequest->id)
+            ->where('registration_status', CampaignRegistration::STATUS_REGISTERED)
+            ->pluck('user_id');
 
         $qualified = 0;
         foreach ($participantIds as $userId) {

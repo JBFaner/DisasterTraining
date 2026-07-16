@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CampaignRequest;
+use App\Models\CampaignRegistration;
 use App\Models\LessonCompletion;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
@@ -106,7 +107,7 @@ class SimulationPlanningBlockedCampaignSeeder extends Seeder
             $campaignRequest->update([
                 'payload' => array_merge($payload, [
                     'registration_link' => CampaignRegistrationLink::forCampaignRequest($campaignRequest),
-                    'registration_form_path' => '/participant/register',
+                    'registration_form_path' => '/campaigns/'.$campaignRequest->id.'/register',
                 ]),
             ]);
 
@@ -116,9 +117,14 @@ class SimulationPlanningBlockedCampaignSeeder extends Seeder
                 ->orderBy('sort_order')
                 ->get();
 
+            CampaignRegistration::query()
+                ->where('campaign_request_id', $campaignRequest->id)
+                ->whereHas('user', fn ($q) => $q->where('email', 'like', 'sim-blocked.%@example.com'))
+                ->delete();
+
             User::query()
-                ->where('registration_campaign_id', $campaignKey)
                 ->where('email', 'like', 'sim-blocked.%@example.com')
+                ->whereDoesntHave('campaignRegistrations')
                 ->delete();
 
             for ($i = 1; $i <= 5; $i++) {
@@ -138,6 +144,21 @@ class SimulationPlanningBlockedCampaignSeeder extends Seeder
                     ],
                 );
 
+                CampaignRegistration::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'campaign_request_id' => $campaignRequest->id,
+                    ],
+                    [
+                        'training_module_id' => $module->id,
+                        'registration_status' => CampaignRegistration::STATUS_REGISTERED,
+                        'registered_at' => now()->subDay(),
+                        'attendance_status' => CampaignRegistration::ATTENDANCE_NOT_STARTED,
+                        'evaluation_status' => CampaignRegistration::EVALUATION_NOT_STARTED,
+                        'certificate_status' => CampaignRegistration::CERTIFICATE_NOT_ISSUED,
+                    ],
+                );
+
                 foreach ($contents as $content) {
                     LessonCompletion::updateOrCreate(
                         [
@@ -153,7 +174,7 @@ class SimulationPlanningBlockedCampaignSeeder extends Seeder
             }
 
             for ($i = 1; $i <= 3; $i++) {
-                User::updateOrCreate(
+                $user = User::updateOrCreate(
                     ['email' => "sim-blocked.notstarted.{$i}@example.com"],
                     [
                         'name' => "Sim Blocked Not Started {$i}",
@@ -166,6 +187,21 @@ class SimulationPlanningBlockedCampaignSeeder extends Seeder
                         'registration_campaign_id' => $campaignKey,
                         'registration_campaign_title' => $module->title,
                         'registration_campaign_registered_at' => now()->subDay(),
+                    ],
+                );
+
+                CampaignRegistration::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'campaign_request_id' => $campaignRequest->id,
+                    ],
+                    [
+                        'training_module_id' => $module->id,
+                        'registration_status' => CampaignRegistration::STATUS_REGISTERED,
+                        'registered_at' => now()->subDay(),
+                        'attendance_status' => CampaignRegistration::ATTENDANCE_NOT_STARTED,
+                        'evaluation_status' => CampaignRegistration::EVALUATION_NOT_STARTED,
+                        'certificate_status' => CampaignRegistration::CERTIFICATE_NOT_ISSUED,
                     ],
                 );
             }

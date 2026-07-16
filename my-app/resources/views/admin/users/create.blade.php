@@ -25,7 +25,7 @@
                     </p>
                 </div>
                 <a
-                    href="/dashboard"
+                    href="/admin/dashboard"
                     class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
                 >
                     ← Back to Dashboard

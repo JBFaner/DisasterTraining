@@ -10,6 +10,7 @@ use App\Models\EventRegistration;
 use App\Mail\ParticipantVerificationEmail;
 use App\Mail\AdminLoginOtpEmail;
 use App\Services\AuditLogger;
+use App\Services\CampaignRegistrationService;
 use App\Services\DatabaseBackupService;
 use App\Services\LoginAttemptService;
 use App\Support\MaskedEmail;
@@ -138,6 +139,7 @@ class AuthController extends Controller
         return route('participant.register', array_filter([
             'campaign_request' => $campaignRequestId,
             'campaign_event' => $campaignEventId,
+            'create_account' => $campaignRequestId ? 1 : null,
         ]));
     }
 
@@ -347,6 +349,13 @@ class AuthController extends Controller
     {
         $request->session()->regenerateToken();
 
+        if ($request->filled('redirect')) {
+            $redirect = $request->query('redirect');
+            if (is_string($redirect) && str_starts_with($redirect, '/')) {
+                $request->session()->put('url.intended', $redirect);
+            }
+        }
+
         $email = $request->old('email', '');
         $failedAttempts = 0;
         
@@ -469,11 +478,17 @@ class AuthController extends Controller
             'description' => 'Participant logged in.',
         ]);
 
-        return redirect()->intended('/dashboard');
+        return redirect()->intended(route('participant.dashboard'));
     }
 
     public function showParticipantRegister(Request $request)
     {
+        // Legacy campaign links: /participant/register?campaign_request=X
+        // Redirect to the campaign registration page unless the user is creating an account.
+        if ($request->filled('campaign_request') && ! $request->boolean('create_account') && ! $request->session()->hasOldInput()) {
+            return redirect()->route('campaigns.register', (int) $request->query('campaign_request'));
+        }
+
         $campaignContextFromLink = $this->resolveCampaignRegistrationContext($request);
         if ($request->filled('campaign_request') && ! $campaignContextFromLink) {
             $request->session()->forget('campaign_registration_context');
@@ -597,9 +612,6 @@ class AuthController extends Controller
             'status' => 'pending_email_verification',
             'registered_at' => now(),
             'registration_source' => ! empty($campaignContext) ? self::CAMPAIGN_REGISTRATION_SOURCE : 'direct_registration',
-            'registration_campaign_id' => $this->registrationCampaignIdFromContext($campaignContext),
-            'registration_campaign_title' => ! empty($campaignContext['training_title']) ? (string) $campaignContext['training_title'] : null,
-            'registration_campaign_registered_at' => ! empty($campaignContext) ? now() : null,
         ]);
 
         try {
@@ -743,15 +755,42 @@ class AuthController extends Controller
 
         Cache::forget($this->participantVerificationCacheKey($user->id));
         $campaignContext = $verifySession['campaign_context'] ?? null;
+        $campaignRequestId = $campaignContext['campaign_request_id'] ?? null;
 
         $request->session()->forget('participant_registration_verify');
         $request->session()->forget('campaign_registration_context');
-        $this->createCampaignEventRegistrationIfNeeded($user, $campaignContext);
 
+        $user->refresh();
+
+        PortalAuth::login($user, false);
+        $request->session()->regenerate();
+        $request->session()->put('last_activity', now()->timestamp);
+
+        if ($campaignRequestId) {
+            $campaignRequest = CampaignRequest::query()->find($campaignRequestId);
+            if ($campaignRequest) {
+                try {
+                    app(CampaignRegistrationService::class)->register($user, $campaignRequest);
+                } catch (ValidationException $exception) {
+                    return redirect()
+                        ->route('campaigns.register', $campaignRequest)
+                        ->withErrors($exception->errors());
+                }
+
+                $this->createCampaignEventRegistrationIfNeeded($user, $campaignContext);
+                app(DatabaseBackupService::class)->queueAfterCommit('participant_registered');
+
+                return redirect()
+                    ->route('campaigns.register.success', $campaignRequest)
+                    ->with('status', 'Your account has been verified and you are registered for this campaign.');
+            }
+        }
+
+        $this->createCampaignEventRegistrationIfNeeded($user, $campaignContext);
         app(DatabaseBackupService::class)->queueAfterCommit('participant_registered');
 
-        return redirect()->route('participant.login')
-            ->with('status', 'Your email has been successfully verified. You may now log in to your account.');
+        return redirect()->intended(route('participant.dashboard'))
+            ->with('status', 'Your email has been successfully verified. Welcome!');
     }
 
     /**
@@ -1104,8 +1143,8 @@ class AuthController extends Controller
         $user->last_login = now();
         $user->save();
 
-        // OTP verified - redirect to dashboard
-        return redirect()->intended('/dashboard');
+        // OTP verified - redirect to admin dashboard
+        return redirect()->intended(route('admin.dashboard'));
     }
 
     /**

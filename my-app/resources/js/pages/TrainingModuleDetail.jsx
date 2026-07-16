@@ -1159,7 +1159,7 @@ export function TrainingModuleDetail({ module }) {
         expected_participants: Number(campaignExpectedParticipants) > 0 ? Number(campaignExpectedParticipants) : null,
         maximum_participants: Number(campaignMaximumParticipants) > 0 ? Number(campaignMaximumParticipants) : null,
         registered_participants_count: 0,
-        registration_link: `${window.location.origin}/participant/register?campaign_request={campaign_request_id}`,
+        registration_link: `${window.location.origin}/campaigns/{campaign_request_id}/register`,
         published_status: module.status || 'draft',
         registration_enabled: Number(campaignMaximumParticipants) > 0
             ? 0 < Number(campaignMaximumParticipants)

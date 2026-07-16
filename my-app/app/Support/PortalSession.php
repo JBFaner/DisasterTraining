@@ -76,11 +76,22 @@ class PortalSession
             return (string) $request->attributes->get(self::CONFIG_KEY);
         }
 
+        if ($portal = self::resolvePortalFromHeader($request)) {
+            return $portal;
+        }
+
         if ($portal = self::resolvePortalFromPath($request)) {
             return $portal;
         }
 
         return self::resolvePortalFromCookies($request);
+    }
+
+    protected static function resolvePortalFromHeader(Request $request): ?string
+    {
+        $header = strtolower(trim((string) $request->headers->get('X-Portal-Session', '')));
+
+        return in_array($header, self::portals(), true) ? $header : null;
     }
 
     protected static function resolvePortalFromPath(Request $request): ?string
@@ -108,6 +119,22 @@ class PortalSession
 
         if ($request->is('admin', 'admin/*')) {
             return self::ADMIN;
+        }
+
+        if ($request->is('dashboard')) {
+            return self::resolvePortalFromReferer($request)
+                ?? self::resolvePortalFromHeader($request)
+                ?? self::ADMIN;
+        }
+
+        if ($request->is(
+            'profile',
+            'profile/*',
+            'session/*',
+        )) {
+            return self::resolvePortalFromReferer($request)
+                ?? self::resolvePortalFromHeader($request)
+                ?? self::ADMIN;
         }
 
         return null;

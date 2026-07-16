@@ -75,7 +75,7 @@ class CentralizedLoginController extends Controller
         ]);
 
         // Redirect to dashboard (hide token from URL using JavaScript)
-        $redirectUrl = url('/dashboard');
+        $redirectUrl = url('/admin/dashboard');
         return redirect($redirectUrl)->with('centralized_login_success', true);
     }
 

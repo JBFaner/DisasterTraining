@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CampaignRequest;
+use App\Models\CampaignRegistration;
 use App\Models\LessonCompletion;
 use App\Models\TrainingContent;
 use App\Models\User;
@@ -92,7 +93,7 @@ class SimulationPlanningQuotaTestSeeder extends Seeder
 
             $makeParticipant = function (string $suffix) use ($community, $nowStamp, $request): User {
                 $participantId = $this->uniqueParticipantId();
-                return User::create([
+                $user = User::create([
                     'name' => "Planning {$suffix} {$nowStamp}",
                     'email' => "planning.{$suffix}+".Str::lower(Str::random(6))."@example.com",
                     'password' => bcrypt('password'),
@@ -106,6 +107,23 @@ class SimulationPlanningQuotaTestSeeder extends Seeder
                     'registration_campaign_registered_at' => now(),
                     'barangay' => $community !== '—' ? $community : null,
                 ]);
+
+                CampaignRegistration::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'campaign_request_id' => $request->id,
+                    ],
+                    [
+                        'training_module_id' => $request->training_module_id,
+                        'registration_status' => CampaignRegistration::STATUS_REGISTERED,
+                        'registered_at' => now(),
+                        'attendance_status' => CampaignRegistration::ATTENDANCE_NOT_STARTED,
+                        'evaluation_status' => CampaignRegistration::EVALUATION_NOT_STARTED,
+                        'certificate_status' => CampaignRegistration::CERTIFICATE_NOT_ISSUED,
+                    ],
+                );
+
+                return $user;
             };
 
             $seedCompletions = function (User $user, int $count) use ($trainingModuleId, $contents) {

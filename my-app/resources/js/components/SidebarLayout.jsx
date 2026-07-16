@@ -23,6 +23,7 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 import { TopBar } from './TopBar';
+import { dashboardIndex } from '../utils/portalRoutes';
 
 export function SidebarLayout({ role, currentSection = 'dashboard', children, moduleName, breadcrumbs, user }) {
     // Load collapsed state from localStorage, default to false
@@ -348,7 +349,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     <NavItem
                         icon={LayoutDashboard}
                         label="Dashboard"
-                        href="/dashboard"
+                        href={dashboardIndex(role)}
                         active={currentSection === 'dashboard'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
@@ -378,6 +379,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                 </div>
                 <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Participation</NavSectionTitle>}
+                    <NavItem
+                        icon={BookOpen}
+                        label="My Trainings"
+                        href="/participant/my-trainings"
+                        active={currentSection === 'my_trainings'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
                     <NavItem
                         icon={ClipboardCheck}
                         label="My Attendance"
@@ -420,7 +429,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                 <NavItem
                     icon={LayoutDashboard}
                     label="Dashboard"
-                    href="/dashboard"
+                    href={dashboardIndex(role)}
                     active={currentSection === 'dashboard'}
                     isCollapsed={isCollapsed}
                 />

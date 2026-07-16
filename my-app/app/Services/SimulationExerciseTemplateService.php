@@ -14,6 +14,7 @@ use App\Models\SimulationExercisePersonnel;
 use App\Models\SimulationExercisePersonnelAssignment;
 use App\Models\SimulationExerciseTemplate;
 use App\Models\SimulationExerciseTimelineItem;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -345,14 +346,7 @@ class SimulationExerciseTemplateService
             ->map(fn ($item) => '• '.$item->objective_text)
             ->implode("\n");
 
-        $timelineEntries = $template->timelineItems
-            ->map(fn ($item) => [
-                'time' => $item->start_time,
-                'label' => $item->label,
-                'description' => $item->description,
-            ])
-            ->values()
-            ->all();
+        $timelineEntries = $this->buildEventTimelineEntries($template, $eventDate, $startTime);
 
         $eventPhases = $template->activities
             ->map(fn ($item, $index) => [
@@ -829,5 +823,78 @@ class SimulationExerciseTemplateService
             'Full Scale Exercise' => 'Full-scale Exercise',
             default => 'Drill',
         };
+    }
+
+    /**
+     * Shift exercise-plan timeline times to match the scheduled event date and start time.
+     *
+     * @return list<array{time: string, label: string, description: string|null, recorded_at: string}>
+     */
+    private function buildEventTimelineEntries(
+        SimulationExerciseTemplate $template,
+        string $eventDate,
+        string $eventStartTime,
+    ): array {
+        $items = $template->timelineItems->sortBy('start_time')->values();
+
+        if ($items->isEmpty()) {
+            $items = $template->activities
+                ->filter(fn (SimulationExerciseActivity $activity) => filled($activity->start_time))
+                ->sortBy('start_time')
+                ->values()
+                ->map(fn (SimulationExerciseActivity $activity) => (object) [
+                    'start_time' => $activity->start_time,
+                    'label' => $activity->title,
+                    'description' => $activity->description,
+                ]);
+        }
+
+        if ($items->isEmpty()) {
+            return [];
+        }
+
+        $baseline = $this->normalizeTimeString((string) ($items->first()->start_time ?? '08:00'));
+        $eventStart = $this->normalizeTimeString($eventStartTime);
+        $offsetMinutes = $this->timeToMinutes($eventStart) - $this->timeToMinutes($baseline);
+
+        return $items
+            ->map(function ($item) use ($eventDate, $offsetMinutes) {
+                $shiftedTime = $this->shiftTimelineTime((string) $item->start_time, $offsetMinutes);
+                $recordedAt = Carbon::parse($eventDate.' '.$shiftedTime.':00');
+
+                return [
+                    'time' => $shiftedTime,
+                    'label' => (string) $item->label,
+                    'description' => $item->description ?? null,
+                    'recorded_at' => $recordedAt->toIso8601String(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function normalizeTimeString(string $time): string
+    {
+        $time = trim($time);
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $time, $matches)) {
+            return sprintf('%02d:%02d', (int) $matches[1], (int) $matches[2]);
+        }
+
+        return '08:00';
+    }
+
+    private function timeToMinutes(string $time): int
+    {
+        [$hours, $minutes] = explode(':', $this->normalizeTimeString($time));
+
+        return ((int) $hours * 60) + (int) $minutes;
+    }
+
+    private function shiftTimelineTime(string $time, int $offsetMinutes): string
+    {
+        $totalMinutes = $this->timeToMinutes($time) + $offsetMinutes;
+        $totalMinutes = (($totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+
+        return sprintf('%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60);
     }
 }

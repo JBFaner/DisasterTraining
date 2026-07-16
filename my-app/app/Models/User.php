@@ -82,6 +82,11 @@ class User extends Authenticatable
         return $this->hasMany(EventRegistration::class);
     }
 
+    public function campaignRegistrations()
+    {
+        return $this->hasMany(CampaignRegistration::class);
+    }
+
     public function attendances()
     {
         return $this->hasMany(Attendance::class);

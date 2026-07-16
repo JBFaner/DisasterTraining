@@ -11,7 +11,7 @@ class CampaignRegistrationLink
     {
         $id = $campaignRequest instanceof CampaignRequest ? $campaignRequest->id : $campaignRequest;
 
-        return url('/participant/register?campaign_request='.$id);
+        return url('/campaigns/'.$id.'/register');
     }
 
     public static function forSimulationEvent(SimulationEvent|int $event): string

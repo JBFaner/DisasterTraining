@@ -9,6 +9,7 @@ use App\Models\SimulationEvent;
 use App\Models\Attendance;
 use App\Services\DatabaseBackupService;
 use App\Services\EvaluationHubService;
+use App\Support\SimulationEvaluationCriteria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -142,9 +143,18 @@ class EvaluationController extends Controller
     {
         $this->authorizeEvaluationAccess();
 
-        if ($simulationEvent->status !== 'completed') {
+        if (! in_array($simulationEvent->status, ['ongoing', 'completed', 'ended'], true)) {
             return redirect()->route('admin.evaluations.index')
-                ->with('status', 'Evaluation can only be viewed for completed simulation events.');
+                ->with('status', 'Evaluation & scoring opens after the simulation has started (or when completed). Mark attendance present first.');
+        }
+
+        $presentCount = $simulationEvent->attendances()
+            ->whereIn('status', ['present', 'late'])
+            ->count();
+
+        if ($presentCount === 0) {
+            return redirect("/admin/simulation-events/{$simulationEvent->id}/attendance")
+                ->with('status', 'Mark at least one participant as Present (or Late) before Evaluation & Scoring.');
         }
 
         // Get or create evaluation
@@ -152,20 +162,19 @@ class EvaluationController extends Controller
             ['simulation_event_id' => $simulationEvent->id],
             [
                 'status' => 'not_started',
-                'pass_threshold' => 70.00,
+                'pass_threshold' => (float) config('simulation_evaluation.pass_threshold', 70),
                 'created_by' => portal_id(),
             ]
         );
 
-        // Get scenario criteria
         $scenario = $simulationEvent->scenario;
-        $criteria = [];
-        if ($scenario && $scenario->criteria) {
-            $criteria = is_array($scenario->criteria) ? $scenario->criteria : json_decode($scenario->criteria, true);
-        }
+        $criteria = SimulationEvaluationCriteria::resolve(
+            is_array($scenario?->criteria) ? $scenario->criteria : null,
+            $simulationEvent->disaster_type ?? $scenario?->disaster_type,
+        );
 
         $attendances = $simulationEvent->attendances()
-            ->where('status', 'present')
+            ->whereIn('status', ['present', 'late'])
             ->with(['user', 'eventRegistration'])
             ->get();
 
@@ -208,21 +217,24 @@ class EvaluationController extends Controller
 
         $attendance = Attendance::where('simulation_event_id', $simulationEvent->id)
             ->where('user_id', $userId)
-            ->where('status', 'present')
+            ->whereIn('status', ['present', 'late'])
             ->first();
 
         if (!$attendance) {
             return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
-                ->with('status', 'Cannot evaluate: Participant must be marked as present first.');
+                ->with('status', 'Cannot evaluate: Participant must be marked as present (or late) first.');
         }
 
         $scenario = $simulationEvent->scenario;
-        if (!$scenario || !$scenario->criteria) {
-            return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
-                ->with('status', 'Cannot evaluate: Scenario must have criteria defined.');
-        }
+        $criteria = SimulationEvaluationCriteria::resolve(
+            is_array($scenario?->criteria) ? $scenario->criteria : null,
+            $simulationEvent->disaster_type ?? $scenario?->disaster_type,
+        );
 
-        $criteria = is_array($scenario->criteria) ? $scenario->criteria : json_decode($scenario->criteria, true);
+        if ($criteria === []) {
+            return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
+                ->with('status', 'Cannot evaluate: No scoring criteria available for this simulation.');
+        }
 
         $participantEvaluation = ParticipantEvaluation::firstOrCreate(
             [
@@ -274,26 +286,29 @@ class EvaluationController extends Controller
         $user = \App\Models\User::findOrFail($userId);
         $attendance = Attendance::where('simulation_event_id', $simulationEvent->id)
             ->where('user_id', $userId)
-            ->where('status', 'present')
+            ->whereIn('status', ['present', 'late'])
             ->first();
 
         if (!$attendance) {
             return redirect()->route('admin.simulation-events.evaluation.show', $simulationEvent)
-                ->with('status', 'Cannot evaluate: Participant must be marked as present first.');
+                ->with('status', 'Cannot evaluate: Participant must be marked as present (or late) first.');
         }
 
         $scenario = $simulationEvent->scenario;
-        if (!$scenario || !$scenario->criteria) {
+        $criteria = SimulationEvaluationCriteria::resolve(
+            is_array($scenario?->criteria) ? $scenario->criteria : null,
+            $simulationEvent->disaster_type ?? $scenario?->disaster_type,
+        );
+
+        if ($criteria === []) {
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot evaluate: Scenario must have criteria defined.',
+                    'message' => 'Cannot evaluate: No scoring criteria available for this simulation.',
                 ], 400);
             }
-            return back()->with('status', 'Cannot evaluate: Scenario must have criteria defined.');
+            return back()->with('status', 'Cannot evaluate: No scoring criteria available for this simulation.');
         }
-
-        $criteria = is_array($scenario->criteria) ? $scenario->criteria : json_decode($scenario->criteria, true);
 
         try {
             $data = $request->validate([
@@ -347,7 +362,7 @@ class EvaluationController extends Controller
                         'criterion_name' => $criterionName,
                         'criterion_description' => null,
                         'score' => $scoreData['score'],
-                        'max_score' => 10.00, // Default max score, can be customized
+                        'max_score' => (float) config('simulation_evaluation.max_score_per_criterion', 10),
                         'comment' => $scoreData['comment'] ?? null,
                         'order' => $order++,
                     ]);

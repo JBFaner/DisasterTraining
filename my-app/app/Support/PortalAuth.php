@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 
 class PortalAuth
 {
@@ -67,6 +68,8 @@ class PortalAuth
         Auth::guard($guard)->login($user, $remember);
         Auth::shouldUse($guard);
         session([self::SESSION_PORTAL_KEY => $guard]);
+
+        Cookie::queue(Cookie::forget(PortalSession::legacyCookieName()));
     }
 
     public static function logoutGuard(string $guard): void

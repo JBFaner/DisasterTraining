@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AiScenarioAttempt;
+use App\Models\CampaignRegistration;
 use App\Models\CampaignRequest;
 use App\Models\EventRegistration;
 use App\Models\LessonCompletion;
@@ -615,10 +616,10 @@ PROMPT;
      */
     protected function registeredParticipantIdsForCampaign(CampaignRequest $request): Collection
     {
-        return User::query()
-            ->where('role', 'PARTICIPANT')
-            ->where('registration_campaign_id', 'campaign-request:'.$request->id)
-            ->pluck('id');
+        return CampaignRegistration::query()
+            ->where('campaign_request_id', $request->id)
+            ->where('registration_status', CampaignRegistration::STATUS_REGISTERED)
+            ->pluck('user_id');
     }
 
     /**
@@ -1125,28 +1126,31 @@ PROMPT;
     public function syncQualifiedParticipantAcrossCampaignEvents(int $userId, int $trainingModuleId): void
     {
         $user = User::query()->find($userId);
-        $campaignKey = (string) ($user?->registration_campaign_id ?? '');
-        if ($user?->role !== 'PARTICIPANT' || $campaignKey === '') {
+        if ($user?->role !== 'PARTICIPANT') {
             return;
         }
 
-        if (! preg_match('/^campaign-request:(\d+)$/', $campaignKey, $matches)) {
-            return;
-        }
-
-        $campaign = CampaignRequest::query()->find((int) $matches[1]);
-        if (! $campaign || (int) $campaign->training_module_id !== $trainingModuleId) {
-            return;
-        }
-
-        if (! $this->qualifiedParticipantIdsForCampaign($campaign)->contains($userId)) {
-            return;
-        }
-
-        SimulationEvent::query()
-            ->where('campaign_request_id', $campaign->id)
+        $campaignIds = CampaignRegistration::query()
+            ->where('user_id', $userId)
             ->where('training_module_id', $trainingModuleId)
-            ->whereNotIn('status', ['completed', 'ended', 'archived', 'cancelled'])
-            ->each(fn (SimulationEvent $event) => $this->syncQualifiedParticipantsToEvent($event));
+            ->where('registration_status', CampaignRegistration::STATUS_REGISTERED)
+            ->pluck('campaign_request_id');
+
+        foreach ($campaignIds as $campaignId) {
+            $campaign = CampaignRequest::query()->find((int) $campaignId);
+            if (! $campaign || (int) $campaign->training_module_id !== $trainingModuleId) {
+                continue;
+            }
+
+            if (! $this->qualifiedParticipantIdsForCampaign($campaign)->contains($userId)) {
+                continue;
+            }
+
+            SimulationEvent::query()
+                ->where('campaign_request_id', $campaign->id)
+                ->where('training_module_id', $trainingModuleId)
+                ->whereNotIn('status', ['completed', 'ended', 'archived', 'cancelled'])
+                ->each(fn (SimulationEvent $event) => $this->syncQualifiedParticipantsToEvent($event));
+        }
     }
 }

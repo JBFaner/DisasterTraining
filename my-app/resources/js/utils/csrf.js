@@ -1,6 +1,8 @@
 /**
  * Read the current CSRF token from the page meta tag.
  */
+import { getPortalSessionHeaders } from './portalAuth';
+
 export function getCsrfToken() {
     return document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 }
@@ -46,6 +48,7 @@ export async function pingSessionActivity() {
             'Content-Type': 'application/json',
             Accept: 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
+            ...getPortalSessionHeaders(),
             ...getCsrfHeaders(),
         },
         credentials: 'same-origin',
@@ -74,6 +77,7 @@ export async function csrfFetch(url, options = {}, { keepAlive = false } = {}) {
     const headers = {
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        ...getPortalSessionHeaders(),
         ...getCsrfHeaders(),
         ...(options.headers || {}),
     };

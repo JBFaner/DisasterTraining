@@ -92,6 +92,11 @@ class LegacyPortalRedirectController extends Controller
         return redirect()->route('participant.my-attendance.index', $request->query());
     }
 
+    public function myTrainings(Request $request)
+    {
+        return redirect()->route('participant.my-trainings.index', $request->query());
+    }
+
     protected function resolveTargetRoute(Request $request, string $adminRoute, string $participantRoute): string
     {
         $portal = PortalSession::resolvePortal($request);
