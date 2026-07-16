@@ -354,18 +354,50 @@ class EvaluationHubService
         $moduleId = $request->filled('training_module_id')
             ? $request->integer('training_module_id')
             : null;
+        $search = $request->filled('search')
+            ? $request->string('search')->trim()->toString()
+            : '';
+        $participantName = $request->filled('participant_name')
+            ? $request->string('participant_name')->trim()->toString()
+            : '';
 
         $lessonPassedQuery = LessonQuizAttempt::query()
             ->with(['user:id,name,email', 'trainingModule:id,title', 'trainingContent:id,title'])
             ->where('status', LessonQuizAttempt::STATUS_COMPLETED)
             ->where('passed', true)
             ->when($moduleId, fn ($q) => $q->where('training_module_id', $moduleId))
+            ->when($participantName !== '', fn ($q) => $q->whereHas(
+                'user',
+                fn ($userQuery) => $userQuery->where('name', 'like', "%{$participantName}%")
+            ))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($builder) use ($search) {
+                    $builder->whereHas('user', fn ($userQuery) => $userQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"))
+                        ->orWhereHas('trainingModule', fn ($moduleQuery) => $moduleQuery->where('title', 'like', "%{$search}%"))
+                        ->orWhereHas('trainingContent', fn ($lessonQuery) => $lessonQuery->where('title', 'like', "%{$search}%"));
+                });
+            })
             ->orderByDesc('completed_at');
 
         $scenarioPassedQuery = EvaluationResult::query()
             ->with(['participant:id,name,email', 'trainingModule:id,title'])
             ->where('status', EvaluationResult::STATUS_PASSED)
             ->when($moduleId, fn ($q) => $q->where('training_module_id', $moduleId))
+            ->when($participantName !== '', fn ($q) => $q->whereHas(
+                'participant',
+                fn ($userQuery) => $userQuery->where('name', 'like', "%{$participantName}%")
+            ))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($builder) use ($search) {
+                    $builder->whereHas('participant', fn ($userQuery) => $userQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"))
+                        ->orWhereHas('trainingModule', fn ($moduleQuery) => $moduleQuery->where('title', 'like', "%{$search}%"))
+                        ->orWhere('scenario_title', 'like', "%{$search}%");
+                });
+            })
             ->orderByDesc('completed_at');
 
         $simulationPassedQuery = \App\Models\ParticipantEvaluation::query()
@@ -375,7 +407,27 @@ class EvaluationHubService
             ])
             ->where('result', 'passed')
             ->whereNotNull('submitted_at')
+            ->when($participantName !== '', fn ($q) => $q->whereHas(
+                'user',
+                fn ($userQuery) => $userQuery->where('name', 'like', "%{$participantName}%")
+            ))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($builder) use ($search) {
+                    $builder->whereHas('user', fn ($userQuery) => $userQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"))
+                        ->orWhereHas('evaluation.simulationEvent', fn ($eventQuery) => $eventQuery->where('title', 'like', "%{$search}%"));
+                });
+            })
             ->orderByDesc('submitted_at');
+
+        // Module filter for simulation events: match participants registered to that module's campaigns.
+        if ($moduleId) {
+            $simulationPassedQuery->whereHas('user.campaignRegistrations', function ($q) use ($moduleId) {
+                $q->where('training_module_id', $moduleId)
+                    ->where('registration_status', CampaignRegistration::STATUS_REGISTERED);
+            });
+        }
 
         $lessonPassed = (clone $lessonPassedQuery)->limit(50)->get()->map(function (LessonQuizAttempt $attempt) {
             return [
@@ -438,6 +490,8 @@ class EvaluationHubService
             'overall_modules' => $modules,
             'overall_filters' => [
                 'tab' => 'overall',
+                'search' => $search,
+                'participant_name' => $participantName,
                 'training_module_id' => $request->string('training_module_id')->toString(),
             ],
         ];

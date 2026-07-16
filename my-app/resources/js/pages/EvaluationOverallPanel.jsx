@@ -1,7 +1,12 @@
 import React from 'react';
-import { Award, BookOpen, ClipboardList, GraduationCap } from 'lucide-react';
+import { Award, BookOpen, ClipboardList, GraduationCap, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { AdminFilterSelect } from '../components/admin/AdminLayout';
+import {
+    AdminCollapsibleFilterBar,
+    AdminFilterInput,
+    AdminFilterSelect,
+    AdminPrimaryButton,
+} from '../components/admin/AdminLayout';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
 
@@ -77,14 +82,21 @@ export function EvaluationOverallPanel({
     modules = [],
     filters = {},
 }) {
+    const [search, setSearch] = React.useState(filters.search || '');
+    const [participantName, setParticipantName] = React.useState(filters.participant_name || '');
     const [moduleFilter, setModuleFilter] = React.useState(filters.training_module_id || '');
 
-    const applyModuleFilter = (value) => {
-        setModuleFilter(value);
+    const applyFilters = (e) => {
+        e?.preventDefault();
         const url = new URL(window.location.href);
         url.searchParams.set('tab', 'overall');
-        if (value) url.searchParams.set('training_module_id', value);
+        if (search.trim()) url.searchParams.set('search', search.trim());
+        else url.searchParams.delete('search');
+        if (participantName.trim()) url.searchParams.set('participant_name', participantName.trim());
+        else url.searchParams.delete('participant_name');
+        if (moduleFilter) url.searchParams.set('training_module_id', moduleFilter);
         else url.searchParams.delete('training_module_id');
+        url.searchParams.delete('page');
         window.location.href = url.toString();
     };
 
@@ -123,7 +135,7 @@ export function EvaluationOverallPanel({
 
         const html = buildPrintTableDocument({
             title: 'Overall Passed Participants',
-            subtitle: `Printed ${new Date().toLocaleString()} · Module: ${moduleLabel} · Lesson passed: ${summary.lesson_quiz_passed ?? 0} · Scenario passed: ${summary.final_scenario_passed ?? 0} · Simulation passed: ${summary.simulation_event_passed ?? 0}`,
+            subtitle: `Printed ${new Date().toLocaleString()} · Module: ${moduleLabel}${participantName.trim() ? ` · Name: ${participantName.trim()}` : ''}${search.trim() ? ` · Search: ${search.trim()}` : ''} · Lesson passed: ${summary.lesson_quiz_passed ?? 0} · Scenario passed: ${summary.final_scenario_passed ?? 0} · Simulation passed: ${summary.simulation_event_passed ?? 0}`,
             headers: ['#', 'Stage', 'Participant', 'Module / Event', 'Lesson', 'Score', 'Date'],
             rows: [...lessonRows, ...scenarioRows, ...simulationRows],
         });
@@ -131,7 +143,7 @@ export function EvaluationOverallPanel({
         if (!printHtmlDocument(html, 'Overall Passed Participants')) {
             Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
         }
-    }, [moduleFilter, modules, lessonPassed, scenarioPassed, simulationPassed, summary]);
+    }, [moduleFilter, modules, lessonPassed, scenarioPassed, simulationPassed, summary, participantName, search]);
 
     React.useEffect(() => {
         const onPrint = () => handlePrint();
@@ -145,18 +157,37 @@ export function EvaluationOverallPanel({
                 Overall shows who passed each stage in order: Lesson Quizzes → Final Scenario Evaluation → Simulation Event.
             </div>
 
-            <div className="max-w-xs w-full">
-                <AdminFilterSelect
-                    label="Filter by Module"
-                    value={moduleFilter}
-                    onChange={(e) => applyModuleFilter(e.target.value)}
-                >
+            <AdminCollapsibleFilterBar
+                searchValue={search}
+                onSearchChange={(e) => setSearch(e.target.value)}
+                searchPlaceholder="Search participant, email, module, lesson, or event..."
+                hasActiveFilters={Boolean(moduleFilter || participantName.trim())}
+                onClearFilters={() => {
+                    setModuleFilter('');
+                    setParticipantName('');
+                }}
+                onSearchSubmit={applyFilters}
+                trailing={(
+                    <AdminPrimaryButton type="submit">
+                        <Search className="w-4 h-4" />
+                        Apply
+                    </AdminPrimaryButton>
+                )}
+            >
+                <AdminFilterInput
+                    label="Participant Name"
+                    type="text"
+                    value={participantName}
+                    onChange={(e) => setParticipantName(e.target.value)}
+                    placeholder="Filter by participant name..."
+                />
+                <AdminFilterSelect label="Training Module" value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
                     <option value="">All Modules</option>
                     {(modules || []).map((module) => (
                         <option key={module.id} value={module.id}>{module.title}</option>
                     ))}
                 </AdminFilterSelect>
-            </div>
+            </AdminCollapsibleFilterBar>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
