@@ -43,9 +43,11 @@ if (participantRegisterRoot) {
     const errorsJson = participantRegisterRoot.getAttribute('data-errors') || '{}';
     const oldValuesJson = participantRegisterRoot.getAttribute('data-old-values') || '{}';
     const campaignContextJson = participantRegisterRoot.getAttribute('data-campaign-context') || 'null';
+    const openCampaignsJson = participantRegisterRoot.getAttribute('data-open-campaigns') || '[]';
     let errors = {};
     let oldValues = {};
     let campaignContext = null;
+    let openCampaigns = [];
     
     try {
         errors = JSON.parse(errorsJson);
@@ -64,11 +66,17 @@ if (participantRegisterRoot) {
     } catch (e) {
         console.error('Error parsing campaign context JSON:', e);
     }
+
+    try {
+        openCampaigns = JSON.parse(openCampaignsJson);
+    } catch (e) {
+        console.error('Error parsing open campaigns JSON:', e);
+    }
     
     // Laravel validation errors come as { field: [messages] }
     // Pass them directly to the component
     const root = ReactDOM.createRoot(participantRegisterRoot);
-    root.render(React.createElement(ParticipantRegister, { errors, oldValues, campaignContext }));
+    root.render(React.createElement(ParticipantRegister, { errors, oldValues, campaignContext, openCampaigns }));
 }
 
 // Participant Register Verify

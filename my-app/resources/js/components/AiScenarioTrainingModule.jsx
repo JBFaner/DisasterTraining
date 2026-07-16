@@ -392,7 +392,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
         bank_question_count: bankQuestionCount,
         quiz_question_count: Number(quizQuestionCount),
         generation_language: generationLanguage,
-        time_limit_minutes: timeLimitMinutes,
+        time_limit_minutes: Number(timeLimitMinutes) > 0 ? Number(timeLimitMinutes) : 60,
         max_attempts: maxAttempts,
         passing_score: passingScore,
         fail_retake_policy: failRetakePolicy,
@@ -428,7 +428,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
             setQuizQuestionCount(normalizeQuizSize(existing.quiz_question_count, bankCount));
             setQuizSizePoolNotice('');
             setGenerationLanguage(existing.generation_language || existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
-            setTimeLimitMinutes(existing.time_limit_minutes ?? 60);
+            setTimeLimitMinutes(existing.time_limit_minutes > 0 ? existing.time_limit_minutes : 60);
             setMaxAttempts(existing.max_attempts ?? 3);
             setPassingScore(existing.passing_score ?? 75);
             setFailRetakePolicy(existing.fail_retake_policy || 'require_lesson_review');
@@ -495,7 +495,7 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                 bank_question_count: normalizeBankCount(existing.bank_question_count || existing.number_of_questions || DEFAULT_BANK_COUNT),
                 quiz_question_count: normalizeQuizSize(existing.quiz_question_count, existing.bank_question_count || existing.number_of_questions || DEFAULT_BANK_COUNT),
                 generation_language: existing.generation_language || existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE,
-                time_limit_minutes: existing.time_limit_minutes ?? 60,
+                time_limit_minutes: existing.time_limit_minutes > 0 ? existing.time_limit_minutes : 60,
                 max_attempts: existing.max_attempts ?? 3,
                 passing_score: existing.passing_score ?? 75,
                 fail_retake_policy: existing.fail_retake_policy || 'require_lesson_review',
@@ -962,7 +962,26 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Time Limit (minutes)</label>
-                                    <input type="number" min={5} max={480} className={adminCompactInputClass} value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value))} />
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        className={adminCompactInputClass}
+                                        value={timeLimitMinutes === '' || timeLimitMinutes === null ? '' : String(timeLimitMinutes)}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/[^\d]/g, '');
+                                            setTimeLimitMinutes(raw === '' ? '' : Number(raw));
+                                        }}
+                                        onBlur={() => {
+                                            if (timeLimitMinutes === '' || timeLimitMinutes === null) {
+                                                setTimeLimitMinutes(60);
+                                                return;
+                                            }
+                                            const clamped = Math.min(480, Math.max(1, Number(timeLimitMinutes) || 60));
+                                            setTimeLimitMinutes(clamped);
+                                        }}
+                                    />
+                                    <p className="text-[0.7rem] text-slate-500 mt-1">1–480 minutes. Clear the field to type a new value.</p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Passing Score (%)</label>
@@ -975,9 +994,14 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Fail Retake Policy</label>
                                     <select className={adminCompactInputClass} value={failRetakePolicy} onChange={(e) => setFailRetakePolicy(e.target.value)}>
-                                        <option value="require_lesson_review">Require lesson review</option>
-                                        <option value="quiz_retake_only">Quiz retake only</option>
+                                        <option value="require_lesson_review">Review all lessons (no quiz retake)</option>
+                                        <option value="quiz_retake_only">Final assessment retake only</option>
                                     </select>
+                                    <p className="text-[0.7rem] text-slate-500 mt-1">
+                                        {failRetakePolicy === 'require_lesson_review'
+                                            ? 'On fail, participant must re-open and review every lesson. Lesson quizzes stay passed — no quiz retake required.'
+                                            : 'On fail, participant may retake the Final AI Scenario Assessment immediately when attempts remain.'}
+                                    </p>
                                 </div>
                             </div>
 

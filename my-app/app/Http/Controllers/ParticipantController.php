@@ -39,11 +39,14 @@ class ParticipantController extends Controller
             'synced_this_month' => (clone $summaryBase)->where('last_synced_at', '>=', $startOfMonth)->count(),
             'local' => (clone $summaryBase)->where(function ($query) {
                 $query->whereNull('group6_external_id')
-                    ->where('registration_source', '!=', 'synced');
+                    ->where(function ($inner) {
+                        $inner->whereNull('registration_source')
+                            ->orWhereNotIn('registration_source', ['synced', 'campaign_planning_scheduling']);
+                    });
             })->count(),
-            'synced' => (clone $summaryBase)->where(function ($query) {
+            'campaign' => (clone $summaryBase)->where(function ($query) {
                 $query->whereNotNull('group6_external_id')
-                    ->orWhere('registration_source', 'synced');
+                    ->orWhereIn('registration_source', ['synced', 'campaign_planning_scheduling']);
             })->count(),
         ];
 
@@ -67,16 +70,53 @@ class ParticipantController extends Controller
 
         if ($request->filled('source_filter') && $request->string('source_filter') !== 'all') {
             $source = $request->string('source_filter')->toString();
-            if ($source === 'synced') {
+            if (in_array($source, ['campaign', 'synced'], true)) {
                 $query->where(function ($q) {
                     $q->whereNotNull('group6_external_id')
-                        ->orWhere('registration_source', 'synced');
+                        ->orWhereIn('registration_source', ['synced', 'campaign_planning_scheduling']);
                 });
-            } elseif ($source === 'local') {
+            } elseif (in_array($source, ['local', 'walk-in'], true)) {
                 $query->where(function ($q) {
                     $q->whereNull('group6_external_id')
-                        ->where('registration_source', '!=', 'synced');
+                        ->where(function ($inner) {
+                            $inner->whereNull('registration_source')
+                                ->orWhereNotIn('registration_source', ['synced', 'campaign_planning_scheduling']);
+                        });
                 });
+            }
+        }
+
+        if ($request->filled('module_filter')) {
+            $moduleId = (int) $request->input('module_filter');
+            if ($moduleId > 0) {
+                $query->whereHas('campaignRegistrations', function ($q) use ($moduleId) {
+                    $q->where('training_module_id', $moduleId)
+                        ->where('registration_status', \App\Models\CampaignRegistration::STATUS_REGISTERED);
+                });
+            }
+        }
+
+        if ($request->filled('batch_filter')) {
+            $batchId = (int) $request->input('batch_filter');
+            if ($batchId > 0) {
+                $query->whereHas('campaignRegistrations', function ($q) use ($batchId) {
+                    $q->where('campaign_request_id', $batchId)
+                        ->where('registration_status', \App\Models\CampaignRegistration::STATUS_REGISTERED);
+                });
+            }
+        }
+
+        if ($request->filled('date_from')) {
+            $dateFrom = $request->date('date_from');
+            if ($dateFrom) {
+                $query->whereRaw('DATE(COALESCE(registered_at, created_at)) >= ?', [$dateFrom->toDateString()]);
+            }
+        }
+
+        if ($request->filled('date_to')) {
+            $dateTo = $request->date('date_to');
+            if ($dateTo) {
+                $query->whereRaw('DATE(COALESCE(registered_at, created_at)) <= ?', [$dateTo->toDateString()]);
             }
         }
 
@@ -101,6 +141,26 @@ class ParticipantController extends Controller
         $allowedSorts = ['name', 'email', 'participant_id', 'status', 'barangay', 'city', 'last_synced_at', 'created_at'];
         if (! in_array($sortBy, $allowedSorts, true)) {
             $sortBy = 'name';
+        }
+
+        $exportAll = $request->boolean('export_all') || $request->string('per_page')->toString() === 'all';
+        if ($exportAll && $request->expectsJson()) {
+            $participants = collect($this->registry->enrichMany(
+                $query->orderBy($sortBy, $sortDir)->limit(2000)->get()
+            ));
+
+            return response()->json([
+                'participants' => $participants->values()->all(),
+                'pagination' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => $participants->count(),
+                    'total' => $participants->count(),
+                    'from' => $participants->isEmpty() ? null : 1,
+                    'to' => $participants->isEmpty() ? null : $participants->count(),
+                ],
+                'filter_options' => $this->registry->buildFilterOptions(),
+            ]);
         }
 
         $perPage = 10;

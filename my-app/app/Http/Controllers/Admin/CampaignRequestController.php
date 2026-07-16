@@ -26,7 +26,9 @@ class CampaignRequestController extends Controller
         $registrationEnabled = $maximumParticipants > 0
             ? $registeredParticipantsCount < $maximumParticipants
             : true;
-        $registrationLinkActive = $isApproved && $registrationEnabled;
+        $registrationWindowOpen = app(\App\Services\CampaignRegistrationService::class)
+            ->isWithinOpenRegistrationWindow($planning);
+        $registrationLinkActive = $isApproved && $registrationEnabled && $registrationWindowOpen;
         $registrationLink = $registrationLinkActive
             ? ($campaignRequest->payload['registration_link'] ?? CampaignRegistrationLink::forCampaignRequest($campaignRequest))
             : null;

@@ -293,18 +293,7 @@ class AiScenarioWorkflowService
             $scenarioContext,
         );
 
-        $targetLocale = $locale === 'en' ? 'fil' : 'en';
-        $translated = $this->translationService->translateScenarioQuiz(
-            ['questions' => [$raw]],
-            $locale,
-            $targetLocale,
-        );
-        $bilingual = $this->localeService->mergeSourceAndTranslation(
-            ['questions' => [$raw]],
-            $translated,
-            $locale,
-        );
-        $merged = $bilingual['generated_questions'][0] ?? $raw;
+        $merged = $this->finalizeSingleGeneratedQuestion($raw, $locale);
 
         $questions = $version->generated_questions ?? [];
         $found = false;
@@ -329,6 +318,70 @@ class AiScenarioWorkflowService
         $version->save();
 
         return $version->fresh();
+    }
+
+    public function generateAndAppendQuestion(AiScenarioAssessmentVersion $version): AiScenarioAssessmentVersion
+    {
+        $version = $this->resolveEditableVersion($version, 'AI question generated and added');
+        $config = $version->config()->with('trainingModule')->firstOrFail();
+        $module = $config->trainingModule;
+        $locale = $this->localeService->resolveLocale($version->generated_language);
+        $scenarioContext = $version->description_en ?: $version->generated_scenario;
+        $questions = $version->generated_questions ?? [];
+        $questionNumber = count($questions) + 1;
+
+        $raw = $this->gemini->generateSingleQuizQuestion(
+            $module,
+            (string) ($version->difficulty ?? $config->difficulty),
+            $locale,
+            $questionNumber,
+            $scenarioContext,
+        );
+
+        $merged = $this->finalizeSingleGeneratedQuestion($raw, $locale);
+        $record = $this->buildQuestionRecord($merged, $questionNumber, false);
+        $record['status'] = AiScenarioAssessmentVersion::QUESTION_STATUS_AI_GENERATED;
+        $questions[] = $record;
+
+        $version->generated_questions = $this->renumberQuestions($questions);
+        $version->status = AiScenarioAssessmentVersion::STATUS_UNDER_REVIEW;
+        $this->touchDraftEdit($version);
+        $version->save();
+
+        return $version->fresh();
+    }
+
+    /**
+     * Prefer a single bilingual Gemini response; only translate when the other locale is missing.
+     *
+     * @param  array<string, mixed>  $raw
+     * @return array<string, mixed>
+     */
+    protected function finalizeSingleGeneratedQuestion(array $raw, string $sourceLocale): array
+    {
+        $sourceLocale = $this->localeService->resolveLocale($sourceLocale);
+        $normalized = $this->localeService->normalizeQuestionToBilingual($raw, $sourceLocale);
+        $otherLocale = $sourceLocale === 'en' ? 'fil' : 'en';
+
+        $otherQuestion = trim((string) ($normalized["question_{$otherLocale}"] ?? ''));
+        $otherChoiceA = trim((string) ($normalized["choice_a_{$otherLocale}"] ?? ''));
+
+        if ($otherQuestion !== '' && $otherChoiceA !== '') {
+            return $normalized;
+        }
+
+        $translated = $this->translationService->translateScenarioQuiz(
+            ['questions' => [$raw]],
+            $sourceLocale,
+            $otherLocale,
+        );
+        $bilingual = $this->localeService->mergeSourceAndTranslation(
+            ['questions' => [$raw]],
+            $translated,
+            $sourceLocale,
+        );
+
+        return $bilingual['generated_questions'][0] ?? $normalized;
     }
 
     public function saveDraft(AiScenarioAssessmentVersion $version): AiScenarioAssessmentVersion

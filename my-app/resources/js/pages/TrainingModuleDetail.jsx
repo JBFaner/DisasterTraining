@@ -937,12 +937,19 @@ export function TrainingModuleDetail({ module }) {
             const formData = new FormData();
             formData.append('_token', getCsrfToken());
             order.forEach((id, index) => formData.append(`order[${index}]`, id));
-            await fetch(`/admin/training-modules/${module.id}/contents/reorder`, {
+            const response = await fetch(`/admin/training-modules/${module.id}/contents/reorder`, {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
             });
+            if (!response.ok) {
+                throw new Error('Failed to save lesson order');
+            }
+            setLessons(current.map((lesson, index) => ({
+                ...lesson,
+                sort_order: index + 1,
+            })));
         } catch (e) {
             console.error('Failed to reorder lessons', e);
         }

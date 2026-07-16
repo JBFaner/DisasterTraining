@@ -78,14 +78,17 @@ class LessonQuizAttemptController extends Controller
         $this->authorizeAttemptOwner($attempt, $user);
 
         $data = $request->validate([
-            'answers' => ['required', 'array'],
+            // Empty answers must be allowed (timer / integrity auto-submit).
+            'answers' => ['nullable', 'array'],
+            'display_language' => ['nullable', 'string', 'in:en,fil'],
         ]);
 
-        $attempt = $this->attemptService->submitAttempt($attempt, $data['answers']);
+        $attempt = $this->attemptService->submitAttempt($attempt, $data['answers'] ?? []);
 
         return response()->json([
             'message' => $attempt->passed ? 'Lesson quiz passed.' : 'Lesson quiz submitted.',
             'attempt' => $attempt->toParticipantArray(),
+            'show_answer_review' => $attempt->passed,
             'redirect' => route('participant.training-modules.show', $attempt->training_module_id),
         ]);
     }

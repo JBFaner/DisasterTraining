@@ -73,7 +73,12 @@ class LessonCompletionController extends Controller
                     : ($item->is_unlocked ? 'available' : 'locked'),
             ])->values()->all(),
             'lesson_progress' => app(\App\Services\LessonProgressionService::class)
-                ->buildLessonProgressMeta($trainingModule, $user->id),
+                ->buildLessonProgressMeta(
+                    $trainingModule,
+                    $user->id,
+                    app(\App\Services\TrainingRetakePolicyService::class)
+                        ->isContentReviewPending($trainingModule, $user),
+                ),
             'progress' => [
                 'completed' => $completedCount,
                 'total' => $totalContents,

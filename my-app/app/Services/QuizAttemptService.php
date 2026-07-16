@@ -82,11 +82,15 @@ class QuizAttemptService
             'in_progress_attempt' => $inProgress ? $this->attemptSummary($inProgress) : null,
             'latest_completed_attempt' => $latestCompleted ? $this->attemptSummary($latestCompleted) : null,
             'latest_attempt' => $latestCompleted ? $this->attemptSummary($latestCompleted) : null,
-            'lesson_progress' => $this->lessonProgressionService->buildLessonProgressMeta($module, $user->id),
         ]);
 
         $lessonReviewRequired = ! $adminRetrainingApproved
             && $this->retakePolicyService->lessonReviewRequired($module, $user, $metaBeforeStatus);
+
+        $isUnlocked = $base['all_lessons_completed']
+            && $base['is_configured']
+            && ! $lessonReviewRequired;
+
         $status = $this->resolveDashboardStatus(
             $inProgress,
             $latestCompleted,
@@ -98,6 +102,7 @@ class QuizAttemptService
         );
 
         return array_merge($metaBeforeStatus, [
+            'is_unlocked' => $isUnlocked,
             'training_cycle' => $trainingCycle,
             'admin_retraining_approved' => $adminRetrainingApproved,
             'quiz_status' => $status,
@@ -108,10 +113,15 @@ class QuizAttemptService
                 $attemptsRemaining,
                 $passedAttempt,
                 $lessonReviewRequired,
-                $base['all_lessons_completed'],
+                $base['all_lessons_completed'] && ! $lessonReviewRequired,
                 $adminRetrainingApproved,
             ),
             'lesson_review_required' => $lessonReviewRequired,
+            'lesson_progress' => $this->lessonProgressionService->buildLessonProgressMeta(
+                $module,
+                $user->id,
+                $lessonReviewRequired,
+            ),
         ]);
     }
 
@@ -121,7 +131,15 @@ class QuizAttemptService
 
         if (! ($meta['is_unlocked'] ?? false)) {
             throw ValidationException::withMessages([
-                'ai_scenario' => 'Complete all lesson quizzes before starting the Final AI Scenario Assessment.',
+                'ai_scenario' => ($meta['lesson_review_required'] ?? false)
+                    ? 'Review all lessons again before starting the Final AI Scenario Assessment. You do not need to retake lesson quizzes.'
+                    : 'Complete all lesson quizzes before starting the Final AI Scenario Assessment.',
+            ]);
+        }
+
+        if ($meta['lesson_review_required'] ?? false) {
+            throw ValidationException::withMessages([
+                'ai_scenario' => 'Review all lessons again before starting the Final AI Scenario Assessment. You do not need to retake lesson quizzes.',
             ]);
         }
 

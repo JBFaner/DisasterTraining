@@ -714,10 +714,10 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
     }[trainingStatus] || 'text-slate-600';
 
     const lessonStatusBadge = (status) => {
-        if (status === 'completed') {
+        if (status === 'completed' || status === 'reviewed') {
             return 'bg-emerald-100 text-emerald-800';
         }
-        if (status === 'available') {
+        if (status === 'available' || status === 'needs_review') {
             return 'bg-sky-100 text-sky-800';
         }
         return 'bg-slate-200 text-slate-600';
@@ -725,6 +725,8 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
 
     const lessonStatusLabel = (status) => {
         if (status === 'completed') return 'Completed';
+        if (status === 'reviewed') return 'Reviewed';
+        if (status === 'needs_review') return 'Needs Review';
         if (status === 'available') return 'Available';
         return 'Locked';
     };
@@ -779,7 +781,8 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                     </div>
                     <p className="text-xs text-amber-900">
                         You did not achieve the required passing score of {passingScore}%.
-                        Please complete all lesson quizzes again before attempting the Final AI Scenario Assessment.
+                        Please review all lessons again before attempting the Final AI Scenario Assessment.
+                        You do not need to retake lesson quizzes — those remain passed.
                     </p>
                     <div className="flex justify-between text-xs text-amber-900">
                         <span>Attempts Remaining</span>

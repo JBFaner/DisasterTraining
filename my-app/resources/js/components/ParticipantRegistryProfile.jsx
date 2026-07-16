@@ -58,11 +58,20 @@ function RegistryStatusBadge({ label }) {
 
 function SourceBadge({ source }) {
     const normalized = (source || '').toString().toLowerCase();
-    const synced = normalized === 'synced';
+    const isCampaign = normalized === 'campaign' || normalized === 'synced';
 
     return (
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${synced ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-            {synced ? 'SYNCED' : 'LOCAL'}
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${isCampaign ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+            {isCampaign ? 'CAMPAIGN' : 'LOCAL'}
+        </span>
+    );
+}
+
+function EmailStatusBadge({ verifiedAt }) {
+    const isVerified = Boolean(verifiedAt);
+    return (
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${isVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+            {isVerified ? 'Verified' : 'Pending Verification'}
         </span>
     );
 }
@@ -180,7 +189,7 @@ export function ParticipantRegistryProfile({ participant }) {
             />
 
             <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4">
-                This participant profile is part of the unified registry and supports both locally registered and synchronized records from the Community Registration & Campaign Management System.
+                This participant profile is part of the unified registry and supports both local and campaign records from the Community Registration & Campaign Management System.
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
@@ -222,6 +231,8 @@ export function ParticipantRegistryProfile({ participant }) {
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <DetailItem label="Full Name" value={record.name} />
                         <DetailItem label="Email" value={record.email || '—'} />
+                        <DetailItem label="Email Status" value={<EmailStatusBadge verifiedAt={record.email_verified_at} />} />
+                        <DetailItem label="Verification Date" value={formatDateTime(record.email_verified_at)} />
                         <DetailItem label="Contact Number" value={record.phone || '—'} />
                         <DetailItem label="Participant ID" value={record.participant_id || '—'} />
                         <DetailItem label="Barangay" value={record.barangay || '—'} />

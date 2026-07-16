@@ -11,6 +11,7 @@ use App\Models\EvaluationResult;
 use App\Models\LessonCompletion;
 use App\Models\TrainingModule;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -26,18 +27,27 @@ class CampaignRegistrationService
         $registeredCount = $this->registeredCount($campaignRequest);
         $maximumParticipants = (int) ($planning['maximum_participants'] ?? 0);
         $isApproved = (string) $campaignRequest->status === 'approved';
-        $registrationEnabled = $maximumParticipants > 0
+        $hasOpenSeats = $maximumParticipants > 0
             ? $registeredCount < $maximumParticipants
             : true;
 
-        if (! $isApproved || ! $registrationEnabled) {
+        // Skip not-yet-open, finished, deadline-passed, or full batches.
+        if (! $isApproved || ! $hasOpenSeats || ! $this->isWithinOpenRegistrationWindow($planning)) {
             return null;
         }
+
+        $moduleTitle = $campaignRequest->trainingModule?->title;
+        $trainingTitle = $planning['training_title'] ?? $moduleTitle;
+        $seatsRemaining = $maximumParticipants > 0
+            ? max(0, $maximumParticipants - $registeredCount)
+            : null;
 
         return [
             'campaign_request_id' => $campaignRequest->id,
             'training_module_id' => $campaignRequest->training_module_id,
-            'training_title' => $planning['training_title'] ?? $campaignRequest->trainingModule?->title,
+            'training_title' => $trainingTitle,
+            'module_title' => $moduleTitle,
+            'batch_label' => 'Batch / Campaign #'.$campaignRequest->id,
             'short_description' => $planning['short_description'] ?? null,
             'registration_opens' => $planning['registration_opens'] ?? null,
             'registration_deadline' => $planning['registration_deadline'] ?? null,
@@ -45,11 +55,88 @@ class CampaignRegistrationService
             'maximum_participants' => $planning['maximum_participants'] ?? null,
             'expected_participants' => $planning['expected_participants'] ?? null,
             'registered_participants_count' => $registeredCount,
+            'seats_remaining' => $seatsRemaining,
             'scheduled_date' => $planning['scheduled_date'] ?? $planning['registration_deadline'] ?? $planning['registration_opens'] ?? null,
             'start_time' => $planning['start_time'] ?? null,
             'end_time' => $planning['end_time'] ?? null,
             'venue' => $planning['venue'] ?? null,
         ];
+    }
+
+    /**
+     * Open campaigns participants can join (walk-in / open registration).
+     * Excludes closed, finished, and full batches.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listOpenForRegistration(): array
+    {
+        return CampaignRequest::query()
+            ->with('trainingModule')
+            ->where('status', 'approved')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (CampaignRequest $campaignRequest) => $this->buildContext($campaignRequest))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Registration is open only inside the planned window and before training ends.
+     *
+     * @param  array<string, mixed>  $planning
+     */
+    public function isWithinOpenRegistrationWindow(array $planning): bool
+    {
+        $now = now();
+
+        $opens = $this->parsePlanningDate($planning['registration_opens'] ?? null);
+        if ($opens && $now->lt($opens->copy()->startOfDay())) {
+            return false;
+        }
+
+        $deadline = $this->parsePlanningDate($planning['registration_deadline'] ?? null);
+        if ($deadline && $now->gt($deadline->copy()->endOfDay())) {
+            return false;
+        }
+
+        $trainingEnds = $this->parsePlanningDate($planning['training_completion_deadline'] ?? null);
+        if ($trainingEnds && $now->gt($trainingEnds->copy()->endOfDay())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function parsePlanningDate(mixed $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function registeredModuleIdsFor(User $user): array
+    {
+        return CampaignRegistration::query()
+            ->where('user_id', $user->id)
+            ->where('registration_status', CampaignRegistration::STATUS_REGISTERED)
+            ->whereNotNull('training_module_id')
+            ->distinct()
+            ->pluck('training_module_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function isRegistrationOpen(CampaignRequest $campaignRequest): bool

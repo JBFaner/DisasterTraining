@@ -22,23 +22,60 @@ class LessonProgressionService
     /**
      * @return list<array<string, mixed>>
      */
-    public function buildLessonProgressMeta(TrainingModule $module, int $userId): array
-    {
+    public function buildLessonProgressMeta(
+        TrainingModule $module,
+        int $userId,
+        bool $contentReviewMode = false,
+    ): array {
         $module->loadMissing('contents');
         $module->applyParticipantProgression($userId);
 
+        $reviewedIds = [];
+        if ($contentReviewMode) {
+            $reviewedIds = array_flip(
+                LessonCompletion::query()
+                    ->where('user_id', $userId)
+                    ->where('training_module_id', $module->id)
+                    ->pluck('training_content_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all()
+            );
+        }
+
         return $module->contents
-            ->map(fn ($content) => [
-                'id' => $content->id,
-                'title' => $content->title,
-                'sequence_number' => $content->sequence_number,
-                'is_completed' => (bool) $content->is_completed,
-                'is_unlocked' => (bool) $content->is_unlocked,
-                'is_locked' => (bool) $content->is_locked,
-                'status' => $content->is_completed
-                    ? 'completed'
-                    : ($content->is_unlocked ? 'available' : 'locked'),
-            ])
+            ->map(function ($content, $index) use ($contentReviewMode, $reviewedIds, $module) {
+                if ($contentReviewMode) {
+                    $isReviewed = isset($reviewedIds[(int) $content->id]);
+                    $previousReviewed = $index === 0
+                        || isset($reviewedIds[(int) $module->contents[$index - 1]->id]);
+
+                    return [
+                        'id' => $content->id,
+                        'title' => $content->title,
+                        'sequence_number' => $content->sequence_number,
+                        'is_completed' => $isReviewed,
+                        'is_unlocked' => $previousReviewed || $isReviewed,
+                        'is_locked' => ! ($previousReviewed || $isReviewed),
+                        'status' => $isReviewed
+                            ? 'reviewed'
+                            : ($previousReviewed || $index === 0 ? 'needs_review' : 'locked'),
+                        'review_required' => true,
+                    ];
+                }
+
+                return [
+                    'id' => $content->id,
+                    'title' => $content->title,
+                    'sequence_number' => $content->sequence_number,
+                    'is_completed' => (bool) $content->is_completed,
+                    'is_unlocked' => (bool) $content->is_unlocked,
+                    'is_locked' => (bool) $content->is_locked,
+                    'status' => $content->is_completed
+                        ? 'completed'
+                        : ($content->is_unlocked ? 'available' : 'locked'),
+                    'review_required' => false,
+                ];
+            })
             ->values()
             ->all();
     }

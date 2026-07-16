@@ -97,13 +97,24 @@ class LessonQuizAttempt extends Model
      */
     public function toParticipantArray(): array
     {
+        $questions = $this->generated_questions ?? [];
+
+        if ($this->isInProgress()) {
+            $questions = collect($questions)->map(function (array $question): array {
+                unset($question['correct_answer']);
+
+                return $question;
+            })->values()->all();
+        }
+
         return [
             'id' => $this->id,
             'training_module_id' => $this->training_module_id,
             'training_content_id' => $this->training_content_id,
+            'attempt_number' => $this->attempt_number,
             'status' => $this->status,
             'current_question' => $this->current_question,
-            'generated_questions' => $this->generated_questions ?? [],
+            'generated_questions' => $questions,
             'question_order' => $this->question_order ?? [],
             'shuffled_choices' => $this->shuffled_choices ?? [],
             'participant_answers' => $this->participant_answers ?? [],
@@ -118,6 +129,7 @@ class LessonQuizAttempt extends Model
             'completed_at' => $this->completed_at?->toIso8601String(),
             'passing_score' => $this->passingScore(),
             'lesson_title' => $this->trainingContent?->title,
+            'show_answer_review' => $this->isCompleted() && $this->passed,
         ];
     }
 }

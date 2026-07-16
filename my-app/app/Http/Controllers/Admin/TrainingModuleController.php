@@ -775,6 +775,7 @@ class TrainingModuleController extends Controller
         $resourceIds = $content->resources()->pluck('id')->all();
 
         foreach ($order as $index => $resourceId) {
+            $resourceId = (int) $resourceId;
             if (! in_array($resourceId, $resourceIds, true)) {
                 continue;
             }
@@ -805,6 +806,7 @@ class TrainingModuleController extends Controller
         $moduleContentIds = $trainingModule->contents()->pluck('id')->all();
 
         foreach ($order as $index => $contentId) {
+            $contentId = (int) $contentId;
             if (! in_array($contentId, $moduleContentIds, true)) {
                 continue;
             }

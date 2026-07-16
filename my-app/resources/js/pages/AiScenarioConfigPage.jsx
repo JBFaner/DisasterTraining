@@ -81,6 +81,7 @@ const GENERATION_LANGUAGES = [
     { value: 'en', label: 'English' },
     { value: 'fil', label: 'Filipino' },
 ];
+const QUICK_TIME_LIMITS = [10, 15, 20];
 
 export function AiScenarioConfigPage({ modules = [], configs = [] }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -122,7 +123,7 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
             setQuizSizePoolNotice('');
             setGenerationLanguage(existing.generation_language || existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
             setDisplayLanguage(existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
-            setTimeLimitMinutes(existing.time_limit_minutes ?? 60);
+            setTimeLimitMinutes(existing.time_limit_minutes > 0 ? existing.time_limit_minutes : 60);
             setMaxAttempts(existing.max_attempts ?? 3);
             setPassingScore(existing.passing_score ?? 75);
             setFailRetakePolicy(existing.fail_retake_policy || 'require_lesson_review');
@@ -166,7 +167,7 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
         bank_question_count: bankQuestionCount,
         quiz_question_count: Number(quizQuestionCount),
         generation_language: generationLanguage,
-        time_limit_minutes: timeLimitMinutes,
+        time_limit_minutes: Number(timeLimitMinutes) > 0 ? Number(timeLimitMinutes) : 60,
         max_attempts: maxAttempts,
         passing_score: passingScore,
         fail_retake_policy: failRetakePolicy,
@@ -398,8 +399,8 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                                 className="mt-1 text-emerald-600 focus:ring-emerald-500"
                                             />
                                             <span>
-                                                <span className="font-medium">Require Lesson Review</span>
-                                                <span className="block text-xs text-slate-500">Reset lesson progress and require the participant to complete all lessons again before retaking the quiz. (Recommended)</span>
+                                                <span className="font-medium">Review All Lessons</span>
+                                                <span className="block text-xs text-slate-500">Reset lesson review progress and require the participant to re-open every lesson before retaking the Final Assessment. Lesson quizzes stay passed — no quiz retake. (Recommended)</span>
                                             </span>
                                         </label>
                                         <label className="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
@@ -412,8 +413,8 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                                 className="mt-1 text-emerald-600 focus:ring-emerald-500"
                                             />
                                             <span>
-                                                <span className="font-medium">Quiz Retake Only</span>
-                                                <span className="block text-xs text-slate-500">Keep lesson progress and allow an immediate quiz retake when attempts remain.</span>
+                                                <span className="font-medium">Final Assessment Retake Only</span>
+                                                <span className="block text-xs text-slate-500">Keep lesson progress and allow an immediate Final AI Scenario Assessment retake when attempts remain.</span>
                                             </span>
                                         </label>
                                     </div>
@@ -427,13 +428,44 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Time Limit (minutes)</label>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
                                         min={1}
                                         max={480}
                                         className={adminCompactInputClass}
-                                        value={timeLimitMinutes}
-                                        onChange={(e) => setTimeLimitMinutes(Number(e.target.value))}
+                                        value={timeLimitMinutes === '' || timeLimitMinutes === null ? '' : String(timeLimitMinutes)}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/[^\d]/g, '');
+                                            setTimeLimitMinutes(raw === '' ? '' : Number(raw));
+                                        }}
+                                        onBlur={() => {
+                                            if (timeLimitMinutes === '' || timeLimitMinutes === null) {
+                                                setTimeLimitMinutes(60);
+                                                return;
+                                            }
+                                            setTimeLimitMinutes(Math.min(480, Math.max(1, Number(timeLimitMinutes) || 60)));
+                                        }}
                                     />
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {QUICK_TIME_LIMITS.map((minutes) => (
+                                            <button
+                                                key={minutes}
+                                                type="button"
+                                                onClick={() => setTimeLimitMinutes(minutes)}
+                                                className={`rounded-md border px-2.5 py-1 text-[0.7rem] font-medium transition-colors ${
+                                                    Number(timeLimitMinutes) === minutes
+                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                {minutes} min
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                                        Clear the field to type a new value. Quick presets available above.
+                                    </p>
                                 </div>
                                 <label className="flex items-center gap-2 text-sm text-slate-700">
                                     <input
@@ -586,8 +618,8 @@ export function AiScenarioConfigPage({ modules = [], configs = [] }) {
                                         <td className="py-2 pr-4">{c.max_attempts ?? 3}</td>
                                         <td className="py-2 pr-4 text-xs text-slate-600">
                                             {c.fail_retake_policy === 'quiz_retake_only'
-                                                ? 'Quiz Retake Only'
-                                                : 'Lesson Review'}
+                                                ? 'Final Retake Only'
+                                                : 'Review All Lessons'}
                                         </td>
                                         <td className="py-2 pr-4">
                                             {c.published_version_id && (c.title_en || c.generated_scenario) ? (

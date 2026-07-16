@@ -65,22 +65,33 @@ class AiScenarioWorkflowController extends Controller
         $this->assertVersionBelongsToConfig($version, $config);
 
         $data = $request->validate([
-            'question_en' => ['required', 'string'],
+            'question_en' => ['nullable', 'string'],
             'question_fil' => ['nullable', 'string'],
-            'choice_a_en' => ['required', 'string'],
-            'choice_b_en' => ['required', 'string'],
-            'choice_c_en' => ['required', 'string'],
-            'choice_d_en' => ['required', 'string'],
+            'choice_a_en' => ['nullable', 'string'],
+            'choice_b_en' => ['nullable', 'string'],
+            'choice_c_en' => ['nullable', 'string'],
+            'choice_d_en' => ['nullable', 'string'],
             'choice_a_fil' => ['nullable', 'string'],
             'choice_b_fil' => ['nullable', 'string'],
             'choice_c_fil' => ['nullable', 'string'],
             'choice_d_fil' => ['nullable', 'string'],
-            'correct_answer' => ['required', Rule::in(['A', 'B', 'C', 'D', 'a', 'b', 'c', 'd'])],
+            'correct_answer' => ['nullable', Rule::in(['A', 'B', 'C', 'D', 'a', 'b', 'c', 'd'])],
             'explanation_en' => ['nullable', 'string'],
             'explanation_fil' => ['nullable', 'string'],
             'competency' => ['nullable', 'string', 'max:64'],
             'difficulty' => ['nullable', Rule::in(AiScenarioConfig::DIFFICULTIES)],
         ]);
+
+        $data = array_merge([
+            'question_en' => 'New scenario question',
+            'choice_a_en' => 'Option A',
+            'choice_b_en' => 'Option B',
+            'choice_c_en' => 'Option C',
+            'choice_d_en' => 'Option D',
+            'correct_answer' => 'A',
+            'explanation_en' => '',
+            'competency' => 'knowledge',
+        ], array_filter($data, fn ($value) => $value !== null && $value !== ''));
 
         $version = $this->workflowService->addManualQuestion($version, $data);
         $this->logAction('Added manual AI scenario question', $config, $version);
@@ -194,6 +205,23 @@ class AiScenarioWorkflowController extends Controller
             $this->logAction('Regenerated AI scenario question #'.$questionNumber, $config, $version);
 
             return $this->versionResponse('Question regenerated.', $config, $version);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function generateQuestion(Request $request, AiScenarioConfig $config, AiScenarioAssessmentVersion $version)
+    {
+        $this->authorizeAdmin();
+        $this->assertVersionBelongsToConfig($version, $config);
+
+        set_time_limit((int) config('ai_scenario.generation_max_execution_seconds', 300));
+
+        try {
+            $version = $this->workflowService->generateAndAppendQuestion($version);
+            $this->logAction('Generated and added AI scenario question', $config, $version);
+
+            return $this->versionResponse('AI question generated.', $config, $version);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

@@ -453,75 +453,59 @@ class LessonQuizWorkflowService
 
 
     public function publish(LessonQuizVersion $version): LessonQuizVersion
-
     {
+        // Archived versions can be re-selected as the learner-facing bank.
+        if ($version->status !== LessonQuizVersion::STATUS_ARCHIVED) {
+            $this->assertEditable($version);
+        }
 
-        $this->assertEditable($version);
-
-
+        $questions = $version->generated_questions ?? [];
+        if (! is_array($questions) || count($questions) < 1) {
+            throw ValidationException::withMessages([
+                'version' => 'This version has no questions to publish.',
+            ]);
+        }
 
         return DB::transaction(function () use ($version) {
-
             $config = $version->config()->firstOrFail();
+
+            if (
+                $version->status === LessonQuizVersion::STATUS_PUBLISHED
+                && (int) $config->published_version_id === (int) $version->id
+            ) {
+                return $version->fresh();
+            }
 
             $sourceLocale = $this->localeService->resolveLocale($version->generated_language ?? 'en');
 
-
-
             LessonQuizVersion::query()
-
                 ->where('lesson_quiz_config_id', $config->id)
-
                 ->where('status', LessonQuizVersion::STATUS_PUBLISHED)
-
+                ->where('id', '!=', $version->id)
                 ->update(['status' => LessonQuizVersion::STATUS_ARCHIVED]);
 
-
-
             $languageVersions = $version->language_versions ?? $this->defaultLanguageVersions($sourceLocale);
-
             $languageVersions[$sourceLocale] = array_merge($languageVersions[$sourceLocale] ?? [], [
-
                 'status' => 'published',
-
                 'outdated' => false,
-
                 'published_at' => now()->toIso8601String(),
-
             ]);
-
-
 
             $version->update([
-
                 'status' => LessonQuizVersion::STATUS_PUBLISHED,
-
                 'language_versions' => $languageVersions,
-
                 'published_by' => portal_id(),
-
                 'published_at' => now(),
-
             ]);
-
-
 
             $config->update([
-
                 'published_version_id' => $version->id,
-
                 'current_version_id' => $version->id,
-
                 'is_enabled' => true,
-
             ]);
 
-
-
             return $version->fresh();
-
         });
-
     }
 
 
@@ -872,6 +856,49 @@ class LessonQuizWorkflowService
         if (! $found) {
             throw ValidationException::withMessages(['question' => 'Question not found.']);
         }
+
+        $languageVersions = $version->language_versions ?? $this->defaultLanguageVersions($sourceLocale);
+        $this->markTranslationsOutdated($languageVersions, $sourceLocale);
+
+        $version->update([
+            'generated_questions' => $this->normalizeQuestionsForStorage($questions, $sourceLocale),
+            'language_versions' => $languageVersions,
+            'last_edited_by' => portal_id(),
+            'last_edited_at' => now(),
+        ]);
+
+        return $version->fresh();
+    }
+
+    public function generateAndAppendQuestion(LessonQuizVersion $version): LessonQuizVersion
+    {
+        $this->assertEditable($version);
+
+        $config = $version->config()->with('trainingContent')->firstOrFail();
+        $content = $config->trainingContent;
+
+        if (! $content) {
+            throw ValidationException::withMessages(['question' => 'Lesson content not found for generation.']);
+        }
+
+        $sourceText = $this->contentExtractor->buildAiSourceText($content);
+
+        if (trim($sourceText) === '') {
+            throw ValidationException::withMessages(['question' => 'No lesson content available to generate a question.']);
+        }
+
+        $sourceLocale = $this->localeService->resolveLocale($version->generated_language ?? 'en');
+        $result = $this->gemini->generateLessonQuizBank($content, $sourceText, 1, $sourceLocale);
+        $generated = $result['questions'][0] ?? null;
+
+        if (! $generated) {
+            throw ValidationException::withMessages(['question' => 'AI did not return a new question.']);
+        }
+
+        $questions = $version->generated_questions ?? [];
+        $maxNumber = collect($questions)->max(fn ($q) => (int) ($q['number'] ?? 0)) ?: 0;
+        $generated['number'] = $maxNumber + 1;
+        $questions[] = $this->localeService->normalizeQuestionToBilingual($generated, $sourceLocale);
 
         $languageVersions = $version->language_versions ?? $this->defaultLanguageVersions($sourceLocale);
         $this->markTranslationsOutdated($languageVersions, $sourceLocale);

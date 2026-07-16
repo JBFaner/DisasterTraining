@@ -9,6 +9,7 @@ import {
     Mail,
     CalendarPlus,
     BarChart3,
+    Printer,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import {
@@ -16,6 +17,7 @@ import {
     AdminPageHeader,
     AdminCollapsibleFilterBar,
     AdminFilterSelect,
+    AdminFilterInput,
     AdminPrimaryButton,
     AdminSecondaryButton,
 } from './admin/AdminLayout';
@@ -97,16 +99,28 @@ export function ParticipantRegistrationAttendanceModule({
                 title="Participant Registration & Attendance"
                 description="Manage participants, qualified trainers, event registrations, and attendance."
                 actions={activeTab === 'participants' ? (
-                    <AdminPrimaryButton href="/participant/register">
-                        <UserPlus className="w-4 h-4" />
-                        Register New Participant
-                    </AdminPrimaryButton>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <AdminSecondaryButton
+                            onClick={() => {
+                                if (typeof window !== 'undefined') {
+                                    window.dispatchEvent(new CustomEvent('participant-registry-print'));
+                                }
+                            }}
+                        >
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </AdminSecondaryButton>
+                        <AdminPrimaryButton href="/participant/register">
+                            <UserPlus className="w-4 h-4" />
+                            Register New Participant
+                        </AdminPrimaryButton>
+                    </div>
                 ) : null}
             />
 
             {activeTab === 'participants' && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <StatCard label="Total Participants" value={totalParticipants} hint="Synchronized registry" />
+                    <StatCard label="Total Participants" value={totalParticipants} hint="Local and campaign registry" />
                     <StatCard label="Active" value={activeParticipants} hint="Active participant accounts" accent="emerald" />
                     <StatCard label="Inactive" value={inactiveParticipants} hint="Inactive participant accounts" />
                     <StatCard label="Synced This Month" value={participantsSyncedThisMonth} hint="Last registry sync" />
@@ -205,10 +219,11 @@ function RegistryLabelBadge({ label }) {
 
 function SourceBadge({ source }) {
     const normalized = (source || '').toString().toLowerCase();
-    const isSynced = normalized === 'synced';
+    const isCampaign = normalized === 'campaign' || normalized === 'synced';
+    const label = isCampaign ? 'CAMPAIGN' : 'LOCAL';
     return (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${isSynced ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
-            {isSynced ? 'SYNCED' : 'LOCAL'}
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${isCampaign ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
+            {label}
         </span>
     );
 }
@@ -227,33 +242,64 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [sourceFilter, setSourceFilter] = React.useState('all');
-    const [barangayFilter, setBarangayFilter] = React.useState('');
-    const [municipalityFilter, setMunicipalityFilter] = React.useState('');
+    const [moduleFilter, setModuleFilter] = React.useState('');
+    const [batchFilter, setBatchFilter] = React.useState('');
     const [trainingStatusFilter, setTrainingStatusFilter] = React.useState('');
-    const [certificateStatusFilter, setCertificateStatusFilter] = React.useState('');
+    const [dateFrom, setDateFrom] = React.useState('');
+    const [dateTo, setDateTo] = React.useState('');
     const [sortKey, setSortKey] = React.useState('name');
     const [sortDir, setSortDir] = React.useState('asc');
     const [participantsData, setParticipantsData] = React.useState(participants || []);
     const [pagination, setPagination] = React.useState(participantsPagination);
-    const [options, setOptions] = React.useState(filterOptions || { barangays: [], municipalities: [] });
+    const [options, setOptions] = React.useState(filterOptions || { modules: [], batches: [] });
     const [isLoading, setIsLoading] = React.useState(false);
     const [isSyncing, setIsSyncing] = React.useState(false);
+    const [isPrinting, setIsPrinting] = React.useState(false);
+
+    const buildParticipantsQuery = React.useCallback((page = 1, { exportAll = false } = {}) => {
+        const url = new URL('/admin/participants', window.location.origin);
+        if (exportAll) {
+            url.searchParams.set('export_all', '1');
+        } else {
+            url.searchParams.set('page', page);
+        }
+        if (searchTerm.trim()) url.searchParams.set('search', searchTerm.trim());
+        if (statusFilter !== 'all') url.searchParams.set('status_filter', statusFilter);
+        if (sourceFilter !== 'all') url.searchParams.set('source_filter', sourceFilter);
+        if (moduleFilter) url.searchParams.set('module_filter', moduleFilter);
+        if (batchFilter) url.searchParams.set('batch_filter', batchFilter);
+        if (trainingStatusFilter) url.searchParams.set('training_status_filter', trainingStatusFilter);
+        if (dateFrom) url.searchParams.set('date_from', dateFrom);
+        if (dateTo) url.searchParams.set('date_to', dateTo);
+        url.searchParams.set('sort_by', sortKey);
+        url.searchParams.set('sort_dir', sortDir);
+        return url;
+    }, [searchTerm, statusFilter, sourceFilter, moduleFilter, batchFilter, trainingStatusFilter, dateFrom, dateTo, sortKey, sortDir]);
+
+    const availableBatches = React.useMemo(() => {
+        const batches = options.batches || [];
+        if (!moduleFilter) return batches;
+        const moduleId = Number(moduleFilter);
+        return batches.filter((batch) => Number(batch.training_module_id) === moduleId);
+    }, [options.batches, moduleFilter]);
+
+    const handleModuleFilterChange = (value) => {
+        setModuleFilter(value);
+        if (!value) {
+            setBatchFilter('');
+            return;
+        }
+        const moduleId = Number(value);
+        const stillValid = (options.batches || []).some(
+            (batch) => Number(batch.id) === Number(batchFilter) && Number(batch.training_module_id) === moduleId,
+        );
+        if (!stillValid) setBatchFilter('');
+    };
 
     const fetchParticipants = React.useCallback(async (page = 1) => {
         setIsLoading(true);
         try {
-            const url = new URL('/admin/participants', window.location.origin);
-            url.searchParams.set('page', page);
-            if (searchTerm.trim()) url.searchParams.set('search', searchTerm.trim());
-            if (statusFilter !== 'all') url.searchParams.set('status_filter', statusFilter);
-            if (sourceFilter !== 'all') url.searchParams.set('source_filter', sourceFilter);
-            if (barangayFilter) url.searchParams.set('barangay_filter', barangayFilter);
-            if (municipalityFilter) url.searchParams.set('municipality_filter', municipalityFilter);
-            if (trainingStatusFilter) url.searchParams.set('training_status_filter', trainingStatusFilter);
-            if (certificateStatusFilter) url.searchParams.set('certificate_status_filter', certificateStatusFilter);
-            url.searchParams.set('sort_by', sortKey);
-            url.searchParams.set('sort_dir', sortDir);
-
+            const url = buildParticipantsQuery(page);
             const res = await fetch(url.toString(), {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
@@ -268,12 +314,167 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm, statusFilter, sourceFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir]);
+    }, [buildParticipantsQuery]);
 
     React.useEffect(() => {
         const timer = setTimeout(() => fetchParticipants(1), 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, statusFilter, sourceFilter, barangayFilter, municipalityFilter, trainingStatusFilter, certificateStatusFilter, sortKey, sortDir, fetchParticipants]);
+    }, [fetchParticipants]);
+
+    const printParticipants = React.useCallback(async () => {
+        if (isPrinting) return;
+        setIsPrinting(true);
+
+        const escapeHtml = (value) => String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+        try {
+            const url = buildParticipantsQuery(1, { exportAll: true });
+            const res = await fetch(url.toString(), {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) throw new Error('Failed to load filtered participants for print');
+            const data = await res.json();
+            const rows = data.participants || [];
+
+            const moduleLabel = moduleFilter
+                ? (options.modules || []).find((m) => String(m.id) === String(moduleFilter))?.title || moduleFilter
+                : 'All Modules';
+            const batchLabel = batchFilter
+                ? (options.batches || []).find((b) => String(b.id) === String(batchFilter))?.label || batchFilter
+                : 'All Batches';
+            const sourceLabel = sourceFilter === 'all'
+                ? 'All Sources'
+                : (sourceFilter === 'campaign' ? 'Campaign' : 'Local');
+            const statusLabel = statusFilter === 'all' ? 'All Status' : statusFilter;
+            const trainingLabel = trainingStatusFilter || 'All Training Status';
+            const dateLabel = dateFrom || dateTo
+                ? `${dateFrom || '…'} to ${dateTo || '…'}`
+                : 'All Dates';
+
+            const bodyRows = rows.length
+                ? rows.map((row, index) => {
+                    const source = (row.participant_source || '').toLowerCase();
+                    const rowSource = source === 'campaign' || source === 'synced' ? 'Campaign' : 'Local';
+                    return `<tr>
+                        <td>${index + 1}</td>
+                        <td>${escapeHtml(row.name || '—')}</td>
+                        <td>${escapeHtml(row.email || '—')}</td>
+                        <td>${escapeHtml(rowSource)}</td>
+                        <td>${escapeHtml(row.email_verified_at ? 'Verified' : 'Pending Verification')}</td>
+                        <td>${escapeHtml(row.phone || '—')}</td>
+                        <td>${escapeHtml(row.training_status || '—')}</td>
+                        <td>${escapeHtml(row.attendance_status || '—')}</td>
+                    </tr>`;
+                }).join('')
+                : '<tr><td colspan="8" style="text-align:center;padding:24px;">No participants match the current filters.</td></tr>';
+
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Participant Registry</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #0f172a; margin: 24px; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p { margin: 0 0 16px; color: #475569; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; }
+    @media print { body { margin: 12px; } }
+  </style>
+</head>
+<body>
+  <h1>Participant Registry</h1>
+  <p>Printed ${new Date().toLocaleString()} · ${rows.length} participant(s) matching filters</p>
+  <p>Status: ${escapeHtml(statusLabel)} · Source: ${escapeHtml(sourceLabel)} · Module: ${escapeHtml(moduleLabel)} · Batch: ${escapeHtml(batchLabel)} · Training: ${escapeHtml(trainingLabel)} · Registered: ${escapeHtml(dateLabel)}${searchTerm.trim() ? ` · Search: ${escapeHtml(searchTerm.trim())}` : ''}</p>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Full Name</th>
+        <th>Email</th>
+        <th>Source</th>
+        <th>Email Status</th>
+        <th>Contact</th>
+        <th>Training</th>
+        <th>Attendance</th>
+      </tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+</body>
+</html>`;
+
+            const iframe = document.createElement('iframe');
+            iframe.setAttribute('title', 'Participant Registry Print');
+            iframe.setAttribute('aria-hidden', 'true');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            document.body.appendChild(iframe);
+
+            const frameWindow = iframe.contentWindow;
+            const frameDocument = frameWindow?.document;
+            if (!frameWindow || !frameDocument) {
+                iframe.remove();
+                Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+                return;
+            }
+
+            frameDocument.open();
+            frameDocument.write(html);
+            frameDocument.close();
+
+            try {
+                frameWindow.focus();
+                frameWindow.print();
+            } finally {
+                window.setTimeout(() => {
+                    try {
+                        iframe.remove();
+                    } catch {
+                        // ignore
+                    }
+                }, 1000);
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Unable to print', 'Failed to load the filtered participant list for printing.', 'error');
+        } finally {
+            setIsPrinting(false);
+        }
+    }, [
+        isPrinting,
+        buildParticipantsQuery,
+        moduleFilter,
+        batchFilter,
+        sourceFilter,
+        statusFilter,
+        trainingStatusFilter,
+        dateFrom,
+        dateTo,
+        searchTerm,
+        options.modules,
+        options.batches,
+    ]);
+
+    React.useEffect(() => {
+        const onPrint = () => {
+            void printParticipants();
+        };
+        window.addEventListener('participant-registry-print', onPrint);
+        return () => window.removeEventListener('participant-registry-print', onPrint);
+    }, [printParticipants]);
 
     const handleSync = async () => {
         setIsSyncing(true);
@@ -327,15 +528,15 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
         }
     };
 
-    const hasActiveFilters = statusFilter !== 'all' || sourceFilter !== 'all' || barangayFilter || municipalityFilter || trainingStatusFilter || certificateStatusFilter;
+    const hasActiveFilters = statusFilter !== 'all'
+        || sourceFilter !== 'all'
+        || moduleFilter
+        || batchFilter
+        || trainingStatusFilter
+        || dateFrom
+        || dateTo;
 
     const columns = [
-        {
-            key: 'participant_id',
-            label: 'Participant ID',
-            sortable: true,
-            render: (row) => <span className="text-xs font-mono text-slate-600">{row.participant_id || row.group6_external_id || '—'}</span>,
-        },
         {
             key: 'name',
             label: 'Full Name',
@@ -364,18 +565,6 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             render: (row) => <span className="text-sm text-slate-700">{row.phone || '—'}</span>,
         },
         {
-            key: 'barangay',
-            label: 'Barangay',
-            sortable: true,
-            render: (row) => <span className="text-sm text-slate-600">{row.barangay || '—'}</span>,
-        },
-        {
-            key: 'city',
-            label: 'Municipality / City',
-            sortable: true,
-            render: (row) => <span className="text-sm text-slate-600">{row.city || row.municipality || '—'}</span>,
-        },
-        {
             key: 'training_status',
             label: 'Training Status',
             render: (row) => <RegistryLabelBadge label={row.training_status} />,
@@ -385,33 +574,12 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             label: 'Attendance Status',
             render: (row) => <RegistryLabelBadge label={row.attendance_status} />,
         },
-        {
-            key: 'evaluation_status',
-            label: 'Evaluation Status',
-            render: (row) => <RegistryLabelBadge label={row.evaluation_status} />,
-        },
-        {
-            key: 'certificate_status',
-            label: 'Certificate Status',
-            render: (row) => <RegistryLabelBadge label={row.certificate_status} />,
-        },
-        {
-            key: 'last_synced_at',
-            label: 'Last Synced',
-            sortable: true,
-            render: (row) => <span className="text-sm text-slate-600">{formatDate(row.last_synced_at)}</span>,
-        },
-        {
-            key: 'verification_date',
-            label: 'Verification Date',
-            render: (row) => <span className="text-sm text-slate-600">{formatDate(row.email_verified_at)}</span>,
-        },
     ];
 
     return (
         <div className="space-y-4">
             <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                This registry supports both locally registered participants and synchronized participants from the Community Registration & Campaign Management System.
+                This registry includes locally registered participants and campaign participants from the Community Registration & Campaign Management System.
             </div>
 
             <AdminCollapsibleFilterBar
@@ -422,10 +590,11 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 onClearFilters={() => {
                     setStatusFilter('all');
                     setSourceFilter('all');
-                    setBarangayFilter('');
-                    setMunicipalityFilter('');
+                    setModuleFilter('');
+                    setBatchFilter('');
                     setTrainingStatusFilter('');
-                    setCertificateStatusFilter('');
+                    setDateFrom('');
+                    setDateTo('');
                 }}
                 trailing={(
                     <>
@@ -444,18 +613,20 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 <AdminFilterSelect label="Source" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
                     <option value="all">All Participants</option>
                     <option value="local">Local</option>
-                    <option value="synced">Synced</option>
+                    <option value="campaign">Campaign</option>
                 </AdminFilterSelect>
-                <AdminFilterSelect label="Barangay" value={barangayFilter} onChange={(e) => setBarangayFilter(e.target.value)}>
-                    <option value="">All Barangays</option>
-                    {(options.barangays || []).map((value) => (
-                        <option key={value} value={value}>{value}</option>
+                <AdminFilterSelect label="Module" value={moduleFilter} onChange={(e) => handleModuleFilterChange(e.target.value)}>
+                    <option value="">All Modules</option>
+                    {(options.modules || []).map((module) => (
+                        <option key={module.id} value={module.id}>{module.title}</option>
                     ))}
                 </AdminFilterSelect>
-                <AdminFilterSelect label="Municipality" value={municipalityFilter} onChange={(e) => setMunicipalityFilter(e.target.value)}>
-                    <option value="">All Municipalities</option>
-                    {(options.municipalities || []).map((value) => (
-                        <option key={value} value={value}>{value}</option>
+                <AdminFilterSelect label="Batch" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+                    <option value="">All Batches</option>
+                    {availableBatches.map((batch) => (
+                        <option key={batch.id} value={batch.id}>
+                            {batch.label}{!moduleFilter && batch.module_title ? ` · ${batch.module_title}` : ''}
+                        </option>
                     ))}
                 </AdminFilterSelect>
                 <AdminFilterSelect label="Training Status" value={trainingStatusFilter} onChange={(e) => setTrainingStatusFilter(e.target.value)}>
@@ -464,11 +635,18 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                     <option value="In Progress">In Progress</option>
                     <option value="Completed">Completed</option>
                 </AdminFilterSelect>
-                <AdminFilterSelect label="Certificate Status" value={certificateStatusFilter} onChange={(e) => setCertificateStatusFilter(e.target.value)}>
-                    <option value="">All Certificate Status</option>
-                    <option value="None">None</option>
-                    <option value="Issued">Issued</option>
-                </AdminFilterSelect>
+                <AdminFilterInput
+                    label="Registered From"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                />
+                <AdminFilterInput
+                    label="Registered To"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                />
             </AdminCollapsibleFilterBar>
 
             <AdminDataTable
@@ -480,7 +658,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 isLoading={isLoading}
                 pagination={pagination}
                 onPageChange={(page) => fetchParticipants(page)}
-                minWidth="1500px"
+                minWidth="980px"
                 emptyTitle="No participants found"
                 emptyDescription="Use Register New Participant or Sync Participants to build your unified registry."
                 renderActions={(row) => (

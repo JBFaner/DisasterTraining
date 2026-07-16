@@ -14,6 +14,7 @@
             data-errors='@json($errors->getMessages() ?: [])'
             data-old-values='@json(old())'
             data-campaign-context='@json($campaign_context ?? null)'
+            data-open-campaigns='@json($open_campaigns ?? [])'
         ></div>
     </body>
 </html>

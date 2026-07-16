@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, Users, TrendingUp, MoreHorizontal } from 'lucide-react';
+import { BookOpen, Clock, Users, TrendingUp, MoreHorizontal, Lock, CheckCircle2 } from 'lucide-react';
 
 const CATEGORY_GRADIENTS = {
     flood: 'from-sky-600 via-blue-700 to-indigo-800',
@@ -9,6 +9,14 @@ const CATEGORY_GRADIENTS = {
     landslide: 'from-emerald-800 via-teal-900 to-slate-900',
     default: 'from-emerald-700 via-teal-800 to-slate-900',
 };
+
+const LESSON_CARD_GRADIENTS = [
+    'from-violet-700 via-purple-800 to-indigo-900',
+    'from-emerald-700 via-teal-800 to-cyan-900',
+    'from-orange-600 via-amber-700 to-rose-800',
+    'from-slate-700 via-slate-800 to-slate-900',
+    'from-blue-700 via-indigo-800 to-violet-900',
+];
 
 function resolveCategoryGradient(category) {
     const key = String(category || '').trim().toLowerCase();
@@ -259,43 +267,72 @@ export function ParticipantTrainingModuleCard({ module, href }) {
     const duration = formatTrainingDuration(module.estimated_duration_minutes);
     const lessonCount = module.lesson_count ?? module.contents_count ?? 0;
     const progress = Math.max(0, Math.min(100, Number(module.completion_percentage) || 0));
+    const gradient = resolveCategoryGradient(module.category);
 
     const content = (
-        <>
-            <ModuleCover module={module}>
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="text-base font-semibold text-white line-clamp-2 group-hover:text-emerald-100 transition-colors">
+        <div className="relative min-h-[360px] overflow-hidden rounded-2xl">
+            {module.thumbnail_url ? (
+                <img
+                    src={module.thumbnail_url}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                />
+            ) : (
+                <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`}>
+                    <div
+                        className="absolute inset-0 opacity-25"
+                        style={{
+                            backgroundImage:
+                                'radial-gradient(circle at 20% 20%, white 1px, transparent 1px), radial-gradient(circle at 80% 60%, white 1px, transparent 1px)',
+                            backgroundSize: '30px 30px',
+                        }}
+                    />
+                </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/70" />
+
+            <div className="relative z-10 flex h-full flex-col justify-between p-5">
+                <div className="space-y-1.5">
+                    <h3 className="text-4xl font-semibold leading-tight text-white drop-shadow-sm line-clamp-3 group-hover:text-emerald-100 transition-colors">
                         {module.title}
                     </h3>
                     {module.category && (
-                        <p className="text-sm text-white/85 mt-0.5">{module.category}</p>
+                        <p className="text-lg text-white/90 line-clamp-2">{module.category}</p>
                     )}
                 </div>
-            </ModuleCover>
 
-            <div className="flex flex-1 flex-col gap-3 p-4">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-                    {duration && (
+                <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/90">
+                        {duration && (
+                            <span className="inline-flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-white/90" />
+                                {duration}
+                            </span>
+                        )}
                         <span className="inline-flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            {duration}
+                            <BookOpen className="w-3.5 h-3.5 text-white/90" />
+                            {lessonCount} {lessonCount === 1 ? 'Lesson' : 'Lessons'}
                         </span>
-                    )}
-                    <span className="inline-flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                        {lessonCount} {lessonCount === 1 ? 'Lesson' : 'Lessons'}
-                    </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-white/90">
+                            <span className="inline-flex items-center gap-1.5">
+                                <TrendingUp className="w-3.5 h-3.5 text-white/90" />
+                                Your progress
+                            </span>
+                            <span className="font-semibold text-white">{progress}% complete</span>
+                        </div>
+                        <div className="h-2.5 w-full rounded-full bg-black/30 overflow-hidden">
+                            <div
+                                className="h-full rounded-full bg-white/95 transition-all duration-300"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                    </div>
                 </div>
-
-                {module.description && (
-                    <p className="text-xs text-slate-600 line-clamp-2 whitespace-pre-line">
-                        {module.description}
-                    </p>
-                )}
-
-                <ModuleProgressBar percentage={progress} label="Your progress" />
             </div>
-        </>
+        </div>
     );
 
     if (href) {
@@ -313,5 +350,146 @@ export function ParticipantTrainingModuleCard({ module, href }) {
         <article className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             {content}
         </article>
+    );
+}
+
+function resolveLessonGradient(index, moduleCategory) {
+    if (index === 0) {
+        return resolveCategoryGradient(moduleCategory);
+    }
+
+    return LESSON_CARD_GRADIENTS[index % LESSON_CARD_GRADIENTS.length];
+}
+
+export function ParticipantModuleHero({ module, progressPercent = 0, completedCount = 0, totalLessons = 0 }) {
+    const gradient = resolveCategoryGradient(module?.category);
+
+    return (
+        <div className="relative min-h-[220px] overflow-hidden rounded-2xl border border-slate-200 shadow-md">
+            {module?.thumbnail_url ? (
+                <img
+                    src={module.thumbnail_url}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                />
+            ) : (
+                <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`}>
+                    <div
+                        className="absolute inset-0 opacity-20"
+                        style={{
+                            backgroundImage:
+                                'radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 65%, white 1px, transparent 1px)',
+                            backgroundSize: '32px 32px',
+                        }}
+                    />
+                </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/75" />
+
+            <div className="relative z-10 flex h-full flex-col justify-end p-6 md:p-8 text-white">
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/80">Training Module</p>
+                <h2 className="mt-1 text-2xl md:text-3xl font-bold leading-tight drop-shadow-sm">
+                    {module?.title}
+                </h2>
+                {module?.category && (
+                    <p className="mt-1 text-sm text-white/90">{module.category}</p>
+                )}
+                {module?.description && (
+                    <p className="mt-3 text-sm text-white/85 line-clamp-2 max-w-3xl">
+                        {module.description}
+                    </p>
+                )}
+                {totalLessons > 0 && (
+                    <div className="mt-5 max-w-md">
+                        <div className="flex items-center justify-between text-xs text-white/90 mb-1.5">
+                            <span>Module progress</span>
+                            <span>{completedCount} / {totalLessons} lessons ({progressPercent}%)</span>
+                        </div>
+                        <div className="h-2.5 w-full rounded-full bg-black/35 overflow-hidden">
+                            <div
+                                className="h-full rounded-full bg-white transition-all duration-300"
+                                style={{ width: `${progressPercent}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export function ParticipantLessonCard({
+    lesson,
+    index,
+    moduleCategory,
+    isSelected = false,
+    onSelect,
+}) {
+    const isLocked = lesson.is_locked;
+    const isCompleted = lesson.is_completed;
+    const gradient = resolveLessonGradient(index, moduleCategory);
+    const hasQuiz = lesson.lesson_quiz?.has_published_quiz;
+
+    return (
+        <button
+            type="button"
+            disabled={isLocked}
+            onClick={onSelect}
+            className={`group relative min-h-[140px] w-full overflow-hidden rounded-xl text-left transition-all ${
+                isLocked
+                    ? 'cursor-not-allowed opacity-70'
+                    : 'cursor-pointer hover:scale-[1.02] hover:shadow-lg'
+            } ${isSelected ? 'ring-2 ring-emerald-400 ring-offset-2' : ''}`}
+        >
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`}>
+                <div
+                    className="absolute inset-0 opacity-20"
+                    style={{
+                        backgroundImage:
+                            'radial-gradient(circle at 15% 20%, white 1px, transparent 1px)',
+                        backgroundSize: '24px 24px',
+                    }}
+                />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/35 to-black/70" />
+
+            <div className="relative z-10 flex h-full flex-col justify-between p-4">
+                <div className="flex items-start justify-between gap-2">
+                    <span className="text-[0.65rem] font-bold uppercase tracking-wider text-white/80">
+                        Lesson {index + 1}
+                    </span>
+                    {isCompleted && <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />}
+                    {isLocked && <Lock className="w-4 h-4 text-white/70 shrink-0" />}
+                </div>
+
+                <div>
+                    <h4 className="text-sm font-semibold text-white line-clamp-2 leading-snug">
+                        {lesson.title}
+                    </h4>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                        {isCompleted && (
+                            <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[0.6rem] font-semibold text-white">
+                                Completed
+                            </span>
+                        )}
+                        {!isCompleted && !isLocked && (
+                            <span className="rounded-full bg-sky-500/90 px-2 py-0.5 text-[0.6rem] font-semibold text-white">
+                                Available
+                            </span>
+                        )}
+                        {isLocked && (
+                            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[0.6rem] font-semibold text-white">
+                                Locked
+                            </span>
+                        )}
+                        {hasQuiz && (
+                            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[0.6rem] font-semibold text-white/90">
+                                Quiz
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </button>
     );
 }

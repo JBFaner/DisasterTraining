@@ -5,6 +5,11 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+// Prevent hard fatal errors in slow routes while we optimize heavy queries/IO.
+// (This still doesn't fix underlying performance issues, but avoids server crashes.)
+ini_set('max_execution_time', '300');
+@set_time_limit(300);
+
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;

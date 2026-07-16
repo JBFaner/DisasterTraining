@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Mail, Lock, User, AlertCircle, ArrowRight, Phone, CalendarDays, MapPin, Clock3, Building2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Mail, Lock, User, AlertCircle, ArrowRight, Phone, CalendarDays, MapPin, Clock3, CheckCircle2, BookOpen, Users } from 'lucide-react';
 import { PhilippineLocationSelect } from './PhilippineLocationSelect';
 
 function formatDate(dateString) {
@@ -35,15 +35,16 @@ function parseMobileFromOldValues(oldValues = {}) {
     return match ? match[1] : phone.replace(/\D/g, '').slice(-10);
 }
 
-export function ParticipantRegister({ errors = {}, oldValues = {}, campaignContext = null }) {
+export function ParticipantRegister({ errors = {}, oldValues = {}, campaignContext = null, openCampaigns = [] }) {
     const hasCampaignContext = Boolean(
         campaignContext?.campaign_event_id || campaignContext?.campaign_request_id,
     );
-    const campaignBadgeLabel = campaignContext?.campaign_event_id
-        ? `Event #${campaignContext.campaign_event_id}`
-        : campaignContext?.campaign_request_id
-            ? `Request #${campaignContext.campaign_request_id}`
-            : null;
+    const campaignBadgeLabel = campaignContext?.batch_label
+        || (campaignContext?.campaign_event_id
+            ? `Event #${campaignContext.campaign_event_id}`
+            : campaignContext?.campaign_request_id
+                ? `Batch #${campaignContext.campaign_request_id}`
+                : null);
     const [formData, setFormData] = useState({
         name: oldValues.name || '',
         organization: oldValues.organization || '',
@@ -58,14 +59,55 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
         barangay_name: oldValues.barangay_name || '',
         password: '',
         password_confirmation: '',
+        campaign_request: oldValues.campaign_request
+            ? String(oldValues.campaign_request)
+            : (campaignContext?.campaign_request_id ? String(campaignContext.campaign_request_id) : ''),
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [clientErrors, setClientErrors] = useState({});
 
+    const selectedOpenCampaign = useMemo(() => {
+        if (hasCampaignContext) {
+            return campaignContext;
+        }
+        if (!formData.campaign_request) {
+            return null;
+        }
+        return openCampaigns.find(
+            (campaign) => String(campaign.campaign_request_id) === String(formData.campaign_request),
+        ) || null;
+    }, [hasCampaignContext, campaignContext, formData.campaign_request, openCampaigns]);
+
+    const passwordLiveState = useMemo(() => {
+        const password = formData.password || '';
+        const confirmation = formData.password_confirmation || '';
+        const lengthOk = password.length >= 8;
+        let status = null;
+        if (confirmation) {
+            status = password === confirmation ? 'match' : 'mismatch';
+        }
+        return { lengthOk, status };
+    }, [formData.password, formData.password_confirmation]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        setClientErrors((prev) => {
+            if (!prev[name] && !(name === 'password' || name === 'password_confirmation')) {
+                return prev;
+            }
+            const next = { ...prev };
+            delete next[name];
+            if (name === 'password' || name === 'password_confirmation') {
+                delete next.password;
+                delete next.password_confirmation;
+            }
+            if (name === 'campaign_request') {
+                delete next.campaign_request;
+            }
+            return next;
+        });
     };
 
     const validateForm = () => {
@@ -96,6 +138,10 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
             newErrors.password_confirmation = 'Please confirm your password.';
         } else if (formData.password !== formData.password_confirmation) {
             newErrors.password_confirmation = 'Passwords do not match.';
+        }
+
+        if (!hasCampaignContext && !formData.campaign_request) {
+            newErrors.campaign_request = 'Please select the training batch / module you are joining.';
         }
 
         setClientErrors(newErrors);
@@ -159,23 +205,41 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
         const list = Array.isArray(messages) ? messages : [messages];
         return list.filter(Boolean).map((message) => ({ field, message }));
     });
+    const displayCampaign = selectedOpenCampaign || campaignContext;
     const importantCampaignDetails = [
+        {
+            icon: BookOpen,
+            label: 'Training Module',
+            value: displayCampaign?.module_title || displayCampaign?.training_title || '—',
+        },
         {
             icon: CalendarDays,
             label: 'Registration Opens',
-            value: formatDate(campaignContext?.registration_opens),
+            value: formatDate(displayCampaign?.registration_opens),
         },
         {
             icon: CalendarDays,
             label: 'Registration Deadline',
-            value: formatDate(campaignContext?.registration_deadline),
+            value: formatDate(displayCampaign?.registration_deadline),
         },
         {
             icon: Clock3,
             label: 'Training Completion Deadline',
-            value: formatDate(campaignContext?.training_completion_deadline),
+            value: formatDate(displayCampaign?.training_completion_deadline),
         },
-    ];
+        {
+            icon: MapPin,
+            label: 'Venue',
+            value: displayCampaign?.venue || null,
+        },
+        {
+            icon: Users,
+            label: 'Seats Remaining',
+            value: displayCampaign?.seats_remaining != null
+                ? `${displayCampaign.seats_remaining} of ${displayCampaign.maximum_participants}`
+                : null,
+        },
+    ].filter((item) => item.value && item.value !== '—');
 
     return (
         <div className="min-h-screen relative">
@@ -236,18 +300,18 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                         />
                                     </div>
                                 </div>
-                                {hasCampaignContext ? (
+                                {hasCampaignContext || selectedOpenCampaign ? (
                                     <div className="space-y-6">
                                         <div>
                                             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
-                                                Campaign Registration
+                                                Walk-in / Campaign Registration
                                             </div>
                                             <h2 className="mt-3 text-3xl font-bold leading-tight">
-                                                {campaignContext.training_title || 'Training Event'}
+                                                {displayCampaign?.training_title || 'Training Event'}
                                             </h2>
                                             <p className="mt-3 text-sm text-emerald-50/90 leading-6">
-                                                {campaignContext.short_description
-                                                    || 'Register for this published training module and complete the online learning requirements before the deadline.'}
+                                                {displayCampaign?.short_description
+                                                    || 'You are registering for this training module only. After signup, this is the module you will see in your participant account.'}
                                             </p>
                                         </div>
 
@@ -255,15 +319,15 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                             <div className="flex items-start justify-between gap-3">
                                                 <div>
                                                     <div className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-emerald-100/80">
-                                                        Important Details
+                                                        Batch & Module Details
                                                     </div>
                                                     <p className="mt-2 text-xs text-emerald-50/80">
-                                                        These details come from the Training Intelligence Profile submitted for this campaign.
+                                                        Confirm you are joining the correct open batch before continuing.
                                                     </p>
                                                 </div>
-                                                {campaignBadgeLabel ? (
+                                                {(displayCampaign?.batch_label || campaignBadgeLabel) ? (
                                                     <span className="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[0.72rem] font-semibold text-white">
-                                                        {campaignBadgeLabel}
+                                                        {displayCampaign?.batch_label || campaignBadgeLabel}
                                                     </span>
                                                 ) : null}
                                             </div>
@@ -319,7 +383,11 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                     Participant Registration
                                 </h1>
                                 <p className="text-sm text-slate-500">
-                                    Create an account to access training modules and simulation events.
+                                    {hasCampaignContext
+                                        ? 'You opened a campaign registration link. This account will be registered only for that batch/module — no batch selection needed.'
+                                        : selectedOpenCampaign
+                                            ? 'Create your account for the selected training batch. You will only see that module after registration.'
+                                            : 'Select an open training batch below, then create your participant account.'}
                                 </p>
                             </div>
 
@@ -343,34 +411,91 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                     {campaignContext?.campaign_event_id ? (
                         <input type="hidden" name="campaign_event" value={campaignContext.campaign_event_id} />
                     ) : null}
-                    {campaignContext?.campaign_request_id ? (
+                    {hasCampaignContext && campaignContext?.campaign_request_id ? (
                         <input type="hidden" name="campaign_request" value={campaignContext.campaign_request_id} />
                     ) : null}
 
-                    {hasCampaignContext ? (
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 lg:hidden">
+                    {/* Walk-in only: pick an open batch. Campaign links lock the batch and hide this field. */}
+                    {!hasCampaignContext ? (
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="campaign_request">
+                                Training Batch / Module
+                            </label>
+                            <div className="relative">
+                                <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <select
+                                    id="campaign_request"
+                                    name="campaign_request"
+                                    value={formData.campaign_request}
+                                    onChange={handleChange}
+                                    required
+                                    className={`w-full rounded-md border ${
+                                        getClientError('campaign_request') || getFieldError('campaign_request')
+                                            ? 'border-rose-300'
+                                            : 'border-slate-300'
+                                    } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] bg-white`}
+                                >
+                                    <option value="">Select an open batch to join</option>
+                                    {openCampaigns.map((campaign) => (
+                                        <option key={campaign.campaign_request_id} value={campaign.campaign_request_id}>
+                                            {(campaign.batch_label || `Batch #${campaign.campaign_request_id}`)}
+                                            {' — '}
+                                            {campaign.module_title || campaign.training_title || 'Training module'}
+                                            {campaign.seats_remaining != null
+                                                ? ` (${campaign.seats_remaining} seats left)`
+                                                : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            {(getClientError('campaign_request') || getFieldError('campaign_request')) && (
+                                <p className="mt-1 text-xs text-rose-600">
+                                    {getClientError('campaign_request') || getFieldError('campaign_request')}
+                                </p>
+                            )}
+                            {openCampaigns.length === 0 ? (
+                                <p className="mt-1 text-xs text-amber-700">
+                                    No open training batches are available right now. Finished or full batches are hidden.
+                                </p>
+                            ) : (
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Only open batches with available seats are listed.
+                                </p>
+                            )}
+                        </div>
+                    ) : null}
+
+                    {displayCampaign ? (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Campaign Registration</div>
-                                    <div className="mt-1 text-sm font-semibold text-slate-900">
-                                        {campaignContext.training_title || 'Training Event'}
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                                        You are joining
                                     </div>
+                                    <div className="mt-1 text-sm font-semibold text-slate-900">
+                                        {displayCampaign.training_title || displayCampaign.module_title || 'Training Event'}
+                                    </div>
+                                    {displayCampaign.module_title && displayCampaign.training_title
+                                        && displayCampaign.module_title !== displayCampaign.training_title ? (
+                                        <div className="mt-0.5 text-xs text-slate-600">
+                                            Module: {displayCampaign.module_title}
+                                        </div>
+                                    ) : null}
                                 </div>
-                                {campaignBadgeLabel ? (
+                                {(displayCampaign.batch_label || campaignBadgeLabel) ? (
                                     <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700">
-                                        {campaignBadgeLabel}
+                                        {displayCampaign.batch_label || campaignBadgeLabel}
                                     </span>
                                 ) : null}
                             </div>
-
-                            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                {importantCampaignDetails.map(({ icon: Icon, label, value }) => (
-                                    <div key={label} className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
-                                        <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {importantCampaignDetails.slice(0, 4).map(({ icon: Icon, label, value }) => (
+                                    <div key={`form-${label}`} className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
+                                        <div className="flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-wide text-slate-500">
                                             <Icon className="h-3.5 w-3.5 text-emerald-600" />
                                             {label}
                                         </div>
-                                        <div className="mt-1 text-sm font-medium text-slate-900">{value || '—'}</div>
+                                        <div className="mt-1 text-sm font-medium text-slate-900">{value}</div>
                                     </div>
                                 ))}
                             </div>
@@ -554,17 +679,23 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                 value={formData.password}
                                 onChange={handleChange}
                                 minLength={8}
+                                autoComplete="new-password"
                                 className={`w-full rounded-md border ${
-                                    getPasswordError() ? 'border-rose-300' : 'border-slate-300'
+                                    getPasswordError()
+                                        ? 'border-rose-300'
+                                        : passwordLiveState.lengthOk
+                                            ? 'border-emerald-300'
+                                            : 'border-slate-300'
                                 } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
                             />
                         </div>
-                        {getPasswordError() && (
+                        {getPasswordError() ? (
                             <p className="mt-1 text-xs text-rose-600">{getPasswordError()}</p>
+                        ) : (
+                            <p className={`mt-1 text-xs ${passwordLiveState.lengthOk ? 'text-emerald-600' : 'text-slate-500'}`}>
+                                {passwordLiveState.lengthOk ? 'Looks good — at least 8 characters' : 'Must be at least 8 characters'}
+                            </p>
                         )}
-                        {!getPasswordError() ? (
-                            <p className="mt-1 text-xs text-slate-500">Must be at least 8 characters</p>
-                        ) : null}
                     </div>
 
                     <div>
@@ -579,13 +710,30 @@ export function ParticipantRegister({ errors = {}, oldValues = {}, campaignConte
                                 type="password"
                                 value={formData.password_confirmation}
                                 onChange={handleChange}
+                                autoComplete="new-password"
                                 className={`w-full rounded-md border ${
-                                    getPasswordConfirmationError() ? 'border-rose-300' : 'border-slate-300'
-                                } pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
+                                    getPasswordConfirmationError() || passwordLiveState.status === 'mismatch'
+                                        ? 'border-rose-300'
+                                        : passwordLiveState.status === 'match'
+                                            ? 'border-emerald-300'
+                                            : 'border-slate-300'
+                                } pl-10 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA463] focus:border-[#1FA463] focus:bg-[rgba(22,163,74,0.08)] transition-all duration-200 ease-out`}
                             />
+                            {passwordLiveState.status === 'match' ? (
+                                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
+                            ) : null}
+                            {passwordLiveState.status === 'mismatch' ? (
+                                <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-500" />
+                            ) : null}
                         </div>
-                        {getPasswordConfirmationError() && (
+                        {getPasswordConfirmationError() ? (
                             <p className="mt-1 text-xs text-rose-600">{getPasswordConfirmationError()}</p>
+                        ) : passwordLiveState.status === 'match' ? (
+                            <p className="mt-1 text-xs text-emerald-600">Passwords match</p>
+                        ) : passwordLiveState.status === 'mismatch' ? (
+                            <p className="mt-1 text-xs text-rose-600">Passwords do not match</p>
+                        ) : formData.password_confirmation ? null : (
+                            <p className="mt-1 text-xs text-slate-500">Re-enter your password to confirm</p>
                         )}
                     </div>
 

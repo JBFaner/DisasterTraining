@@ -535,19 +535,23 @@ Important:
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
         }
 
-        $questionCount = in_array($questionCount, [10, 15, 20], true) ? $questionCount : 10;
+        $questionCount = in_array($questionCount, \App\Models\AiScenarioConfig::BANK_QUESTION_COUNTS, true)
+            ? $questionCount
+            : \App\Models\AiScenarioConfig::DEFAULT_BANK_QUESTION_COUNT;
         $difficulty = in_array($difficulty, ['easy', 'medium', 'hard'], true) ? $difficulty : 'medium';
         $language = in_array($language, ['en', 'fil'], true) ? $language : 'en';
 
-        $module->loadMissing('contents');
+        $module->loadMissing(['contents.resources']);
         $prompt = $this->buildTrainingScenarioQuizPrompt($module, $difficulty, $questionCount, $language, $hazardContext);
         $generatedText = $this->generateContentText($prompt);
 
         return $this->parseTrainingScenarioQuizFromText($generatedText, $questionCount);
     }
 
-    public function generateContentText(string $prompt, array $generationConfig = []): string
+    public function generateContentText(string $prompt, array $generationConfig = [], int $timeoutSeconds = 120): string
     {
+        $this->extendExecutionLimit();
+
         if ($this->apiKey === '') {
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
         }
@@ -566,6 +570,7 @@ Important:
         $modelsToTry = $this->getModelsToTry();
         $lastError = null;
         $leakedKey = false;
+        $timeoutSeconds = max(20, min(120, $timeoutSeconds));
 
         foreach ($modelsToTry as $model) {
             $url = $this->baseUrl.'/'.$apiVersion.'/models/'.$model.':generateContent?key='.$this->apiKey;
@@ -581,7 +586,7 @@ Important:
                     $payload['generationConfig'] = $generationConfig;
                 }
 
-                $response = Http::timeout(120)->post($url, $payload);
+                $response = Http::timeout($timeoutSeconds)->post($url, $payload);
 
                 if ($response->successful()) {
                     $text = $response->json('candidates.0.content.parts.0.text') ?? '';
@@ -632,6 +637,8 @@ Important:
 
     public function extractTextFromImageFile(string $absolutePath, string $mimeType): string
     {
+        $this->extendExecutionLimit();
+
         if ($this->apiKey === '') {
             throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
         }
@@ -708,8 +715,17 @@ Important:
 
         $lessonLines = $module->contents
             ->sortBy('sort_order')
+            ->values()
             ->map(function ($lesson, $index) {
                 $lesson->loadMissing('resources');
+                $description = trim(preg_replace('/\s+/', ' ', strip_tags((string) ($lesson->description ?? ''))) ?? '');
+                if (mb_strlen($description) > 500) {
+                    $description = mb_substr($description, 0, 500).'…';
+                }
+                if ($description === '') {
+                    $description = 'No lesson description provided.';
+                }
+
                 $resourceSummary = $lesson->resources
                     ->map(fn ($resource) => $resource->title.' ('.$resource->resource_type.')')
                     ->implode('; ');
@@ -718,7 +734,9 @@ Important:
                     $resourceSummary = 'No learning resources';
                 }
 
-                return ($index + 1).'. '.$lesson->title.' — '.$resourceSummary;
+                return ($index + 1).'. '.$lesson->title
+                    ."\n   Description: {$description}"
+                    ."\n   Resources: {$resourceSummary}";
             })
             ->implode("\n");
 
@@ -729,7 +747,7 @@ Important:
         return <<<PROMPT
 You are a disaster preparedness training expert for Local Government Units (LGUs) in the Philippines.
 
-Using ONLY the training module information below, create one realistic disaster scenario and exactly {$questionCount} multiple-choice assessment questions.
+Using ONLY the training module information below, create one realistic disaster scenario and exactly {$questionCount} multiple-choice assessment questions for a FINAL AI SCENARIO ASSESSMENT.
 {$hazardBlock}
 
 Write ALL output in {$languageLabel}.
@@ -739,17 +757,18 @@ Module Description: {$module->description}
 Learning Objectives: {$objectives}
 Module Difficulty Level: {$module->difficulty}
 Assessment Difficulty (auto-selected from module and lesson depth): {$difficultyLabel}
-Lesson Titles and Content Summaries:
+Lesson Titles, Descriptions, and Content Summaries:
 {$lessonLines}
 
 Requirements:
 - The scenario must be practical for LGU personnel or community disaster preparedness participants.
-- Base the scenario entirely on the training module topic and lessons.
+- Base the scenario AND every question entirely on the training module topic and the lesson content above.
+- Do not invent topics outside this module. Questions must remain related to the module lessons.
 - Difficulty "{$difficultyLabel}" should affect scenario complexity and question rigor.
 - Generate exactly {$questionCount} multiple-choice questions numbered 1 through {$questionCount}.
 - Each question must have exactly four choices labeled A, B, C, and D.
-- Each question must have one correct answer (A, B, C, or D) and a brief explanation.
-- Questions must measure understanding, decision-making, and proper emergency response.
+- Each question must have one correct answer (A, B, C, or D) and a brief explanation grounded in the module lessons.
+- Questions must measure understanding, decision-making, and proper emergency response from the module.
 - Each question must include a "competency" field: one of "knowledge", "decision_making", "emergency_response", or "safety_awareness". Distribute competencies evenly across all questions.
 - Include 3-5 concise learning objectives derived from the scenario and questions.
 
@@ -829,19 +848,32 @@ PROMPT;
             $correct = 'A';
         }
 
-        return [
+        $normalized = [
             'number' => $number,
             'competency' => $this->normalizeQuizCompetency($question['competency'] ?? null, $index, $expectedCount),
-            'question' => (string) ($question['question'] ?? ''),
+            'question' => (string) ($question['question'] ?? $question['question_en'] ?? $question['question_fil'] ?? ''),
             'choices' => [
-                'A' => (string) ($choices['A'] ?? ''),
-                'B' => (string) ($choices['B'] ?? ''),
-                'C' => (string) ($choices['C'] ?? ''),
-                'D' => (string) ($choices['D'] ?? ''),
+                'A' => (string) ($choices['A'] ?? $question['choice_a_en'] ?? $question['choice_a_fil'] ?? ''),
+                'B' => (string) ($choices['B'] ?? $question['choice_b_en'] ?? $question['choice_b_fil'] ?? ''),
+                'C' => (string) ($choices['C'] ?? $question['choice_c_en'] ?? $question['choice_c_fil'] ?? ''),
+                'D' => (string) ($choices['D'] ?? $question['choice_d_en'] ?? $question['choice_d_fil'] ?? ''),
             ],
             'correct_answer' => $correct,
-            'explanation' => (string) ($question['explanation'] ?? ''),
+            'explanation' => (string) ($question['explanation'] ?? $question['explanation_en'] ?? $question['explanation_fil'] ?? ''),
         ];
+
+        foreach ([
+            'question_en', 'question_fil',
+            'explanation_en', 'explanation_fil',
+            'choice_a_en', 'choice_b_en', 'choice_c_en', 'choice_d_en',
+            'choice_a_fil', 'choice_b_fil', 'choice_c_fil', 'choice_d_fil',
+        ] as $field) {
+            if (array_key_exists($field, $question) && filled($question[$field])) {
+                $normalized[$field] = (string) $question[$field];
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -887,6 +919,20 @@ PROMPT;
         return $valid[$index % count($valid)];
     }
 
+    private function extendExecutionLimit(): void
+    {
+        $seconds = (int) config('ai_scenario.generation_max_execution_seconds', 300);
+        if ($seconds < 60) {
+            $seconds = 60;
+        }
+
+        try {
+            @set_time_limit($seconds);
+        } catch (\Throwable) {
+            // Ignore when runtime disallows changing execution time.
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -897,24 +943,53 @@ PROMPT;
         int $questionNumber,
         ?string $scenarioContext = null,
     ): array {
-        $languageLabel = $language === 'fil' ? 'Filipino' : 'English';
+        $language = in_array($language, ['en', 'fil'], true) ? $language : 'en';
+        $sourceLabel = $language === 'fil' ? 'Filipino' : 'English';
+        $targetLabel = $language === 'fil' ? 'English' : 'Filipino';
+        $moduleTitle = Utf8Sanitizer::clean((string) $module->title);
+        $scenarioContext = Utf8Sanitizer::clean((string) ($scenarioContext ?? ''));
+        if (mb_strlen($scenarioContext) > 1200) {
+            $scenarioContext = mb_substr($scenarioContext, 0, 1200).'…';
+        }
+
         $prompt = <<<PROMPT
-Generate ONE multiple-choice quiz question in {$languageLabel} for disaster preparedness training module "{$module->title}".
-Difficulty: {$difficulty}.
+Generate ONE multiple-choice final assessment question for disaster preparedness training.
+
+Module: {$moduleTitle}
+Difficulty: {$difficulty}
 Scenario context: {$scenarioContext}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON (no markdown). Include BOTH language versions in one response:
 {
   "number": {$questionNumber},
   "competency": "knowledge|decision_making|emergency_response|safety_awareness",
-  "question": "...",
-  "choices": {"A":"...","B":"...","C":"...","D":"..."},
   "correct_answer": "A|B|C|D",
-  "explanation": "..."
+  "question": "Primary question text in {$sourceLabel}",
+  "choices": {"A":"...","B":"...","C":"...","D":"..."},
+  "explanation": "Brief explanation in {$sourceLabel}",
+  "question_en": "...",
+  "question_fil": "...",
+  "choice_a_en": "...",
+  "choice_b_en": "...",
+  "choice_c_en": "...",
+  "choice_d_en": "...",
+  "choice_a_fil": "...",
+  "choice_b_fil": "...",
+  "choice_c_fil": "...",
+  "choice_d_fil": "...",
+  "explanation_en": "...",
+  "explanation_fil": "..."
 }
+
+Rules:
+- Base the question on the module/scenario only.
+- Primary "question"/"choices"/"explanation" must be in {$sourceLabel}.
+- Also fill the explicit English and Filipino fields so a second translation call is not needed.
+- Keep choices short and mutually exclusive.
 PROMPT;
 
-        $text = $this->generateContentText($prompt);
+        // Single-question calls should fail fast rather than waiting the full bank timeout.
+        $text = $this->generateContentText($prompt, [], 60);
 
         return $this->parseSingleQuizQuestionFromText($text, $questionNumber);
     }

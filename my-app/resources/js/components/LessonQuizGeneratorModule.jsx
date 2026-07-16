@@ -41,6 +41,7 @@ const BANK_COUNTS = [10, 20, 30];
 const DEFAULT_BANK_COUNT = 20;
 const DEFAULT_PASSING_SCORE = 75;
 const DEFAULT_MAX_ATTEMPTS = 3;
+const QUICK_TIME_LIMITS = [10, 15, 20];
 
 const BANK_COUNT_LABELS = {
     10: '10',
@@ -611,7 +612,6 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         if (!selectedLessonId || !selectedConfig) return [];
 
         return (selectedConfig.versions || [])
-            .filter((v) => v.status !== 'archived')
             .map((version) => ({
                 ...version,
                 is_current: version.is_current === true
@@ -621,7 +621,11 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                 lessonTitle: selectedLesson?.title || selectedConfig.training_content?.title || '—',
                 config: selectedConfig,
             }))
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            .sort((a, b) => {
+                const versionDiff = (b.version_number || 0) - (a.version_number || 0);
+                if (versionDiff !== 0) return versionDiff;
+                return new Date(b.created_at) - new Date(a.created_at);
+            });
     }, [selectedConfig, selectedLessonId, selectedModule, selectedLesson]);
 
     const refreshConfig = (config) => {
@@ -823,7 +827,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         setQuestionBankDirty(false);
     };
 
-    const handlePublish = async (row) => {
+    const handlePublish = async (row, { asCurrent = false } = {}) => {
         if (questionBankDirty && !confirmUnsavedQuestionBankChanges(questionBankDirty)) {
             return;
         }
@@ -832,15 +836,20 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         if (!config?.id || !version?.id) return;
 
         const confirm = await Swal.fire({
-            title: 'Publish question bank?',
-            text: 'Participants will receive random questions from this bank when taking the lesson quiz.',
+            title: asCurrent ? 'Set as current version?' : 'Publish question bank?',
+            text: asCurrent
+                ? `Learners will start using v${version.version_number} for this lesson quiz.`
+                : 'Participants will receive random questions from this bank when taking the lesson quiz.',
             icon: 'warning',
             showCancelButton: true,
+            confirmButtonText: asCurrent ? 'Set as Current' : 'Publish',
             confirmButtonColor: '#059669',
         });
         if (!confirm.isConfirmed) return;
 
-        const data = await runWorkflow(config.id, version.id, '/publish', { successTitle: 'Published' });
+        const data = await runWorkflow(config.id, version.id, '/publish', {
+            successTitle: asCurrent ? 'Current version updated' : 'Published',
+        });
         if (data?.config) {
             closePanel();
         }
@@ -1229,6 +1238,25 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Time Limit (minutes)</label>
                                     <input type="number" min={5} max={180} className={adminCompactInputClass} value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value))} />
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {QUICK_TIME_LIMITS.map((minutes) => (
+                                            <button
+                                                key={minutes}
+                                                type="button"
+                                                onClick={() => setTimeLimitMinutes(minutes)}
+                                                className={`rounded-md border px-2.5 py-1 text-[0.7rem] font-medium transition-colors ${
+                                                    Number(timeLimitMinutes) === minutes
+                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                {minutes} min
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                                        Suggested per-lesson quiz limits: 10, 15, or 20 minutes.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Passing Score (%)</label>
@@ -1349,18 +1377,32 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                 emptyDescription={selectedLesson
                     ? `No question banks for "${selectedLesson.title}" yet. Save configuration and generate content.`
                     : 'Select a training module and lesson to view its question banks.'}
-                renderActions={(row) => (
-                    <div className="flex justify-end items-center gap-1.5">
-                        <AdminTableActionButton icon={Eye} title="View" variant="view" onClick={() => openViewPanel(row)} />
-                        {row.status !== 'published' && (
-                            <>
-                                <AdminTableActionButton icon={Pencil} title="Edit" variant="edit" onClick={() => openEditPanel(row)} />
-                                <AdminTableActionButton icon={Send} title="Publish" variant="edit" onClick={() => handlePublish(row)} disabled={workflowBusy} />
-                            </>
-                        )}
-                        {row.is_current && <CurrentVersionBadge compact />}
-                    </div>
-                )}
+                renderActions={(row) => {
+                    const canEditOrPublish = !['published', 'archived'].includes(row.status);
+                    const canSetAsCurrent = !row.is_current && (row.generated_questions?.length || 0) > 0;
+
+                    return (
+                        <div className="flex justify-end items-center gap-1.5">
+                            <AdminTableActionButton icon={Eye} title="View" variant="view" onClick={() => openViewPanel(row)} />
+                            {canEditOrPublish && (
+                                <>
+                                    <AdminTableActionButton icon={Pencil} title="Edit" variant="edit" onClick={() => openEditPanel(row)} />
+                                    <AdminTableActionButton icon={Send} title="Publish" variant="edit" onClick={() => handlePublish(row)} disabled={workflowBusy} />
+                                </>
+                            )}
+                            {canSetAsCurrent && (
+                                <AdminTableActionButton
+                                    icon={CheckCircle2}
+                                    title="Set as Current"
+                                    variant="edit"
+                                    onClick={() => handlePublish(row, { asCurrent: true })}
+                                    disabled={workflowBusy}
+                                />
+                            )}
+                            {row.is_current && <CurrentVersionBadge compact />}
+                        </div>
+                    );
+                }}
             />
 
             {panelMode && activeVersion && (

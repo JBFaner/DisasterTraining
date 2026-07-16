@@ -10,9 +10,27 @@ class StoreAiScenarioConfigRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $user = $this->user();
+        $user = portal_user() ?: $this->user();
 
         return $user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true);
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $timeLimit = $this->input('time_limit_minutes');
+        if ($timeLimit === '' || $timeLimit === null || (int) $timeLimit < 1) {
+            $this->merge(['time_limit_minutes' => 60]);
+        }
+
+        $maxAttempts = $this->input('max_attempts');
+        if ($maxAttempts === '' || $maxAttempts === null || (int) $maxAttempts < 1) {
+            $this->merge(['max_attempts' => 3]);
+        }
+
+        $passingScore = $this->input('passing_score');
+        if ($passingScore === '' || $passingScore === null || (int) $passingScore < 1) {
+            $this->merge(['passing_score' => 75]);
+        }
     }
 
     public function rules(): array

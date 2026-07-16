@@ -249,6 +249,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
                 ->name('admin.lesson-quiz-workflow.show');
             Route::post('/questions', [LessonQuizWorkflowController::class, 'storeQuestion'])
                 ->name('admin.lesson-quiz-workflow.questions.store');
+            Route::post('/questions/generate', [LessonQuizWorkflowController::class, 'generateQuestion'])
+                ->name('admin.lesson-quiz-workflow.questions.generate');
             Route::patch('/questions/{questionNumber}', [LessonQuizWorkflowController::class, 'updateQuestion'])
                 ->whereNumber('questionNumber')
                 ->name('admin.lesson-quiz-workflow.questions.update');
@@ -293,6 +295,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
                 ->name('admin.ai-scenario-workflow.scenario.update');
             Route::post('/questions', [AiScenarioWorkflowController::class, 'storeQuestion'])
                 ->name('admin.ai-scenario-workflow.questions.store');
+            Route::post('/questions/generate', [AiScenarioWorkflowController::class, 'generateQuestion'])
+                ->name('admin.ai-scenario-workflow.questions.generate');
             Route::patch('/questions/{questionNumber}', [AiScenarioWorkflowController::class, 'updateQuestion'])
                 ->whereNumber('questionNumber')
                 ->name('admin.ai-scenario-workflow.questions.update');

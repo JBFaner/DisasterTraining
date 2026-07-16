@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Admin\CampaignRequestController;
 use App\Models\CampaignRequest;
 use App\Models\User;
 use App\Models\SimulationEvent;
@@ -40,34 +39,7 @@ class AuthController extends Controller
             return null;
         }
 
-        $planning = CampaignRequestController::campaignPlanningFieldsFromPayload($campaignRequest->payload);
-        $maximumParticipants = (int) ($planning['maximum_participants'] ?? 0);
-        $registeredParticipantsCount = $campaignRequest->registeredParticipantsCount();
-        $registrationEnabled = $maximumParticipants > 0
-            ? $registeredParticipantsCount < $maximumParticipants
-            : true;
-        $isApproved = (string) $campaignRequest->status === 'approved';
-
-        if (! $isApproved || ! $registrationEnabled) {
-            return null;
-        }
-
-        return [
-            'campaign_request_id' => $campaignRequest->id,
-            'training_module_id' => $campaignRequest->training_module_id,
-            'training_title' => $planning['training_title'] ?? $campaignRequest->trainingModule?->title,
-            'short_description' => $planning['short_description'] ?? null,
-            'registration_opens' => $planning['registration_opens'] ?? null,
-            'registration_deadline' => $planning['registration_deadline'] ?? null,
-            'training_completion_deadline' => $planning['training_completion_deadline'] ?? null,
-            'maximum_participants' => $planning['maximum_participants'] ?? null,
-            'expected_participants' => $planning['expected_participants'] ?? null,
-            'registered_participants_count' => $registeredParticipantsCount,
-            'scheduled_date' => $planning['registration_deadline'] ?? $planning['registration_opens'] ?? null,
-            'start_time' => null,
-            'end_time' => null,
-            'venue' => null,
-        ];
+        return app(CampaignRegistrationService::class)->buildContext($campaignRequest);
     }
 
     private function resolveCampaignEventContext(int $campaignEventId): ?array
@@ -82,10 +54,14 @@ class AuthController extends Controller
             return null;
         }
 
+        $moduleTitle = $event->scenario?->trainingModule?->title;
+
         return [
             'campaign_event_id' => $event->id,
             'training_module_id' => $event->training_module_id,
-            'training_title' => $event->scenario?->trainingModule?->title ?? $event->title,
+            'training_title' => $event->title ?: $moduleTitle,
+            'module_title' => $moduleTitle,
+            'batch_label' => 'Simulation Event #'.$event->id,
             'scheduled_date' => optional($event->event_date)->toDateString(),
             'start_time' => $event->start_time,
             'end_time' => $event->end_time,
@@ -504,8 +480,13 @@ class AuthController extends Controller
             $request->session()->put('campaign_registration_context', $campaignContext);
         }
 
+        $openCampaigns = $campaignContext
+            ? []
+            : app(CampaignRegistrationService::class)->listOpenForRegistration();
+
         return view('auth.participant-register', [
             'campaign_context' => $campaignContext,
+            'open_campaigns' => $openCampaigns,
         ]);
     }
 
@@ -574,6 +555,12 @@ class AuthController extends Controller
                     'form' => 'Registration is not open for this campaign request yet.',
                 ]);
             }
+        }
+
+        if (empty($campaignContext['campaign_request_id']) && empty($campaignContext['campaign_event_id'])) {
+            return $this->redirectBackToParticipantRegister($request, [
+                'campaign_request' => 'Please select the training batch / module you are joining.',
+            ]);
         }
 
         // Check if email or phone already exists with friendly message

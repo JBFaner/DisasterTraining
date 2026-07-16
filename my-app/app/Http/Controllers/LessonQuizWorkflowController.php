@@ -153,6 +153,23 @@ class LessonQuizWorkflowController extends Controller
         }
     }
 
+    public function generateQuestion(LessonQuizConfig $config, LessonQuizVersion $version)
+    {
+        $this->authorizeAdmin();
+        $this->assertVersionBelongsToConfig($version, $config);
+
+        set_time_limit((int) config('ai_scenario.generation_max_execution_seconds', 300));
+
+        try {
+            $version = $this->workflowService->generateAndAppendQuestion($version);
+            $this->logAction('Generated and added lesson quiz question', $config, $version);
+
+            return $this->versionResponse('AI question generated.', $config, $version);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     public function saveDraft(LessonQuizConfig $config, LessonQuizVersion $version)
     {
         $this->authorizeAdmin();
@@ -180,10 +197,17 @@ class LessonQuizWorkflowController extends Controller
         $this->authorizeAdmin();
         $this->assertVersionBelongsToConfig($version, $config);
 
-        $version = $this->workflowService->publish($version);
-        $this->logAction('Published lesson quiz question bank', $config, $version);
+        try {
+            $version = $this->workflowService->publish($version);
+            $this->logAction('Published lesson quiz question bank', $config, $version);
 
-        return $this->versionResponse('Question bank published.', $config, $version);
+            return $this->versionResponse('Question bank published.', $config, $version);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?? 'Unable to publish this version.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
     }
 
     public function translate(Request $request, LessonQuizConfig $config, LessonQuizVersion $version)

@@ -13,6 +13,7 @@ import {
     Square,
     Globe,
     Plus,
+    Trash2,
 } from 'lucide-react';
 import {
     AdminPrimaryButton,
@@ -273,6 +274,7 @@ function QuestionReviewCard({
     onRedo,
     onDuplicate,
     onRegenerate,
+    onDelete,
     onFieldChange,
     onCorrectAnswerChange,
 }) {
@@ -296,7 +298,8 @@ function QuestionReviewCard({
                             <>
                                 <AdminTableActionButton icon={Pencil} title="Edit" variant="edit" onClick={onEdit} disabled={busy} />
                                 <AdminTableActionButton icon={Copy} title="Duplicate" variant="view" onClick={onDuplicate} disabled={busy} />
-                                <AdminTableActionButton icon={Sparkles} title="Regenerate Question" variant="view" onClick={onRegenerate} disabled={busy} />
+                                <AdminTableActionButton icon={Sparkles} title="Regenerate Question with AI" variant="view" onClick={onRegenerate} disabled={busy} />
+                                <AdminTableActionButton icon={Trash2} title="Delete Question" variant="danger" onClick={onDelete} disabled={busy} />
                             </>
                         )}
                     </div>
@@ -558,7 +561,16 @@ export function LessonQuizQuestionBankReview({
         await runAction(async () => {
             const data = await apiFetch(workflowUrl('/questions'), {
                 method: 'POST',
-                body: JSON.stringify({}),
+                body: JSON.stringify({
+                    question_en: 'New scenario question',
+                    choice_a_en: 'Option A',
+                    choice_b_en: 'Option B',
+                    choice_c_en: 'Option C',
+                    choice_d_en: 'Option D',
+                    correct_answer: 'A',
+                    explanation_en: '',
+                    competency: 'knowledge',
+                }),
             });
             const newNumber = Math.max(0, ...activeQuestions(data.version).map((item) => item.number));
             pendingEditRef.current = newNumber;
@@ -579,6 +591,49 @@ export function LessonQuizQuestionBankReview({
         await runAction(async () => {
             const data = await apiFetch(workflowUrl(`/questions/${number}/regenerate`), { method: 'POST' });
             applyVersion(data);
+            Swal.fire({ icon: 'success', title: 'Question regenerated', timer: 1600, showConfirmButton: false });
+        });
+    };
+
+    const handleDelete = async (number) => {
+        const result = await Swal.fire({
+            title: `Delete Question #${number}?`,
+            text: 'This removes the question from the draft bank. You can still add or generate new ones.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            confirmButtonColor: '#dc2626',
+        });
+        if (!result.isConfirmed) return;
+
+        await runAction(async () => {
+            const data = await apiFetch(workflowUrl(`/questions/${number}`), { method: 'DELETE' });
+            applyVersion(data);
+            if (editingNumber === number) {
+                setEditingNumber(null);
+                setEditSession(null);
+            }
+            Swal.fire({ icon: 'success', title: 'Question deleted', timer: 1400, showConfirmButton: false });
+        });
+    };
+
+    const handleGenerateQuestion = async () => {
+        const result = await Swal.fire({
+            title: 'Generate a new Q&A with AI?',
+            text: 'Gemini will create one new question and answer based on this module/lesson, then add it to the bank.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Generate',
+            confirmButtonColor: '#059669',
+        });
+        if (!result.isConfirmed) return;
+
+        await runAction(async () => {
+            const data = await apiFetch(workflowUrl('/questions/generate'), { method: 'POST' });
+            const newNumber = Math.max(0, ...activeQuestions(data.version).map((item) => item.number));
+            pendingEditRef.current = newNumber;
+            applyVersion(data);
+            Swal.fire({ icon: 'success', title: 'AI question added', timer: 1600, showConfirmButton: false });
         });
     };
 
@@ -623,15 +678,26 @@ export function LessonQuizQuestionBankReview({
                         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                             <h4 className="text-sm font-semibold text-slate-800">Questions ({displayDrafts.length})</h4>
                             {editable && !readOnly ? (
-                                <AdminSecondaryButton
-                                    type="button"
-                                    onClick={handleAddQuestion}
-                                    disabled={busy}
-                                    className="inline-flex items-center gap-1.5 text-xs"
-                                >
-                                    {actionBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                                    Add Question and Answer
-                                </AdminSecondaryButton>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <AdminSecondaryButton
+                                        type="button"
+                                        onClick={handleGenerateQuestion}
+                                        disabled={busy}
+                                        className="inline-flex items-center gap-1.5 text-xs"
+                                    >
+                                        {actionBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                        Generate Q&A with AI
+                                    </AdminSecondaryButton>
+                                    <AdminSecondaryButton
+                                        type="button"
+                                        onClick={handleAddQuestion}
+                                        disabled={busy}
+                                        className="inline-flex items-center gap-1.5 text-xs"
+                                    >
+                                        {actionBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                        Add Blank Question
+                                    </AdminSecondaryButton>
+                                </div>
                             ) : null}
                         </div>
                         <div className="space-y-4 pb-20">
@@ -658,6 +724,7 @@ export function LessonQuizQuestionBankReview({
                                         onRedo={redoEdit}
                                         onDuplicate={() => handleDuplicate(draft.number)}
                                         onRegenerate={() => handleRegenerate(draft.number)}
+                                        onDelete={() => handleDelete(draft.number)}
                                         onFieldChange={(field, value) => updateEditDraft((current) => ({ ...current, [field]: value }))}
                                         onCorrectAnswerChange={(value) => updateEditDraft((current) => ({ ...current, correct_answer: value }))}
                                     />

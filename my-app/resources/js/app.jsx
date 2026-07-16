@@ -28,6 +28,8 @@ import {
     AdminTrainingModuleCard,
     AdminTrainingModuleListRow,
     ParticipantTrainingModuleCard,
+    ParticipantModuleHero,
+    ParticipantLessonCard,
 } from './components/TrainingModuleCard';
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationHub } from './pages/EvaluationHub';
@@ -3102,8 +3104,16 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                             onClick={close}
                             className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                         >
-                            <Settings className="w-4 h-4" />
-                            Manage
+                            <BookOpen className="w-4 h-4" />
+                            Manage Lesson
+                        </a>
+                        <a
+                            href={trainingModuleEdit(openModule.id)}
+                            onClick={close}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                            <Pencil className="w-4 h-4" />
+                            Manage Module
                         </a>
                         <a
                             href={`${trainingModuleManageUrl(openModule.id)}#intelligence`}
@@ -3427,7 +3437,7 @@ function ParticipantTrainingLessonView({ module }) {
     const progressPercent =
         totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-    const renderMaterial = (mat) => {
+    const renderMaterial = (mat, { downloadsDisabled = false } = {}) => {
         const type = (mat.type || '').toLowerCase();
         const url = mat.path;
         const label = mat.label || url;
@@ -3482,6 +3492,22 @@ function ParticipantTrainingLessonView({ module }) {
         }
 
         if (type === 'pdf') {
+            if (downloadsDisabled) {
+                return (
+                    <div className="space-y-1 opacity-60">
+                        <span className="inline-flex items-center gap-2 text-sm text-slate-500 cursor-not-allowed">
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-slate-600">
+                                PDF
+                            </span>
+                            <span>{label}</span>
+                        </span>
+                        <p className="text-[0.7rem] text-amber-700">
+                            PDF download is disabled while a lesson quiz is in progress.
+                        </p>
+                    </div>
+                );
+            }
+
             return (
                 <div className="space-y-1">
                     <a
@@ -3519,6 +3545,12 @@ function ParticipantTrainingLessonView({ module }) {
         );
     };
 
+    const selectedLessonQuiz = selectedLesson?.lesson_quiz || {};
+    const quizContentLocked = Boolean(
+        selectedLessonQuiz.has_published_quiz
+        && (selectedLessonQuiz.content_locked || selectedLessonQuiz.quiz_status === 'in_progress'),
+    );
+
     return (
         <div className="py-2 space-y-6">
             {/* Back + breadcrumb */}
@@ -3543,47 +3575,13 @@ function ParticipantTrainingLessonView({ module }) {
                 </div>
             </div>
 
-            {/* Module overview + progress */}
-            <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm space-y-4">
-                <div className="flex flex-col gap-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Training module
-                    </div>
-                    <h2 className="text-xl font-semibold text-slate-800">
-                        {module.title}
-                    </h2>
-                    {module.description && (
-                        <p className="mt-1 text-sm text-slate-600 whitespace-pre-line">
-                            {module.description}
-                        </p>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2 text-[0.7rem] text-slate-600">
-                        {module.category && (
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5">
-                                {module.category}
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                {totalLessons > 0 && (
-                    <div className="pt-2 border-t border-slate-100">
-                        <div className="flex items-center justify-between mb-1 text-xs text-slate-600">
-                            <span>Module progress</span>
-                            <span>
-                                {completedCount} / {totalLessons} lessons ({progressPercent}
-                                %)
-                            </span>
-                        </div>
-                        <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                            <div
-                                className="h-full bg-emerald-500 rounded-full transition-all"
-                                style={{ width: `${progressPercent}%` }}
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
+            {/* Module hero */}
+            <ParticipantModuleHero
+                module={module}
+                progressPercent={progressPercent}
+                completedCount={completedCount}
+                totalLessons={totalLessons}
+            />
 
             {aiTraining ? (
                 <AiScenarioTrainingUnlock module={module} aiTraining={aiTraining} />
@@ -3596,123 +3594,29 @@ function ParticipantTrainingLessonView({ module }) {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* Lesson list */}
+                {/* Lesson grid */}
                 <div className="lg:col-span-1 space-y-3">
                     <h3 className="text-sm font-semibold text-slate-800">
                         Lessons
                     </h3>
-                    <div className="rounded-xl bg-white border border-slate-200 shadow-sm">
-                        {sortedItems.length === 0 ? (
-                            <div className="px-4 py-6 text-sm text-slate-500 text-center">
-                                No learning content is available yet for this module.
-                            </div>
-                        ) : (
-                            <ul className="divide-y divide-slate-100">
-                                {lessonProgress.map((lesson, index) => {
-                                    const isSelected =
-                                        lesson.id === selectedLessonId;
-                                    const isCompleted = lesson.is_completed;
-                                    const isLocked = lesson.is_locked;
-                                    const isAvailable = lesson.is_unlocked && !isCompleted;
-
-                                    return (
-                                        <li
-                                            key={lesson.id}
-                                            className={`px-4 py-3 text-sm transition-colors ${
-                                                isLocked
-                                                    ? 'opacity-60 cursor-not-allowed bg-slate-50'
-                                                    : isSelected
-                                                      ? 'bg-emerald-50 border-l-2 border-emerald-500 cursor-pointer'
-                                                      : 'hover:bg-slate-50 cursor-pointer'
-                                            }`}
-                                            onClick={() =>
-                                                handleLessonSelect(lesson.id)
-                                            }
-                                        >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-slate-400 shrink-0">
-                                                            #{index + 1}
-                                                        </span>
-                                                        {isCompleted && (
-                                                            <CheckCircle2
-                                                                className="w-4 h-4 shrink-0 text-emerald-600"
-                                                                aria-hidden="true"
-                                                            />
-                                                        )}
-                                                        {isLocked && (
-                                                            <Lock
-                                                                className="w-4 h-4 shrink-0 text-slate-400"
-                                                                aria-hidden="true"
-                                                            />
-                                                        )}
-                                                        <span className={`font-medium truncate ${
-                                                            isLocked ? 'text-slate-500' : 'text-slate-800'
-                                                        }`}>
-                                                            {lesson.title}
-                                                        </span>
-                                                        {isCompleted && (
-                                                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-800 shrink-0">
-                                                                Completed
-                                                            </span>
-                                                        )}
-                                                        {isAvailable && (
-                                                            <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-[0.65rem] font-semibold text-sky-800 shrink-0">
-                                                                Available
-                                                            </span>
-                                                        )}
-                                                        {isLocked && (
-                                                            <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[0.65rem] font-semibold text-slate-600 shrink-0">
-                                                                Locked
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {(lesson.description) && (
-                                                        <p className={`mt-1 text-xs line-clamp-2 ${
-                                                            isLocked ? 'text-slate-400' : 'text-slate-600'
-                                                        }`}>
-                                                            {lesson.description}
-                                                        </p>
-                                                    )}
-                                                    {isLocked && (
-                                                        <p className="mt-1 text-xs text-slate-500">
-                                                            Complete the previous lesson to unlock this lesson.
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="mt-2 flex items-center justify-between text-[0.7rem] text-slate-500">
-                                                {lesson.lesson_quiz?.has_published_quiz ? (
-                                                    <span>Complete the lesson quiz to unlock the next lesson.</span>
-                                                ) : (
-                                                    <label
-                                                        className={`inline-flex items-center gap-1 ${
-                                                            isLocked && !isCompleted
-                                                                ? 'cursor-not-allowed opacity-60'
-                                                                : 'cursor-pointer'
-                                                        }`}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isCompleted}
-                                                            disabled={isLocked && !isCompleted}
-                                                            onChange={() => {
-                                                                toggleCompleted(lesson.id);
-                                                            }}
-                                                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed"
-                                                        />
-                                                        <span>Mark as completed</span>
-                                                    </label>
-                                                )}
-                                            </div>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </div>
+                    {sortedItems.length === 0 ? (
+                        <div className="rounded-xl bg-white border border-slate-200 px-4 py-6 text-sm text-slate-500 text-center shadow-sm">
+                            No learning content is available yet for this module.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-3">
+                            {lessonProgress.map((lesson, index) => (
+                                <ParticipantLessonCard
+                                    key={lesson.id}
+                                    lesson={lesson}
+                                    index={index}
+                                    moduleCategory={module.category}
+                                    isSelected={lesson.id === selectedLessonId}
+                                    onSelect={() => handleLessonSelect(lesson.id)}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Content viewer */}
@@ -3733,6 +3637,14 @@ function ParticipantTrainingLessonView({ module }) {
                                 )}
                             </div>
 
+                            {quizContentLocked ? (
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 space-y-2">
+                                    <p className="font-medium">Lesson content is locked during the quiz.</p>
+                                    <p className="text-xs text-amber-800">
+                                        Finish or submit your in-progress lesson quiz to view this content and download PDFs again.
+                                    </p>
+                                </div>
+                            ) : (
                             <div className="space-y-4">
                                 {(selectedLesson.resources || []).length === 0 && !selectedLesson.description && (
                                     <p className="text-sm text-slate-500">No learning resources available for this lesson.</p>
@@ -3746,13 +3658,16 @@ function ParticipantTrainingLessonView({ module }) {
                                             </div>
                                             <h4 className="text-sm font-semibold text-slate-800">{resource.title}</h4>
                                             {resource.resource_type === 'text' && resource.body ? (
-                                                <p className="text-sm text-slate-700 whitespace-pre-line">{resource.body}</p>
+                                                <div
+                                                    className="text-sm text-slate-700 prose prose-sm max-w-none lesson-rich-editor__body"
+                                                    dangerouslySetInnerHTML={{ __html: resource.body }}
+                                                />
                                             ) : (
                                                 renderMaterial({
                                                     type: resource.resource_type,
                                                     path: resource.display_url || resource.file_path || resource.external_url,
                                                     label: resource.title,
-                                                })
+                                                }, { downloadsDisabled: quizContentLocked })
                                             )}
                                         </div>
                                     ))}
@@ -3765,12 +3680,32 @@ function ParticipantTrainingLessonView({ module }) {
                                             <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
                                                 {mat.type || 'Material'}
                                             </div>
-                                            {renderMaterial(mat)}
+                                            {renderMaterial(mat, { downloadsDisabled: quizContentLocked })}
                                         </div>
                                     ))}
                             </div>
+                            )}
 
-                            <LessonQuizUnlock module={module} lesson={selectedLesson} lessonQuiz={selectedLesson.lesson_quiz} />
+                            <div className="mt-4 space-y-3">
+                                {!selectedLesson.lesson_quiz?.has_published_quiz && (
+                                    <label className="inline-flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedLesson.is_completed}
+                                            disabled={selectedLesson.is_locked && !selectedLesson.is_completed}
+                                            onChange={() => toggleCompleted(selectedLesson.id)}
+                                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed"
+                                        />
+                                        <span>Mark lesson as completed</span>
+                                    </label>
+                                )}
+                                {selectedLesson.lesson_quiz?.has_published_quiz && (
+                                    <p className="text-xs text-slate-500">
+                                        Complete the lesson quiz to unlock the next lesson.
+                                    </p>
+                                )}
+                                <LessonQuizUnlock module={module} lesson={selectedLesson} lessonQuiz={selectedLesson.lesson_quiz} />
+                            </div>
                         </div>
                     ) : selectedLesson && selectedLesson.is_locked ? (
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm text-sm text-slate-500 space-y-2">
@@ -4196,7 +4131,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
 
                         <div>
                             <label className={labelClass} htmlFor="thumbnail">
-                                Thumbnail / cover image
+                                Module card background image
                             </label>
                             <input
                                 id="thumbnail"
@@ -4545,7 +4480,7 @@ function TrainingModuleEditForm({ module }) {
 
                         {module.thumbnail_url && (
                             <div>
-                                <label className={labelClass}>Current thumbnail</label>
+                                <label className={labelClass}>Current module card background</label>
                                 <img src={module.thumbnail_url} alt="" className="h-24 rounded-xl border border-slate-200 object-cover" />
                                 <label className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
                                     <input type="checkbox" name="remove_thumbnail" value="1" /> Remove thumbnail
@@ -4555,7 +4490,7 @@ function TrainingModuleEditForm({ module }) {
 
                         <div>
                             <label className={labelClass} htmlFor="thumbnail">
-                                {module.thumbnail_url ? 'Replace thumbnail' : 'Thumbnail / cover image'}
+                                {module.thumbnail_url ? 'Replace module card background' : 'Module card background image'}
                             </label>
                             <input
                                 id="thumbnail"
