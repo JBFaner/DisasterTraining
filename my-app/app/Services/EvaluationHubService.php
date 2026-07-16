@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\AiScenarioAttempt;
+use App\Models\CampaignRegistration;
+use App\Models\CampaignRequest;
 use App\Models\EvaluationResult;
 use App\Models\LessonQuizAttempt;
 use App\Models\TrainingModule;
@@ -167,6 +169,21 @@ class EvaluationHubService
             $query->where('training_module_id', $request->integer('training_module_id'));
         }
 
+        if ($request->filled('participant_name')) {
+            $participantName = $request->string('participant_name')->trim();
+            $query->whereHas('user', fn ($q) => $q->where('name', 'like', "%{$participantName}%"));
+        }
+
+        if ($request->filled('batch_filter') || $request->filled('campaign_request_id')) {
+            $batchId = $request->integer('batch_filter') ?: $request->integer('campaign_request_id');
+            if ($batchId > 0) {
+                $query->whereHas('user.campaignRegistrations', function ($q) use ($batchId) {
+                    $q->where('campaign_request_id', $batchId)
+                        ->where('registration_status', CampaignRegistration::STATUS_REGISTERED);
+                });
+            }
+        }
+
         if ($request->filled('training_content_id')) {
             $query->where('training_content_id', $request->integer('training_content_id'));
         }
@@ -214,6 +231,8 @@ class EvaluationHubService
             ->orderBy('title')
             ->get(['id', 'title']);
 
+        $batches = $this->buildBatchOptions($request->integer('training_module_id') ?: null);
+
         return [
             'lesson_quiz_attempts' => $attemptItems,
             'lesson_quiz_pagination' => [
@@ -224,16 +243,56 @@ class EvaluationHubService
             ],
             'lesson_quiz_analytics' => $this->lessonQuizAnalytics(),
             'lesson_quiz_modules' => $modules,
+            'lesson_quiz_batches' => $batches,
             'lesson_quiz_filters' => [
                 'tab' => 'lessons',
                 'search' => $request->string('search')->toString(),
                 'status' => $request->string('status')->toString(),
                 'training_module_id' => $request->string('training_module_id')->toString(),
                 'training_content_id' => $request->string('training_content_id')->toString(),
+                'participant_name' => $request->string('participant_name')->toString(),
+                'batch_filter' => $request->string('batch_filter')->toString() ?: $request->string('campaign_request_id')->toString(),
                 'date_from' => $request->string('date_from')->toString(),
                 'date_to' => $request->string('date_to')->toString(),
             ],
         ];
+    }
+
+    /**
+     * @return list<array{id: int, training_module_id: int, label: string, module_title: ?string}>
+     */
+    protected function buildBatchOptions(?int $moduleId = null): array
+    {
+        $query = CampaignRequest::query()
+            ->with('trainingModule:id,title')
+            ->whereIn('id', CampaignRegistration::query()
+                ->where('registration_status', CampaignRegistration::STATUS_REGISTERED)
+                ->distinct()
+                ->pluck('campaign_request_id'));
+
+        if ($moduleId) {
+            $query->where('training_module_id', $moduleId);
+        }
+
+        return $query->orderByDesc('id')
+            ->get()
+            ->map(function (CampaignRequest $request) {
+                $label = trim((string) ($request->proposed_session_label ?? ''));
+                if ($label === '') {
+                    $label = $request->session_index
+                        ? 'Batch '.$request->session_index.' (Campaign #'.$request->id.')'
+                        : 'Batch / Campaign #'.$request->id;
+                }
+
+                return [
+                    'id' => (int) $request->id,
+                    'training_module_id' => (int) $request->training_module_id,
+                    'label' => $label,
+                    'module_title' => $request->trainingModule?->title,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -282,6 +341,105 @@ class EvaluationHubService
             'pass_rate' => $total > 0 ? round(($passed / $total) * 100, 1) : 0,
             'average_score' => round($average, 1),
             'by_module' => $byModule,
+        ];
+    }
+
+    /**
+     * Combined pass overview across lesson quizzes, final scenario evaluation, and simulation events.
+     *
+     * @return array<string, mixed>
+     */
+    public function overallPayload(Request $request): array
+    {
+        $moduleId = $request->filled('training_module_id')
+            ? $request->integer('training_module_id')
+            : null;
+
+        $lessonPassedQuery = LessonQuizAttempt::query()
+            ->with(['user:id,name,email', 'trainingModule:id,title', 'trainingContent:id,title'])
+            ->where('status', LessonQuizAttempt::STATUS_COMPLETED)
+            ->where('passed', true)
+            ->when($moduleId, fn ($q) => $q->where('training_module_id', $moduleId))
+            ->orderByDesc('completed_at');
+
+        $scenarioPassedQuery = EvaluationResult::query()
+            ->with(['participant:id,name,email', 'trainingModule:id,title'])
+            ->where('status', EvaluationResult::STATUS_PASSED)
+            ->when($moduleId, fn ($q) => $q->where('training_module_id', $moduleId))
+            ->orderByDesc('completed_at');
+
+        $simulationPassedQuery = \App\Models\ParticipantEvaluation::query()
+            ->with([
+                'user:id,name,email',
+                'evaluation.simulationEvent:id,title,event_date',
+            ])
+            ->where('result', 'passed')
+            ->whereNotNull('submitted_at')
+            ->orderByDesc('submitted_at');
+
+        $lessonPassed = (clone $lessonPassedQuery)->limit(50)->get()->map(function (LessonQuizAttempt $attempt) {
+            return [
+                'participant_id' => $attempt->user_id,
+                'participant_name' => $attempt->user?->name,
+                'participant_email' => $attempt->user?->email,
+                'module_title' => $attempt->trainingModule?->title,
+                'lesson_title' => $attempt->trainingContent?->title,
+                'percentage' => $attempt->percentage,
+                'completed_at' => $attempt->completed_at?->toIso8601String(),
+            ];
+        })->values()->all();
+
+        $scenarioPassed = (clone $scenarioPassedQuery)->limit(50)->get()->map(function (EvaluationResult $result) {
+            return [
+                'participant_id' => $result->participant_id,
+                'participant_name' => $result->participant?->name,
+                'participant_email' => $result->participant?->email,
+                'module_title' => $result->trainingModule?->title,
+                'score' => $result->percentage ?? $result->score,
+                'completed_at' => $result->completed_at?->toIso8601String(),
+            ];
+        })->values()->all();
+
+        $simulationPassed = (clone $simulationPassedQuery)->limit(50)->get()->map(function ($pe) {
+            $event = $pe->evaluation?->simulationEvent;
+
+            return [
+                'participant_id' => $pe->user_id,
+                'participant_name' => $pe->user?->name,
+                'participant_email' => $pe->user?->email,
+                'event_title' => $event?->title,
+                'average_score' => $pe->average_score,
+                'eligible_for_certification' => (bool) $pe->is_eligible_for_certification,
+                'submitted_at' => $pe->submitted_at?->toIso8601String(),
+            ];
+        })->values()->all();
+
+        $lessonPassedCount = (clone $lessonPassedQuery)->distinct('user_id')->count('user_id');
+        $scenarioPassedCount = (clone $scenarioPassedQuery)->distinct('participant_id')->count('participant_id');
+        $simulationPassedCount = (clone $simulationPassedQuery)->distinct('user_id')->count('user_id');
+
+        $modules = TrainingModule::query()
+            ->where('status', 'published')
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        return [
+            'overall_summary' => [
+                'lesson_quiz_passed' => $lessonPassedCount,
+                'final_scenario_passed' => $scenarioPassedCount,
+                'simulation_event_passed' => $simulationPassedCount,
+                'lesson_quiz_attempts_passed' => (clone $lessonPassedQuery)->count(),
+                'final_scenario_results_passed' => (clone $scenarioPassedQuery)->count(),
+                'simulation_event_results_passed' => (clone $simulationPassedQuery)->count(),
+            ],
+            'overall_lesson_passed' => $lessonPassed,
+            'overall_scenario_passed' => $scenarioPassed,
+            'overall_simulation_passed' => $simulationPassed,
+            'overall_modules' => $modules,
+            'overall_filters' => [
+                'tab' => 'overall',
+                'training_module_id' => $request->string('training_module_id')->toString(),
+            ],
         ];
     }
 }

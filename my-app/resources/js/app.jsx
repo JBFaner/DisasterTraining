@@ -762,6 +762,13 @@ if (rootElement) {
     const lessonQuizAnalyticsJson = rootElement.getAttribute('data-lesson-quiz-analytics');
     const lessonQuizMonitoringModulesJson = rootElement.getAttribute('data-lesson-quiz-monitoring-modules');
     const lessonQuizFiltersJson = rootElement.getAttribute('data-lesson-quiz-filters');
+    const lessonQuizBatchesJson = rootElement.getAttribute('data-lesson-quiz-batches');
+    const overallSummaryJson = rootElement.getAttribute('data-overall-summary');
+    const overallLessonPassedJson = rootElement.getAttribute('data-overall-lesson-passed');
+    const overallScenarioPassedJson = rootElement.getAttribute('data-overall-scenario-passed');
+    const overallSimulationPassedJson = rootElement.getAttribute('data-overall-simulation-passed');
+    const overallModulesJson = rootElement.getAttribute('data-overall-modules');
+    const overallFiltersJson = rootElement.getAttribute('data-overall-filters');
     const evaluationResultJson = rootElement.getAttribute('data-evaluation-result');
     const campaignRequestJson = rootElement.getAttribute('data-campaign-request');
     const scoresJson = rootElement.getAttribute('data-scores');
@@ -918,13 +925,20 @@ if (rootElement) {
     let evaluationFilters = {};
     let evaluationAttemptNumbers = [];
     let evaluationPassingScore = 75;
-    let evaluationTab = 'events';
+    let evaluationTab = 'lessons';
     let evaluationEventFilters = {};
     let lessonQuizAttempts = [];
     let lessonQuizPagination = null;
     let lessonQuizAnalytics = null;
     let lessonQuizMonitoringModules = [];
     let lessonQuizFilters = {};
+    let lessonQuizBatches = [];
+    let overallSummary = null;
+    let overallLessonPassed = [];
+    let overallScenarioPassed = [];
+    let overallSimulationPassed = [];
+    let overallModules = [];
+    let overallFilters = {};
     let evaluationResult = null;
     let campaignRequest = null;
     let simulationPlanning = null;
@@ -1121,6 +1135,55 @@ if (rootElement) {
             lessonQuizFilters = JSON.parse(lessonQuizFiltersJson);
         } catch (e) {
             console.error('Failed to parse lesson quiz filters JSON', e);
+        }
+    }
+    if (lessonQuizBatchesJson) {
+        try {
+            lessonQuizBatches = JSON.parse(lessonQuizBatchesJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz batches JSON', e);
+        }
+    }
+    if (overallSummaryJson) {
+        try {
+            overallSummary = JSON.parse(overallSummaryJson);
+        } catch (e) {
+            console.error('Failed to parse overall summary JSON', e);
+        }
+    }
+    if (overallLessonPassedJson) {
+        try {
+            overallLessonPassed = JSON.parse(overallLessonPassedJson);
+        } catch (e) {
+            console.error('Failed to parse overall lesson passed JSON', e);
+        }
+    }
+    if (overallScenarioPassedJson) {
+        try {
+            overallScenarioPassed = JSON.parse(overallScenarioPassedJson);
+        } catch (e) {
+            console.error('Failed to parse overall scenario passed JSON', e);
+        }
+    }
+    if (overallSimulationPassedJson) {
+        try {
+            overallSimulationPassed = JSON.parse(overallSimulationPassedJson);
+        } catch (e) {
+            console.error('Failed to parse overall simulation passed JSON', e);
+        }
+    }
+    if (overallModulesJson) {
+        try {
+            overallModules = JSON.parse(overallModulesJson);
+        } catch (e) {
+            console.error('Failed to parse overall modules JSON', e);
+        }
+    }
+    if (overallFiltersJson) {
+        try {
+            overallFilters = JSON.parse(overallFiltersJson);
+        } catch (e) {
+            console.error('Failed to parse overall filters JSON', e);
         }
     }
     if (evaluationResultJson) {
@@ -2150,7 +2213,14 @@ if (rootElement) {
                                 lessonQuizPagination={lessonQuizPagination}
                                 lessonQuizAnalytics={lessonQuizAnalytics}
                                 lessonQuizModules={lessonQuizMonitoringModules}
+                                lessonQuizBatches={lessonQuizBatches}
                                 lessonQuizFilters={lessonQuizFilters}
+                                overallSummary={overallSummary}
+                                overallLessonPassed={overallLessonPassed}
+                                overallScenarioPassed={overallScenarioPassed}
+                                overallSimulationPassed={overallSimulationPassed}
+                                overallModules={overallModules}
+                                overallFilters={overallFilters}
                                 role={role}
                             />
                         )}

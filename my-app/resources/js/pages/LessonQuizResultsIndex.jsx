@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import Swal from 'sweetalert2';
 import {
     AdminCollapsibleFilterBar,
     AdminFilterInput,
@@ -8,6 +9,8 @@ import {
     AdminContentCard,
     AdminStatCard,
 } from '../components/admin/AdminLayout';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
+import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
 
 function StatusBadge({ attempt }) {
     if (attempt.status === 'in_progress') {
@@ -22,18 +25,44 @@ function StatusBadge({ attempt }) {
     return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-rose-50 text-rose-700 border-rose-200">Failed</span>;
 }
 
+function statusLabel(attempt) {
+    if (attempt.status === 'in_progress') return 'In Progress';
+    if (attempt.status === 'expired') return 'Expired';
+    return attempt.passed ? 'Passed' : 'Failed';
+}
+
 export function LessonQuizResultsIndex({
     attempts = [],
     pagination = null,
     analytics = null,
     modules = [],
+    batches = [],
     filters = {},
 }) {
     const [search, setSearch] = React.useState(filters.search || '');
     const [statusFilter, setStatusFilter] = React.useState(filters.status || '');
     const [moduleFilter, setModuleFilter] = React.useState(filters.training_module_id || '');
+    const [batchFilter, setBatchFilter] = React.useState(filters.batch_filter || '');
+    const [participantName, setParticipantName] = React.useState(filters.participant_name || '');
     const [dateFrom, setDateFrom] = React.useState(filters.date_from || '');
     const [dateTo, setDateTo] = React.useState(filters.date_to || '');
+
+    const availableBatches = React.useMemo(() => {
+        const list = batches || [];
+        if (!moduleFilter) return list;
+        const moduleId = Number(moduleFilter);
+        return list.filter((batch) => Number(batch.training_module_id) === moduleId);
+    }, [batches, moduleFilter]);
+
+    const handleModuleChange = (value) => {
+        setModuleFilter(value);
+        if (!value) return;
+        const moduleId = Number(value);
+        const stillValid = (batches || []).some(
+            (batch) => Number(batch.id) === Number(batchFilter) && Number(batch.training_module_id) === moduleId,
+        );
+        if (!stillValid) setBatchFilter('');
+    };
 
     const applyFilters = (e) => {
         e?.preventDefault();
@@ -45,6 +74,10 @@ export function LessonQuizResultsIndex({
         else url.searchParams.delete('status');
         if (moduleFilter) url.searchParams.set('training_module_id', moduleFilter);
         else url.searchParams.delete('training_module_id');
+        if (batchFilter) url.searchParams.set('batch_filter', batchFilter);
+        else url.searchParams.delete('batch_filter');
+        if (participantName.trim()) url.searchParams.set('participant_name', participantName.trim());
+        else url.searchParams.delete('participant_name');
         if (dateFrom) url.searchParams.set('date_from', dateFrom);
         else url.searchParams.delete('date_from');
         if (dateTo) url.searchParams.set('date_to', dateTo);
@@ -55,11 +88,47 @@ export function LessonQuizResultsIndex({
 
     const buildPageUrl = (page) => {
         const params = new URLSearchParams({ ...filters, tab: 'lessons', page: String(page) });
-        Object.keys(params).forEach((key) => {
+        Object.keys(Object.fromEntries(params.entries())).forEach((key) => {
             if (!params.get(key)) params.delete(key);
         });
         return `?${params.toString()}`;
     };
+
+    const handlePrint = React.useCallback(() => {
+        const moduleLabel = moduleFilter
+            ? (modules || []).find((m) => String(m.id) === String(moduleFilter))?.title || moduleFilter
+            : 'All Modules';
+        const batchLabel = batchFilter
+            ? (batches || []).find((b) => String(b.id) === String(batchFilter))?.label || batchFilter
+            : 'All Batches';
+
+        const html = buildPrintTableDocument({
+            title: 'Lesson Quiz Results',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${(attempts || []).length} row(s) · Module: ${moduleLabel} · Batch: ${batchLabel}${participantName.trim() ? ` · Participant: ${participantName.trim()}` : ''}${statusFilter ? ` · Status: ${statusFilter}` : ''}${dateFrom || dateTo ? ` · Dates: ${dateFrom || '…'} to ${dateTo || '…'}` : ''}`,
+            headers: ['#', 'Participant', 'Module', 'Lesson', 'Attempt', 'Score', '%', 'Status', 'Completed'],
+            rows: (attempts || []).map((row, index) => [
+                index + 1,
+                row.participant?.name || '—',
+                row.training_module?.title || '—',
+                row.lesson?.title || '—',
+                `#${row.attempt_number ?? '—'}`,
+                `${row.score ?? 0}/${row.total_questions ?? 0}`,
+                row.percentage != null ? `${Number(row.percentage).toFixed(1)}%` : '—',
+                statusLabel(row),
+                row.completed_at ? new Date(row.completed_at).toLocaleString() : '—',
+            ]),
+        });
+
+        if (!printHtmlDocument(html, 'Lesson Quiz Results')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    }, [attempts, modules, batches, moduleFilter, batchFilter, participantName, statusFilter, dateFrom, dateTo]);
+
+    React.useEffect(() => {
+        const onPrint = () => handlePrint();
+        window.addEventListener(EVALUATION_HUB_PRINT_EVENT, onPrint);
+        return () => window.removeEventListener(EVALUATION_HUB_PRINT_EVENT, onPrint);
+    }, [handlePrint]);
 
     return (
         <div className="space-y-4">
@@ -78,15 +147,22 @@ export function LessonQuizResultsIndex({
                 searchValue={search}
                 onSearchChange={(e) => setSearch(e.target.value)}
                 searchPlaceholder="Search participant, module, or lesson..."
-                hasActiveFilters={Boolean(statusFilter || moduleFilter || dateFrom || dateTo)}
+                hasActiveFilters={Boolean(statusFilter || moduleFilter || batchFilter || participantName || dateFrom || dateTo)}
                 onClearFilters={() => {
                     setStatusFilter('');
                     setModuleFilter('');
+                    setBatchFilter('');
+                    setParticipantName('');
                     setDateFrom('');
                     setDateTo('');
                 }}
                 onSearchSubmit={applyFilters}
-                trailing={<AdminPrimaryButton type="submit"><Search className="w-4 h-4" /> Apply</AdminPrimaryButton>}
+                trailing={(
+                    <AdminPrimaryButton type="submit">
+                        <Search className="w-4 h-4" />
+                        Apply
+                    </AdminPrimaryButton>
+                )}
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="">All Status</option>
@@ -95,12 +171,27 @@ export function LessonQuizResultsIndex({
                     <option value="in_progress">In Progress</option>
                     <option value="expired">Expired</option>
                 </AdminFilterSelect>
-                <AdminFilterSelect label="Training Module" value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
+                <AdminFilterSelect label="Training Module" value={moduleFilter} onChange={(e) => handleModuleChange(e.target.value)}>
                     <option value="">All Modules</option>
                     {(modules || []).map((m) => (
                         <option key={m.id} value={m.id}>{m.title}</option>
                     ))}
                 </AdminFilterSelect>
+                <AdminFilterSelect label="Batch" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+                    <option value="">All Batches</option>
+                    {availableBatches.map((batch) => (
+                        <option key={batch.id} value={batch.id}>
+                            {batch.label}{!moduleFilter && batch.module_title ? ` · ${batch.module_title}` : ''}
+                        </option>
+                    ))}
+                </AdminFilterSelect>
+                <AdminFilterInput
+                    label="Participant Name"
+                    type="text"
+                    value={participantName}
+                    onChange={(e) => setParticipantName(e.target.value)}
+                    placeholder="Filter by participant name..."
+                />
                 <AdminFilterInput label="Date from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                 <AdminFilterInput label="Date to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </AdminCollapsibleFilterBar>

@@ -368,10 +368,9 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                         <td>${escapeHtml(row.email_verified_at ? 'Verified' : 'Pending Verification')}</td>
                         <td>${escapeHtml(row.phone || '—')}</td>
                         <td>${escapeHtml(row.training_status || '—')}</td>
-                        <td>${escapeHtml(row.attendance_status || '—')}</td>
                     </tr>`;
                 }).join('')
-                : '<tr><td colspan="8" style="text-align:center;padding:24px;">No participants match the current filters.</td></tr>';
+                : '<tr><td colspan="7" style="text-align:center;padding:24px;">No participants match the current filters.</td></tr>';
 
             const html = `<!DOCTYPE html>
 <html>
@@ -402,7 +401,6 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
         <th>Email Status</th>
         <th>Contact</th>
         <th>Training</th>
-        <th>Attendance</th>
       </tr>
     </thead>
     <tbody>${bodyRows}</tbody>
@@ -569,11 +567,6 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             label: 'Training Status',
             render: (row) => <RegistryLabelBadge label={row.training_status} />,
         },
-        {
-            key: 'attendance_status',
-            label: 'Attendance Status',
-            render: (row) => <RegistryLabelBadge label={row.attendance_status} />,
-        },
     ];
 
     return (
@@ -658,7 +651,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 isLoading={isLoading}
                 pagination={pagination}
                 onPageChange={(page) => fetchParticipants(page)}
-                minWidth="980px"
+                minWidth="900px"
                 emptyTitle="No participants found"
                 emptyDescription="Use Register New Participant or Sync Participants to build your unified registry."
                 renderActions={(row) => (

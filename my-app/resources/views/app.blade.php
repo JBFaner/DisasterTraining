@@ -291,6 +291,27 @@
             @isset($lesson_quiz_filters)
                 data-lesson-quiz-filters='@json($lesson_quiz_filters)'
             @endisset
+            @isset($lesson_quiz_batches)
+                data-lesson-quiz-batches='@json($lesson_quiz_batches)'
+            @endisset
+            @isset($overall_summary)
+                data-overall-summary='@json($overall_summary)'
+            @endisset
+            @isset($overall_lesson_passed)
+                data-overall-lesson-passed='@json($overall_lesson_passed)'
+            @endisset
+            @isset($overall_scenario_passed)
+                data-overall-scenario-passed='@json($overall_scenario_passed)'
+            @endisset
+            @isset($overall_simulation_passed)
+                data-overall-simulation-passed='@json($overall_simulation_passed)'
+            @endisset
+            @isset($overall_modules)
+                data-overall-modules='@json($overall_modules)'
+            @endisset
+            @isset($overall_filters)
+                data-overall-filters='@json($overall_filters)'
+            @endisset
             @isset($evaluation_results)
                 data-evaluation-results='@json($evaluation_results)'
             @endisset

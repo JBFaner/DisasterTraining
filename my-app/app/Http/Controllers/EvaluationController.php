@@ -57,9 +57,9 @@ class EvaluationController extends Controller
 
         $this->authorizeEvaluationAccess();
 
-        $tab = $request->string('tab')->toString() ?: 'events';
-        if (! in_array($tab, ['events', 'modules', 'lessons'], true)) {
-            $tab = 'events';
+        $tab = $request->string('tab')->toString() ?: 'lessons';
+        if (! in_array($tab, ['lessons', 'modules', 'events', 'overall'], true)) {
+            $tab = 'lessons';
         }
 
         $viewData = [
@@ -76,6 +76,8 @@ class EvaluationController extends Controller
             $viewData['events'] = $this->loadCompletedEvents($request);
         } elseif ($tab === 'modules') {
             $viewData = array_merge($viewData, $this->hubService->moduleResultsPayload($request, $user));
+        } elseif ($tab === 'overall') {
+            $viewData = array_merge($viewData, $this->hubService->overallPayload($request));
         } else {
             $viewData = array_merge($viewData, $this->hubService->lessonQuizPayload($request));
         }

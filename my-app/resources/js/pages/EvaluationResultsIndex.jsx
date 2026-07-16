@@ -24,6 +24,8 @@ import {
     AdminContentCard,
     AdminStatCard,
 } from '../components/admin/AdminLayout';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
+import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
@@ -252,6 +254,38 @@ export function EvaluationResultsIndex({
         }
     };
 
+    const handlePrint = React.useCallback(() => {
+        const moduleLabel = moduleFilter
+            ? (modules || []).find((m) => String(m.id) === String(moduleFilter))?.title || moduleFilter
+            : 'All Modules';
+
+        const html = buildPrintTableDocument({
+            title: 'Final Scenario Evaluation Results',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${(results || []).length} row(s) · Module: ${moduleLabel}${statusFilter ? ` · Status: ${statusFilter}` : ''}${search ? ` · Search: ${search}` : ''}${dateFrom || dateTo ? ` · Dates: ${dateFrom || '…'} to ${dateTo || '…'}` : ''}`,
+            headers: ['#', 'Participant', 'Module', 'Attempt', 'Score %', 'Status', 'Completed'],
+            rows: (results || []).map((row, index) => [
+                index + 1,
+                row.participant?.name || '—',
+                row.training_module?.title || row.scenario_title || '—',
+                row.attempt_number != null ? `#${row.attempt_number}` : '—',
+                row.percentage != null ? `${Number(row.percentage).toFixed(1)}%` : (row.score != null ? String(row.score) : '—'),
+                row.status === 'passed' ? 'Passed' : (row.status === 'needs_improvement' ? 'Failed' : (row.status || '—')),
+                row.completed_at ? new Date(row.completed_at).toLocaleString() : '—',
+            ]),
+        });
+
+        if (!printHtmlDocument(html, 'Final Scenario Evaluation Results')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    }, [results, modules, moduleFilter, statusFilter, search, dateFrom, dateTo]);
+
+    React.useEffect(() => {
+        if (!embedded) return undefined;
+        const onPrint = () => handlePrint();
+        window.addEventListener(EVALUATION_HUB_PRINT_EVENT, onPrint);
+        return () => window.removeEventListener(EVALUATION_HUB_PRINT_EVENT, onPrint);
+    }, [embedded, handlePrint]);
+
     const moduleChartData = {
         labels: (analytics?.by_module || []).map((m) => m.module_title),
         datasets: [{
@@ -366,6 +400,12 @@ export function EvaluationResultsIndex({
                 onSearchSubmit={applyFilters}
                 trailing={(
                     <>
+                        {!embedded && (
+                            <AdminPrimaryButton type="button" onClick={handlePrint}>
+                                <Printer className="w-4 h-4" />
+                                Print
+                            </AdminPrimaryButton>
+                        )}
                         <AdminPrimaryButton type="submit"><Search className="w-4 h-4" /> Apply</AdminPrimaryButton>
                         {!isParticipant && <AdminViewToggle viewMode={viewMode} onChange={setViewMode} />}
                         {isAdmin && resettableIds.length > 0 && (
