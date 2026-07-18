@@ -22,6 +22,7 @@ use App\Services\DatabaseBackupService;
 use App\Services\GeminiService;
 use App\Services\HazardAssessment\HazardTrainingRecommendationService;
 use App\Services\LessonResourceProcessingService;
+use App\Services\StaffTrainerBridgeService;
 use App\Services\TrainingModuleCardStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -167,8 +168,10 @@ class TrainingModuleController extends Controller
             ->recommendCommunitiesForTraining($trainingModule);
         $trainingModule->recommended_communities = $hazardRecommendations;
 
-        // Source of trainer information for the Training Intelligence Profile (Participant Registration & Attendance module).
+        // Source of trainer information for the Training Intelligence Profile (Users & Roles LGU_TRAINER).
+        app(StaffTrainerBridgeService::class)->syncAllTrainerMirrors();
         $trainingModule->qualified_trainers = QualifiedTrainer::query()
+            ->fromStaffUsers()
             ->active()
             ->get([
                 'id',

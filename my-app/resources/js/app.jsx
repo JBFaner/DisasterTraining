@@ -2060,7 +2060,16 @@ if (rootElement) {
                                                         id="account_type"
                                                         name="account_type"
                                                         className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                                        defaultValue={(roles && roles.length > 0) ? (roles[0].name || 'LGU_ADMIN') : 'LGU_ADMIN'}
+                                                        defaultValue={
+                                                            (() => {
+                                                                const roleFromQuery = new URLSearchParams(window.location.search).get('role');
+                                                                const allowed = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
+                                                                if (roleFromQuery && allowed.includes(roleFromQuery)) {
+                                                                    return roleFromQuery;
+                                                                }
+                                                                return (roles && roles.length > 0) ? (roles[0].name || 'LGU_ADMIN') : 'LGU_ADMIN';
+                                                            })()
+                                                        }
                                                     >
                                                         {(roles && roles.length > 0
                                                             ? roles.filter((r) => r.name !== 'PARTICIPANT')

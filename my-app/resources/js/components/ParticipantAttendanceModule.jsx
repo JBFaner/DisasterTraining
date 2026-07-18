@@ -10,6 +10,7 @@ import {
     CalendarPlus,
     BarChart3,
     Printer,
+    Pencil,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import {
@@ -132,7 +133,7 @@ export function ParticipantRegistrationAttendanceModule({
                     <StatCard label="Total Trainers" value={totalTrainers} hint="Community Engagement System" />
                     <StatCard label="Active" value={activeTrainers} hint="Available for assignment" accent="emerald" />
                     <StatCard label="Inactive" value={inactiveTrainers} hint="Unavailable in directory" />
-                    <StatCard label="Synced This Month" value={trainersSyncedThisMonth} hint="Last directory sync" />
+                    <StatCard label="Updated This Month" value={trainersSyncedThisMonth} hint="Trainer accounts touched" />
                 </div>
             )}
 
@@ -698,8 +699,7 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
     const [trainersData, setTrainersData] = React.useState(trainers || []);
     const [pagination, setPagination] = React.useState(trainersPagination);
     const [isLoading, setIsLoading] = React.useState(false);
-    const [isSyncing, setIsSyncing] = React.useState(false);
-    const [refreshingId, setRefreshingId] = React.useState(null);
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
 
     const fetchTrainers = React.useCallback(async (page = 1) => {
         setIsLoading(true);
@@ -731,8 +731,8 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
         return () => clearTimeout(timer);
     }, [searchTerm, statusFilter, sortKey, sortDir, fetchTrainers]);
 
-    const handleSync = async () => {
-        setIsSyncing(true);
+    const handleRefreshList = async () => {
+        setIsRefreshing(true);
         try {
             const res = await fetch('/admin/qualified-trainers/sync', {
                 method: 'POST',
@@ -745,52 +745,19 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
             });
             const data = await res.json();
             if (data.success) {
-                Swal.fire('Directory synced', data.message, 'success');
+                Swal.fire('Trainers refreshed', data.message, 'success');
                 await fetchTrainers(1);
             } else {
-                Swal.fire(
-                    'Sync unavailable',
-                    data.message || 'The Community Engagement System API is not yet configured.',
-                    'info',
-                );
+                Swal.fire('Unable to refresh', data.message || 'Could not refresh trainer list.', 'info');
             }
         } catch (error) {
-            Swal.fire('Error', 'Failed to sync the trainer directory.', 'error');
+            Swal.fire('Error', 'Failed to refresh trainers from Users & Roles.', 'error');
         } finally {
-            setIsSyncing(false);
-        }
-    };
-
-    const handleRefreshTrainer = async (trainer) => {
-        setRefreshingId(trainer.id);
-        try {
-            const res = await fetch(`/admin/qualified-trainers/${trainer.id}`, {
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin',
-            });
-            if (!res.ok) throw new Error('Failed to refresh trainer');
-            const data = await res.json();
-            if (data.trainer) {
-                setTrainersData((prev) =>
-                    prev.map((row) => (row.id === trainer.id ? { ...row, ...data.trainer } : row)),
-                );
-            }
-        } catch (error) {
-            Swal.fire('Error', 'Failed to refresh trainer record.', 'error');
-        } finally {
-            setRefreshingId(null);
+            setIsRefreshing(false);
         }
     };
 
     const columns = [
-        {
-            key: 'group6_external_id',
-            label: 'Directory ID',
-            sortable: false,
-            render: (row) => (
-                <span className="text-xs font-mono text-slate-600">{row.group6_external_id || `#${row.id}`}</span>
-            ),
-        },
         {
             key: 'name',
             label: 'Full Name',
@@ -804,10 +771,10 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
             render: (row) => <span className="text-sm text-slate-700">{row.email || '—'}</span>,
         },
         {
-            key: 'specialization',
-            label: 'Specialization',
-            sortable: true,
-            render: (row) => <span className="text-sm text-slate-700">{row.specialization || '—'}</span>,
+            key: 'phone',
+            label: 'Contact',
+            sortable: false,
+            render: (row) => <span className="text-sm text-slate-700">{row.phone || '—'}</span>,
         },
         {
             key: 'barangay',
@@ -816,37 +783,47 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
             render: (row) => <span className="text-sm text-slate-600">{row.barangay || '—'}</span>,
         },
         {
+            key: 'role',
+            label: 'Role',
+            sortable: false,
+            render: () => (
+                <span className="inline-flex rounded-lg bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-800 border border-sky-200">
+                    Trainer
+                </span>
+            ),
+        },
+        {
             key: 'status',
             label: 'Status',
             sortable: true,
             render: (row) => <AdminStatusBadge status={row.status} />,
-        },
-        {
-            key: 'last_synced_at',
-            label: 'Last Synced',
-            sortable: true,
-            render: (row) => <span className="text-sm text-slate-600">{formatDate(row.last_synced_at)}</span>,
         },
     ];
 
     return (
         <div className="space-y-4">
             <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                Trainer records are read-only in this system. Profile updates are managed in the{' '}
-                <span className="font-semibold">Community Engagement System</span> and synchronized here via API.
+                Trainers come from <span className="font-semibold">Users & Roles</span> accounts with the{' '}
+                <span className="font-semibold">LGU Trainer</span> role. Create or edit trainers there — other
+                personnel (Staff, etc.) can use the same Users & Roles list later.
             </div>
 
             <AdminCollapsibleFilterBar
                 searchValue={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
-                searchPlaceholder="Search by name, email, ID, or specialization..."
+                searchPlaceholder="Search by name, email, contact, or barangay..."
                 hasActiveFilters={statusFilter !== 'all'}
                 onClearFilters={() => setStatusFilter('all')}
                 trailing={(
-                    <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
-                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        Sync Trainer Directory
-                    </AdminPrimaryButton>
+                    <>
+                        <AdminPrimaryButton href="/admin/users/create?role=LGU_TRAINER">
+                            Add Trainer
+                        </AdminPrimaryButton>
+                        <AdminSecondaryButton onClick={handleRefreshList} disabled={isRefreshing}>
+                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </AdminSecondaryButton>
+                    </>
                 )}
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -865,24 +842,25 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
                 isLoading={isLoading}
                 pagination={pagination}
                 onPageChange={(page) => fetchTrainers(page)}
-                minWidth="1100px"
-                emptyTitle="No qualified trainers found"
-                emptyDescription="Sync Trainer Directory to load records from the Community Engagement System."
+                minWidth="900px"
+                emptyTitle="No trainers found"
+                emptyDescription="Create an LGU Trainer account under Users & Roles, then return here."
                 renderActions={(row) => (
                     <>
                         <AdminTableActionButton
-                            href={`/admin/qualified-trainers/${row.id}`}
+                            href={row.id ? `/admin/qualified-trainers/${row.id}` : `/admin/users/${row.user_id}`}
                             icon={Eye}
                             title="View"
                             variant="view"
                         />
-                        <AdminTableActionButton
-                            onClick={() => handleRefreshTrainer(row)}
-                            icon={RefreshCw}
-                            title="Refresh"
-                            variant="edit"
-                            disabled={refreshingId === row.id}
-                        />
+                        {row.user_id ? (
+                            <AdminTableActionButton
+                                href={`/admin/users/${row.user_id}/edit`}
+                                icon={Pencil}
+                                title="Edit in Users & Roles"
+                                variant="edit"
+                            />
+                        ) : null}
                     </>
                 )}
             />
@@ -891,9 +869,7 @@ function TrainersListTab({ trainers = [], trainersPagination = null }) {
 }
 
 export function QualifiedTrainerDetail({ trainer }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [record, setRecord] = React.useState(trainer);
-    const [isSyncing, setIsSyncing] = React.useState(false);
     const [isRefreshing, setIsRefreshing] = React.useState(false);
 
     const isAvailable = record.status === 'active';
@@ -918,36 +894,6 @@ export function QualifiedTrainerDetail({ trainer }) {
         }
     };
 
-    const handleSyncDirectory = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await fetch('/admin/qualified-trainers/sync', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin',
-            });
-            const data = await res.json();
-            if (data.success) {
-                await refreshRecord();
-                Swal.fire('Directory synced', data.message, 'success');
-            } else {
-                Swal.fire(
-                    'Sync unavailable',
-                    data.message || 'The Community Engagement System API is not yet configured.',
-                    'info',
-                );
-            }
-        } catch (error) {
-            Swal.fire('Error', 'Failed to sync the trainer directory.', 'error');
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
     return (
         <AdminPageShell>
             <div className="mb-4">
@@ -959,29 +905,26 @@ export function QualifiedTrainerDetail({ trainer }) {
             <AdminPageHeader
                 icon={GraduationCap}
                 title={record.name}
-                description={
-                    record.group6_external_id
-                        ? `Directory ID: ${record.group6_external_id}`
-                        : 'Qualified Trainer'
-                }
+                description="LGU Trainer · Users & Roles"
                 actions={
                     <div className="flex flex-wrap gap-2">
+                        {record.user_id ? (
+                            <AdminPrimaryButton href={`/admin/users/${record.user_id}/edit`}>
+                                <Pencil className="w-4 h-4" />
+                                Edit in Users & Roles
+                            </AdminPrimaryButton>
+                        ) : null}
                         <AdminSecondaryButton onClick={refreshRecord} disabled={isRefreshing}>
                             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                             Refresh
                         </AdminSecondaryButton>
-                        <AdminPrimaryButton onClick={handleSyncDirectory} disabled={isSyncing}>
-                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                            Sync Trainer Directory
-                        </AdminPrimaryButton>
                     </div>
                 }
             />
 
             <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4">
-                This record is synchronized from the <span className="font-semibold">Community Engagement System</span>.
-                Name, contact details, specialization, certifications, and status cannot be edited here.
-                Assign this trainer to simulation events from the Simulation Event Planning module.
+                This trainer account is managed in <span className="font-semibold">Users & Roles</span>.
+                Assign them to simulation events from the Simulation Event Planning module.
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -990,11 +933,9 @@ export function QualifiedTrainerDetail({ trainer }) {
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <DetailItem label="Email" value={record.email || '—'} />
                         <DetailItem label="Phone" value={record.phone || '—'} />
-                        <DetailItem label="Specialization" value={record.specialization || '—'} />
+                        <DetailItem label="Role" value="LGU Trainer" />
                         <DetailItem label="Barangay" value={record.barangay || '—'} />
-                        <DetailItem label="Directory Status" value={<AdminStatusBadge status={record.status} />} />
-                        <DetailItem label="Qualified At" value={formatDate(record.qualified_at)} />
-                        <DetailItem label="Last Synced" value={formatDateTime(record.last_synced_at)} />
+                        <DetailItem label="Account Status" value={<AdminStatusBadge status={record.status} />} />
                         <DetailItem label="Assigned Events" value={record.simulation_events_count ?? 0} />
                     </dl>
                 </div>
@@ -1040,9 +981,9 @@ export function QualifiedTrainerDetail({ trainer }) {
                 </div>
             </div>
 
-            <div className="mt-4 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                <h3 className="text-sm font-semibold text-slate-800 mb-4">Certifications</h3>
-                {certifications.length > 0 ? (
+            {certifications.length > 0 ? (
+                <div className="mt-4 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <h3 className="text-sm font-semibold text-slate-800 mb-4">Certifications</h3>
                     <div className="flex flex-wrap gap-2">
                         {certifications.map((cert) => (
                             <span
@@ -1053,10 +994,8 @@ export function QualifiedTrainerDetail({ trainer }) {
                             </span>
                         ))}
                     </div>
-                ) : (
-                    <p className="text-sm text-slate-500">No certifications on file. Sync Trainer Directory to refresh.</p>
-                )}
-            </div>
+                </div>
+            ) : null}
         </AdminPageShell>
     );
 }

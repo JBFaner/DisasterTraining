@@ -52,6 +52,47 @@ class AdminUserSeeder extends Seeder
                 'email_verified_at' => now(), // Fully verified
             ]
         );
+
+        // LGU Trainer accounts (Trainer List source of truth via Users & Roles).
+        $trainers = [
+            [
+                'email' => 'maria.santos.trainer@lgu.local',
+                'name' => 'Maria Santos',
+                'phone' => '09171234567',
+                'barangay' => 'Barangay San Jose',
+            ],
+            [
+                'email' => 'juan.delacruz.trainer@lgu.local',
+                'name' => 'Juan Dela Cruz',
+                'phone' => '09189876543',
+                'barangay' => 'Barangay Poblacion',
+            ],
+            [
+                'email' => 'ana.reyes.trainer@lgu.local',
+                'name' => 'Ana Reyes',
+                'phone' => '09201112233',
+                'barangay' => 'Barangay Riverside',
+            ],
+        ];
+
+        $bridge = app(\App\Services\StaffTrainerBridgeService::class);
+
+        foreach ($trainers as $trainer) {
+            $user = User::updateOrCreate(
+                ['email' => $trainer['email']],
+                [
+                    'name' => $trainer['name'],
+                    'password' => 'trainer123',
+                    'role' => 'LGU_TRAINER',
+                    'status' => 'active',
+                    'phone' => $trainer['phone'],
+                    'barangay' => $trainer['barangay'],
+                    'registered_at' => now(),
+                    'email_verified_at' => now(),
+                ]
+            );
+            $bridge->ensureMirror($user);
+        }
     }
 }
 
