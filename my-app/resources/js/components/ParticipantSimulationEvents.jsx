@@ -2,6 +2,7 @@ import React from 'react';
 import Swal from 'sweetalert2';
 import { CalendarClock, ClipboardList, Play, Search, Users, CheckCircle2, BarChart3 } from 'lucide-react';
 import { deriveSimulationEventStatus, getEventDateTime } from '../utils/simulationEventStatus';
+import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from './ParticipantEmptyState';
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -179,9 +180,12 @@ export function ParticipantSimulationEventsList({ events }) {
             </div>
 
             {filteredEvents.length === 0 ? (
-                <div className="rounded-xl bg-white border border-slate-200 px-4 py-6 text-sm text-slate-500 text-center shadow-sm">
-                    No simulation events are available at this time. Please check back later.
-                </div>
+                <ParticipantEmptyState
+                    icon={CalendarClock}
+                    {...(normalizedEvents.length === 0
+                        ? PARTICIPANT_EMPTY_STATES.simulationEvents
+                        : PARTICIPANT_EMPTY_STATES.simulationEventsFiltered)}
+                />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredEvents.map((event) => {

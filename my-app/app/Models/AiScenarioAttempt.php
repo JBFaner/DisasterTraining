@@ -177,6 +177,7 @@ class AiScenarioAttempt extends Model
                 ))
                 ->values()
                 ->all();
+            $data['evaluation_result_id'] = $this->evaluationResult()->value('id');
         }
 
         return $data;

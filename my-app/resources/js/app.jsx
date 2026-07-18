@@ -34,6 +34,10 @@ import {
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationHub } from './pages/EvaluationHub';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
+import { ParticipantDashboard } from './pages/ParticipantDashboard';
+import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from './components/ParticipantEmptyState';
+import { ParticipantEvaluationHub } from './pages/ParticipantEvaluationHub';
+import { ParticipantCertificatesPage } from './pages/ParticipantCertificatesPage';
 import { CampaignRequestShow } from './pages/CampaignRequestShow';
 import { SimulationEventPlanningDetail } from './pages/SimulationEventPlanningDetail';
 import AttendanceQrScanner from './components/AttendanceQrScanner';
@@ -76,6 +80,7 @@ import {
 import {
     simulationEventsIndex,
     evaluationsIndex,
+    evaluationsIndexWithTab,
     certificationIndex,
     participantsIndex,
     scenariosIndex,
@@ -578,6 +583,33 @@ if (rootElement) {
             dashboardStats = JSON.parse(dashboardStatsJson);
         } catch (e) {
             console.error('Failed to parse dashboard stats JSON', e);
+        }
+    }
+    let participantDashboard = null;
+    const participantDashboardJson = rootElement.getAttribute('data-participant-dashboard');
+    if (participantDashboardJson) {
+        try {
+            participantDashboard = JSON.parse(participantDashboardJson);
+        } catch (e) {
+            console.error('Failed to parse participant dashboard JSON', e);
+        }
+    }
+    let participantEvaluationHub = null;
+    const participantEvaluationHubJson = rootElement.getAttribute('data-participant-evaluation-hub');
+    if (participantEvaluationHubJson) {
+        try {
+            participantEvaluationHub = JSON.parse(participantEvaluationHubJson);
+        } catch (e) {
+            console.error('Failed to parse participant evaluation hub JSON', e);
+        }
+    }
+    let participantCertificateEligibility = null;
+    const participantCertificateEligibilityJson = rootElement.getAttribute('data-participant-certificate-eligibility');
+    if (participantCertificateEligibilityJson) {
+        try {
+            participantCertificateEligibility = JSON.parse(participantCertificateEligibilityJson);
+        } catch (e) {
+            console.error('Failed to parse participant certificate eligibility JSON', e);
         }
     }
     let dashboardCharts = null;
@@ -1305,7 +1337,7 @@ if (rootElement) {
                     sectionAttr.startsWith('participant') ? 'participants' :
                         sectionAttr.startsWith('event_registration') ? 'participants' :
                             sectionAttr.startsWith('event_attendance') ? 'participants' :
-                                sectionAttr.startsWith('my_attendance') ? 'participants' :
+                                sectionAttr.startsWith('my_attendance') ? 'my_attendance' :
                                 sectionAttr === 'my_trainings' ? 'my_trainings' :
                                     sectionAttr.startsWith('evaluation_results_participant') ? 'evaluation' :
                                         sectionAttr === 'training_evaluation_results' ? 'evaluation' :
@@ -1408,9 +1440,10 @@ if (rootElement) {
             ];
         }
         if (sectionAttr === 'simulation_detail') {
+            const eventsLabel = role === 'PARTICIPANT' ? 'Simulation Events' : 'Simulation Event Planning';
             return [
-                { label: 'Simulation Event Planning', href: '/admin/simulation-events' },
-                { label: currentEvent?.title || 'Details', href: null }
+                { label: eventsLabel, href: simulationEventsIndex(role) },
+                { label: currentEvent?.title || 'Details', href: null },
             ];
         }
 
@@ -1463,12 +1496,20 @@ if (rootElement) {
         }
 
         if (sectionAttr === 'evaluation_results_participant') {
-            return [];
+            return [{ label: 'Evaluation Results', href: evaluationsIndex(role) }];
+        }
+
+        if (sectionAttr === 'lesson_quiz_attempt') {
+            return [
+                { label: 'Training Modules', href: trainingModulesIndex(role) },
+                { label: currentModule?.title || 'Module', href: currentModule ? trainingModuleShow(role, currentModule.id) : null },
+                { label: 'Lesson Quiz', href: null },
+            ];
         }
 
         if (sectionAttr === 'evaluation_result_detail') {
             return [
-                { label: 'Evaluations', href: '/admin/evaluations?tab=modules' },
+                { label: 'Evaluations', href: evaluationsIndexWithTab(role, 'modules') },
                 { label: 'Evaluation Report', href: null },
             ];
         }
@@ -1756,15 +1797,22 @@ if (rootElement) {
                     <div className="w-full max-w-full mx-auto overflow-x-hidden">
 
                         {sectionAttr === 'dashboard' && (
-                            <DashboardOverview
-                                modules={modules}
-                                events={events}
-                                participants={participants}
-                                role={role}
-                                dashboardStats={dashboardStats}
-                                dashboardCharts={dashboardCharts}
-                                hazardAnalytics={hazardAnalytics}
-                            />
+                            role === 'PARTICIPANT' ? (
+                                <ParticipantDashboard
+                                    dashboard={participantDashboard || {}}
+                                    userName={currentUser?.name || ''}
+                                />
+                            ) : (
+                                <DashboardOverview
+                                    modules={modules}
+                                    events={events}
+                                    participants={participants}
+                                    role={role}
+                                    dashboardStats={dashboardStats}
+                                    dashboardCharts={dashboardCharts}
+                                    hazardAnalytics={hazardAnalytics}
+                                />
+                            )
                         )}
 
                         {sectionAttr === 'training' && (
@@ -1920,7 +1968,10 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'certification_participant' && (
-                            <ParticipantCertificatesList certificates={certificationIssuedCertificates || []} />
+                            <ParticipantCertificatesPage
+                                certificates={certificationIssuedCertificates || []}
+                                eligibility={participantCertificateEligibility}
+                            />
                         )}
 
                         {sectionAttr === 'participant_detail' && currentParticipant && (
@@ -2246,6 +2297,7 @@ if (rootElement) {
                             <EvaluationResultDetail
                                 result={evaluationResult}
                                 passingScore={evaluationPassingScore}
+                                role={role}
                             />
                         )}
 
@@ -2302,14 +2354,7 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'evaluation_results_participant' && (
-                            <EvaluationResultsIndex
-                                results={evaluationResults}
-                                pagination={evaluationResultsPagination}
-                                modules={evaluationModules}
-                                filters={evaluationFilters}
-                                passingScore={evaluationPassingScore}
-                                role="PARTICIPANT"
-                            />
+                            <ParticipantEvaluationHub hub={participantEvaluationHub || {}} />
                         )}
 
                         {(sectionAttr === 'hazard_assessment_profile' || sectionAttr === 'barangay_profile') && (
@@ -3299,9 +3344,10 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
                 Browse available training modules. Click a module to start the first lesson.
             </p>
             {publishedModules.length === 0 ? (
-                <div className="rounded-xl bg-white border border-slate-200 px-4 py-6 text-sm text-slate-500 text-center shadow-sm">
-                    No training modules are available yet. Please check back later.
-                </div>
+                <ParticipantEmptyState
+                    icon={BookOpen}
+                    {...PARTICIPANT_EMPTY_STATES.trainingModules}
+                />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {publishedModules.map((module) => (
@@ -3688,9 +3734,11 @@ function ParticipantTrainingLessonView({ module }) {
                         Lessons
                     </h3>
                     {sortedItems.length === 0 ? (
-                        <div className="rounded-xl bg-white border border-slate-200 px-4 py-6 text-sm text-slate-500 text-center shadow-sm">
-                            No learning content is available yet for this module.
-                        </div>
+                        <ParticipantEmptyState
+                            icon={BookOpen}
+                            {...PARTICIPANT_EMPTY_STATES.moduleLessons}
+                            variant="compact"
+                        />
                     ) : (
                         <div className="grid grid-cols-1 gap-3">
                             {lessonProgress.map((lesson, index) => (
@@ -9812,9 +9860,10 @@ function ParticipantSelfAttendance({ participant }) {
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 {records.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                        No attendance records found yet. Once you participate in scheduled simulation events, they will appear here.
-                    </p>
+                    <ParticipantEmptyState
+                        icon={ClipboardCheck}
+                        {...PARTICIPANT_EMPTY_STATES.myAttendance}
+                    />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
@@ -9830,11 +9879,20 @@ function ParticipantSelfAttendance({ participant }) {
                                     const event = att.simulation_event || att.simulationEvent;
                                     const date = event?.event_date || event?.eventDate;
                                     const status = att.status || 'present';
+                                    const eventHref = event?.id
+                                        ? `/participant/simulation-events/${event.id}`
+                                        : null;
 
                                     return (
                                         <tr key={att.id} className="border-b border-slate-100 last:border-0">
                                             <td className="py-2 pr-4 text-slate-900">
-                                                {event?.title || 'Simulation Event'}
+                                                {eventHref ? (
+                                                    <a href={eventHref} className="font-medium text-emerald-700 hover:text-emerald-800 hover:underline">
+                                                        {event?.title || 'Simulation Event'}
+                                                    </a>
+                                                ) : (
+                                                    event?.title || 'Simulation Event'
+                                                )}
                                             </td>
                                             <td className="py-2 pr-4 text-slate-600">
                                                 {date ? formatDate(date) : '—'}
@@ -12147,94 +12205,4 @@ function ParticipantEvaluationResults({ participantEvaluations }) {
         </div>
     );
 }
-
-function ParticipantCertificatesList({ certificates }) {
-    const rows = Array.isArray(certificates)
-        ? certificates
-        : Object.values(certificates || {});
-
-    const hasCertificates = rows.length > 0;
-
-    const formatIssuedDate = (dateString) => {
-        if (!dateString) return '—';
-        return formatDate(dateString);
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h1 className="text-xl font-bold text-slate-900 mb-1">My Certificates</h1>
-                <p className="text-sm text-slate-600">
-                    View certificates issued for completed training modules and simulation events.
-                </p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                {!hasCertificates ? (
-                    <p className="text-sm text-slate-500">
-                        You don&apos;t have any certificates yet. Once you pass an evaluated event and a certificate is issued,
-                        it will appear here.
-                    </p>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-200 text-left text-slate-500">
-                                    <th className="py-2 pr-4">Certificate #</th>
-                                    <th className="py-2 pr-4">Event</th>
-                                    <th className="py-2 pr-4">Date</th>
-                                    <th className="py-2 pr-4">Score</th>
-                                    <th className="py-2 pr-4">Type</th>
-                                    <th className="py-2 pr-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((cert) => (
-                                    <tr key={cert.id} className="border-b border-slate-100 last:border-0">
-                                        <td className="py-2 pr-4 text-slate-900">
-                                            {cert.certificate_number || '—'}
-                                        </td>
-                                        <td className="py-2 pr-4 text-slate-900">
-                                            {cert.training_module?.title
-                                                || cert.simulation_event?.title
-                                                || cert.training_type
-                                                || cert.event_title
-                                                || 'Training Program'}
-                                        </td>
-                                        <td className="py-2 pr-4 text-slate-600">
-                                            {formatIssuedDate(cert.issued_at || cert.completion_date)}
-                                        </td>
-                                        <td className="py-2 pr-4 text-slate-900">
-                                            {cert.final_score != null
-                                                ? `${Number(cert.final_score).toFixed(1)}%`
-                                                : cert.average_score != null
-                                                    ? `${Number(cert.average_score).toFixed(1)}%`
-                                                    : '—'}
-                                        </td>
-                                        <td className="py-2 pr-4 text-slate-900">
-                                            {cert.type ? cert.type.charAt(0).toUpperCase() + cert.type.slice(1) : '—'}
-                                        </td>
-                                        <td className="py-2 pr-4">
-                                            {cert.id && (
-                                                <a
-                                                    href={`/certificates/${cert.id}/view`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                                                >
-                                                    View / Download
-                                                </a>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
 

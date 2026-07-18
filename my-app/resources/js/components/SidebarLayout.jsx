@@ -391,7 +391,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         icon={ClipboardCheck}
                         label="My Attendance"
                         href="/participant/my-attendance"
-                        active={currentSection === 'participants'}
+                        active={currentSection === 'my_attendance'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

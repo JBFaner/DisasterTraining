@@ -260,7 +260,7 @@ class DashboardController extends Controller
             ];
         }
 
-        return view('app', [
+        $viewData = [
             'section' => 'dashboard',
             'modules' => $modules,
             'events' => $events,
@@ -270,7 +270,14 @@ class DashboardController extends Controller
             'hazard_analytics' => $user->role !== 'PARTICIPANT'
                 ? app(\App\Services\HazardAssessment\HazardTrainingRecommendationService::class)->globalAnalytics()
                 : null,
-        ]);
+        ];
+
+        if ($user->role === 'PARTICIPANT') {
+            $viewData['participant_dashboard'] = app(\App\Services\ParticipantDashboardService::class)
+                ->buildPayload($user);
+        }
+
+        return view('app', $viewData);
     }
 
     protected function autoCompleteExpiredEvents(): void

@@ -10,6 +10,7 @@ use App\Models\ParticipantEvaluation;
 use App\Models\SimulationEvent;
 use App\Services\CertificateDesignRenderer;
 use App\Services\DatabaseBackupService;
+use App\Services\ParticipantCertificateEligibilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,8 @@ class CertificationController extends Controller
             return view('app', [
                 'section' => 'certification_participant',
                 'issuedCertificates' => $certificates,
+                'participant_certificate_eligibility' => app(ParticipantCertificateEligibilityService::class)
+                    ->buildFor($user),
             ]);
         }
 

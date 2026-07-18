@@ -18,6 +18,8 @@ use App\Models\TrainingModule;
 
 use App\Services\EvaluationScoringService;
 
+use App\Services\ParticipantEvaluationHubService;
+
 use App\Services\TrainingResetService;
 
 use Illuminate\Http\Request;
@@ -36,6 +38,8 @@ class EvaluationResultController extends Controller
 
         private readonly TrainingResetService $trainingResetService,
 
+        private readonly ParticipantEvaluationHubService $participantEvaluationHub,
+
     ) {}
 
 
@@ -50,15 +54,17 @@ class EvaluationResultController extends Controller
 
 
 
-        if ($user->role !== 'PARTICIPANT') {
+        if ($user->role === 'PARTICIPANT') {
 
-            return redirect()->route('admin.evaluations.index', array_merge(
+            return view('app', [
 
-                $request->query(),
+                'section' => 'evaluation_results_participant',
 
-                ['tab' => 'modules'],
+                'participant_evaluation_hub' => $this->participantEvaluationHub->buildPayload($user, $request),
 
-            ));
+                'evaluation_passing_score' => $this->scoringService->passingScore(),
+
+            ]);
 
         }
 
@@ -69,14 +75,6 @@ class EvaluationResultController extends Controller
             ->with(['participant', 'trainingModule.aiScenarioConfig', 'aiScenarioAttempt'])
 
             ->orderByDesc('completed_at');
-
-
-
-        if ($user->role === 'PARTICIPANT') {
-
-            $query->where('participant_id', $user->id);
-
-        }
 
 
 
@@ -202,8 +200,6 @@ class EvaluationResultController extends Controller
 
         $attemptNumbers = EvaluationResult::query()
 
-            ->when($user->role === 'PARTICIPANT', fn ($q) => $q->where('participant_id', $user->id))
-
             ->whereNotNull('attempt_number')
 
             ->distinct()
@@ -218,17 +214,13 @@ class EvaluationResultController extends Controller
 
 
 
-        $analytics = $user->role === 'PARTICIPANT'
-
-            ? null
-
-            : $this->scoringService->buildAnalyticsSummary();
+        $analytics = $this->scoringService->buildAnalyticsSummary();
 
 
 
         return view('app', [
 
-            'section' => $user->role === 'PARTICIPANT' ? 'evaluation_results_participant' : 'training_evaluation_results',
+            'section' => 'training_evaluation_results',
 
             'evaluation_results' => $resultItems,
 

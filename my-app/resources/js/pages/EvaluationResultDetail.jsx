@@ -6,6 +6,7 @@ import {
     resolveScenarioTitle,
 } from '../utils/aiScenarioLocale';
 import { AiScenarioLanguageSwitcher } from '../components/AiScenarioLanguageSwitcher';
+import { evaluationsIndexWithTab } from '../utils/portalRoutes';
 import {
     AdminPageShell,
     AdminPageHeader,
@@ -65,8 +66,10 @@ function CircularProgress({ percentage, passingScore = 75 }) {
     );
 }
 
-export function EvaluationResultDetail({ result, passingScore = 75 }) {
+export function EvaluationResultDetail({ result, passingScore = 75, role = 'LGU_ADMIN' }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const isParticipant = role === 'PARTICIPANT';
+    const evaluationsBackHref = evaluationsIndexWithTab(role, 'modules');
 
     React.useEffect(() => {
         if (new URLSearchParams(window.location.search).get('print') === '1') {
@@ -83,7 +86,7 @@ export function EvaluationResultDetail({ result, passingScore = 75 }) {
     }
 
     const passed = result.status === 'passed';
-    const canReset = Boolean(result.can_reset);
+    const canReset = !isParticipant && Boolean(result.can_reset);
 
     const handleReset = async () => {
         const participantName = result.participant?.name || 'Participant';
@@ -129,7 +132,7 @@ export function EvaluationResultDetail({ result, passingScore = 75 }) {
                 timer: 2000,
                 showConfirmButton: false,
             });
-            window.location.href = '/admin/evaluations?tab=modules';
+            window.location.href = evaluationsBackHref;
         } else {
             const data = await res.json().catch(() => ({}));
             Swal.fire('Error', data.message || 'Could not reset training progress.', 'error');
@@ -153,7 +156,7 @@ export function EvaluationResultDetail({ result, passingScore = 75 }) {
     return (
         <AdminPageShell className="print:space-y-2">
             <div className="flex items-center justify-between print:hidden mb-1">
-                <a href="/admin/evaluations?tab=modules" className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900">
+                <a href={evaluationsBackHref} className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900">
                     <ArrowLeft className="w-4 h-4" /> Back to Evaluations
                 </a>
                 <div className="flex items-center gap-2">

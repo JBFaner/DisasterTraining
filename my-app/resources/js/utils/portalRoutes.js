@@ -14,9 +14,22 @@ export function evaluationsIndex(role) {
     return isParticipantRole(role) ? '/participant/evaluations' : '/admin/evaluations';
 }
 
+export function evaluationsIndexWithTab(role, tab = 'modules') {
+    const base = evaluationsIndex(role);
+    return tab ? `${base}?tab=${tab}` : base;
+}
+
 export function evaluationResultShow(role, resultId) {
     const base = isParticipantRole(role) ? '/participant/evaluations' : '/admin/evaluations';
     return `${base}/results/${resultId}`;
+}
+
+export function lessonQuizAttemptShow(attemptId) {
+    return `/participant/lesson-quiz-attempts/${attemptId}`;
+}
+
+export function myTrainingsIndex() {
+    return '/participant/my-trainings';
 }
 
 export function simulationEventsIndex(role) {

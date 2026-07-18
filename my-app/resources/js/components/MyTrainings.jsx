@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpen, CalendarDays, MapPin } from 'lucide-react';
+import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from './ParticipantEmptyState';
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -16,6 +17,8 @@ function statusBadgeClass(status) {
 }
 
 export function MyTrainings({ trainings = [] }) {
+    const empty = PARTICIPANT_EMPTY_STATES.myTrainings;
+
     return (
         <div className="space-y-6">
             <div>
@@ -26,13 +29,14 @@ export function MyTrainings({ trainings = [] }) {
             </div>
 
             {trainings.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-                    <BookOpen className="mx-auto h-10 w-10 text-slate-400" />
-                    <p className="mt-3 text-slate-700 font-medium">No campaign registrations yet</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                        Use a campaign registration link to join your first training.
-                    </p>
-                </div>
+                <ParticipantEmptyState
+                    icon={BookOpen}
+                    title={empty.title}
+                    description={empty.description}
+                    steps={empty.steps}
+                    primaryAction={empty.primaryAction}
+                    secondaryActions={empty.secondaryActions}
+                />
             ) : (
                 <div className="grid gap-4">
                     {trainings.map((training) => (

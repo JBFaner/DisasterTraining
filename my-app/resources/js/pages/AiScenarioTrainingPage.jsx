@@ -625,6 +625,11 @@ export function AiScenarioTrainingPage({ attempt, module }) {
                         <AdminSecondaryButton href={`/participant/training-modules/${module?.id}`}>
                             Back to Module
                         </AdminSecondaryButton>
+                        {attempt.evaluation_result_id && (
+                            <AdminPrimaryButton href={`/participant/evaluations/results/${attempt.evaluation_result_id}`}>
+                                View Full Evaluation Report
+                            </AdminPrimaryButton>
+                        )}
                     </div>
                 </div>
             )}
@@ -841,7 +846,10 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                                     <span className="font-medium text-slate-800">{attemptsUsed} of {maxAttempts}</span>
                                 </div>
                                 <p className="text-emerald-700 font-medium pt-1">Quiz Locked</p>
-                                <a href="/participant/certification" className="inline-block text-xs text-emerald-700 hover:underline pt-1">
+                                <a href="/participant/evaluations?tab=modules" className="inline-block text-xs text-emerald-700 hover:underline pt-1">
+                                    View assessment results
+                                </a>
+                                <a href="/participant/certification" className="inline-block text-xs text-emerald-700 hover:underline pt-1 ml-3">
                                     View your certificate
                                 </a>
                             </>

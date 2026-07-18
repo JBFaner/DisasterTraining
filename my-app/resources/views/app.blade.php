@@ -171,6 +171,12 @@
             @isset($participant_evaluation)
                 data-participant-evaluation='@json($participant_evaluation)'
             @endisset
+            @isset($participant_certificate_eligibility)
+                data-participant-certificate-eligibility='@json($participant_certificate_eligibility)'
+            @endisset
+            @isset($participant_evaluation_hub)
+                data-participant-evaluation-hub='@json($participant_evaluation_hub)'
+            @endisset
             @isset($barangay_profiles)
                 data-barangay-profiles='@json($barangay_profiles)'
             @endisset
@@ -245,6 +251,9 @@
             @endisset
             @isset($dashboard_stats)
                 data-dashboard-stats='@json($dashboard_stats)'
+            @endisset
+            @isset($participant_dashboard)
+                data-participant-dashboard='@json($participant_dashboard)'
             @endisset
             @isset($dashboard_charts)
                 data-dashboard-charts='@json($dashboard_charts)'
