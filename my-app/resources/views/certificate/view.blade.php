@@ -15,6 +15,16 @@
         .cert-wrap { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 25px 50px rgba(0,0,0,0.1); max-width: 900px; margin: 0 auto; animation: certZoomIn 0.4s ease-out; }
         @keyframes certZoomIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
         .cert-wrap .certificate { min-height: 0; }
+        .verify-panel { margin-top: 24px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; max-width: 900px; margin-left: auto; margin-right: auto; }
+        .verify-panel h2 { margin: 0 0 12px; font-size: 16px; color: #0f172a; }
+        .verify-grid { display: grid; grid-template-columns: 160px 1fr; gap: 20px; align-items: start; }
+        .verify-url { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
+        .share-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .share-row a, .share-row button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; color: #334155; text-decoration: none; font-size: 13px; cursor: pointer; }
+        .share-row a:hover, .share-row button:hover { background: #f8fafc; }
+        .share-row button.primary { background: #059669; color: white; border-color: #059669; }
+        .share-row button.primary:hover { background: #047857; }
+        @media (max-width: 640px) { .verify-grid { grid-template-columns: 1fr; } }
         /* A4/Letter shape: landscape = wider than tall, portrait = taller than wide */
         body.certificate-orientation-landscape .certificate-outer { aspect-ratio: 297/210; max-width: 800px; width: 100%; }
         body.certificate-orientation-portrait .certificate-outer { aspect-ratio: 210/297; max-width: 600px; width: 100%; }
@@ -32,6 +42,7 @@
         .certificate-content .certificate p:nth-of-type(5), .certificate-content .certificate p:nth-of-type(6) { font-size: 18pt; font-family: Arial, "Open Sans", "Lato", sans-serif; text-align: center; }
         @media print {
             .toolbar-tip { display: none !important; }
+            .no-print, .verify-panel { display: none !important; }
             @page { size: {{ ($paperSize ?? 'a4') === 'letter' ? 'letter' : 'A4' }}{{ ($orientation ?? 'portrait') === 'landscape' ? ' landscape' : '' }}; margin: 0; }
             body { background: white; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; min-height: 100vh; height: 100vh; }
             .toolbar { display: none !important; }
@@ -72,5 +83,51 @@
             {!! $content !!}
         </div>
     </div>
+
+    @if(!empty($verificationUrl))
+    <div class="verify-panel no-print">
+        <h2>Verify &amp; Share</h2>
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 16px;">
+            Scan the QR code or share the public verification link so employers and trainers can confirm this certificate.
+        </p>
+        <div class="verify-grid">
+            @if(!empty($qrCodeImageUrl))
+            <div>
+                <img src="{{ $qrCodeImageUrl }}" alt="Certificate verification QR code" width="160" height="160" style="border-radius: 8px; border: 1px solid #e2e8f0;">
+            </div>
+            @endif
+            <div>
+                <p style="font-size: 12px; font-weight: 600; color: #475569; margin: 0 0 6px;">Verification link</p>
+                <div class="verify-url" id="cert-verify-url">{{ $verificationUrl }}</div>
+                <div class="share-row">
+                    <button type="button" class="primary" onclick="copyVerifyLink()">Copy verification link</button>
+                    @if(!empty($isParticipant) && !empty($emailCertificateUrl))
+                    <form method="POST" action="{{ $emailCertificateUrl }}" style="display:inline;">
+                        @csrf
+                        <button type="submit">Email me this certificate</button>
+                    </form>
+                    @endif
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ urlencode($verificationUrl) }}" target="_blank" rel="noopener noreferrer">Share on LinkedIn</a>
+                    <a href="https://twitter.com/intent/tweet?text={{ urlencode('Verify my disaster preparedness certificate: '.$certificate->certificate_number) }}&url={{ urlencode($verificationUrl) }}" target="_blank" rel="noopener noreferrer">Share on X</a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode($verificationUrl) }}" target="_blank" rel="noopener noreferrer">Share on Facebook</a>
+                </div>
+                <p id="copy-status" style="font-size: 12px; color: #059669; margin: 10px 0 0; display: none;">Link copied to clipboard.</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        function copyVerifyLink() {
+            const text = document.getElementById('cert-verify-url')?.textContent?.trim();
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(function () {
+                const status = document.getElementById('copy-status');
+                if (status) {
+                    status.style.display = 'block';
+                    setTimeout(function () { status.style.display = 'none'; }, 2500);
+                }
+            });
+        }
+    </script>
+    @endif
 </body>
 </html>

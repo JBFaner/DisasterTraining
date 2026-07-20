@@ -307,8 +307,8 @@ class ParticipantCertificateEligibilityService
                 $status = 'eligible';
                 $statusLabel = 'Eligible — awaiting issuance';
                 $nextStep = $eventAutoIssue
-                    ? 'You met all requirements. Your certificate should be issued automatically; contact your LGU trainer if it does not appear.'
-                    : 'You met all requirements. Your LGU trainer will issue your certificate.';
+                    ? 'You met all requirements. Your certificate should be issued automatically; we will notify you when it is ready.'
+                    : 'You met all requirements. Your LGU trainer will issue your certificate — we will notify you when it is ready.';
                 $actionHref = "/participant/simulation-events/{$eventId}";
                 $actionLabel = 'View event';
             } elseif ($evaluationFailed || ($evaluationSubmitted && ! $evaluationPassed)) {

@@ -86,4 +86,27 @@ class Certificate extends Model
 
         return url('/certificates/verify/'.$this->qr_verification_token);
     }
+
+    public function ensureVerificationToken(): string
+    {
+        if ($this->qr_verification_token) {
+            return $this->qr_verification_token;
+        }
+
+        $token = bin2hex(random_bytes(32));
+        $this->forceFill(['qr_verification_token' => $token])->save();
+
+        return $token;
+    }
+
+    public function qrCodeImageUrl(int $size = 160): ?string
+    {
+        $url = $this->verificationUrl();
+
+        if (! $url) {
+            return null;
+        }
+
+        return 'https://api.qrserver.com/v1/create-qr-code/?size='.$size.'x'.$size.'&data='.urlencode($url);
+    }
 }

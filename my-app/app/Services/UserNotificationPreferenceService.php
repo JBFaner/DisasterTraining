@@ -62,6 +62,7 @@ class UserNotificationPreferenceService
             PortalNotification::TYPE_EVALUATION_RECORDED,
             PortalNotification::TYPE_ASSESSMENT_COMPLETED => 'evaluations',
             PortalNotification::TYPE_CERTIFICATE_ISSUED,
+            PortalNotification::TYPE_CERTIFICATE_ELIGIBLE,
             PortalNotification::TYPE_CERTIFICATE_REVOKED => 'certificates',
             default => null,
         };

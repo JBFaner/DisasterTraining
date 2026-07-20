@@ -5,6 +5,10 @@ import {
     CheckCircle2,
     ChevronRight,
     Circle,
+    Copy,
+    ExternalLink,
+    Mail,
+    Share2,
     Sparkles,
 } from 'lucide-react';
 import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from '../components/ParticipantEmptyState';
@@ -94,6 +98,93 @@ function EligibilityCard({ entry, icon: Icon }) {
     );
 }
 
+function CertificateActions({ cert }) {
+    const [copied, setCopied] = React.useState(false);
+    const verifyUrl = cert.verification_url || cert.share_url;
+    const viewUrl = cert.view_url || (cert.id ? `/participant/certificates/${cert.id}/view` : null);
+    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const copyLink = async () => {
+        if (!verifyUrl) return;
+        try {
+            await navigator.clipboard.writeText(verifyUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            window.prompt('Copy verification link:', verifyUrl);
+        }
+    };
+
+    const emailCertificate = async () => {
+        if (!cert.id) return;
+        const response = await fetch(`/participant/certificates/${cert.id}/email`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrf,
+                Accept: 'application/json',
+            },
+        });
+        const data = await response.json().catch(() => ({}));
+        window.alert(data.message || (response.ok ? 'Certificate email sent.' : 'Could not send email.'));
+    };
+
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            {viewUrl && (
+                <a
+                    href={viewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                    View / Download
+                </a>
+            )}
+            {verifyUrl && (
+                <>
+                    <a
+                        href={verifyUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Verify
+                    </a>
+                    <button
+                        type="button"
+                        onClick={copyLink}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                        <Copy className="w-3.5 h-3.5" />
+                        {copied ? 'Copied' : 'Copy link'}
+                    </button>
+                    <a
+                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(verifyUrl)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        title="Share verification link"
+                    >
+                        <Share2 className="w-3.5 h-3.5" />
+                        Share
+                    </a>
+                </>
+            )}
+            {cert.id && (
+                <button
+                    type="button"
+                    onClick={emailCertificate}
+                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                >
+                    <Mail className="w-3.5 h-3.5" />
+                    Email me
+                </button>
+            )}
+        </div>
+    );
+}
+
 function PathGuide({ passingScore, settings }) {
     return (
         <div className="grid gap-4 md:grid-cols-2">
@@ -119,8 +210,8 @@ function PathGuide({ passingScore, settings }) {
                     <li>Pass the trainer&apos;s drill evaluation ({passingScore}%+)</li>
                     <li>
                         {settings?.event_auto_issue
-                            ? 'Certificate may be issued automatically when eligible'
-                            : 'LGU trainer issues your certificate after you are eligible'}
+                            ? 'Certificate is issued automatically — you will be notified in the app'
+                            : 'LGU trainer issues your certificate — you will be notified when ready'}
                     </li>
                 </ol>
             </div>
@@ -249,16 +340,7 @@ export function ParticipantCertificatesPage({ certificates = [], eligibility = n
                                                     : '—'}
                                             </td>
                                             <td className="py-2 pr-4">
-                                                {cert.id && (
-                                                    <a
-                                                        href={`/participant/certificates/${cert.id}/view`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                                    >
-                                                        View / Download
-                                                    </a>
-                                                )}
+                                                {cert.id && <CertificateActions cert={cert} />}
                                             </td>
                                         </tr>
                                     );

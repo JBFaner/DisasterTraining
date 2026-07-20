@@ -418,7 +418,10 @@ class EvaluationController extends Controller
                 ->first();
 
             if ($participantEvaluation) {
+                $participantEvaluation->refresh();
                 $this->notificationFactory->evaluationRecorded($user, $participantEvaluation);
+                app(\App\Services\TrainingCertificateService::class)
+                    ->maybeIssueAfterEventEvaluation($participantEvaluation);
             }
         }
 

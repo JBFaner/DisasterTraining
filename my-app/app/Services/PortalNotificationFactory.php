@@ -107,17 +107,40 @@ class PortalNotificationFactory
             ?? $certificate->trainingModule?->title
             ?? 'Disaster Preparedness Training';
 
+        $certificate->ensureVerificationToken();
+
         return $this->notificationService->notify($participant, [
             'type' => PortalNotification::TYPE_CERTIFICATE_ISSUED,
             'icon' => '🏅',
             'title' => 'Certificate Issued',
-            'body' => "Your certificate for \"{$trainingLabel}\" is ready to view.",
+            'body' => "Your certificate for \"{$trainingLabel}\" is ready to view and share.",
             'action_label' => 'View Certificate',
             'action_url' => route('participant.certificates.view', $certificate),
             'metadata' => [
                 'certificate_id' => $certificate->id,
                 'simulation_event_id' => $certificate->simulation_event_id,
                 'training_module_id' => $certificate->training_module_id,
+                'verification_url' => $certificate->verificationUrl(),
+            ],
+        ]);
+    }
+
+    public function certificateEligible(User $participant, ParticipantEvaluation $participantEvaluation): ?PortalNotification
+    {
+        $participantEvaluation->loadMissing(['evaluation.simulationEvent']);
+        $event = $participantEvaluation->evaluation?->simulationEvent;
+        $eventTitle = $event?->title ?? 'Simulation Event';
+
+        return $this->notificationService->notify($participant, [
+            'type' => PortalNotification::TYPE_CERTIFICATE_ELIGIBLE,
+            'icon' => '✅',
+            'title' => 'Certificate Eligible',
+            'body' => "You passed the drill evaluation for \"{$eventTitle}\". Your LGU trainer will issue your certificate soon — we'll notify you when it's ready.",
+            'action_label' => 'Certificate Status',
+            'action_url' => route('participant.certification.index'),
+            'metadata' => [
+                'participant_evaluation_id' => $participantEvaluation->id,
+                'simulation_event_id' => $event?->id,
             ],
         ]);
     }
@@ -140,6 +163,10 @@ class PortalNotificationFactory
             $body .= " with a score of {$score}.";
         } else {
             $body .= '.';
+        }
+
+        if ($passed && $participantEvaluation->is_eligible_for_certification) {
+            $body .= ' You are now eligible for a completion certificate.';
         }
 
         return $this->notificationService->notify($participant, [

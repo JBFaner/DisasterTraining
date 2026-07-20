@@ -630,6 +630,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         // Certification (participant view)
         Route::get('/certification', [App\Http\Controllers\CertificationController::class, 'index'])->name('participant.certification.index');
         Route::get('/certificates/{certificate}/view', [App\Http\Controllers\CertificationController::class, 'viewCertificate'])->name('participant.certificates.view');
+        Route::post('/certificates/{certificate}/email', [App\Http\Controllers\CertificationController::class, 'emailCertificate'])->name('participant.certificates.email');
         Route::get('/certificates/{certificate}/background', [App\Http\Controllers\CertificationController::class, 'certificateBackground'])->name('participant.certificates.background');
 
         // My Attendance

@@ -39,7 +39,16 @@ class CertificationController extends Controller
                 ->where('user_id', $user->id)
                 ->whereNull('revoked_at')
                 ->orderByDesc('issued_at')
-                ->get();
+                ->get()
+                ->map(function (Certificate $certificate) {
+                    $certificate->ensureVerificationToken();
+                    $data = $certificate->toArray();
+                    $data['verification_url'] = $certificate->verificationUrl();
+                    $data['view_url'] = route('participant.certificates.view', $certificate);
+                    $data['share_url'] = $certificate->verificationUrl();
+
+                    return $data;
+                });
 
             return view('app', [
                 'section' => 'certification_participant',
@@ -635,6 +644,10 @@ class CertificationController extends Controller
             ? 'participant.certificates.view'
             : 'admin.certificates.view';
 
+        $certificate->ensureVerificationToken();
+        $verificationUrl = $certificate->verificationUrl();
+        $isParticipant = $user && $user->role === 'PARTICIPANT';
+
         return view('certificate.view', [
             'content' => $html,
             'certificate' => $certificate,
@@ -643,7 +656,38 @@ class CertificationController extends Controller
             'autoPrint' => $autoPrint,
             'certificationBackRoute' => $certificationBackRoute,
             'certificateViewRoute' => $certificateViewRoute,
+            'verificationUrl' => $verificationUrl,
+            'qrCodeImageUrl' => $certificate->qrCodeImageUrl(),
+            'isParticipant' => $isParticipant,
+            'emailCertificateUrl' => $isParticipant
+                ? route('participant.certificates.email', $certificate)
+                : null,
         ]);
+    }
+
+    public function emailCertificate(Certificate $certificate)
+    {
+        $user = portal_user();
+        abort_unless($user && $user->role === 'PARTICIPANT' && (int) $user->id === (int) $certificate->user_id, 403);
+        abort_if($certificate->revoked_at !== null, 404);
+
+        $certificate->load(['simulationEvent', 'trainingModule']);
+        $certificate->ensureVerificationToken();
+
+        \Illuminate\Support\Facades\Mail::to($user->email)->send(
+            new \App\Mail\CertificateIssuedEmail($certificate, $user)
+        );
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Certificate details were sent to '.$user->email.'.',
+            ]);
+        }
+
+        return redirect()
+            ->route('participant.certificates.view', $certificate)
+            ->with('status', 'Certificate details were sent to '.$user->email.'.');
     }
 
     private function fallbackCertificateHtml(array $data): string

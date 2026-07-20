@@ -32,6 +32,8 @@ class PortalNotification extends Model
 
     public const TYPE_CERTIFICATE_ISSUED = 'certificate_issued';
 
+    public const TYPE_CERTIFICATE_ELIGIBLE = 'certificate_eligible';
+
     public const TYPE_EVALUATION_RECORDED = 'evaluation_recorded';
 
     public const TYPE_ASSESSMENT_COMPLETED = 'assessment_completed';
