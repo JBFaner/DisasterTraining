@@ -9,34 +9,52 @@ import {
     AdminContentCard,
 } from '../components/admin/AdminLayout';
 
-export function AdminUsersPage({ users = [], currentUser = null }) {
+function getInitialRoleFilter() {
+    if (typeof window === 'undefined') return 'all';
+    const role = new URLSearchParams(window.location.search).get('role');
+    if (role === 'LGU_ADMIN' || role === 'LGU_TRAINER' || role === 'STAFF' || role === 'VIEWER') return role;
+    return 'all';
+}
+
+function getInitialPositionFilter() {
+    if (typeof window === 'undefined') return 'all';
+    return new URLSearchParams(window.location.search).get('position') || 'all';
+}
+
+export function AdminUsersPage({ users = [], currentUser = null, positionOptions = [] }) {
     const [search, setSearch] = React.useState('');
-    const [roleFilter, setRoleFilter] = React.useState('all');
+    const [roleFilter, setRoleFilter] = React.useState(getInitialRoleFilter);
+    const [positionFilter, setPositionFilter] = React.useState(getInitialPositionFilter);
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [usersState, setUsersState] = React.useState(users);
     const [loadingUserId, setLoadingUserId] = React.useState(null);
 
-    // Check if current user can manage a target user
     const canManageUser = (targetUser) => {
         if (!currentUser) return false;
-        
-        // Admin can manage everyone
         if (currentUser.role === 'LGU_ADMIN') {
             return true;
         }
-        
-        // LGU Admin can only manage their own account
-        if (currentUser.role === 'LGU_ADMIN') {
-            return currentUser.id === targetUser.id;
-        }
-        
         return false;
     };
 
-    // Update users state when props change
     React.useEffect(() => {
         setUsersState(users);
     }, [users]);
+
+    const syncUrl = (role, position) => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        if (role && role !== 'all') url.searchParams.set('role', role);
+        else url.searchParams.delete('role');
+        if (position && position !== 'all') url.searchParams.set('position', position);
+        else url.searchParams.delete('position');
+        window.history.replaceState({}, '', url);
+    };
+
+    const positionChoices = React.useMemo(() => {
+        const fromUsers = (usersState || []).map((u) => u.position).filter(Boolean);
+        return [...new Set([...(positionOptions || []), ...fromUsers])].sort((a, b) => a.localeCompare(b));
+    }, [usersState, positionOptions]);
 
     const normalizedUsers = (usersState || []).map((u) => ({
         ...u,
@@ -49,15 +67,16 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         const matchesSearch =
             !query ||
             user._name.includes(query) ||
-            user._email.includes(query);
+            user._email.includes(query) ||
+            (user.position || '').toLowerCase().includes(query);
 
-        const matchesRole =
-            roleFilter === 'all' || user.role === roleFilter;
+        const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+        const matchesPosition =
+            positionFilter === 'all' ||
+            (positionFilter === '__none__' ? !user.position : user.position === positionFilter);
+        const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
 
-        const matchesStatus =
-            statusFilter === 'all' || user.status === statusFilter;
-
-        return matchesSearch && matchesRole && matchesStatus;
+        return matchesSearch && matchesRole && matchesPosition && matchesStatus;
     });
 
     const getStatusBadge = (status) => {
@@ -94,17 +113,13 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
     const handleToggleStatus = async (user) => {
         const isCurrentlyActive = user.status === 'active';
         const action = isCurrentlyActive ? 'disable' : 'enable';
-        
+
         if (isCurrentlyActive) {
-            // Disabling
             if (!confirm(`Are you sure you want to disable ${user.name} (${user.email})?\n\nThis will prevent the user from logging in and invalidate their current session if logged in.\n\nThe account can be re-enabled later.`)) {
                 return;
             }
-        } else {
-            // Enabling
-            if (!confirm(`Are you sure you want to enable ${user.name} (${user.email})?\n\nThis will allow the user to log in again.`)) {
-                return;
-            }
+        } else if (!confirm(`Are you sure you want to enable ${user.name} (${user.email})?\n\nThis will allow the user to log in again.`)) {
+            return;
         }
 
         setLoadingUserId(user.id);
@@ -119,7 +134,7 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrf,
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
                 body: formData,
             });
@@ -127,9 +142,8 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
             const data = await response.json();
 
             if (response.ok) {
-                // Update user state immediately
-                setUsersState(prevUsers => 
-                    prevUsers.map(u => {
+                setUsersState((prevUsers) =>
+                    prevUsers.map((u) => {
                         if (u.id === user.id) {
                             return {
                                 ...u,
@@ -150,13 +164,12 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         }
     };
 
-
     return (
         <AdminPageShell>
             <AdminPageHeader
                 icon={UserCircle}
                 title="User Management"
-                description="Manage LGU Admin, Trainer, and Staff accounts."
+                description="Manage LGU Admin, Trainer, and Staff accounts. Use Role and Position filters to find people."
                 actions={
                     <AdminPrimaryButton href="/admin/users/create">
                         <Plus className="w-4 h-4" />
@@ -168,15 +181,42 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
             <AdminCollapsibleFilterBar
                 searchValue={search}
                 onSearchChange={(e) => setSearch(e.target.value)}
-                searchPlaceholder="Search by name or email..."
-                hasActiveFilters={roleFilter !== 'all' || statusFilter !== 'all'}
-                onClearFilters={() => { setRoleFilter('all'); setStatusFilter('all'); }}
+                searchPlaceholder="Search by name, email, or position..."
+                hasActiveFilters={roleFilter !== 'all' || positionFilter !== 'all' || statusFilter !== 'all'}
+                onClearFilters={() => {
+                    setRoleFilter('all');
+                    setPositionFilter('all');
+                    setStatusFilter('all');
+                    syncUrl('all', 'all');
+                }}
             >
-                <AdminFilterSelect label="Role" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+                <AdminFilterSelect
+                    label="Role"
+                    value={roleFilter}
+                    onChange={(e) => {
+                        setRoleFilter(e.target.value);
+                        syncUrl(e.target.value, positionFilter);
+                    }}
+                >
                     <option value="all">All Roles</option>
                     <option value="LGU_ADMIN">LGU Admin</option>
                     <option value="LGU_TRAINER">Trainer</option>
                     <option value="STAFF">Staff</option>
+                    <option value="VIEWER">Viewer</option>
+                </AdminFilterSelect>
+                <AdminFilterSelect
+                    label="Position"
+                    value={positionFilter}
+                    onChange={(e) => {
+                        setPositionFilter(e.target.value);
+                        syncUrl(roleFilter, e.target.value);
+                    }}
+                >
+                    <option value="all">All Positions</option>
+                    <option value="__none__">No position set</option>
+                    {positionChoices.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                    ))}
                 </AdminFilterSelect>
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="all">All Status</option>
@@ -188,13 +228,14 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
 
             <AdminContentCard className="w-full">
                 <div className="overflow-x-auto w-full">
-                    <table className="w-full min-w-[900px] text-sm">
+                    <table className="w-full min-w-[980px] text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">User ID</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Full Name</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Email</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Role</th>
+                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Position</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Barangay</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Status</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Created</th>
@@ -205,7 +246,7 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                         <tbody className="divide-y divide-slate-100">
                             {filteredUsers.length === 0 && (
                                 <tr>
-                                    <td colSpan={9} className="px-5 py-12 text-center">
+                                    <td colSpan={10} className="px-5 py-12 text-center">
                                         <p className="text-slate-500 font-medium">No users match your search or filters.</p>
                                         <p className="text-slate-400 text-xs mt-1">Try adjusting the search or filter criteria.</p>
                                     </td>
@@ -225,9 +266,11 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
                                             {user.role === 'LGU_ADMIN' && 'LGU Admin'}
                                             {user.role === 'LGU_TRAINER' && 'Trainer'}
                                             {user.role === 'STAFF' && 'Staff'}
-                                            {!['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'].includes(user.role) && user.role}
+                                            {user.role === 'VIEWER' && 'Viewer'}
+                                            {!['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'].includes(user.role) && user.role}
                                         </span>
                                     </td>
+                                    <td className="px-5 py-4 text-sm text-slate-700 whitespace-nowrap">{user.position || '—'}</td>
                                     <td className="px-5 py-4 text-sm text-slate-700 whitespace-nowrap">{user.barangay_profile?.barangay_name ?? '—'}</td>
                                     <td className="px-5 py-4 whitespace-nowrap">
                                         <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(user.status)}`}>
@@ -274,4 +317,3 @@ export function AdminUsersPage({ users = [], currentUser = null }) {
         </AdminPageShell>
     );
 }
-

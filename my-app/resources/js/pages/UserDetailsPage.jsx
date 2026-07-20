@@ -126,6 +126,14 @@ export function UserDetailsPage({ user, currentUser, recentLogins, recentActions
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                                Position
+                            </label>
+                            <p className="text-sm text-slate-900 font-medium">
+                                {user.position || '—'}
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
                                 Account Status
                             </label>
                             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(user.status)}`}>

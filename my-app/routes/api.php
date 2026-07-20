@@ -49,6 +49,8 @@ Route::prefix('integrations/resource-allocation')
 | Group 6 — inbound integration (external team's system pushes data to us)
 |--------------------------------------------------------------------------
 | Auth: X-Group6-Api-Key header. Payloads are staged, not processed yet.
+| Campaign Planning approval endpoints are also aliased under
+| /api/integrations/campaign-planning (same controller + auth).
 */
 Route::prefix('integrations/group6')
     ->middleware('group6.api')
@@ -65,6 +67,22 @@ Route::prefix('integrations/group6')
         Route::get('/simulation-planning/approved-campaigns', [Group6SimulationPlanningController::class, 'index'])->name('simulation-planning.approved-campaigns.index');
         Route::get('/simulation-planning/approved-campaigns/{campaignRequest}', [Group6SimulationPlanningController::class, 'show'])->name('simulation-planning.approved-campaigns.show');
         Route::get('/simulation-planning/approved-campaigns/{campaignRequest}/training-summary', [Group6SimulationPlanningController::class, 'trainingSummary'])->name('simulation-planning.approved-campaigns.training-summary');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Campaign Planning partner API (preferred alias for Training Intelligence)
+|--------------------------------------------------------------------------
+| Same auth and handlers as integrations/group6 campaign-request routes.
+| Doc: docs/PARTNER_CAMPAIGN_PLANNING_API.md
+*/
+Route::prefix('integrations/campaign-planning')
+    ->middleware('group6.api')
+    ->name('api.integrations.campaign-planning.')
+    ->group(function () {
+        Route::get('/campaign-requests', [Group6CampaignPlanningController::class, 'index'])->name('campaign-requests.index');
+        Route::get('/campaign-requests/{campaignRequest}', [Group6CampaignPlanningController::class, 'show'])->name('campaign-requests.show');
+        Route::patch('/campaign-requests/{campaignRequest}/status', [Group6CampaignPlanningController::class, 'updateStatus'])->name('campaign-requests.update-status');
     });
 
 // Public Philippine location master data (cascading dropdowns)

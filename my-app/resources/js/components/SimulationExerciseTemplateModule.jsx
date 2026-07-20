@@ -32,6 +32,17 @@ const STATUS_TONES = {
     archived: 'bg-slate-50 text-slate-600 border-slate-300',
 };
 
+function formatPlanTime(value) {
+    if (!value) return '—';
+    const [hoursRaw, minutesRaw] = String(value).split(':');
+    const hours = Number(hoursRaw);
+    const minutes = Number(minutesRaw ?? 0);
+    if (!Number.isFinite(hours)) return String(value);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
 function StatusBadge({ status }) {
     const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft';
     return (
@@ -56,8 +67,6 @@ export function SimulationExerciseTemplateModule({
         template_id: '',
         campaign_request_id: '',
         event_date: '',
-        start_time: '08:00',
-        end_time: '12:00',
         venue: '',
     });
     const [isReusing, setIsReusing] = React.useState(false);
@@ -75,6 +84,9 @@ export function SimulationExerciseTemplateModule({
         [publishedTemplates, reuseForm.template_id],
     );
 
+    const planStartDisplay = formatPlanTime(selectedReuseTemplate?.plan_start_time);
+    const planEndDisplay = formatPlanTime(selectedReuseTemplate?.plan_end_time);
+
     const openReuseModal = React.useCallback(({
         templateId = '',
         campaignRequestId = '',
@@ -87,8 +99,6 @@ export function SimulationExerciseTemplateModule({
             template_id: defaultTemplateId,
             campaign_request_id: campaignRequestId ? String(campaignRequestId) : '',
             event_date: '',
-            start_time: '08:00',
-            end_time: '12:00',
             venue: '',
         });
     }, [publishedTemplates]);
@@ -420,24 +430,20 @@ export function SimulationExerciseTemplateModule({
                                 </label>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <label className="block text-sm">
+                                <div className="block text-sm">
                                     <span className="font-medium text-slate-700">Start Time</span>
-                                    <input
-                                        type="time"
-                                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                        value={reuseForm.start_time}
-                                        onChange={(e) => setReuseForm((prev) => ({ ...prev, start_time: e.target.value }))}
-                                    />
-                                </label>
-                                <label className="block text-sm">
+                                    <div className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                                        {selectedReuseTemplate ? planStartDisplay : 'Select an exercise plan'}
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-slate-500">From the exercise plan timeline (view only).</p>
+                                </div>
+                                <div className="block text-sm">
                                     <span className="font-medium text-slate-700">End Time</span>
-                                    <input
-                                        type="time"
-                                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                        value={reuseForm.end_time}
-                                        onChange={(e) => setReuseForm((prev) => ({ ...prev, end_time: e.target.value }))}
-                                    />
-                                </label>
+                                    <div className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                                        {selectedReuseTemplate ? planEndDisplay : 'Select an exercise plan'}
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-slate-500">Computed from plan activities (view only).</p>
+                                </div>
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end gap-2">

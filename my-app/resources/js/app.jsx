@@ -15,6 +15,7 @@ import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { UserDetailsPage } from './pages/UserDetailsPage';
+import { AccountRoleAndPositionFields } from './components/admin/PositionSelectField';
 import { RolesPage } from './pages/RolesPage';
 import { PermissionsPage } from './pages/PermissionsPage';
 import { RoleEditPage } from './pages/RoleEditPage';
@@ -391,15 +392,13 @@ if (rootElement) {
     const participantsPaginationJson = rootElement.getAttribute('data-participants-pagination');
     const participantsSummaryJson = rootElement.getAttribute('data-participants-summary');
     const participantFilterOptionsJson = rootElement.getAttribute('data-participant-filter-options');
-    const qualifiedTrainersJson = rootElement.getAttribute('data-qualified-trainers');
-    const qualifiedTrainersPaginationJson = rootElement.getAttribute('data-qualified-trainers-pagination');
-    const qualifiedTrainersSummaryJson = rootElement.getAttribute('data-qualified-trainers-summary');
     const qualifiedTrainerJson = rootElement.getAttribute('data-qualified-trainer');
     const participantJson = rootElement.getAttribute('data-participant');
     const trainingsJson = rootElement.getAttribute('data-trainings');
     const registrationsJson = rootElement.getAttribute('data-registrations');
     const usersJson = rootElement.getAttribute('data-users');
     const rolesJson = rootElement.getAttribute('data-roles');
+    const positionOptionsJson = rootElement.getAttribute('data-position-options');
     const permissionsJson = rootElement.getAttribute('data-permissions');
     const flashStatus = rootElement.getAttribute('data-status');
     const errorsJson = rootElement.getAttribute('data-errors');
@@ -430,9 +429,6 @@ if (rootElement) {
     let participantsPagination = null;
     let participantsSummary = null;
     let participantFilterOptions = null;
-    let qualifiedTrainers = [];
-    let qualifiedTrainersPagination = null;
-    let qualifiedTrainersSummary = null;
     let currentQualifiedTrainer = null;
     let users = [];
     let currentParticipant = null;
@@ -613,27 +609,6 @@ if (rootElement) {
             console.error('Failed to parse participant filter options JSON', e);
         }
     }
-    if (qualifiedTrainersJson) {
-        try {
-            qualifiedTrainers = JSON.parse(qualifiedTrainersJson);
-        } catch (e) {
-            console.error('Failed to parse qualified trainers JSON', e);
-        }
-    }
-    if (qualifiedTrainersPaginationJson) {
-        try {
-            qualifiedTrainersPagination = JSON.parse(qualifiedTrainersPaginationJson);
-        } catch (e) {
-            console.error('Failed to parse qualified trainers pagination JSON', e);
-        }
-    }
-    if (qualifiedTrainersSummaryJson) {
-        try {
-            qualifiedTrainersSummary = JSON.parse(qualifiedTrainersSummaryJson);
-        } catch (e) {
-            console.error('Failed to parse qualified trainers summary JSON', e);
-        }
-    }
     if (qualifiedTrainerJson) {
         try {
             currentQualifiedTrainer = JSON.parse(qualifiedTrainerJson);
@@ -749,6 +724,15 @@ if (rootElement) {
             roles = JSON.parse(rolesJson);
         } catch (e) {
             console.error('Failed to parse roles JSON', e);
+        }
+    }
+
+    let positionOptions = [];
+    if (positionOptionsJson) {
+        try {
+            positionOptions = JSON.parse(positionOptionsJson);
+        } catch (e) {
+            console.error('Failed to parse position options JSON', e);
         }
     }
 
@@ -1575,8 +1559,8 @@ if (rootElement) {
         }
         if (sectionAttr === 'qualified_trainer_detail') {
             return [
-                { label: 'Trainer List', href: '/admin/participants?tab=trainers' },
-                { label: currentQualifiedTrainer?.name || 'Details', href: null }
+                { label: 'Users & Roles', href: '/admin/users' },
+                { label: currentQualifiedTrainer?.name || 'Trainer', href: null },
             ];
         }
         if (sectionAttr === 'my_attendance') {
@@ -2088,9 +2072,6 @@ if (rootElement) {
                                 participantsPagination={participantsPagination}
                                 participantsSummary={participantsSummary}
                                 participantFilterOptions={participantFilterOptions}
-                                qualifiedTrainers={qualifiedTrainers}
-                                qualifiedTrainersPagination={qualifiedTrainersPagination}
-                                qualifiedTrainersSummary={qualifiedTrainersSummary}
                                 RegistrationEventsTable={RegistrationEventsTable}
                                 AttendanceEventsTable={AttendanceEventsTable}
                             />
@@ -2145,7 +2126,7 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'admin_users_index' && (
-                            <AdminUsersPage users={users} currentUser={currentUser} />
+                            <AdminUsersPage users={users} currentUser={currentUser} positionOptions={positionOptions} />
                         )}
 
                         {sectionAttr === 'admin_users_show' && (
@@ -2216,38 +2197,22 @@ if (rootElement) {
                                         <div>
                                             <h3 className="text-sm font-semibold text-slate-800 mb-4">Account Details</h3>
                                             <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="account_type">Account Role</label>
-                                                    <select
-                                                        id="account_type"
-                                                        name="account_type"
-                                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                                        defaultValue={
-                                                            (() => {
-                                                                const roleFromQuery = new URLSearchParams(window.location.search).get('role');
-                                                                const allowed = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
-                                                                if (roleFromQuery && allowed.includes(roleFromQuery)) {
-                                                                    return roleFromQuery;
-                                                                }
-                                                                return (roles && roles.length > 0) ? (roles[0].name || 'LGU_ADMIN') : 'LGU_ADMIN';
-                                                            })()
-                                                        }
-                                                    >
-                                                        {(roles && roles.length > 0
-                                                            ? roles.filter((r) => r.name !== 'PARTICIPANT')
-                                                            : [
-                                                                { name: 'LGU_ADMIN', display_name: 'LGU Admin' },
-                                                                { name: 'LGU_TRAINER', display_name: 'LGU Trainer' },
-                                                                { name: 'STAFF', display_name: 'Staff' },
-                                                                { name: 'VIEWER', display_name: 'Viewer' },
-                                                            ]
-                                                        ).map((roleOption) => (
-                                                            <option key={roleOption.id ?? roleOption.name} value={roleOption.name}>
-                                                                {roleOption.display_name ?? roleOption.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+                                                <AccountRoleAndPositionFields
+                                                    roles={roles}
+                                                    positionOptions={positionOptions}
+                                                    defaultRole={
+                                                        (() => {
+                                                            const roleFromQuery = new URLSearchParams(window.location.search).get('role');
+                                                            const allowed = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
+                                                            if (roleFromQuery && allowed.includes(roleFromQuery)) {
+                                                                return roleFromQuery;
+                                                            }
+                                                            return (roles && roles.length > 0) ? (roles[0].name || 'LGU_ADMIN') : 'LGU_ADMIN';
+                                                        })()
+                                                    }
+                                                    roleSelectId="account_type"
+                                                    positionSelectId="position"
+                                                />
                                                 <div>
                                                     <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="barangay_id">Barangay Assignment</label>
                                                     <select id="barangay_id" name="barangay_id" className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
@@ -2324,29 +2289,14 @@ if (rootElement) {
                                         <div>
                                             <h3 className="text-sm font-semibold text-slate-800 mb-4">Account Details</h3>
                                             <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_account_type">Account Role</label>
-                                                    <select
-                                                        id="edit_account_type"
-                                                        name="account_type"
-                                                        defaultValue={currentUserData.role}
-                                                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                                    >
-                                                        {(roles && roles.length > 0
-                                                            ? roles.filter((r) => r.name !== 'PARTICIPANT')
-                                                            : [
-                                                                { name: 'LGU_ADMIN', display_name: 'LGU Admin' },
-                                                                { name: 'LGU_TRAINER', display_name: 'LGU Trainer' },
-                                                                { name: 'STAFF', display_name: 'Staff' },
-                                                                { name: 'VIEWER', display_name: 'Viewer' },
-                                                            ]
-                                                        ).map((roleOption) => (
-                                                            <option key={roleOption.id ?? roleOption.name} value={roleOption.name}>
-                                                                {roleOption.display_name ?? roleOption.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+                                                <AccountRoleAndPositionFields
+                                                    roles={roles}
+                                                    positionOptions={positionOptions}
+                                                    defaultRole={currentUserData.role}
+                                                    defaultPosition={currentUserData.position ?? ''}
+                                                    roleSelectId="edit_account_type"
+                                                    positionSelectId="edit_position"
+                                                />
                                                 <div>
                                                     <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_barangay_id">Barangay Assignment</label>
                                                     <select id="edit_barangay_id" name="barangay_id" defaultValue={currentUserData.barangay_id ?? ''} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">

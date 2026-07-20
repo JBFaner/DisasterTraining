@@ -56,6 +56,7 @@ class SimulationExerciseTemplateController extends Controller
                 new SimulationExerciseTemplate([
                     'status' => SimulationExerciseTemplate::STATUS_DRAFT,
                     'difficulty_level' => 'Intermediate',
+                    'evaluation_mode' => 'team',
                     'exercise_type' => 'Drill',
                     'category' => 'Fire Safety',
                 ]),
@@ -272,6 +273,7 @@ class SimulationExerciseTemplateController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::CATEGORIES)],
             'exercise_type' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::EXERCISE_TYPES)],
+            'evaluation_mode' => ['nullable', 'string', 'in:'.implode(',', SimulationExerciseTemplate::EVALUATION_MODES)],
             'difficulty_level' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::DIFFICULTY_LEVELS)],
             'estimated_duration_minutes' => ['nullable', 'integer', 'min:15', 'max:1440'],
             'objectives' => ['nullable', 'string'],

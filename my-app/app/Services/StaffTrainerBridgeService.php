@@ -36,6 +36,10 @@ class StaffTrainerBridgeService
             'user_id' => $user->id,
         ];
 
+        if (! empty($user->position)) {
+            $attributes['specialization'] = $user->position;
+        }
+
         $byUser = QualifiedTrainer::query()->where('user_id', $user->id)->first();
         if ($byUser) {
             $byUser->fill($attributes)->save();
@@ -57,7 +61,7 @@ class StaffTrainerBridgeService
 
         return QualifiedTrainer::create(array_merge($attributes, [
             'qualified_at' => now(),
-            'specialization' => 'LGU Trainer',
+            'specialization' => $user->position ?: 'LGU Trainer',
             'certifications' => [],
             'metadata' => ['source' => 'users_roles'],
         ]));

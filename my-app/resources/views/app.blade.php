@@ -98,15 +98,6 @@
             @isset($participantFilterOptions)
                 data-participant-filter-options='@json($participantFilterOptions)'
             @endisset
-            @isset($qualifiedTrainers)
-                data-qualified-trainers='@json($qualifiedTrainers)'
-            @endisset
-            @isset($qualifiedTrainersPagination)
-                data-qualified-trainers-pagination='@json($qualifiedTrainersPagination)'
-            @endisset
-            @isset($qualifiedTrainersSummary)
-                data-qualified-trainers-summary='@json($qualifiedTrainersSummary)'
-            @endisset
             @isset($qualifiedTrainer)
                 data-qualified-trainer='@json($qualifiedTrainer)'
             @endisset
@@ -121,6 +112,9 @@
             @endisset
             @isset($roles)
                 data-roles='@json($roles)'
+            @endisset
+            @isset($positionOptions)
+                data-position-options='@json($positionOptions)'
             @endisset
             @isset($permissions)
                 data-permissions='@json($permissions)'

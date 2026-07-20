@@ -37,26 +37,30 @@ function decodePersonRef(value) {
     return { source_group, id: Number(rest.join(':')) };
 }
 
+function assignmentPersonRef(assignment) {
+    if (!assignment) return '';
+    if (assignment.person_ref) return assignment.person_ref;
+    if (assignment.source_group === 'lgu_staff' && assignment.person_external_id) {
+        return encodePersonRef(assignment.source_group, assignment.person_external_id);
+    }
+    if (assignment.source_group && assignment.qualified_trainer_id) {
+        return encodePersonRef(assignment.source_group, assignment.qualified_trainer_id);
+    }
+    return '';
+}
+
 function findPoolMember(personnelPool, sourceGroup, memberId) {
     const pool = (personnelPool || []).find((group) => group.group_key === sourceGroup);
     return pool?.members?.find((member) => String(member.id) === String(memberId)) || null;
 }
 
 function availablePoolOptions(personnelPool, assignments, rowIndex) {
-    const currentRef = assignments[rowIndex]?.person_ref || (
-        assignments[rowIndex]?.source_group && assignments[rowIndex]?.qualified_trainer_id
-            ? encodePersonRef(assignments[rowIndex].source_group, assignments[rowIndex].qualified_trainer_id)
-            : ''
-    );
+    const currentRef = assignmentPersonRef(assignments[rowIndex]);
     const assignedElsewhere = new Set(
         (assignments || [])
             .map((row, index) => {
                 if (index === rowIndex) return null;
-                if (row.person_ref) return row.person_ref;
-                if (row.source_group && row.qualified_trainer_id) {
-                    return encodePersonRef(row.source_group, row.qualified_trainer_id);
-                }
-                return null;
+                return assignmentPersonRef(row) || null;
             })
             .filter(Boolean),
     );
@@ -99,11 +103,7 @@ function linkAssignmentsToPersonnelRows(personnelRows, assignments = []) {
         const idx = roleCounts[role] || 0;
         roleCounts[role] = idx + 1;
         const linkedRow = candidates[idx] || candidates[0];
-        const personRef = assignment.person_ref || (
-            assignment.source_group && assignment.qualified_trainer_id
-                ? encodePersonRef(assignment.source_group, assignment.qualified_trainer_id)
-                : ''
-        );
+        const personRef = assignmentPersonRef(assignment);
 
         return {
             ...assignment,
@@ -369,6 +369,7 @@ function buildExerciseFormSnapshot({
             title: form.title?.trim() || '',
             category: form.category || '',
             exercise_type: form.exercise_type || '',
+            evaluation_mode: form.evaluation_mode || 'team',
             difficulty_level: form.difficulty_level || '',
             estimated_duration_minutes: form.estimated_duration_minutes === '' || form.estimated_duration_minutes == null
                 ? null
@@ -423,6 +424,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
         title: formData?.template?.title || '',
         category: formData?.template?.category || 'Fire Safety',
         exercise_type: formData?.template?.exercise_type || 'Drill',
+        evaluation_mode: formData?.template?.evaluation_mode || 'team',
         difficulty_level: formData?.template?.difficulty_level || 'Intermediate',
         estimated_duration_minutes: formData?.template?.estimated_duration_minutes ?? '',
         objectives: formData?.template?.objectives || '',
@@ -488,6 +490,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
             title: formData?.template?.title || '',
             category: formData?.template?.category || 'Fire Safety',
             exercise_type: formData?.template?.exercise_type || 'Drill',
+            evaluation_mode: formData?.template?.evaluation_mode || 'team',
             difficulty_level: formData?.template?.difficulty_level || 'Intermediate',
             estimated_duration_minutes: formData?.template?.estimated_duration_minutes ?? '',
             objectives: formData?.template?.objectives || '',
@@ -774,14 +777,21 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                     let sourceGroup = row.source_group || '';
                     let trainerId = row.qualified_trainer_id || null;
                     let personName = row.person_name || '';
+                    let personExternalId = row.person_external_id || null;
 
                     if (row.person_ref) {
                         const decoded = decodePersonRef(row.person_ref);
                         if (decoded) {
                             sourceGroup = decoded.source_group;
-                            trainerId = decoded.id;
-                            const member = findPoolMember(personnelPool, sourceGroup, trainerId);
+                            const member = findPoolMember(personnelPool, sourceGroup, decoded.id);
                             personName = member?.name || personName;
+                            if (sourceGroup === 'lgu_staff') {
+                                trainerId = null;
+                                personExternalId = String(decoded.id);
+                            } else {
+                                trainerId = decoded.id;
+                                personExternalId = null;
+                            }
                         }
                     }
 
@@ -791,7 +801,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                         source_group: sourceGroup,
                         qualified_trainer_id: trainerId,
                         person_name: personName,
-                        person_external_id: row.person_external_id || null,
+                        person_external_id: personExternalId,
                         notes: row.notes || '',
                     };
                 })
@@ -1012,6 +1022,23 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                         <select className={`mt-1 ${inputClass()}`} value={form.exercise_type} onChange={(e) => setField('exercise_type', e.target.value)}>
                             {(options.exercise_types || []).map((item) => <option key={item} value={item}>{item}</option>)}
                         </select>
+                    </label>
+                    <label className="text-sm">
+                        <span className="font-medium text-slate-700">
+                            Evaluation Mode
+                            <span className="text-rose-600"> *</span>
+                        </span>
+                        <select
+                            className={`mt-1 ${inputClass()}`}
+                            value={form.evaluation_mode}
+                            onChange={(e) => setField('evaluation_mode', e.target.value)}
+                        >
+                            <option value="team">Team / overall (drills)</option>
+                            <option value="individual">Individual (per participant)</option>
+                        </select>
+                        <p className="mt-1.5 text-xs text-slate-500">
+                            Use individual for hands-on skills like fire extinguisher. Use team for drills and functional exercises.
+                        </p>
                     </label>
                     <label className="text-sm md:col-span-2">
                         <span className="font-medium text-slate-700">Estimated Duration (minutes)</span>
@@ -1255,11 +1282,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                                             {rowAssignments.map((assignment) => {
                                                 const assignmentIndex = personnelAssignments.findIndex((item) => item === assignment);
                                                 const poolOptions = availablePoolOptions(personnelPool, personnelAssignments, assignmentIndex);
-                                                const personRef = assignment.person_ref || (
-                                                    assignment.source_group && assignment.qualified_trainer_id
-                                                        ? encodePersonRef(assignment.source_group, assignment.qualified_trainer_id)
-                                                        : ''
-                                                );
+                                                const personRef = assignmentPersonRef(assignment);
 
                                                 return (
                                                     <div key={assignment.id || `assign-${assignmentIndex}`} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-3 md:grid-cols-4">
@@ -1274,10 +1297,12 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                                                                     const member = decoded
                                                                         ? findPoolMember(personnelPool, decoded.source_group, decoded.id)
                                                                         : null;
+                                                                    const isStaff = decoded?.source_group === 'lgu_staff';
                                                                     updatePersonnelAssignment(assignmentIndex, {
                                                                         person_ref: e.target.value,
                                                                         source_group: decoded?.source_group || '',
-                                                                        qualified_trainer_id: decoded?.id || '',
+                                                                        qualified_trainer_id: isStaff ? '' : (decoded?.id || ''),
+                                                                        person_external_id: isStaff ? String(decoded.id) : null,
                                                                         person_name: member?.name || '',
                                                                     });
                                                                 }}
