@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\BarangayProfile;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\StaffTrainerBridgeService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -245,6 +246,8 @@ class AdminUserController extends Controller
         
         $user->save();
 
+        app(StaffTrainerBridgeService::class)->ensureMirror($user);
+
         // Note: For session-based auth, we can't directly invalidate their session from here,
         // but the login check in AuthController will prevent them from accessing protected routes
         // The user will be logged out on their next request when the middleware checks their status
@@ -316,6 +319,8 @@ class AdminUserController extends Controller
         $user->status = 'active';
         
         $user->save();
+
+        app(StaffTrainerBridgeService::class)->ensureMirror($user);
 
         AuditLogger::log([
             'user' => $currentUser,
@@ -425,6 +430,8 @@ class AdminUserController extends Controller
         }
         $user->save();
 
+        app(StaffTrainerBridgeService::class)->ensureMirror($user);
+
         AuditLogger::log([
             'user' => $currentUser,
             'action' => 'Manually verified staff account',
@@ -512,6 +519,8 @@ class AdminUserController extends Controller
             ],
         ]);
 
+        app(StaffTrainerBridgeService::class)->ensureMirror($admin);
+
         return redirect()->route('admin.users.index')
             ->with('status', 'Account created successfully. The user must verify their email before they can log in.');
     }
@@ -558,6 +567,8 @@ class AdminUserController extends Controller
         }
         $user->save();
 
+        app(StaffTrainerBridgeService::class)->ensureMirror($user);
+
         AuditLogger::log([
             'user' => $currentUser,
             'action' => 'Updated user',
@@ -593,6 +604,7 @@ class AdminUserController extends Controller
             }
 
             $user->save();
+            app(StaffTrainerBridgeService::class)->ensureMirror($user);
         }
 
         AuditLogger::log([

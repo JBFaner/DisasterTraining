@@ -454,8 +454,23 @@ class LessonQuizWorkflowService
 
     public function publish(LessonQuizVersion $version): LessonQuizVersion
     {
-        // Archived versions can be re-selected as the learner-facing bank.
-        if ($version->status !== LessonQuizVersion::STATUS_ARCHIVED) {
+        $config = $version->config()->firstOrFail();
+
+        // Already the live published bank — no-op.
+        if (
+            $version->status === LessonQuizVersion::STATUS_PUBLISHED
+            && (int) $config->published_version_id === (int) $version->id
+        ) {
+            if (! $config->is_enabled) {
+                $config->update(['is_enabled' => true]);
+            }
+
+            return $version->fresh();
+        }
+
+        // Re-link a published version that lost its config pointer, or publish from editable/archived.
+        if ($version->status !== LessonQuizVersion::STATUS_ARCHIVED
+            && $version->status !== LessonQuizVersion::STATUS_PUBLISHED) {
             $this->assertEditable($version);
         }
 
@@ -466,16 +481,7 @@ class LessonQuizWorkflowService
             ]);
         }
 
-        return DB::transaction(function () use ($version) {
-            $config = $version->config()->firstOrFail();
-
-            if (
-                $version->status === LessonQuizVersion::STATUS_PUBLISHED
-                && (int) $config->published_version_id === (int) $version->id
-            ) {
-                return $version->fresh();
-            }
-
+        return DB::transaction(function () use ($version, $config) {
             $sourceLocale = $this->localeService->resolveLocale($version->generated_language ?? 'en');
 
             LessonQuizVersion::query()

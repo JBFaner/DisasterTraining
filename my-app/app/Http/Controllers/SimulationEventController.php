@@ -1060,10 +1060,7 @@ class SimulationEventController extends Controller
         return [
             'trainingModules' => TrainingModule::where('status', 'published')->orderBy('title')->get(['id', 'title']),
             'barangay_profiles' => BarangayProfile::with('hazardRecords')->orderBy('barangay_name')->get(),
-            'trainers' => \App\Models\QualifiedTrainer::active()
-                ->orderBy('name')
-                ->get(['id', 'name', 'specialization'])
-                ->all(),
+            'trainers' => app(\App\Services\StaffTrainerBridgeService::class)->activeForAssignment(),
         ];
     }
 

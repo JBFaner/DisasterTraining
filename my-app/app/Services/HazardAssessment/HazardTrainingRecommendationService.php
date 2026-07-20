@@ -113,7 +113,7 @@ class HazardTrainingRecommendationService
         $profile->loadMissing('hazardRecords');
         $hazardTypes = $profile->hazardRecords->pluck('hazard_type')->unique();
 
-        $query = QualifiedTrainer::active()->orderBy('name');
+        $query = QualifiedTrainer::fromStaffUsers()->active()->orderBy('name');
 
         if ($profile->barangay_name) {
             $query->where(function ($q) use ($profile) {

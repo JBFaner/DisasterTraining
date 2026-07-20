@@ -108,8 +108,12 @@ class LessonQuizGenerationProcessor
             );
 
             $version = DB::transaction(function () use ($config, $result, $actorId) {
-                $config->is_enabled = false;
-                $config->save();
+                // Keep the currently published bank available to participants while a new draft is generated.
+                // Only disable when there is no live published version yet.
+                if (! $config->published_version_id) {
+                    $config->is_enabled = false;
+                    $config->save();
+                }
 
                 $config->loadMissing('currentVersion');
                 $currentDraft = $config->currentVersion;
