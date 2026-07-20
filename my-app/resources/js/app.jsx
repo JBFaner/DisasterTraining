@@ -123,6 +123,7 @@ import {
     AdminDataTable,
     AdminStatusBadge,
     AdminTableActionButton,
+    AdminTablePagination,
 } from './components/admin/AdminDataTable';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -978,15 +979,19 @@ if (rootElement) {
 
     let certificationSummaryStats = null;
     let certificationEligibleParticipants = [];
+    let certificationEligibleParticipantsPagination = null;
     let certificationTemplates = [];
     let certificationIssuedCertificates = [];
+    let certificationIssuedCertificatesPagination = null;
     let certificationEventsForFilter = [];
     let certificationFilters = {};
     let certificationAutomationSettings = {};
     const summaryStatsJson = rootElement.getAttribute('data-summary-stats');
     const eligibleParticipantsJson = rootElement.getAttribute('data-eligible-participants');
+    const eligibleParticipantsPaginationJson = rootElement.getAttribute('data-eligible-participants-pagination');
     const templatesJson = rootElement.getAttribute('data-templates');
     const issuedCertificatesJson = rootElement.getAttribute('data-issued-certificates');
+    const issuedCertificatesPaginationJson = rootElement.getAttribute('data-issued-certificates-pagination');
     const eventsForFilterJson = rootElement.getAttribute('data-events-for-filter');
     const certificationFiltersJson = rootElement.getAttribute('data-filters');
     const automationSettingsJson = rootElement.getAttribute('data-automation-settings');
@@ -996,11 +1001,17 @@ if (rootElement) {
     if (eligibleParticipantsJson) {
         try { certificationEligibleParticipants = JSON.parse(eligibleParticipantsJson); } catch (e) { console.error('Failed to parse eligibleParticipants', e); }
     }
+    if (eligibleParticipantsPaginationJson) {
+        try { certificationEligibleParticipantsPagination = JSON.parse(eligibleParticipantsPaginationJson); } catch (e) { console.error('Failed to parse eligibleParticipantsPagination', e); }
+    }
     if (templatesJson) {
         try { certificationTemplates = JSON.parse(templatesJson); } catch (e) { console.error('Failed to parse templates', e); }
     }
     if (issuedCertificatesJson) {
         try { certificationIssuedCertificates = JSON.parse(issuedCertificatesJson); } catch (e) { console.error('Failed to parse issuedCertificates', e); }
+    }
+    if (issuedCertificatesPaginationJson) {
+        try { certificationIssuedCertificatesPagination = JSON.parse(issuedCertificatesPaginationJson); } catch (e) { console.error('Failed to parse issuedCertificatesPagination', e); }
     }
     if (eventsForFilterJson) {
         try { certificationEventsForFilter = JSON.parse(eventsForFilterJson); } catch (e) { console.error('Failed to parse eventsForFilter', e); }
@@ -2082,8 +2093,10 @@ if (rootElement) {
                             <CertificationModule
                                 summaryStats={certificationSummaryStats}
                                 eligibleParticipants={certificationEligibleParticipants}
+                                eligibleParticipantsPagination={certificationEligibleParticipantsPagination}
                                 templates={certificationTemplates}
                                 issuedCertificates={certificationIssuedCertificates}
+                                issuedCertificatesPagination={certificationIssuedCertificatesPagination}
                                 eventsForFilter={certificationEventsForFilter}
                                 filters={certificationFilters}
                                 automationSettings={certificationAutomationSettings}
@@ -8793,14 +8806,26 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
 function CertificationModule({
     summaryStats = null,
     eligibleParticipants = [],
+    eligibleParticipantsPagination = null,
     templates = [],
     issuedCertificates = [],
+    issuedCertificatesPagination = null,
     eventsForFilter = [],
     filters = {},
     automationSettings = {},
 }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [activeTab, setActiveTab] = React.useState('eligible');
+    const initialHistoryTab = (() => {
+        if (typeof window !== 'undefined') {
+            const urlTab = new URLSearchParams(window.location.search).get('tab');
+            if (urlTab === 'history') return true;
+        }
+        return Boolean(
+            (filters.page && Number(filters.page) > 1)
+            || (filters.issued_status && filters.issued_status !== 'active')
+        );
+    })();
+    const [activeTab, setActiveTab] = React.useState(initialHistoryTab ? 'history' : 'eligible');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [certIdSearch, setCertIdSearch] = React.useState('');
     const [eventFilter, setEventFilter] = React.useState(filters.event_id || '');
@@ -8821,18 +8846,14 @@ function CertificationModule({
 
     const filteredEligible = eligibleParticipants.filter((row) => {
         const matchSearch = !searchTerm || row.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) || row.event_title?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchEvent = !eventFilter || String(row.event_id) === String(eventFilter);
-        const matchStatus = !statusFilter || row.cert_status === statusFilter;
-        return matchSearch && matchEvent && matchStatus;
+        return matchSearch;
     });
 
     const filteredIssued = issuedCertificates.filter((c) => {
         const q = (searchTerm || '').toLowerCase().trim();
         const matchSearch = !q || (c.user?.name || '').toLowerCase().includes(q) || (c.simulation_event?.title || '').toLowerCase().includes(q) || (c.certificate_number || '').toLowerCase().includes(q);
         const matchCertId = !certIdSearch || (c.certificate_number || '').toLowerCase().includes(certIdSearch.toLowerCase());
-        const matchDateFrom = !dateFrom || (c.issued_at && c.issued_at.slice(0, 10) >= dateFrom);
-        const matchDateTo = !dateTo || (c.issued_at && c.issued_at.slice(0, 10) <= dateTo);
-        return matchSearch && matchCertId && matchDateFrom && matchDateTo;
+        return matchSearch && matchCertId;
     });
 
     const buildFilterUrl = (extra = {}) => {
@@ -8842,13 +8863,43 @@ function CertificationModule({
         if (dateFrom) params.set('date_from', dateFrom);
         if (dateTo) params.set('date_to', dateTo);
         if (issuedStatusFilter && issuedStatusFilter !== 'active') params.set('issued_status', issuedStatusFilter);
-        Object.entries(extra).forEach(([k, v]) => { if (v != null && v !== '') params.set(k, v); });
+        const tab = extra.tab || (activeTab === 'history' ? 'history' : activeTab === 'eligible' ? 'eligible' : null);
+        if (tab === 'history' || tab === 'eligible') {
+            params.set('tab', tab);
+        }
+        Object.entries(extra).forEach(([k, v]) => {
+            if (k === 'tab' || v == null || v === '') return;
+            params.set(k, String(v));
+        });
         const q = params.toString();
         return q ? `/admin/certification?${q}` : '/admin/certification';
     };
 
+    const buildExportCsvUrl = () => {
+        const params = new URLSearchParams();
+        if (eventFilter) params.set('event_id', eventFilter);
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+        const q = params.toString();
+        return q ? `/admin/certification/export/csv?${q}` : '/admin/certification/export/csv';
+    };
+
+    const handleApplyEligibleFilters = () => {
+        window.location.href = buildFilterUrl({ eligible_page: 1, tab: 'eligible' });
+    };
+
     const handleApplyHistoryFilters = () => {
-        window.location.href = buildFilterUrl();
+        window.location.href = buildFilterUrl({ page: 1, tab: 'history' });
+    };
+
+    const handleEligiblePageChange = (page) => {
+        if (!eligibleParticipantsPagination || page === eligibleParticipantsPagination.current_page) return;
+        window.location.href = buildFilterUrl({ eligible_page: page, tab: 'eligible' });
+    };
+
+    const handleHistoryPageChange = (page) => {
+        if (!issuedCertificatesPagination || page === issuedCertificatesPagination.current_page) return;
+        window.location.href = buildFilterUrl({ page, tab: 'history' });
     };
 
     const handleIssueCertificate = (row) => {
@@ -8949,6 +9000,11 @@ function CertificationModule({
         } catch (_) { Swal.fire({ icon: 'error', text: 'Failed.' }); }
     };
 
+    const historyFiltersActive = Boolean(
+        eventFilter || certIdSearch || dateFrom || dateTo || issuedStatusFilter !== 'active'
+    );
+    const eligibleFiltersActive = Boolean(eventFilter || statusFilter || dateFrom || dateTo);
+
     return (
         <AdminPageShell className="space-y-4">
             <AdminPageHeader
@@ -9019,7 +9075,21 @@ function CertificationModule({
                     {['eligible', 'templates', 'history', 'automation'].map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => {
+                                setActiveTab(tab);
+                                if (typeof window !== 'undefined') {
+                                    const params = new URLSearchParams(window.location.search);
+                                    if (tab === 'history') {
+                                        params.set('tab', 'history');
+                                    } else if (tab === 'eligible') {
+                                        params.set('tab', 'eligible');
+                                    } else {
+                                        params.delete('tab');
+                                    }
+                                    const q = params.toString();
+                                    window.history.replaceState(null, '', q ? `/admin/certification?${q}` : '/admin/certification');
+                                }
+                            }}
                             className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-250 ${
                                 activeTab === tab
                                     ? 'bg-emerald-600 text-white shadow-md'
@@ -9047,12 +9117,21 @@ function CertificationModule({
                 }
                 hasActiveFilters={
                     activeTab === 'eligible'
-                        ? Boolean(eventFilter || statusFilter)
+                        ? eligibleFiltersActive
                         : activeTab === 'history'
-                            ? Boolean(eventFilter || certIdSearch || dateFrom || dateTo || issuedStatusFilter !== 'active')
+                            ? historyFiltersActive
                             : false
                 }
+                defaultOpen={(activeTab === 'history' && historyFiltersActive) || (activeTab === 'eligible' && eligibleFiltersActive)}
                 onClearFilters={() => {
+                    if (activeTab === 'history') {
+                        window.location.href = '/admin/certification?tab=history';
+                        return;
+                    }
+                    if (activeTab === 'eligible') {
+                        window.location.href = '/admin/certification?tab=eligible';
+                        return;
+                    }
                     setEventFilter('');
                     setStatusFilter('');
                     setCertIdSearch('');
@@ -9063,13 +9142,19 @@ function CertificationModule({
                 showFilterToggle={activeTab === 'eligible' || activeTab === 'history'}
                 trailing={(
                     <>
+                        {activeTab === 'eligible' && (
+                            <AdminPrimaryButton type="button" onClick={handleApplyEligibleFilters}>
+                                <Search className="w-4 h-4" />
+                                Apply
+                            </AdminPrimaryButton>
+                        )}
                         {activeTab === 'history' && (
                             <AdminPrimaryButton type="button" onClick={handleApplyHistoryFilters}>
                                 <Search className="w-4 h-4" />
                                 Apply
                             </AdminPrimaryButton>
                         )}
-                        <a href={`/admin/certification/export/csv?${eventFilter ? 'event_id=' + eventFilter : ''}`} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-colors">
+                        <a href={buildExportCsvUrl()} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-colors">
                             <Download className="w-4 h-4" /> Export CSV
                         </a>
                         <a href="/admin/certification/export/pdf" className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-medium text-sm transition-colors">
@@ -9087,12 +9172,16 @@ function CertificationModule({
                     </AdminFilterSelect>
                 )}
                 {activeTab === 'eligible' && (
-                    <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                        <option value="">All</option>
-                        <option value="eligible">Eligible</option>
-                        <option value="not_eligible">Not Eligible</option>
-                        <option value="pending">Pending</option>
-                    </AdminFilterSelect>
+                    <>
+                        <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                            <option value="">All</option>
+                            <option value="eligible">Eligible</option>
+                            <option value="not_eligible">Not Eligible</option>
+                            <option value="pending">Pending</option>
+                        </AdminFilterSelect>
+                        <AdminFilterInput label="Event date from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                        <AdminFilterInput label="Event date to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                    </>
                 )}
                 {activeTab === 'history' && (
                     <>
@@ -9110,9 +9199,33 @@ function CertificationModule({
 
             {/* Eligible Participants - Profile-style rows */}
             {activeTab === 'eligible' && (
-                <div className="space-y-3 transition-opacity duration-300">
+                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 className="text-sm font-semibold text-slate-800">Eligible Participants</h3>
+                            {(dateFrom || dateTo) && (
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Event date range:
+                                    {' '}
+                                    <span className="font-medium text-slate-700">
+                                        {dateFrom ? formatDate(dateFrom) : 'Any start'}
+                                        {' '}
+                                        –
+                                        {' '}
+                                        {dateTo ? formatDate(dateTo) : 'Any end'}
+                                    </span>
+                                </p>
+                            )}
+                        </div>
+                        {eligibleParticipantsPagination?.total > 0 && (
+                            <p className="text-xs text-slate-500">
+                                {eligibleParticipantsPagination.total} participant{eligibleParticipantsPagination.total === 1 ? '' : 's'} total
+                            </p>
+                        )}
+                    </div>
+                    <div className="p-4 space-y-3">
                     {filteredEligible.length === 0 ? (
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center text-slate-500">No participants match filters.</div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-12 text-center text-slate-500">No participants match filters.</div>
                     ) : (
                         filteredEligible.map((row) => {
                             const initials = getInitials(row.user_name);
@@ -9169,6 +9282,13 @@ function CertificationModule({
                             );
                         })
                     )}
+                    </div>
+                    {eligibleParticipantsPagination && (
+                        <AdminTablePagination
+                            pagination={eligibleParticipantsPagination}
+                            onPageChange={handleEligiblePageChange}
+                        />
+                    )}
                 </div>
             )}
 
@@ -9214,8 +9334,28 @@ function CertificationModule({
             {/* Issued History - Modern table */}
             {activeTab === 'history' && (
                 <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-200">
-                        <h3 className="text-sm font-semibold text-slate-800">Issued Certificates</h3>
+                    <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 className="text-sm font-semibold text-slate-800">Issued Certificates</h3>
+                            {(dateFrom || dateTo) && (
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Date range:
+                                    {' '}
+                                    <span className="font-medium text-slate-700">
+                                        {dateFrom ? formatDate(dateFrom) : 'Any start'}
+                                        {' '}
+                                        –
+                                        {' '}
+                                        {dateTo ? formatDate(dateTo) : 'Any end'}
+                                    </span>
+                                </p>
+                            )}
+                        </div>
+                        {issuedCertificatesPagination?.total > 0 && (
+                            <p className="text-xs text-slate-500">
+                                {issuedCertificatesPagination.total} certificate{issuedCertificatesPagination.total === 1 ? '' : 's'} total
+                            </p>
+                        )}
                     </div>
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
@@ -9259,6 +9399,12 @@ function CertificationModule({
                             </tbody>
                         </table>
                     </div>
+                    {issuedCertificatesPagination && (
+                        <AdminTablePagination
+                            pagination={issuedCertificatesPagination}
+                            onPageChange={handleHistoryPageChange}
+                        />
+                    )}
                 </div>
             )}
 

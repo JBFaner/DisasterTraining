@@ -13,6 +13,7 @@ use App\Services\DatabaseBackupService;
 use App\Services\ParticipantCertificateEligibilityService;
 use App\Services\PortalNotificationFactory;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -80,8 +81,21 @@ class CertificationController extends Controller
         $lastWeek = Certificate::whereNull('revoked_at')->whereBetween('issued_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])->count();
         $trendPct = $lastWeek > 0 ? (int) round((($thisWeek - $lastWeek) / $lastWeek) * 100) : ($thisWeek > 0 ? 100 : 0);
 
-        // Eligible participants (for tab)
-        $eligibleParticipants = $this->buildEligibleParticipantsList($eventFilter, $statusFilter);
+        // Eligible participants (for tab, paginated)
+        $eligibleList = $this->buildEligibleParticipantsList($eventFilter, $statusFilter, $dateFrom, $dateTo);
+        $eligiblePerPage = 10;
+        $eligiblePage = max(1, (int) $request->query('eligible_page', 1));
+        $eligiblePaginator = new LengthAwarePaginator(
+            array_slice($eligibleList, ($eligiblePage - 1) * $eligiblePerPage, $eligiblePerPage),
+            count($eligibleList),
+            $eligiblePerPage,
+            $eligiblePage,
+            [
+                'path' => $request->url(),
+                'pageName' => 'eligible_page',
+            ]
+        );
+        $eligiblePaginator->appends($request->except('eligible_page'));
 
         // Templates
         $templates = CertificateTemplate::orderBy('name')->get();
@@ -105,7 +119,7 @@ class CertificationController extends Controller
         if ($certificateTypeFilter) {
             $issuedQuery->where('type', $certificateTypeFilter);
         }
-        $issuedCertificates = $issuedQuery->orderByDesc('issued_at')->limit(500)->get();
+        $issuedPaginator = $issuedQuery->orderByDesc('issued_at')->paginate(10)->withQueryString();
 
         // Events for filters dropdown
         $eventsForFilter = SimulationEvent::whereIn('status', ['published', 'ongoing', 'completed'])
@@ -125,9 +139,25 @@ class CertificationController extends Controller
                 'issued_today' => $issuedToday,
                 'trend_this_week' => $trendPct,
             ],
-            'eligibleParticipants' => $eligibleParticipants,
+            'eligibleParticipants' => $eligiblePaginator->items(),
+            'eligibleParticipantsPagination' => [
+                'current_page' => $eligiblePaginator->currentPage(),
+                'last_page' => $eligiblePaginator->lastPage(),
+                'per_page' => $eligiblePaginator->perPage(),
+                'total' => $eligiblePaginator->total(),
+                'from' => $eligiblePaginator->firstItem(),
+                'to' => $eligiblePaginator->lastItem(),
+            ],
             'templates' => $templates,
-            'issuedCertificates' => $issuedCertificates,
+            'issuedCertificates' => $issuedPaginator->items(),
+            'issuedCertificatesPagination' => [
+                'current_page' => $issuedPaginator->currentPage(),
+                'last_page' => $issuedPaginator->lastPage(),
+                'per_page' => $issuedPaginator->perPage(),
+                'total' => $issuedPaginator->total(),
+                'from' => $issuedPaginator->firstItem(),
+                'to' => $issuedPaginator->lastItem(),
+            ],
             'eventsForFilter' => $eventsForFilter,
             'filters' => [
                 'event_id' => $eventFilter,
@@ -136,6 +166,8 @@ class CertificationController extends Controller
                 'status' => $statusFilter,
                 'certificate_type' => $certificateTypeFilter,
                 'issued_status' => $issuedStatusFilter,
+                'page' => $issuedPaginator->currentPage(),
+                'eligible_page' => $eligiblePaginator->currentPage(),
             ],
             'automationSettings' => [
                 'auto_issue_when_passed' => $autoIssueWhenPassed,
@@ -148,14 +180,20 @@ class CertificationController extends Controller
     /**
      * Build list of eligible/not eligible/pending participants across events with evaluations.
      */
-    private function buildEligibleParticipantsList(?string $eventIdFilter, ?string $statusFilter): array
-    {
+    private function buildEligibleParticipantsList(
+        ?string $eventIdFilter,
+        ?string $statusFilter,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+    ): array {
         $events = SimulationEvent::whereIn('status', ['published', 'ongoing', 'completed'])
             ->whereHas('evaluation')
             ->with(['evaluation.participantEvaluations' => function ($q) {
                 $q->whereHas('scores')->with(['user', 'attendance']);
             }])
             ->when($eventIdFilter, fn ($q) => $q->where('id', $eventIdFilter))
+            ->when($dateFrom, fn ($q) => $q->whereDate('event_date', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('event_date', '<=', $dateTo))
             ->orderByDesc('event_date')
             ->get();
 

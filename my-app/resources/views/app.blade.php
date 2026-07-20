@@ -249,11 +249,17 @@
             @isset($eligibleParticipants)
                 data-eligible-participants='@json($eligibleParticipants)'
             @endisset
+            @isset($eligibleParticipantsPagination)
+                data-eligible-participants-pagination='@json($eligibleParticipantsPagination)'
+            @endisset
             @isset($templates)
                 data-templates='@json($templates)'
             @endisset
             @isset($issuedCertificates)
                 data-issued-certificates='@json($issuedCertificates)'
+            @endisset
+            @isset($issuedCertificatesPagination)
+                data-issued-certificates-pagination='@json($issuedCertificatesPagination)'
             @endisset
             @isset($eventsForFilter)
                 data-events-for-filter='@json($eventsForFilter)'
