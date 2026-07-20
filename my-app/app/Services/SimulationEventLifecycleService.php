@@ -29,6 +29,8 @@ class SimulationEventLifecycleService
             'resources',
             'assignedResources.resource',
             'attendances.user',
+            'simulationExerciseTemplate.personnel.qualifiedTrainer',
+            'simulationExerciseTemplate.personnelAssignments.qualifiedTrainer',
         ]);
 
         $readiness = $this->buildReadinessChecklist($event);
@@ -36,6 +38,9 @@ class SimulationEventLifecycleService
         $timeline = $this->normalizeTimeline($event);
         $attendance = $this->buildAttendanceSummary($event);
         $resources = $this->buildResourceUtilization($event);
+        $template = $event->simulationExerciseTemplate;
+        $evaluationMode = $this->resolveEvaluationMode($event);
+        $personnelRoster = $this->buildPersonnelRoster($event);
 
         return [
             'monitoring_status' => $this->resolveMonitoringStatus($event, $readiness),
@@ -46,6 +51,18 @@ class SimulationEventLifecycleService
             'attendance_summary' => $attendance,
             'resource_utilization' => $resources,
             'post_evaluation' => $this->normalizePostEvaluation($event),
+            'evaluation_mode' => $evaluationMode,
+            'evaluation_mode_label' => $evaluationMode === 'individual'
+                ? 'Individual (per participant)'
+                : 'Team / overall',
+            'personnel_roster' => $personnelRoster,
+            'exercise_plan' => $template ? [
+                'id' => $template->id,
+                'title' => $template->title,
+                'category' => $template->category,
+                'exercise_type' => $template->exercise_type,
+                'evaluation_mode' => $evaluationMode,
+            ] : null,
             'trainer' => $event->assignedTrainer ? [
                 'id' => $event->assignedTrainer->id,
                 'name' => $event->assignedTrainer->name,
@@ -70,6 +87,116 @@ class SimulationEventLifecycleService
                 'status' => $resource->pivot->status ?? null,
             ])->values()->all(),
         ];
+    }
+
+    public function resolveEvaluationMode(SimulationEvent $event): string
+    {
+        $template = $event->simulationExerciseTemplate;
+        if (! $template) {
+            return 'team';
+        }
+
+        return app(SimulationExerciseTemplateService::class)->resolveEvaluationMode($template);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function buildPersonnelRoster(SimulationEvent $event): array
+    {
+        $template = $event->simulationExerciseTemplate;
+        if (! $template) {
+            return [];
+        }
+
+        $template->loadMissing(['personnel.qualifiedTrainer', 'personnelAssignments.qualifiedTrainer']);
+
+        $sourceLabels = [
+            'group6_trainers' => 'Users & Roles / Trainers',
+            'lgu_staff' => 'Users & Roles / Staff',
+            'group3_personnel' => 'Group 3 — Resource Allocation',
+            'group5_medical' => 'Group 5 — Medical & Safety',
+        ];
+
+        $assignmentsByRole = $template->personnelAssignments
+            ->groupBy(fn ($item) => trim((string) $item->role));
+
+        $rows = [];
+
+        foreach ($template->personnel->sortBy('sort_order')->values() as $roleRow) {
+            $role = trim((string) $roleRow->role);
+            if ($role === '') {
+                continue;
+            }
+
+            $roleAssignments = $assignmentsByRole->get($role, collect());
+            if ($roleAssignments->isEmpty() && $roleRow->qualified_trainer_id) {
+                $rows[] = [
+                    'role' => $role,
+                    'person_name' => $roleRow->qualifiedTrainer?->name,
+                    'source_group' => 'group6_trainers',
+                    'source_label' => $sourceLabels['group6_trainers'],
+                    'recommended_count' => (int) ($roleRow->recommended_count ?? 1),
+                    'notes' => $roleRow->notes,
+                    'assigned' => true,
+                ];
+                continue;
+            }
+
+            if ($roleAssignments->isEmpty()) {
+                $rows[] = [
+                    'role' => $role,
+                    'person_name' => null,
+                    'source_group' => null,
+                    'source_label' => '—',
+                    'recommended_count' => (int) ($roleRow->recommended_count ?? 1),
+                    'notes' => $roleRow->notes,
+                    'assigned' => false,
+                ];
+                continue;
+            }
+
+            foreach ($roleAssignments as $assignment) {
+                $source = (string) ($assignment->source_group ?? '');
+                $rows[] = [
+                    'role' => $role,
+                    'person_name' => $assignment->person_name
+                        ?: $assignment->qualifiedTrainer?->name,
+                    'source_group' => $source ?: null,
+                    'source_label' => $sourceLabels[$source] ?? ($source !== '' ? $source : '—'),
+                    'recommended_count' => (int) ($roleRow->recommended_count ?? 1),
+                    'notes' => $assignment->notes ?: $roleRow->notes,
+                    'assigned' => filled($assignment->person_name)
+                        || (bool) $assignment->qualified_trainer_id
+                        || filled($assignment->person_external_id),
+                ];
+            }
+        }
+
+        // Orphan assignments whose role was removed from recommended personnel.
+        foreach ($template->personnelAssignments as $assignment) {
+            $role = trim((string) $assignment->role);
+            $alreadyListed = collect($rows)->contains(
+                fn (array $row) => $row['role'] === $role
+                    && ($row['person_name'] ?? null) === ($assignment->person_name ?: $assignment->qualifiedTrainer?->name)
+            );
+            if ($alreadyListed) {
+                continue;
+            }
+
+            $source = (string) ($assignment->source_group ?? '');
+            $rows[] = [
+                'role' => $role !== '' ? $role : 'Assigned Personnel',
+                'person_name' => $assignment->person_name ?: $assignment->qualifiedTrainer?->name,
+                'source_group' => $source ?: null,
+                'source_label' => $sourceLabels[$source] ?? ($source !== '' ? $source : '—'),
+                'recommended_count' => 1,
+                'notes' => $assignment->notes,
+                'assigned' => true,
+            ];
+        }
+
+        return array_values($rows);
     }
 
     public function buildReadinessChecklist(SimulationEvent $event): array

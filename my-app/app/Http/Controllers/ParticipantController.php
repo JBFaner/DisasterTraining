@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\QualifiedTrainerController;
 use App\Models\User;
 use App\Models\SimulationEvent;
 use App\Mail\ParticipantVerificationEmail;
@@ -194,14 +193,8 @@ class ParticipantController extends Controller
                 'filter_options' => $this->registry->buildFilterOptions(),
             ];
 
-            if ($request->string('list') === 'trainers') {
-                return response()->json(QualifiedTrainerController::buildListResponse($request));
-            }
-
             return response()->json($payload);
         }
-
-        $trainerList = QualifiedTrainerController::buildListResponse($request);
 
         return view('app', [
             'section' => 'participants',
@@ -209,9 +202,6 @@ class ParticipantController extends Controller
             'participantsPagination' => $participantsPagination,
             'participantsSummary' => $participantsSummary,
             'participantFilterOptions' => $this->registry->buildFilterOptions(),
-            'qualifiedTrainers' => $trainerList['trainers'],
-            'qualifiedTrainersPagination' => $trainerList['pagination'],
-            'qualifiedTrainersSummary' => $trainerList['summary'],
             'events' => $events,
         ]);
     }

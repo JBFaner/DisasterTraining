@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\AdminEmailVerificationMail;
 use App\Models\AuditLog;
 use App\Models\BarangayProfile;
+use App\Models\SimulationExerciseTemplate;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\StaffTrainerBridgeService;
@@ -48,6 +49,50 @@ class AdminUserController extends Controller
     }
 
     /**
+     * @return list<string>
+     */
+    public static function trainerOnlyPositions(): array
+    {
+        return ['Lead Trainer', 'Assistant Trainer'];
+    }
+
+    protected function normalizePosition(?string $position, string $accountType): ?string
+    {
+        $position = $position !== null ? trim($position) : null;
+        if ($position === '' || $position === '__add__') {
+            return null;
+        }
+
+        if (in_array($accountType, ['STAFF', 'VIEWER'], true)
+            && in_array($position, self::trainerOnlyPositions(), true)) {
+            return null;
+        }
+
+        return $position;
+    }
+
+    /**
+     * Default + custom position labels for staff users (single primary position).
+     *
+     * @return list<string>
+     */
+    public static function positionOptions(): array
+    {
+        $defaults = SimulationExerciseTemplate::PERSONNEL_ROLES;
+
+        $custom = User::query()
+            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'])
+            ->whereNotNull('position')
+            ->where('position', '!=', '')
+            ->distinct()
+            ->orderBy('position')
+            ->pluck('position')
+            ->all();
+
+        return array_values(array_unique([...$defaults, ...$custom]));
+    }
+
+    /**
      * List all admin/trainer/staff users (excluding participants).
      */
     public function index(Request $request)
@@ -68,16 +113,12 @@ class AdminUserController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%');
+                    ->orWhere('email', 'like', '%' . $search . '%')
+                    ->orWhere('position', 'like', '%' . $search . '%');
             });
         }
 
-        // Filter by role
-        if ($role = $request->query('role')) {
-            $query->where('role', $role);
-        }
-
-        // Filter by status
+        // Role / position filtering is handled client-side.
         if ($status = $request->query('status')) {
             $query->where('status', $status);
         }
@@ -87,7 +128,8 @@ class AdminUserController extends Controller
         return view('app', [
             'section' => 'admin_users_index',
             'users' => $users,
-            'currentUser' => $user, // Pass current user for frontend authorization
+            'currentUser' => $user,
+            'positionOptions' => self::positionOptions(),
         ]);
     }
 
@@ -111,6 +153,7 @@ class AdminUserController extends Controller
             'section' => 'admin_users_create',
             'barangay_profiles' => $barangayProfiles,
             'roles' => $roles,
+            'positionOptions' => self::positionOptions(),
         ]);
     }
 
@@ -141,6 +184,7 @@ class AdminUserController extends Controller
             'currentUser' => $currentUser,
             'barangay_profiles' => $barangayProfiles,
             'roles' => $roles,
+            'positionOptions' => self::positionOptions(),
         ]);
     }
 
@@ -467,6 +511,7 @@ class AdminUserController extends Controller
             'password' => ['required', 'confirmed', 'min:8'],
             'account_type' => ['required', 'in:' . implode(',', $allowedRoles)],
             'barangay_id' => ['nullable', 'integer', 'exists:barangay_profiles,id'],
+            'position' => ['nullable', 'string', 'max:120'],
         ], [
             'email.unique' => 'The email has already been taken.',
         ]);
@@ -477,12 +522,15 @@ class AdminUserController extends Controller
             . ' ' . $data['last_name']
         );
 
+        $position = $this->normalizePosition($data['position'] ?? null, $data['account_type']);
+
         // Create the staff (admin, trainer, staff, or viewer) user in a pending state
         $admin = User::create([
             'name' => $fullName,
             'email' => $data['email'],
             'password' => $data['password'], // hashed via User model casts
             'role' => $data['account_type'],
+            'position' => $position,
             'status' => 'pending_verification',
             'registered_at' => now(),
             'barangay_id' => $data['barangay_id'] ?? null,
@@ -516,6 +564,7 @@ class AdminUserController extends Controller
                 'name' => $admin->name,
                 'email' => $admin->email,
                 'role' => $admin->role,
+                'position' => $admin->position,
             ],
         ]);
 
@@ -549,6 +598,7 @@ class AdminUserController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
             'account_type' => ['required', 'in:' . implode(',', $allowedRoles)],
             'barangay_id' => ['nullable', 'integer', 'exists:barangay_profiles,id'],
+            'position' => ['nullable', 'string', 'max:120'],
         ];
         if ($request->filled('password')) {
             $rules['password'] = ['required', 'confirmed', 'min:8'];
@@ -556,11 +606,14 @@ class AdminUserController extends Controller
 
         $data = $request->validate($rules);
 
-        $old = $user->only(['name', 'email', 'role', 'barangay_id']);
+        $old = $user->only(['name', 'email', 'role', 'barangay_id', 'position']);
+
+        $position = $this->normalizePosition($data['position'] ?? null, $data['account_type']);
 
         $user->name = $data['name'];
         $user->email = $data['email'];
         $user->role = $data['account_type'];
+        $user->position = $position;
         $user->barangay_id = $data['barangay_id'] ?? null;
         if (! empty($data['password'])) {
             $user->password = $data['password'];

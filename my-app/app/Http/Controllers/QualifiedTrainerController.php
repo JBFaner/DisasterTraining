@@ -14,7 +14,8 @@ class QualifiedTrainerController extends Controller
     ) {}
 
     /**
-     * JSON list for the Trainer List data table (AJAX pagination).
+     * JSON list of trainers bridged from Users & Roles (LGU_TRAINER).
+     * Used by assignment pickers / API — not the Participant Registration tabs.
      */
     public function apiIndex(Request $request)
     {

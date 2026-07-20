@@ -3,7 +3,6 @@ import {
     Users,
     GraduationCap,
     Eye,
-    Download,
     RefreshCw,
     UserPlus,
     Mail,
@@ -48,7 +47,12 @@ function getInitialTab() {
     if (typeof window === 'undefined') return 'participants';
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    return ['participants', 'trainers', 'registrations', 'attendance'].includes(tab) ? tab : 'participants';
+    // Legacy ?tab=trainers → Users & Roles (trainers live there now)
+    if (tab === 'trainers') {
+        window.location.replace('/admin/users?role=LGU_TRAINER');
+        return 'participants';
+    }
+    return ['participants', 'registrations', 'attendance'].includes(tab) ? tab : 'participants';
 }
 
 export function ParticipantRegistrationAttendanceModule({
@@ -57,9 +61,6 @@ export function ParticipantRegistrationAttendanceModule({
     participantsPagination = null,
     participantsSummary = null,
     participantFilterOptions = null,
-    qualifiedTrainers = [],
-    qualifiedTrainersPagination = null,
-    qualifiedTrainersSummary = null,
     RegistrationEventsTable,
     AttendanceEventsTable,
 }) {
@@ -78,7 +79,6 @@ export function ParticipantRegistrationAttendanceModule({
 
     const PARTICIPANT_TABS = [
         { id: 'participants', label: 'Participant Registry', icon: Users },
-        { id: 'trainers', label: 'Trainer List', icon: GraduationCap },
         { id: 'registrations', label: 'Event Registrations', icon: '📋' },
         { id: 'attendance', label: 'Event Attendance', icon: '✓' },
     ];
@@ -88,17 +88,12 @@ export function ParticipantRegistrationAttendanceModule({
     let inactiveParticipants = participantsSummary?.inactive ?? participants.filter((p) => p.status === 'inactive').length;
     let participantsSyncedThisMonth = participantsSummary?.synced_this_month ?? 0;
 
-    let totalTrainers = qualifiedTrainersSummary?.total ?? qualifiedTrainers.length;
-    let activeTrainers = qualifiedTrainersSummary?.active ?? qualifiedTrainers.filter((t) => t.status === 'active').length;
-    let inactiveTrainers = qualifiedTrainersSummary?.inactive ?? qualifiedTrainers.filter((t) => t.status === 'inactive').length;
-    let trainersSyncedThisMonth = qualifiedTrainersSummary?.synced_this_month ?? 0;
-
     return (
         <AdminPageShell>
             <AdminPageHeader
                 icon={Users}
                 title="Participant Registration & Attendance"
-                description="Manage participants, qualified trainers, event registrations, and attendance."
+                description="Manage participants, event registrations, and attendance. Trainers and other staff are managed under Users & Roles."
                 actions={activeTab === 'participants' ? (
                     <div className="flex flex-wrap items-center gap-2">
                         <AdminSecondaryButton
@@ -125,15 +120,6 @@ export function ParticipantRegistrationAttendanceModule({
                     <StatCard label="Active" value={activeParticipants} hint="Active participant accounts" accent="emerald" />
                     <StatCard label="Inactive" value={inactiveParticipants} hint="Inactive participant accounts" />
                     <StatCard label="Synced This Month" value={participantsSyncedThisMonth} hint="Last registry sync" />
-                </div>
-            )}
-
-            {activeTab === 'trainers' && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <StatCard label="Total Trainers" value={totalTrainers} hint="Community Engagement System" />
-                    <StatCard label="Active" value={activeTrainers} hint="Available for assignment" accent="emerald" />
-                    <StatCard label="Inactive" value={inactiveTrainers} hint="Unavailable in directory" />
-                    <StatCard label="Updated This Month" value={trainersSyncedThisMonth} hint="Trainer accounts touched" />
                 </div>
             )}
 
@@ -165,12 +151,6 @@ export function ParticipantRegistrationAttendanceModule({
                     participants={participants}
                     participantsPagination={participantsPagination}
                     filterOptions={participantFilterOptions}
-                />
-            )}
-            {activeTab === 'trainers' && (
-                <TrainersListTab
-                    trainers={qualifiedTrainers}
-                    trainersPagination={qualifiedTrainersPagination}
                 />
             )}
             {activeTab === 'registrations' && RegistrationEventsTable && <RegistrationEventsTable events={events} />}
@@ -690,184 +670,6 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
     );
 }
 
-function TrainersListTab({ trainers = [], trainersPagination = null }) {
-    const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('all');
-    const [sortKey, setSortKey] = React.useState('name');
-    const [sortDir, setSortDir] = React.useState('asc');
-    const [trainersData, setTrainersData] = React.useState(trainers || []);
-    const [pagination, setPagination] = React.useState(trainersPagination);
-    const [isLoading, setIsLoading] = React.useState(false);
-    const [isRefreshing, setIsRefreshing] = React.useState(false);
-
-    const fetchTrainers = React.useCallback(async (page = 1) => {
-        setIsLoading(true);
-        try {
-            const url = new URL('/admin/api/qualified-trainers', window.location.origin);
-            url.searchParams.set('page', page);
-            if (searchTerm.trim()) url.searchParams.set('search', searchTerm.trim());
-            if (statusFilter !== 'all') url.searchParams.set('status_filter', statusFilter);
-            url.searchParams.set('sort_by', sortKey);
-            url.searchParams.set('sort_dir', sortDir);
-
-            const res = await fetch(url.toString(), {
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin',
-            });
-            if (!res.ok) throw new Error('Failed to load trainers');
-            const data = await res.json();
-            setTrainersData(data.trainers || []);
-            setPagination(data.pagination || null);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [searchTerm, statusFilter, sortKey, sortDir]);
-
-    React.useEffect(() => {
-        const timer = setTimeout(() => fetchTrainers(1), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm, statusFilter, sortKey, sortDir, fetchTrainers]);
-
-    const handleRefreshList = async () => {
-        setIsRefreshing(true);
-        try {
-            const res = await fetch('/admin/qualified-trainers/sync', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin',
-            });
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire('Trainers refreshed', data.message, 'success');
-                await fetchTrainers(1);
-            } else {
-                Swal.fire('Unable to refresh', data.message || 'Could not refresh trainer list.', 'info');
-            }
-        } catch (error) {
-            Swal.fire('Error', 'Failed to refresh trainers from Users & Roles.', 'error');
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
-
-    const columns = [
-        {
-            key: 'name',
-            label: 'Full Name',
-            sortable: true,
-            render: (row) => <span className="text-sm font-medium text-slate-900">{row.name}</span>,
-        },
-        {
-            key: 'email',
-            label: 'Email',
-            sortable: true,
-            render: (row) => <span className="text-sm text-slate-700">{row.email || '—'}</span>,
-        },
-        {
-            key: 'phone',
-            label: 'Contact',
-            sortable: false,
-            render: (row) => <span className="text-sm text-slate-700">{row.phone || '—'}</span>,
-        },
-        {
-            key: 'barangay',
-            label: 'Barangay',
-            sortable: false,
-            render: (row) => <span className="text-sm text-slate-600">{row.barangay || '—'}</span>,
-        },
-        {
-            key: 'role',
-            label: 'Role',
-            sortable: false,
-            render: () => (
-                <span className="inline-flex rounded-lg bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-800 border border-sky-200">
-                    Trainer
-                </span>
-            ),
-        },
-        {
-            key: 'status',
-            label: 'Status',
-            sortable: true,
-            render: (row) => <AdminStatusBadge status={row.status} />,
-        },
-    ];
-
-    return (
-        <div className="space-y-4">
-            <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                Trainers come from <span className="font-semibold">Users & Roles</span> accounts with the{' '}
-                <span className="font-semibold">LGU Trainer</span> role. Create or edit trainers there — other
-                personnel (Staff, etc.) can use the same Users & Roles list later.
-            </div>
-
-            <AdminCollapsibleFilterBar
-                searchValue={searchTerm}
-                onSearchChange={(e) => setSearchTerm(e.target.value)}
-                searchPlaceholder="Search by name, email, contact, or barangay..."
-                hasActiveFilters={statusFilter !== 'all'}
-                onClearFilters={() => setStatusFilter('all')}
-                trailing={(
-                    <>
-                        <AdminPrimaryButton href="/admin/users/create?role=LGU_TRAINER">
-                            Add Trainer
-                        </AdminPrimaryButton>
-                        <AdminSecondaryButton onClick={handleRefreshList} disabled={isRefreshing}>
-                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                            Refresh
-                        </AdminSecondaryButton>
-                    </>
-                )}
-            >
-                <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </AdminFilterSelect>
-            </AdminCollapsibleFilterBar>
-
-            <AdminDataTable
-                columns={columns}
-                data={trainersData}
-                sortKey={sortKey}
-                sortDir={sortDir}
-                onSort={(key, dir) => { setSortKey(key); setSortDir(dir); }}
-                isLoading={isLoading}
-                pagination={pagination}
-                onPageChange={(page) => fetchTrainers(page)}
-                minWidth="900px"
-                emptyTitle="No trainers found"
-                emptyDescription="Create an LGU Trainer account under Users & Roles, then return here."
-                renderActions={(row) => (
-                    <>
-                        <AdminTableActionButton
-                            href={row.id ? `/admin/qualified-trainers/${row.id}` : `/admin/users/${row.user_id}`}
-                            icon={Eye}
-                            title="View"
-                            variant="view"
-                        />
-                        {row.user_id ? (
-                            <AdminTableActionButton
-                                href={`/admin/users/${row.user_id}/edit`}
-                                icon={Pencil}
-                                title="Edit in Users & Roles"
-                                variant="edit"
-                            />
-                        ) : null}
-                    </>
-                )}
-            />
-        </div>
-    );
-}
-
 export function QualifiedTrainerDetail({ trainer }) {
     const [record, setRecord] = React.useState(trainer);
     const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -897,8 +699,8 @@ export function QualifiedTrainerDetail({ trainer }) {
     return (
         <AdminPageShell>
             <div className="mb-4">
-                <a href="/admin/participants?tab=trainers" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
-                    ← Back to Trainer List
+                <a href="/admin/users?role=LGU_TRAINER" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                    ← Back to Users & Roles
                 </a>
             </div>
 

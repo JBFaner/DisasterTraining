@@ -31,6 +31,18 @@ class SimulationExerciseTemplate extends Model
         'Full Scale Exercise',
     ];
 
+    /** Per-participant skill scoring during execution (e.g. fire extinguisher hands-on). */
+    public const EVALUATION_MODE_INDIVIDUAL = 'individual';
+
+    /** Team / overall after-action evaluation (drills & functional exercises). */
+    public const EVALUATION_MODE_TEAM = 'team';
+
+    /** @var list<string> */
+    public const EVALUATION_MODES = [
+        self::EVALUATION_MODE_INDIVIDUAL,
+        self::EVALUATION_MODE_TEAM,
+    ];
+
     public const DIFFICULTY_LEVELS = [
         'Easy',
         'Intermediate',
@@ -46,12 +58,14 @@ class SimulationExerciseTemplate extends Model
         'Medical Team',
         'Evaluator',
         'Communication Officer',
+        'Attendance Officer',
     ];
 
     protected $fillable = [
         'title',
         'category',
         'exercise_type',
+        'evaluation_mode',
         'difficulty_level',
         'estimated_duration_minutes',
         'objectives',

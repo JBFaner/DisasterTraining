@@ -91,6 +91,46 @@ function StatCard({ label, value, hint }) {
     );
 }
 
+function PersonnelRosterTable({ roster = [], emptyHint = 'No personnel roles on the linked exercise plan.' }) {
+    if (!roster.length) {
+        return <p className="text-sm text-slate-500">{emptyHint}</p>;
+    }
+
+    return (
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr>
+                        <th className="px-3 py-2">Role</th>
+                        <th className="px-3 py-2">Assigned To</th>
+                        <th className="px-3 py-2">Source</th>
+                        <th className="px-3 py-2">Status</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                    {roster.map((row, index) => (
+                        <tr key={`${row.role}-${row.person_name || 'open'}-${index}`}>
+                            <td className="px-3 py-2 font-medium text-slate-800">{row.role || '—'}</td>
+                            <td className="px-3 py-2 text-slate-700">{row.person_name || 'Unassigned'}</td>
+                            <td className="px-3 py-2 text-slate-500">{row.source_label || '—'}</td>
+                            <td className="px-3 py-2">
+                                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                    row.assigned
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                }`}
+                                >
+                                    {row.assigned ? 'Assigned' : 'Open'}
+                                </span>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycle, role }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [lifecycle, setLifecycle] = React.useState(initialLifecycle || null);
@@ -128,6 +168,11 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
     const trainer = lifecycleData?.trainer;
     const participants = lifecycleData?.participants || [];
     const equipment = lifecycleData?.equipment || [];
+    const personnelRoster = lifecycleData?.personnel_roster || [];
+    const evaluationMode = lifecycleData?.evaluation_mode || 'team';
+    const evaluationModeLabel = lifecycleData?.evaluation_mode_label
+        || (evaluationMode === 'individual' ? 'Individual (per participant)' : 'Team / overall');
+    const isIndividualEvaluation = evaluationMode === 'individual';
 
     const isCompleted = ['completed', 'ended', 'archived'].includes(event.status);
     const isOngoing = event.status === 'ongoing';
@@ -147,6 +192,10 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
         attendanceReadyForVerification &&
         attendanceVerificationStep &&
         !attendanceVerificationStep.completed;
+    const drillStarted = Boolean(executionProgress.find((step) => step.key === 'drill_started')?.completed);
+    const canScoreParticipants = isIndividualEvaluation
+        && (isOngoing || isCompleted)
+        && checkedInCount > 0;
 
     const now = new Date();
     const startDt = getEventDateTime(event.event_date, event.start_time);
@@ -508,6 +557,26 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                             </li>
                         ))}
                     </ul>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <h4 className="text-sm font-semibold text-slate-900">Exercise Plan Personnel</h4>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    Roles and assignments from the exercise plan. Confirm coverage before publishing.
+                                </p>
+                            </div>
+                            <span className="text-xs font-semibold rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">
+                                Eval: {evaluationModeLabel}
+                            </span>
+                        </div>
+                        <PersonnelRosterTable
+                            roster={personnelRoster}
+                            emptyHint={fromExercisePlan
+                                ? 'No personnel roles on this exercise plan yet. Edit the plan to add roles.'
+                                : 'Personnel roster is available for events created from an exercise plan.'}
+                        />
+                    </div>
                 </div>
             )}
 
@@ -552,6 +621,19 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                 </ul>
                             )}
                         </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-sm font-semibold text-slate-900">Exercise Plan Personnel</h3>
+                            <span className="text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
+                                {personnelRoster.filter((row) => row.assigned).length}/{personnelRoster.length || 0} assigned
+                            </span>
+                        </div>
+                        <PersonnelRosterTable
+                            roster={personnelRoster}
+                            emptyHint="No personnel roster linked to this event."
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -691,6 +773,63 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                             })}
                         </ul>
                     </div>
+
+                    {isIndividualEvaluation ? (
+                        <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-5 shadow-sm space-y-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-violet-950">Score Participants</h3>
+                                    <p className="mt-1 text-sm text-violet-900/80">
+                                        This exercise uses <span className="font-semibold">individual</span> evaluation
+                                        (hands-on / skill-based). Score present participants during or right after the drill.
+                                    </p>
+                                </div>
+                                <span className="text-xs font-semibold rounded-full border border-violet-200 bg-white px-2.5 py-1 text-violet-800">
+                                    {evaluationModeLabel}
+                                </span>
+                            </div>
+                            {!drillStarted && isOngoing ? (
+                                <p className="text-xs text-violet-800">
+                                    Tip: mark <span className="font-semibold">Drill Started</span> first, then score as participants complete their turns.
+                                </p>
+                            ) : null}
+                            {Number(attendance.checked_in ?? 0) === 0 ? (
+                                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                    Mark at least one participant Present (or Late) in Attendance before scoring.
+                                </p>
+                            ) : (
+                                <p className="text-sm text-violet-900">
+                                    {attendance.checked_in} participant{Number(attendance.checked_in) === 1 ? '' : 's'} ready for scoring.
+                                </p>
+                            )}
+                            <div className="flex flex-wrap gap-2">
+                                {canScoreParticipants ? (
+                                    <AdminPrimaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
+                                        <ClipboardCheck className="w-4 h-4" />
+                                        Score Participants
+                                    </AdminPrimaryButton>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 bg-slate-100 text-slate-400 rounded-lg font-medium text-sm cursor-not-allowed"
+                                        title="Start simulation and mark Present participants first"
+                                    >
+                                        Score Participants
+                                    </button>
+                                )}
+                                <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/attendance`}>
+                                    Open Attendance
+                                </AdminSecondaryButton>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                            This exercise uses <span className="font-semibold">team / overall</span> evaluation.
+                            Complete the execution steps, then use the <span className="font-semibold">Post Evaluation</span> tab
+                            for the after-action review (no per-participant scoring required).
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -741,6 +880,20 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
 
             {activeTab === 'evaluation' && (
                 <div className="space-y-4">
+                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                            Evaluation mode: <span className="font-semibold">{evaluationModeLabel}</span>
+                            {isIndividualEvaluation
+                                ? ' — participant skill scores are entered from Execution / Attendance.'
+                                : ' — capture the drill after-action review for the whole team here.'}
+                        </span>
+                        {isIndividualEvaluation ? (
+                            <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
+                                Open Participant Scoring
+                            </AdminSecondaryButton>
+                        ) : null}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <StatCard label="Equipment Assigned" value={resources.equipment_assigned ?? 0} />
                         <StatCard label="Equipment Used" value={resources.equipment_used ?? 0} />
@@ -750,11 +903,15 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
 
                     {!isCompleted ? (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
-                            Post-simulation evaluation becomes available after the event is marked as completed.
+                            {isIndividualEvaluation
+                                ? 'Post-simulation notes become available after the event is marked as completed. You can still score participants from Execution while the drill is ongoing.'
+                                : 'Team / overall post-simulation evaluation becomes available after the event is marked as completed.'}
                         </div>
                     ) : (
                         <form onSubmit={handleSaveEvaluation} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                            <h3 className="text-sm font-semibold text-slate-900">Post Simulation Evaluation</h3>
+                            <h3 className="text-sm font-semibold text-slate-900">
+                                {isIndividualEvaluation ? 'After-Action Notes' : 'Team / Overall Post Evaluation'}
+                            </h3>
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">Overall Remarks</label>

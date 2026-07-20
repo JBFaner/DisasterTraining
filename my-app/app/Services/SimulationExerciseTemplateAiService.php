@@ -143,7 +143,7 @@ Return ONLY valid JSON with this shape:
 
 Rules:
 - Provide 5-8 practical activities including orientation and debriefing.
-- Personnel roles: Lead Trainer, Safety Officer, Marshal, Medical Team, Evaluator, Communication Officer, Assistant Trainer where appropriate. Use recommended_count for staffing needs.
+- Personnel roles: Lead Trainer, Safety Officer, Marshal, Medical Team, Evaluator, Communication Officer, Attendance Officer, Assistant Trainer where appropriate. Use recommended_count for staffing needs.
 - Timeline should start around 08:00 and align with activities.
 - Evaluation objectives must be measurable and linked to activities where possible.
 - Use Philippine LGU/community disaster training context.
@@ -186,7 +186,7 @@ Current template context:
 {$contextJson}
 
 Return ONLY valid JSON matching: {$sectionShape}
-- For personnel sections, use roles from: Lead Trainer, Assistant Trainer, Safety Officer, Marshal, Medical Team, Evaluator, Communication Officer.
+- For personnel sections, use roles from: Lead Trainer, Assistant Trainer, Safety Officer, Marshal, Medical Team, Evaluator, Communication Officer, Attendance Officer.
 PROMPT;
     }
 

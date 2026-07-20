@@ -14,6 +14,7 @@ use App\Models\SimulationExercisePersonnel;
 use App\Models\SimulationExercisePersonnelAssignment;
 use App\Models\SimulationExerciseTemplate;
 use App\Models\SimulationExerciseTimelineItem;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -38,13 +39,18 @@ class SimulationExerciseTemplateService
      */
     public function serializeListItem(SimulationExerciseTemplate $template): array
     {
+        [$planStart, $planEnd] = $this->resolvePlanScheduleWindow($template);
+
         return [
             'id' => $template->id,
             'title' => $template->title,
             'category' => $template->category,
             'exercise_type' => $template->exercise_type,
+            'evaluation_mode' => $this->resolveEvaluationMode($template),
             'difficulty_level' => $template->difficulty_level,
             'estimated_duration_minutes' => $template->estimated_duration_minutes,
+            'plan_start_time' => $planStart,
+            'plan_end_time' => $planEnd,
             'status' => $template->status,
             'activities_count' => (int) ($template->activities_count ?? $template->activities()->count()),
             'events_count' => (int) ($template->events_count ?? $template->events()->count()),
@@ -78,6 +84,7 @@ class SimulationExerciseTemplateService
                 'title' => $template->title,
                 'category' => $template->category,
                 'exercise_type' => $template->exercise_type,
+                'evaluation_mode' => $this->resolveEvaluationMode($template),
                 'difficulty_level' => $template->difficulty_level,
                 'estimated_duration_minutes' => $template->estimated_duration_minutes,
                 'objectives' => $template->objectives,
@@ -141,6 +148,7 @@ class SimulationExerciseTemplateService
             'options' => [
                 'categories' => SimulationExerciseTemplate::CATEGORIES,
                 'exercise_types' => SimulationExerciseTemplate::EXERCISE_TYPES,
+                'evaluation_modes' => SimulationExerciseTemplate::EVALUATION_MODES,
                 'difficulty_levels' => SimulationExerciseTemplate::DIFFICULTY_LEVELS,
                 'personnel_roles' => SimulationExerciseTemplate::PERSONNEL_ROLES,
                 'statuses' => [
@@ -182,6 +190,12 @@ class SimulationExerciseTemplateService
                 'title' => trim((string) ($data['title'] ?? '')),
                 'category' => (string) ($data['category'] ?? 'Multi-Hazard'),
                 'exercise_type' => (string) ($data['exercise_type'] ?? 'Drill'),
+                'evaluation_mode' => $this->normalizeEvaluationMode(
+                    $data['evaluation_mode'] ?? null,
+                    (string) ($data['title'] ?? $template?->title ?? ''),
+                    (string) ($data['category'] ?? $template?->category ?? ''),
+                    (string) ($data['exercise_type'] ?? $template?->exercise_type ?? 'Drill'),
+                ),
                 'difficulty_level' => (string) ($data['difficulty_level'] ?? 'Intermediate'),
                 'estimated_duration_minutes' => isset($data['estimated_duration_minutes'])
                     ? (int) $data['estimated_duration_minutes']
@@ -318,8 +332,10 @@ class SimulationExerciseTemplateService
         }
 
         $eventDate = $data['event_date'] ?? now()->addDays(7)->toDateString();
-        $startTime = $data['start_time'] ?? '08:00';
-        $endTime = $data['end_time'] ?? '12:00';
+        [$planStart, $planEnd] = $this->resolvePlanScheduleWindow($template);
+        // Event clock always follows the exercise plan timeline — ignore client overrides.
+        $startTime = $planStart;
+        $endTime = $planEnd;
         $venue = trim((string) ($data['venue'] ?? 'TBD'));
 
         $assignmentSummary = $template->personnelAssignments
@@ -723,17 +739,45 @@ class SimulationExerciseTemplateService
     {
         $pools = [];
 
-        $trainers = QualifiedTrainer::active()->orderBy('name')->get();
+        $trainers = QualifiedTrainer::active()
+            ->fromStaffUsers()
+            ->with('user')
+            ->orderBy('name')
+            ->get();
+
         $pools[] = [
             'group_key' => 'group6_trainers',
-            'group_label' => 'Group 6 — Community Engagement (Trainers)',
+            'group_label' => 'LGU Trainers (Lead / Assistant)',
             'integration_pending' => false,
             'members' => $trainers->map(fn (QualifiedTrainer $trainer) => [
                 'id' => $trainer->id,
                 'name' => $trainer->name,
                 'specialization' => $trainer->specialization,
+                'position' => $trainer->user?->position ?? $trainer->specialization,
                 'barangay' => $trainer->barangay,
                 'source_group' => 'group6_trainers',
+                'member_kind' => 'qualified_trainer',
+            ])->values()->all(),
+        ];
+
+        $staff = User::query()
+            ->where('role', 'STAFF')
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'position', 'barangay', 'email']);
+
+        $pools[] = [
+            'group_key' => 'lgu_staff',
+            'group_label' => 'LGU Staff (Support personnel)',
+            'integration_pending' => false,
+            'members' => $staff->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'specialization' => $user->position,
+                'position' => $user->position,
+                'barangay' => $user->barangay,
+                'source_group' => 'lgu_staff',
+                'member_kind' => 'user',
             ])->values()->all(),
         ];
 
@@ -871,6 +915,90 @@ class SimulationExerciseTemplateService
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Earliest activity/timeline start → end from duration (or last activity end).
+     *
+     * @return array{0: string, 1: string} [start H:i, end H:i]
+     */
+    public function resolvePlanScheduleWindow(SimulationExerciseTemplate $template): array
+    {
+        $template->loadMissing(['activities', 'timelineItems']);
+
+        $startCandidates = $template->timelineItems
+            ->pluck('start_time')
+            ->merge($template->activities->pluck('start_time'))
+            ->filter(fn ($time) => filled($time))
+            ->map(fn ($time) => $this->normalizeTimeString((string) $time))
+            ->sort()
+            ->values();
+
+        $startTime = $startCandidates->first() ?? '08:00';
+
+        $endFromActivities = $template->activities
+            ->filter(fn (SimulationExerciseActivity $activity) => filled($activity->start_time))
+            ->map(function (SimulationExerciseActivity $activity) {
+                $start = $this->normalizeTimeString((string) $activity->start_time);
+                $duration = max(0, (int) ($activity->duration_minutes ?? 0));
+
+                return $this->shiftTimelineTime($start, $duration);
+            })
+            ->sort()
+            ->last();
+
+        if (is_string($endFromActivities) && $endFromActivities !== '') {
+            $endTime = $endFromActivities;
+        } else {
+            $duration = (int) ($template->estimated_duration_minutes
+                ?: $template->activities->sum('duration_minutes')
+                ?: 120);
+            $endTime = $this->shiftTimelineTime($startTime, max(15, $duration));
+        }
+
+        return [$startTime, $endTime];
+    }
+
+    public function resolveEvaluationMode(SimulationExerciseTemplate $template): string
+    {
+        $stored = (string) ($template->evaluation_mode ?? '');
+        if (in_array($stored, SimulationExerciseTemplate::EVALUATION_MODES, true)) {
+            return $stored;
+        }
+
+        return $this->inferEvaluationMode(
+            (string) $template->title,
+            (string) $template->category,
+            (string) $template->exercise_type,
+        );
+    }
+
+    public function normalizeEvaluationMode(
+        mixed $value,
+        string $title = '',
+        string $category = '',
+        string $exerciseType = 'Drill',
+    ): string {
+        $mode = is_string($value) ? strtolower(trim($value)) : '';
+        if (in_array($mode, SimulationExerciseTemplate::EVALUATION_MODES, true)) {
+            return $mode;
+        }
+
+        return $this->inferEvaluationMode($title, $category, $exerciseType);
+    }
+
+    public function inferEvaluationMode(string $title, string $category, string $exerciseType): string
+    {
+        $haystack = strtolower($title.' '.$category.' '.$exerciseType);
+        $skillHints = ['extinguisher', 'hands-on', 'handson', 'pass technique', 'skill'];
+
+        foreach ($skillHints as $hint) {
+            if (str_contains($haystack, $hint)) {
+                return SimulationExerciseTemplate::EVALUATION_MODE_INDIVIDUAL;
+            }
+        }
+
+        return SimulationExerciseTemplate::EVALUATION_MODE_TEAM;
     }
 
     private function normalizeTimeString(string $time): string
