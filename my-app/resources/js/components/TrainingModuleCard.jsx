@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, Users, TrendingUp, MoreHorizontal, Lock, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Clock, Users, TrendingUp, MoreHorizontal, Lock, CheckCircle2, PlayCircle } from 'lucide-react';
 
 const CATEGORY_GRADIENTS = {
     flood: 'from-sky-600 via-blue-700 to-indigo-800',
@@ -268,6 +268,12 @@ export function ParticipantTrainingModuleCard({ module, href }) {
     const lessonCount = module.lesson_count ?? module.contents_count ?? 0;
     const progress = Math.max(0, Math.min(100, Number(module.completion_percentage) || 0));
     const gradient = resolveCategoryGradient(module.category);
+    const isLocked = module.is_accessible === false;
+    const lockLabel = module.requires_campaign_enrollment ? 'Campaign enrollment required' : 'Not available';
+    const resumeLabel = module.resume_label || (progress > 0 ? 'Continue learning' : 'Start module');
+    const cardHref = href || (module.resume_content_id
+        ? `/participant/training-modules/${module.id}?lesson=${module.resume_content_id}`
+        : `/participant/training-modules/${module.id}`);
 
     const content = (
         <div className="relative min-h-[360px] overflow-hidden rounded-2xl">
@@ -275,7 +281,7 @@ export function ParticipantTrainingModuleCard({ module, href }) {
                 <img
                     src={module.thumbnail_url}
                     alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className={`absolute inset-0 h-full w-full object-cover ${isLocked ? 'grayscale-[35%]' : ''}`}
                 />
             ) : (
                 <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`}>
@@ -289,7 +295,17 @@ export function ParticipantTrainingModuleCard({ module, href }) {
                     />
                 </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/70" />
+            <div className={`absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/70 ${isLocked ? 'opacity-90' : ''}`} />
+
+            {isLocked && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center p-6">
+                    <div className="rounded-2xl border border-white/20 bg-black/45 px-4 py-3 text-center backdrop-blur-sm">
+                        <Lock className="w-5 h-5 text-amber-200 mx-auto mb-2" />
+                        <p className="text-sm font-semibold text-white">{lockLabel}</p>
+                        <p className="mt-1 text-xs text-white/80">Tap for details</p>
+                    </div>
+                </div>
+            )}
 
             <div className="relative z-10 flex h-full flex-col justify-between p-5">
                 <div className="space-y-1.5">
@@ -330,16 +346,27 @@ export function ParticipantTrainingModuleCard({ module, href }) {
                             />
                         </div>
                     </div>
+
+                    {!isLocked && resumeLabel && (
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
+                            <PlayCircle className="w-3.5 h-3.5" />
+                            <span className="truncate">{resumeLabel}</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 
-    if (href) {
+    if (cardHref) {
         return (
             <a
-                href={href}
-                className="group rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-emerald-400 hover:shadow-md transition-all"
+                href={cardHref}
+                className={`group rounded-2xl bg-white border shadow-sm overflow-hidden flex flex-col transition-all ${
+                    isLocked
+                        ? 'border-amber-200 hover:border-amber-300 hover:shadow-md'
+                        : 'border-slate-200 hover:border-emerald-400 hover:shadow-md'
+                }`}
             >
                 {content}
             </a>

@@ -1,8 +1,27 @@
 import React from 'react';
 import Swal from 'sweetalert2';
-import { CalendarClock, ClipboardList, Play, Search, Users, CheckCircle2, BarChart3 } from 'lucide-react';
+import {
+    Bell,
+    CalendarClock,
+    ClipboardList,
+    Download,
+    MapPin,
+    Navigation,
+    Play,
+    Search,
+    Users,
+    CheckCircle2,
+    BarChart3,
+} from 'lucide-react';
 import { deriveSimulationEventStatus, getEventDateTime } from '../utils/simulationEventStatus';
 import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from './ParticipantEmptyState';
+import { ParticipantEventCheckIn } from './ParticipantEventCheckIn';
+import {
+    getEventReminders,
+    processDueReminders,
+    requestReminderPermission,
+    scheduleEventReminder,
+} from '../utils/eventReminders';
 
 // Date formatting utilities
 function formatDate(dateString) {
@@ -290,8 +309,55 @@ export function ParticipantSimulationEventsList({ events }) {
     );
 }
 
-export function ParticipantSimulationEventDetail({ event, role }) {
+export function ParticipantSimulationEventDetail({ event, role, participantContext = null }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const [context, setContext] = React.useState(participantContext || {});
+    const [reminders, setReminders] = React.useState(() => getEventReminders(event.id));
+
+    React.useEffect(() => {
+        setContext(participantContext || {});
+    }, [participantContext]);
+
+    React.useEffect(() => {
+        processDueReminders();
+        const timer = window.setInterval(processDueReminders, 60000);
+        return () => window.clearInterval(timer);
+    }, []);
+
+    const refreshAfterCheckIn = () => {
+        setContext((prev) => ({
+            ...prev,
+            check_in: {
+                ...(prev.check_in || {}),
+                checked_in: true,
+                available: false,
+            },
+            attendance: {
+                status: 'present',
+                checked_in_at: new Date().toISOString(),
+                check_in_method: 'attendance_code',
+            },
+        }));
+    };
+
+    const handleScheduleReminder = async (hoursBefore, label) => {
+        const permitted = await requestReminderPermission();
+        const result = scheduleEventReminder(event, hoursBefore, label);
+        if (!result.ok) {
+            Swal.fire({ icon: 'info', title: 'Reminder not set', text: result.message });
+            return;
+        }
+        setReminders(getEventReminders(event.id));
+        Swal.fire({
+            icon: 'success',
+            title: 'Reminder set',
+            text: permitted
+                ? `${label} — you will get a browser notification if this tab is open near that time.`
+                : `${label} saved. Allow notifications in your browser for alerts while the portal is open.`,
+            timer: 3500,
+            showConfirmButton: false,
+        });
+    };
     const userRegistration = event.registrations?.[0] || null;
     const isRegistered = !!userRegistration;
     const registrationStatus = userRegistration?.status || null;
@@ -371,6 +437,11 @@ export function ParticipantSimulationEventDetail({ event, role }) {
         ? Number(event.remaining_slots)
         : (maxParticipants ? Math.max(0, maxParticipants - approvedCount) : null);
     const campaignRegistrationStatus = String(event?.registration_status || '').toLowerCase() || (canRegister ? 'open' : 'closed');
+
+    const mapsUrl = context.maps_url || null;
+    const calendarUrl = context.calendar_url || `/participant/simulation-events/${event.id}/calendar.ics`;
+    const evaluation = context.evaluation || {};
+    const checkIn = context.check_in || {};
 
     const quickActions = role !== 'PARTICIPANT'
         ? [
@@ -522,6 +593,28 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                                 Register Now
                             </a>
                         )}
+                        {role === 'PARTICIPANT' && (
+                            <>
+                                <a
+                                    href={calendarUrl}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Add to calendar
+                                </a>
+                                {mapsUrl && (
+                                    <a
+                                        href={mapsUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                    >
+                                        <Navigation className="w-4 h-4" />
+                                        Directions
+                                    </a>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -560,6 +653,79 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                     </div>
                 </div>
             </div>
+
+            {role === 'PARTICIPANT' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-xl bg-sky-50 p-2 text-sky-700">
+                                <Bell className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">Reminders</h3>
+                                <p className="text-xs text-slate-600 mt-1">
+                                    Set a browser reminder while the portal is open. Calendar export also includes 24h and 1h alerts.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => handleScheduleReminder(24, 'Simulation event tomorrow')}
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                1 day before
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleScheduleReminder(1, 'Simulation event in 1 hour')}
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                1 hour before
+                            </button>
+                        </div>
+                        {reminders.length > 0 && (
+                            <ul className="text-xs text-slate-600 space-y-1">
+                                {reminders.map((reminder) => (
+                                    <li key={reminder.id}>• {reminder.label}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    <div className={`rounded-2xl border p-5 shadow-sm ${
+                        evaluation.state === 'ready'
+                            ? 'border-emerald-200 bg-emerald-50/40'
+                            : 'border-slate-200 bg-white'
+                    }`}>
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700">
+                                <ClipboardList className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm font-bold text-slate-900">{evaluation.title || 'Event evaluation'}</h3>
+                                <p className="text-xs text-slate-600 mt-1">{evaluation.description}</p>
+                                {evaluation.view_url && (
+                                    <a
+                                        href={evaluation.view_url}
+                                        className="mt-3 inline-flex items-center rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                    >
+                                        {evaluation.state === 'ready' ? 'View your evaluation' : 'Open evaluations'}
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {role === 'PARTICIPANT' && isApproved && (
+                <ParticipantEventCheckIn
+                    eventId={event.id}
+                    checkIn={checkIn}
+                    onSuccess={refreshAfterCheckIn}
+                />
+            )}
 
             {/* Main 2-col layout */}
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 items-start">
@@ -641,6 +807,17 @@ export function ParticipantSimulationEventDetail({ event, role }) {
                                         {event.building && event.room_zone ? ' • ' : ''}
                                         {event.room_zone ? `Zone: ${event.room_zone}` : ''}
                                     </div>
+                                )}
+                                {mapsUrl && (
+                                    <a
+                                        href={mapsUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                                    >
+                                        <MapPin className="w-3.5 h-3.5" />
+                                        Open in Google Maps
+                                    </a>
                                 )}
                             </div>
                         </div>

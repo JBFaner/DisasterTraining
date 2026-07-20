@@ -4,12 +4,16 @@ import {
     CalendarClock,
     ChevronRight,
     ClipboardList,
+    Download,
     Eye,
     GraduationCap,
     LayoutGrid,
     Printer,
     Search,
     Sparkles,
+    TrendingDown,
+    TrendingUp,
+    Minus,
 } from 'lucide-react';
 import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from '../components/ParticipantEmptyState';
 import {
@@ -21,6 +25,7 @@ import {
     AdminPrimaryButton,
     AdminContentCard,
     AdminStatCard,
+    AdminSecondaryButton,
 } from '../components/admin/AdminLayout';
 
 const TABS = [
@@ -48,6 +53,62 @@ function formatDuration(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function TrendBadge({ trend }) {
+    if (!trend?.label) {
+        return <span className="text-xs text-slate-400">—</span>;
+    }
+
+    const Icon = trend.direction === 'improved'
+        ? TrendingUp
+        : trend.direction === 'declined'
+            ? TrendingDown
+            : Minus;
+    const classes = trend.direction === 'improved'
+        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+        : trend.direction === 'declined'
+            ? 'bg-rose-50 text-rose-800 border-rose-200'
+            : 'bg-slate-50 text-slate-600 border-slate-200';
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${classes}`}>
+            <Icon className="w-3 h-3" />
+            {trend.label}
+        </span>
+    );
+}
+
+function PendingItemsPanel({ items = [] }) {
+    if (!items.length) {
+        return null;
+    }
+
+    return (
+        <AdminContentCard className="overflow-hidden border-amber-200 bg-amber-50/40">
+            <div className="border-b border-amber-200 px-4 py-3">
+                <h3 className="text-sm font-bold text-amber-900">Pending & follow-up</h3>
+                <p className="text-xs text-amber-800 mt-0.5">Items that need your attention before your portfolio is complete.</p>
+            </div>
+            <ul className="divide-y divide-amber-100">
+                {items.map((item) => (
+                    <li key={item.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                            <p className="text-xs text-slate-600 mt-0.5">{item.description}</p>
+                        </div>
+                        <a
+                            href={item.href}
+                            className="inline-flex items-center gap-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 shrink-0"
+                        >
+                            {item.action_label || 'Open'}
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </a>
+                    </li>
+                ))}
+            </ul>
+        </AdminContentCard>
+    );
 }
 
 function StatusBadge({ status }) {
@@ -193,11 +254,14 @@ function OverviewSection({ title, icon: Icon, rows, viewAllTab, passingScore, co
 
 export function ParticipantEvaluationHub({ hub = {} }) {
     const tab = hub.tab || 'overview';
+    const focus = hub.focus || null;
     const filters = hub.filters || {};
     const summary = hub.summary || {};
     const modules = hub.modules || [];
     const passingScore = hub.passing_score ?? 75;
     const pagination = hub.pagination || {};
+    const pendingItems = hub.pending_items || [];
+    const exportUrls = hub.export_urls || {};
 
     const [search, setSearch] = React.useState(filters.search || '');
     const [statusFilter, setStatusFilter] = React.useState(filters.status || '');
@@ -246,6 +310,7 @@ export function ParticipantEvaluationHub({ hub = {} }) {
         { key: 'score', label: 'Score', render: (row) => row.score_label || '—' },
         { key: 'percent', label: '%', render: (row) => <span className="font-semibold">{row.percentage != null ? `${Number(row.percentage).toFixed(1)}%` : '—'}</span> },
         { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
+        { key: 'trend', label: 'Trend', render: (row) => <TrendBadge trend={row.trend} /> },
         { key: 'duration', label: 'Duration', render: (row) => <span className="text-xs text-slate-500">{formatDuration(row.duration_seconds)}</span> },
         { key: 'completed', label: 'Completed', render: (row) => <span className="text-xs text-slate-500">{formatDate(row.completed_at)}</span> },
         {
@@ -257,17 +322,15 @@ export function ParticipantEvaluationHub({ hub = {} }) {
                     <a href={row.view_url} className="inline-flex p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="View report">
                         <Eye className="w-4 h-4" />
                     </a>
-                    {row.type === 'module' && (
-                        <a
-                            href={`${row.view_url}?print=1`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex p-2 rounded-lg hover:bg-slate-100 text-slate-600"
-                            title="Print report"
-                        >
-                            <Printer className="w-4 h-4" />
-                        </a>
-                    )}
+                    <a
+                        href={row.print_url || `${row.view_url}?print=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+                        title="Print report"
+                    >
+                        <Printer className="w-4 h-4" />
+                    </a>
                 </div>
             ) : '—',
         },
@@ -294,9 +357,20 @@ export function ParticipantEvaluationHub({ hub = {} }) {
             label: 'Actions',
             align: 'right',
             render: (row) => row.view_url ? (
-                <a href={row.view_url} className="inline-flex p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="View event">
-                    <Eye className="w-4 h-4" />
-                </a>
+                <div className="inline-flex items-center gap-1">
+                    <a href={row.view_url} className="inline-flex p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="View event drill report">
+                        <Eye className="w-4 h-4" />
+                    </a>
+                    <a
+                        href={row.print_url || `${row.view_url}?print=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+                        title="Print event drill report"
+                    >
+                        <Printer className="w-4 h-4" />
+                    </a>
+                </div>
             ) : '—',
         },
     ];
@@ -316,6 +390,7 @@ export function ParticipantEvaluationHub({ hub = {} }) {
         { key: 'score', label: 'Score', render: (row) => row.score_label || '—' },
         { key: 'percent', label: '%', render: (row) => <span className="font-semibold">{row.percentage != null ? `${Number(row.percentage).toFixed(1)}%` : '—'}</span> },
         { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} /> },
+        { key: 'trend', label: 'Trend', render: (row) => <TrendBadge trend={row.trend} /> },
         { key: 'completed', label: 'Completed', render: (row) => <span className="text-xs text-slate-500">{formatDate(row.completed_at)}</span> },
         {
             key: 'actions',
@@ -359,7 +434,25 @@ export function ParticipantEvaluationHub({ hub = {} }) {
                 icon={ClipboardList}
                 title="Evaluation Results"
                 description="Your scores from module assessments, simulation event drills, and lesson quizzes."
+                actions={
+                    hasAnyResults ? (
+                        <div className="flex flex-wrap gap-2">
+                            <AdminSecondaryButton href={exportUrls.portfolio_print || '/participant/evaluations/portfolio?print=1'}>
+                                <Printer className="w-4 h-4" />
+                                Export Portfolio (PDF)
+                            </AdminSecondaryButton>
+                            <AdminSecondaryButton href={exportUrls.portfolio_download || '/participant/evaluations/portfolio/download'}>
+                                <Download className="w-4 h-4" />
+                                Download Summary
+                            </AdminSecondaryButton>
+                        </div>
+                    ) : null
+                }
             />
+
+            {(focus === 'pending' || tab === 'overview') && pendingItems.length > 0 && (
+                <PendingItemsPanel items={pendingItems} />
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <AdminStatCard label="Module Assessments" value={summary.module_count ?? 0} hint={`${summary.module_passed ?? 0} passed`} />

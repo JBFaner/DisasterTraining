@@ -1,6 +1,6 @@
 import React from 'react';
 import Swal from 'sweetalert2';
-import { ClipboardList, Printer, Star, CheckCircle2, XCircle, ArrowLeft, RotateCcw } from 'lucide-react';
+import { ClipboardList, Printer, Star, CheckCircle2, XCircle, ArrowLeft, RotateCcw, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import {
     resolveQuestionsForLocale,
     resolveScenarioTitle,
@@ -214,6 +214,55 @@ export function EvaluationResultDetail({ result, passingScore = 75, role = 'LGU_
                     accent={passed ? 'emerald' : 'amber'}
                 />
             </div>
+
+            {isParticipant && (result.attempt_history?.length > 1 || result.attempt_trend) && (
+                <AdminContentCard className="p-5">
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Attempt Comparison</h2>
+                    {result.attempt_trend?.label && (
+                        <div className={`mb-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                            result.attempt_trend.direction === 'improved'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                : result.attempt_trend.direction === 'declined'
+                                    ? 'border-rose-200 bg-rose-50 text-rose-800'
+                                    : 'border-slate-200 bg-slate-50 text-slate-700'
+                        }`}>
+                            {result.attempt_trend.direction === 'improved' && <TrendingUp className="w-4 h-4" />}
+                            {result.attempt_trend.direction === 'declined' && <TrendingDown className="w-4 h-4" />}
+                            {result.attempt_trend.direction === 'unchanged' && <Minus className="w-4 h-4" />}
+                            {result.attempt_trend.label}
+                        </div>
+                    )}
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                                    <th className="px-3 py-2">Attempt</th>
+                                    <th className="px-3 py-2">Score</th>
+                                    <th className="px-3 py-2">Result</th>
+                                    <th className="px-3 py-2">Completed</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {(result.attempt_history || []).map((attempt) => (
+                                    <tr key={attempt.id} className={attempt.is_current ? 'bg-emerald-50/60' : undefined}>
+                                        <td className="px-3 py-2 font-medium">
+                                            #{attempt.attempt_number ?? '—'}
+                                            {attempt.is_current && (
+                                                <span className="ml-2 text-xs font-semibold text-emerald-700">Current</span>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-2">{Number(attempt.percentage ?? 0).toFixed(1)}%</td>
+                                        <td className="px-3 py-2 capitalize">{attempt.status === 'passed' ? 'Passed' : 'Needs improvement'}</td>
+                                        <td className="px-3 py-2 text-slate-500">
+                                            {attempt.completed_at ? new Date(attempt.completed_at).toLocaleString() : '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </AdminContentCard>
+            )}
 
             {/* Section 3 & 4 — Performance + Progress */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

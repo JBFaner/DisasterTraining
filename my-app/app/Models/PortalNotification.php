@@ -20,6 +20,26 @@ class PortalNotification extends Model
 
     public const TYPE_AI_SCENARIO_GENERATION_FAILED = 'ai_scenario_generation_failed';
 
+    public const TYPE_REGISTRATION_APPROVED = 'registration_approved';
+
+    public const TYPE_REGISTRATION_REJECTED = 'registration_rejected';
+
+    public const TYPE_REGISTRATION_SUBMITTED = 'registration_submitted';
+
+    public const TYPE_REGISTRATION_PENDING = 'registration_pending';
+
+    public const TYPE_EVENT_CANCELLED = 'event_cancelled';
+
+    public const TYPE_CERTIFICATE_ISSUED = 'certificate_issued';
+
+    public const TYPE_EVALUATION_RECORDED = 'evaluation_recorded';
+
+    public const TYPE_ASSESSMENT_COMPLETED = 'assessment_completed';
+
+    public const TYPE_ATTENDANCE_MARKED = 'attendance_marked';
+
+    public const TYPE_CERTIFICATE_REVOKED = 'certificate_revoked';
+
     protected $fillable = [
         'user_id',
         'type',

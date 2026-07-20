@@ -43,9 +43,11 @@ class User extends Authenticatable
         'registration_campaign_registered_at',
         'last_synced_at',
         'profile_picture',
+        'notification_preferences',
         'barangay_id',
         'philippine_barangay_id',
         'last_activity',
+        'last_dashboard_visit_at',
     ];
 
     /**
@@ -73,7 +75,9 @@ class User extends Authenticatable
             'last_synced_at' => 'datetime',
             'last_login' => 'datetime',
             'last_activity' => 'datetime',
+            'last_dashboard_visit_at' => 'datetime',
             'registration_campaign_registered_at' => 'datetime',
+            'notification_preferences' => 'array',
         ];
     }
 

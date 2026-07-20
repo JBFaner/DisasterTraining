@@ -5,11 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\EventRegistration;
 use App\Models\SimulationEvent;
+use App\Services\PortalNotificationFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AttendanceController extends Controller
 {
+    public function __construct(
+        private readonly PortalNotificationFactory $notificationFactory,
+    ) {}
     /**
      * Display attendance for a specific event.
      */
@@ -49,6 +53,7 @@ class AttendanceController extends Controller
         ]);
 
         $attendance = $eventRegistration->attendance;
+        $previousStatus = $attendance?->status;
 
         if ($attendance) {
             // Update existing attendance
@@ -63,9 +68,10 @@ class AttendanceController extends Controller
                 'notes' => $data['notes'] ?? null,
                 'marked_by' => portal_id(),
             ]);
+            $attendance->refresh();
         } else {
             // Create new attendance
-            Attendance::create([
+            $attendance = Attendance::create([
                 'event_registration_id' => $eventRegistration->id,
                 'user_id' => $eventRegistration->user_id,
                 'simulation_event_id' => $eventRegistration->simulation_event_id,
@@ -76,6 +82,8 @@ class AttendanceController extends Controller
                 'marked_by' => portal_id(),
             ]);
         }
+
+        $this->maybeNotifyAttendanceMarked($attendance, $previousStatus);
 
         return back()->with('status', 'Attendance marked successfully.');
     }
@@ -91,6 +99,8 @@ class AttendanceController extends Controller
             return back()->with('status', 'Attendance is locked and cannot be modified.');
         }
 
+        $previousStatus = $attendance->status;
+
         $data = $request->validate([
             'status' => ['required', 'string', 'in:present,late,absent,excused,completed'],
             'checked_in_at' => ['nullable', 'date'],
@@ -105,6 +115,8 @@ class AttendanceController extends Controller
             'notes' => $data['notes'] ?? null,
             'marked_by' => portal_id(),
         ]);
+
+        $this->maybeNotifyAttendanceMarked($attendance->fresh(), $previousStatus);
 
         return back()->with('status', 'Attendance updated successfully.');
     }
@@ -245,6 +257,7 @@ class AttendanceController extends Controller
 
         // Check if attendance already exists
         $attendance = $eventRegistration->attendance;
+        $previousStatus = $attendance?->status;
 
         if ($attendance) {
             // Update existing attendance
@@ -254,9 +267,10 @@ class AttendanceController extends Controller
                 'checked_in_at' => now(),
                 'marked_by' => portal_id(),
             ]);
+            $attendance->refresh();
         } else {
             // Create new attendance record
-            Attendance::create([
+            $attendance = Attendance::create([
                 'event_registration_id' => $eventRegistration->id,
                 'user_id' => $userId,
                 'simulation_event_id' => $simulationEvent->id,
@@ -267,9 +281,102 @@ class AttendanceController extends Controller
             ]);
         }
 
+        $this->maybeNotifyAttendanceMarked($attendance, $previousStatus);
+
         return response()->json([
             'success' => true,
             'message' => 'Attendance marked as present successfully'
+        ]);
+    }
+
+    /**
+     * Participant self check-in via venue QR or attendance code.
+     */
+    public function selfCheckIn(Request $request, SimulationEvent $simulationEvent)
+    {
+        $user = portal_user();
+        if (! $user || $user->role !== 'PARTICIPANT') {
+            abort(403);
+        }
+
+        if (! $simulationEvent->qr_code_enabled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Self check-in is not enabled for this event.',
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'attendance_code' => ['required', 'string', 'max:64'],
+            'check_in_method' => ['nullable', 'string', 'in:qr_code,attendance_code'],
+        ]);
+
+        $contextService = app(\App\Services\ParticipantSimulationEventContextService::class);
+        if (! $contextService->isCheckInWindowOpen($simulationEvent)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Check-in opens on the event day (or while the drill is ongoing).',
+            ], 422);
+        }
+
+        $expectedCode = strtoupper(trim((string) $simulationEvent->attendance_code));
+        $submittedCode = strtoupper(trim($data['attendance_code']));
+        if ($expectedCode === '' || ! hash_equals($expectedCode, $submittedCode)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid check-in code. Scan the QR at the venue or enter the code from your facilitator.',
+            ], 422);
+        }
+
+        $eventRegistration = $simulationEvent->registrations()
+            ->where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->first();
+
+        if (! $eventRegistration) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You need an approved registration before you can check in.',
+            ], 404);
+        }
+
+        $attendance = $eventRegistration->attendance;
+        $previousStatus = $attendance?->status;
+        $method = $data['check_in_method'] ?? 'attendance_code';
+
+        if ($attendance) {
+            if (in_array($attendance->status, ['present', 'late'], true)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'You are already checked in.',
+                    'already_checked_in' => true,
+                ]);
+            }
+
+            $attendance->update([
+                'status' => 'present',
+                'check_in_method' => $method,
+                'checked_in_at' => now(),
+                'marked_by' => null,
+            ]);
+            $attendance->refresh();
+        } else {
+            $attendance = Attendance::create([
+                'event_registration_id' => $eventRegistration->id,
+                'user_id' => $user->id,
+                'simulation_event_id' => $simulationEvent->id,
+                'status' => 'present',
+                'check_in_method' => $method,
+                'checked_in_at' => now(),
+                'marked_by' => null,
+            ]);
+        }
+
+        $this->maybeNotifyAttendanceMarked($attendance, $previousStatus);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Check-in successful. Welcome to the drill!',
         ]);
     }
 
@@ -296,6 +403,8 @@ class AttendanceController extends Controller
                 continue;
             }
 
+            $previousStatus = $attendance?->status;
+
             if ($attendance) {
                 $attendance->update([
                     'status' => $data['status'],
@@ -303,8 +412,9 @@ class AttendanceController extends Controller
                     'checked_in_at' => $attendance->checked_in_at ?: now(),
                     'marked_by' => portal_id(),
                 ]);
+                $attendance->refresh();
             } else {
-                Attendance::create([
+                $attendance = Attendance::create([
                     'event_registration_id' => $registration->id,
                     'user_id' => $registration->user_id,
                     'simulation_event_id' => $simulationEvent->id,
@@ -314,6 +424,8 @@ class AttendanceController extends Controller
                     'marked_by' => portal_id(),
                 ]);
             }
+
+            $this->maybeNotifyAttendanceMarked($attendance, $previousStatus);
             $marked++;
         }
 
@@ -328,6 +440,22 @@ class AttendanceController extends Controller
         $user = portal_user();
         if (!$user || !in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
             abort(403, 'Unauthorized access.');
+        }
+    }
+
+    private function maybeNotifyAttendanceMarked(Attendance $attendance, ?string $previousStatus = null): void
+    {
+        if (! in_array($attendance->status, ['present', 'late'], true)) {
+            return;
+        }
+
+        if (in_array($previousStatus, ['present', 'late'], true)) {
+            return;
+        }
+
+        $attendance->loadMissing(['user', 'simulationEvent']);
+        if ($attendance->user) {
+            $this->notificationFactory->attendanceMarked($attendance->user, $attendance);
         }
     }
 }

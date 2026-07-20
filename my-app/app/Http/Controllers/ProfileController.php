@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\UserNotificationPreferenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -11,16 +12,16 @@ use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
-    public function show(Request $request)
+    public function show(Request $request, UserNotificationPreferenceService $preferenceService)
     {
         /** @var User $user */
         $user = $request->user();
+        $userPayload = $user->toArray();
+        $userPayload['notification_preferences'] = $preferenceService->resolve($user);
 
-        // Render within the main React-powered admin shell so the sidebar
-        // and top header remain consistent with other modules.
         return view('app', [
             'section' => 'profile',
-            'user' => $user,
+            'user' => $userPayload,
         ]);
     }
 
@@ -283,6 +284,35 @@ class ProfileController extends Controller
         ]);
 
         return back()->with('status', 'Your password has been updated.');
+    }
+
+    public function updateNotificationPreferences(Request $request, UserNotificationPreferenceService $preferenceService)
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $preferences = $preferenceService->sanitize([
+            'in_app_enabled' => $request->boolean('in_app_enabled'),
+            'registrations' => $request->boolean('registrations'),
+            'events' => $request->boolean('events'),
+            'attendance' => $request->boolean('attendance'),
+            'evaluations' => $request->boolean('evaluations'),
+            'certificates' => $request->boolean('certificates'),
+        ]);
+
+        $user->notification_preferences = $preferences;
+        $user->save();
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'Updated notification preferences',
+            'module' => 'Profile',
+            'status' => 'success',
+            'description' => 'User updated their in-app notification preferences.',
+            'new_values' => $preferences,
+        ]);
+
+        return back()->with('status', 'Notification preferences updated.');
     }
 }
 

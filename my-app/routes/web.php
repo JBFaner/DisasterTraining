@@ -575,6 +575,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     Route::middleware('portal.participant')->prefix('participant')->group(function () {
         Route::get('/training-modules', [ParticipantTrainingModuleController::class, 'index'])
             ->name('participant.training-modules.index');
+        Route::get('/training-modules/progress-summary', [ParticipantTrainingModuleController::class, 'progressSummaryAll'])
+            ->name('participant.training-modules.progress-summary.all');
+        Route::get('/training-modules/{trainingModule}/progress-summary', [ParticipantTrainingModuleController::class, 'progressSummary'])
+            ->name('participant.training-modules.progress-summary');
         Route::get('/training-modules/{trainingModule}', [ParticipantTrainingModuleController::class, 'show'])
             ->name('participant.training-modules.show');
 
@@ -608,12 +612,20 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         // Simulation Events (participant browse & register)
         Route::get('/simulation-events', [SimulationEventController::class, 'index'])->name('participant.simulation-events.index');
         Route::get('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'show'])->name('participant.simulation-events.show');
+        Route::get('/simulation-events/{simulationEvent}/calendar.ics', [SimulationEventController::class, 'calendarExport'])
+            ->name('participant.simulation-events.calendar');
+        Route::post('/simulation-events/{simulationEvent}/check-in', [AttendanceController::class, 'selfCheckIn'])
+            ->name('participant.simulation-events.check-in');
         Route::post('/simulation-events/{simulationEvent}/register', [SimulationEventController::class, 'register'])->name('participant.simulation-events.register');
         Route::post('/simulation-events/{simulationEvent}/cancel-registration', [SimulationEventController::class, 'cancelRegistration'])->name('participant.simulation-events.cancel-registration');
 
         // Evaluation results (participant view)
         Route::get('/evaluations', [EvaluationResultController::class, 'index'])->name('participant.evaluations.index');
+        Route::get('/evaluations/portfolio', [EvaluationResultController::class, 'portfolio'])->name('participant.evaluations.portfolio');
+        Route::get('/evaluations/portfolio/download', [EvaluationResultController::class, 'portfolioDownload'])->name('participant.evaluations.portfolio.download');
         Route::get('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'show'])->name('participant.evaluation-results.show');
+        Route::get('/evaluations/event-drills/{participantEvaluation}', [App\Http\Controllers\ParticipantEventEvaluationController::class, 'show'])
+            ->name('participant.event-evaluations.show');
 
         // Certification (participant view)
         Route::get('/certification', [App\Http\Controllers\CertificationController::class, 'index'])->name('participant.certification.index');
@@ -625,6 +637,16 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
 
         // My Trainings
         Route::get('/my-trainings', [CampaignRegistrationController::class, 'myTrainings'])->name('participant.my-trainings.index');
+
+        // In-app notifications
+        Route::get('/notifications', [PortalNotificationController::class, 'index'])
+            ->name('participant.notifications.index');
+        Route::get('/notifications/unread-count', [PortalNotificationController::class, 'unreadCount'])
+            ->name('participant.notifications.unread-count');
+        Route::post('/notifications/{notification}/read', [PortalNotificationController::class, 'markRead'])
+            ->name('participant.notifications.read');
+        Route::post('/notifications/read-all', [PortalNotificationController::class, 'markAllRead'])
+            ->name('participant.notifications.read-all');
     });
 
     // Profile (shared across portals)
@@ -636,6 +658,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     Route::post('/profile/phone', [ProfileController::class, 'requestPhoneChange'])->name('profile.phone.request');
     Route::get('/profile/phone/confirm/{token}', [ProfileController::class, 'confirmPhoneChange'])->name('profile.phone.confirm');
     Route::post('/profile/password', [ProfileController::class, 'changePassword'])->name('profile.password.change');
+    Route::put('/profile/notifications', [ProfileController::class, 'updateNotificationPreferences'])->name('profile.notifications.update');
 
     // Legacy shared URLs → correct portal prefix (backward compatibility)
     Route::get('/training-modules', [LegacyTrainingModuleRedirectController::class, 'redirectIndex'])

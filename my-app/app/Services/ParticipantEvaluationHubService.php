@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\AiScenarioAttempt;
+use App\Models\Attendance;
 use App\Models\EvaluationResult;
 use App\Models\LessonQuizAttempt;
 use App\Models\ParticipantEvaluation;
@@ -56,24 +58,42 @@ class ParticipantEvaluationHubService
             $lessonResults = $lessonSummary['query']->paginate($perPage)->withQueryString();
         }
 
+        $attemptTrendsForRecent = $this->moduleAttemptTrends($user);
         $recentModules = $this->mapModuleResults(
-            $moduleSummary['query']->clone()->limit(5)->get()
+            $moduleSummary['query']->clone()->limit(5)->get(),
+            $attemptTrendsForRecent,
         );
         $recentEvents = $this->mapEventResults(
             $eventSummary['query']->clone()->limit(5)->get()
         );
         $recentLessons = $this->mapLessonResults(
-            $lessonSummary['query']->clone()->limit(5)->get()
+            $lessonSummary['query']->clone()->limit(5)->get(),
+            $user,
         );
+
+        $attemptTrends = $this->moduleAttemptTrends($user);
+        $pendingItems = $this->pendingItems($user);
+        $focus = $request->string('focus')->toString();
+        if ($focus === 'pending' && $tab === 'overview' && $pendingItems !== []) {
+            $tab = 'overview';
+        }
 
         return [
             'tab' => $tab,
+            'focus' => in_array($focus, ['pending'], true) ? $focus : null,
             'filters' => $filters,
             'passing_score' => $this->scoringService->passingScore(),
+            'pending_items' => $pendingItems,
+            'export_urls' => [
+                'portfolio_print' => route('participant.evaluations.portfolio', ['print' => 1]),
+                'portfolio_download' => route('participant.evaluations.portfolio.download'),
+            ],
             'summary' => [
                 'module_count' => $moduleSummary['total'],
                 'event_count' => $eventSummary['total'],
                 'lesson_count' => $lessonSummary['total'],
+                'total_count' => $moduleSummary['total'] + $eventSummary['total'] + $lessonSummary['total'],
+                'pending_count' => count($pendingItems),
                 'module_passed' => $moduleSummary['passed'],
                 'event_passed' => $eventSummary['passed'],
                 'lesson_passed' => $lessonSummary['passed'],
@@ -85,13 +105,13 @@ class ParticipantEvaluationHubService
                 'lessons' => $recentLessons,
             ],
             'module_results' => $moduleResults
-                ? $this->mapModuleResults(collect($moduleResults->items()))
+                ? $this->mapModuleResults(collect($moduleResults->items()), $attemptTrends)
                 : [],
             'event_results' => $eventResults
                 ? $this->mapEventResults(collect($eventResults->items()))
                 : [],
             'lesson_results' => $lessonResults
-                ? $this->mapLessonResults(collect($lessonResults->items()))
+                ? $this->mapLessonResults(collect($lessonResults->items()), $user)
                 : [],
             'pagination' => [
                 'modules' => $moduleResults ? $this->paginationMeta($moduleResults) : null,
@@ -99,6 +119,236 @@ class ParticipantEvaluationHubService
                 'lessons' => $lessonResults ? $this->paginationMeta($lessonResults) : null,
             ],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function summaryCounts(User $user): array
+    {
+        $moduleSummary = $this->moduleResultsQuery($user, new Request);
+        $eventSummary = $this->eventResultsQuery($user, new Request);
+        $lessonSummary = $this->lessonResultsQuery($user, new Request);
+
+        return [
+            'module_count' => $moduleSummary['total'],
+            'event_count' => $eventSummary['total'],
+            'lesson_count' => $lessonSummary['total'],
+            'total_count' => $moduleSummary['total'] + $eventSummary['total'] + $lessonSummary['total'],
+            'module_passed' => $moduleSummary['passed'],
+            'event_passed' => $eventSummary['passed'],
+            'lesson_passed' => $lessonSummary['passed'],
+            'pending_count' => count($this->pendingItems($user)),
+        ];
+    }
+
+    /**
+     * Dashboard deep link for the evaluations KPI card.
+     */
+    public function dashboardEvaluationsHref(User $user): string
+    {
+        $pending = $this->pendingItems($user);
+        if ($pending !== []) {
+            return route('participant.evaluations.index', ['focus' => 'pending']);
+        }
+
+        $counts = $this->summaryCounts($user);
+        if (($counts['module_count'] ?? 0) > 0) {
+            return route('participant.evaluations.index', ['tab' => 'modules']);
+        }
+        if (($counts['event_count'] ?? 0) > 0) {
+            return route('participant.evaluations.index', ['tab' => 'events']);
+        }
+        if (($counts['lesson_count'] ?? 0) > 0) {
+            return route('participant.evaluations.index', ['tab' => 'lessons']);
+        }
+
+        return route('participant.evaluations.index');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function pendingItems(User $user): array
+    {
+        $items = [];
+
+        AiScenarioAttempt::query()
+            ->with('trainingModule:id,title')
+            ->where('user_id', $user->id)
+            ->where('status', AiScenarioAttempt::STATUS_IN_PROGRESS)
+            ->orderByDesc('updated_at')
+            ->get()
+            ->each(function (AiScenarioAttempt $attempt) use (&$items) {
+                $items[] = [
+                    'id' => 'ai-attempt-'.$attempt->id,
+                    'type' => 'module_assessment',
+                    'title' => 'Resume AI scenario assessment',
+                    'description' => ($attempt->trainingModule?->title ?? 'Training module').' · assessment in progress',
+                    'href' => '/participant/ai-scenario-attempts/'.$attempt->id,
+                    'action_label' => 'Resume',
+                    'tab' => 'modules',
+                ];
+            });
+
+        $latestByModule = EvaluationResult::query()
+            ->with('trainingModule:id,title')
+            ->where('participant_id', $user->id)
+            ->orderByDesc('completed_at')
+            ->get()
+            ->unique('training_module_id');
+
+        foreach ($latestByModule as $result) {
+            if ($result->status !== EvaluationResult::STATUS_NEEDS_IMPROVEMENT) {
+                continue;
+            }
+
+            $inProgress = AiScenarioAttempt::query()
+                ->where('user_id', $user->id)
+                ->where('training_module_id', $result->training_module_id)
+                ->where('status', AiScenarioAttempt::STATUS_IN_PROGRESS)
+                ->exists();
+
+            if ($inProgress) {
+                continue;
+            }
+
+            $items[] = [
+                'id' => 'retry-module-'.$result->training_module_id,
+                'type' => 'module_assessment',
+                'title' => 'Retake module assessment',
+                'description' => ($result->trainingModule?->title ?? 'Training module').' · last score '.number_format((float) $result->percentage, 1).'%',
+                'href' => '/participant/training-modules/'.$result->training_module_id,
+                'action_label' => 'Retake',
+                'tab' => 'modules',
+            ];
+        }
+
+        Attendance::query()
+            ->with(['simulationEvent:id,title,status,event_date'])
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['present', 'late', 'completed'])
+            ->whereHas('simulationEvent', fn ($q) => $q->whereIn('status', ['ended', 'completed', 'archived']))
+            ->orderByDesc('checked_in_at')
+            ->get()
+            ->each(function (Attendance $attendance) use (&$items) {
+                $event = $attendance->simulationEvent;
+                if (! $event) {
+                    return;
+                }
+
+                $hasEvaluation = ParticipantEvaluation::query()
+                    ->where('user_id', $attendance->user_id)
+                    ->whereNotNull('submitted_at')
+                    ->whereHas('evaluation', fn ($q) => $q->where('simulation_event_id', $event->id))
+                    ->exists();
+
+                if ($hasEvaluation) {
+                    return;
+                }
+
+                $items[] = [
+                    'id' => 'await-event-eval-'.$event->id,
+                    'type' => 'event_drill',
+                    'title' => 'Awaiting drill evaluation',
+                    'description' => $event->title.' · attended, evaluation not posted yet',
+                    'href' => '/participant/simulation-events/'.$event->id,
+                    'action_label' => 'View event',
+                    'tab' => 'events',
+                ];
+            });
+
+        return $items;
+    }
+
+    /**
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function moduleAttemptTrends(User $user): array
+    {
+        $results = EvaluationResult::query()
+            ->with('trainingModule:id,title')
+            ->where('participant_id', $user->id)
+            ->orderBy('training_module_id')
+            ->orderBy('attempt_number')
+            ->orderBy('completed_at')
+            ->get();
+
+        $trends = [];
+
+        foreach ($results->groupBy('training_module_id') as $moduleId => $attempts) {
+            if ($attempts->count() < 2) {
+                continue;
+            }
+
+            $moduleId = (int) $moduleId;
+            $sorted = $attempts->sortBy(fn (EvaluationResult $r) => ($r->attempt_number ?? 0))->values();
+            $trends[$moduleId] = [];
+
+            for ($i = 1; $i < $sorted->count(); $i++) {
+                $previous = $sorted[$i - 1];
+                $current = $sorted[$i];
+                $fromAttempt = (int) ($previous->attempt_number ?: $i);
+                $toAttempt = (int) ($current->attempt_number ?: ($i + 1));
+                $delta = round((float) $current->percentage - (float) $previous->percentage, 1);
+                $direction = $delta > 0 ? 'improved' : ($delta < 0 ? 'declined' : 'unchanged');
+
+                $trends[$moduleId][(int) $current->id] = [
+                    'module_id' => $moduleId,
+                    'module_title' => $current->trainingModule?->title,
+                    'from_attempt' => $fromAttempt,
+                    'to_attempt' => $toAttempt,
+                    'from_percentage' => (float) $previous->percentage,
+                    'to_percentage' => (float) $current->percentage,
+                    'delta' => $delta,
+                    'direction' => $direction,
+                    'label' => $this->trendLabel($direction, $delta, $fromAttempt, $toAttempt),
+                ];
+            }
+        }
+
+        return $trends;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function attemptHistoryForResult(EvaluationResult $result): array
+    {
+        return EvaluationResult::query()
+            ->where('participant_id', $result->participant_id)
+            ->where('training_module_id', $result->training_module_id)
+            ->orderBy('attempt_number')
+            ->orderBy('completed_at')
+            ->get()
+            ->map(fn (EvaluationResult $row) => [
+                'id' => $row->id,
+                'attempt_number' => $row->attempt_number,
+                'percentage' => (float) $row->percentage,
+                'status' => $row->status === EvaluationResult::STATUS_PASSED ? 'passed' : 'failed',
+                'completed_at' => $row->completed_at?->toIso8601String(),
+                'is_current' => (int) $row->id === (int) $result->id,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function trendLabel(string $direction, float $delta, int $fromAttempt, int $toAttempt): string
+    {
+        $abs = abs($delta);
+        $arrow = match ($direction) {
+            'improved' => 'Improved',
+            'declined' => 'Declined',
+            default => 'No change',
+        };
+
+        if ($direction === 'unchanged') {
+            return "{$arrow} from attempt {$fromAttempt} → {$toAttempt}";
+        }
+
+        $sign = $delta > 0 ? '+' : '-';
+
+        return "{$arrow} {$sign}{$abs}% from attempt {$fromAttempt} → {$toAttempt}";
     }
 
     /**
@@ -252,9 +502,12 @@ class ParticipantEvaluationHubService
      * @param  \Illuminate\Support\Collection<int, EvaluationResult>  $results
      * @return list<array<string, mixed>>
      */
-    private function mapModuleResults($results): array
+    /**
+     * @param  array<int, array<int, array<string, mixed>>>  $attemptTrends
+     */
+    private function mapModuleResults($results, array $attemptTrends = []): array
     {
-        return $results->map(function (EvaluationResult $result) {
+        return $results->map(function (EvaluationResult $result) use ($attemptTrends) {
             $durationSeconds = $result->duration_seconds;
             if ($durationSeconds === null && $result->aiScenarioAttempt?->started_at && $result->aiScenarioAttempt?->completed_at) {
                 $durationSeconds = max(0, (int) $result->aiScenarioAttempt->started_at->diffInSeconds($result->aiScenarioAttempt->completed_at));
@@ -277,6 +530,8 @@ class ParticipantEvaluationHubService
                 'duration_seconds' => $durationSeconds,
                 'completed_at' => $result->completed_at?->toIso8601String(),
                 'view_url' => route('participant.evaluation-results.show', $result),
+                'print_url' => route('participant.evaluation-results.show', $result).'?print=1',
+                'trend' => $attemptTrends[(int) $result->training_module_id][(int) $result->id] ?? null,
             ];
         })->values()->all();
     }
@@ -303,9 +558,8 @@ class ParticipantEvaluationHubService
                 'eligible_for_certification' => (bool) $evaluation->is_eligible_for_certification,
                 'criteria_scored' => $evaluation->scores->count(),
                 'completed_at' => $evaluation->submitted_at?->toIso8601String(),
-                'view_url' => $event?->id
-                    ? route('participant.simulation-events.show', $event)
-                    : null,
+                'view_url' => route('participant.event-evaluations.show', $evaluation),
+                'print_url' => route('participant.event-evaluations.show', $evaluation).'?print=1',
             ];
         })->values()->all();
     }
@@ -314,10 +568,13 @@ class ParticipantEvaluationHubService
      * @param  \Illuminate\Support\Collection<int, LessonQuizAttempt>  $results
      * @return list<array<string, mixed>>
      */
-    private function mapLessonResults($results): array
+    private function mapLessonResults($results, User $user): array
     {
-        return $results->map(function (LessonQuizAttempt $attempt) {
+        $lessonTrends = $this->lessonAttemptTrends($user);
+
+        return $results->map(function (LessonQuizAttempt $attempt) use ($lessonTrends) {
             $totalQuestions = count($attempt->generated_questions ?? []);
+            $contentId = (int) $attempt->training_content_id;
 
             return [
                 'id' => $attempt->id,
@@ -339,8 +596,55 @@ class ParticipantEvaluationHubService
                 'passing_score' => $attempt->passingScore(),
                 'completed_at' => $attempt->completed_at?->toIso8601String(),
                 'view_url' => route('participant.lesson-quiz-attempts.show', $attempt),
+                'trend' => $lessonTrends[$contentId][(int) $attempt->id] ?? null,
             ];
         })->values()->all();
+    }
+
+    /**
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    private function lessonAttemptTrends(User $user): array
+    {
+        $attempts = LessonQuizAttempt::query()
+            ->with(['trainingContent:id,title', 'trainingModule:id,title'])
+            ->where('user_id', $user->id)
+            ->whereIn('status', [LessonQuizAttempt::STATUS_COMPLETED, LessonQuizAttempt::STATUS_EXPIRED])
+            ->whereNotNull('percentage')
+            ->orderBy('training_content_id')
+            ->orderBy('attempt_number')
+            ->get();
+
+        $trends = [];
+
+        foreach ($attempts->groupBy('training_content_id') as $contentId => $rows) {
+            if ($rows->count() < 2) {
+                continue;
+            }
+
+            $contentId = (int) $contentId;
+            $sorted = $rows->sortBy(fn (LessonQuizAttempt $a) => ($a->attempt_number ?? 0))->values();
+            $trends[$contentId] = [];
+
+            for ($i = 1; $i < $sorted->count(); $i++) {
+                $previous = $sorted[$i - 1];
+                $current = $sorted[$i];
+                $fromAttempt = (int) ($previous->attempt_number ?: $i);
+                $toAttempt = (int) ($current->attempt_number ?: ($i + 1));
+                $delta = round((float) $current->percentage - (float) $previous->percentage, 1);
+                $direction = $delta > 0 ? 'improved' : ($delta < 0 ? 'declined' : 'unchanged');
+
+                $trends[$contentId][(int) $current->id] = [
+                    'from_attempt' => $fromAttempt,
+                    'to_attempt' => $toAttempt,
+                    'delta' => $delta,
+                    'direction' => $direction,
+                    'label' => $this->trendLabel($direction, $delta, $fromAttempt, $toAttempt),
+                ];
+            }
+        }
+
+        return $trends;
     }
 
     /**

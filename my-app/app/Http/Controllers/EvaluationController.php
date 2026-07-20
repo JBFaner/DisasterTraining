@@ -9,6 +9,7 @@ use App\Models\SimulationEvent;
 use App\Models\Attendance;
 use App\Services\DatabaseBackupService;
 use App\Services\EvaluationHubService;
+use App\Services\PortalNotificationFactory;
 use App\Support\SimulationEvaluationCriteria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,7 @@ class EvaluationController extends Controller
 {
     public function __construct(
         private readonly EvaluationHubService $hubService,
+        private readonly PortalNotificationFactory $notificationFactory,
     ) {}
 
     /**
@@ -408,6 +410,17 @@ class EvaluationController extends Controller
                 app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
             }
         });
+
+        if ($data['status'] === 'submitted') {
+            $participantEvaluation = ParticipantEvaluation::query()
+                ->where('evaluation_id', $evaluation->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($participantEvaluation) {
+                $this->notificationFactory->evaluationRecorded($user, $participantEvaluation);
+            }
+        }
 
         $message = $data['status'] === 'submitted' 
             ? 'Evaluation submitted successfully.' 

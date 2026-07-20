@@ -176,6 +176,11 @@ class AiScenarioTrainingService
                 app(TrainingRetakePolicyService::class)->handleFailedAttempt($freshAttempt);
             }
 
+            $freshAttempt->loadMissing('user');
+            if ($freshAttempt->user) {
+                app(PortalNotificationFactory::class)->assessmentCompleted($freshAttempt->user, $evaluation);
+            }
+
             app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
 
             return $freshAttempt->fresh();

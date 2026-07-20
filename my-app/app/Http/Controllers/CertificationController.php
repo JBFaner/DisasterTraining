@@ -11,6 +11,7 @@ use App\Models\SimulationEvent;
 use App\Services\CertificateDesignRenderer;
 use App\Services\DatabaseBackupService;
 use App\Services\ParticipantCertificateEligibilityService;
+use App\Services\PortalNotificationFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,8 +19,9 @@ use Illuminate\Support\Facades\Storage;
 
 class CertificationController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private readonly PortalNotificationFactory $notificationFactory,
+    ) {
         // Authorization is handled per-action so participants can access
         // their own certificate dashboard while admin tools remain protected.
     }
@@ -284,6 +286,8 @@ class CertificationController extends Controller
 
         app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
 
+        $this->notificationFactory->certificateIssued($user, $cert);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -307,11 +311,18 @@ class CertificationController extends Controller
     public function revoke(Request $request, Certificate $certificate)
     {
         $this->authorizeCertificationAccess();
+        $reason = $request->input('reason');
+        $certificate->loadMissing('user');
         $certificate->update([
             'revoked_at' => now(),
             'revoked_by' => portal_id(),
-            'revoke_reason' => $request->input('reason'),
+            'revoke_reason' => $reason,
         ]);
+
+        if ($certificate->user) {
+            $this->notificationFactory->certificateRevoked($certificate->user, $certificate, $reason);
+        }
+
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Certificate revoked.']);
         }

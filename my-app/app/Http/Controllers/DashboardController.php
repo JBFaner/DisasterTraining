@@ -273,8 +273,14 @@ class DashboardController extends Controller
         ];
 
         if ($user->role === 'PARTICIPANT') {
+            $previousDashboardVisit = $user->last_dashboard_visit_at
+                ? Carbon::parse($user->last_dashboard_visit_at)
+                : null;
+
             $viewData['participant_dashboard'] = app(\App\Services\ParticipantDashboardService::class)
-                ->buildPayload($user);
+                ->buildPayload($user, $previousDashboardVisit);
+
+            $user->forceFill(['last_dashboard_visit_at' => now()])->save();
         }
 
         return view('app', $viewData);

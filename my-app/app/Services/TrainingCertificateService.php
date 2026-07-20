@@ -7,11 +7,16 @@ use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\EvaluationResult;
 use App\Services\DatabaseBackupService;
+use App\Services\PortalNotificationFactory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class TrainingCertificateService
 {
+    public function __construct(
+        private readonly PortalNotificationFactory $notificationFactory,
+    ) {}
+
     public function issueForPassedAttempt(AiScenarioAttempt $attempt, EvaluationResult $evaluation): ?Certificate
     {
         $attempt->loadMissing(['user', 'trainingModule']);
@@ -73,6 +78,10 @@ class TrainingCertificateService
         $template->update(['last_used_at' => now()]);
 
         app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
+
+        if ($attempt->user) {
+            $this->notificationFactory->certificateIssued($attempt->user, $certificate);
+        }
 
         return $certificate;
     }

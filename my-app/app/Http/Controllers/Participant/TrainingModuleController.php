@@ -4,30 +4,27 @@ namespace App\Http\Controllers\Participant;
 
 use App\Http\Controllers\Controller;
 use App\Models\TrainingModule;
-use App\Services\CampaignRegistrationService;
+use App\Models\User;
+use App\Services\ParticipantTrainingAccessService;
+use App\Services\ParticipantTrainingProgressSummaryService;
 use App\Services\TrainingModuleCardStatsService;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TrainingModuleController extends Controller
 {
+    public function __construct(
+        private readonly ParticipantTrainingAccessService $trainingAccess,
+    ) {}
+
     public function index(Request $request)
     {
         $perPage = 9;
-
-        $query = TrainingModule::query()
-            ->withCount('contents as lesson_count')
-            ->where('status', 'published')
-            ->orderByDesc('updated_at');
-
         $user = portal_user();
-        $registeredModuleIds = $user
-            ? app(CampaignRegistrationService::class)->registeredModuleIdsFor($user)
-            : [];
+        abort_unless($user, 403);
 
-        // Walk-in / campaign participants only see modules they registered for.
-        if ($registeredModuleIds !== []) {
-            $query->whereIn('id', $registeredModuleIds);
-        }
+        $accessContext = $this->trainingAccess->buildContext($user);
+        $query = $this->trainingAccess->participantModulesQuery($user);
 
         if ($request->filled('search')) {
             $search = $request->string('search')->trim();
@@ -46,9 +43,12 @@ class TrainingModuleController extends Controller
 
         $paginator = $query->paginate($perPage)->withQueryString();
         $modules = collect($paginator->items());
-        if ($user) {
-            app(TrainingModuleCardStatsService::class)->enrichParticipantModules($modules, (int) $user->id);
-        }
+        app(TrainingModuleCardStatsService::class)->enrichParticipantModules($modules, (int) $user->id);
+
+        $modulesPayload = $modules
+            ->map(fn (TrainingModule $module) => $this->trainingAccess->enrichModuleForParticipant($user, $module))
+            ->values()
+            ->all();
 
         $modulesPagination = [
             'current_page' => $paginator->currentPage(),
@@ -61,21 +61,95 @@ class TrainingModuleController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'modules' => $modules->values()->all(),
+                'modules' => $modulesPayload,
                 'pagination' => $modulesPagination,
+                'training_access_context' => $accessContext,
+                'available_categories' => $this->availableCategories($user),
+                'training_filters' => [
+                    'search' => $request->string('search')->toString(),
+                    'category' => $request->string('category')->toString(),
+                ],
             ]);
         }
 
         return view('app', [
             'section' => 'training',
-            'modules' => $modules->values()->all(),
+            'modules' => $modulesPayload,
             'modulesPagination' => $modulesPagination,
-            'trainingFilters' => [
+            'training_access_context' => $accessContext,
+            'training_filters' => [
                 'search' => $request->string('search')->toString(),
-                'status' => '',
                 'category' => $request->string('category')->toString(),
             ],
+            'available_categories' => $this->availableCategories($user),
         ]);
+    }
+
+    public function progressSummaryAll(Request $request): StreamedResponse
+    {
+        $user = portal_user();
+        abort_unless($user, 403);
+
+        $summary = app(ParticipantTrainingProgressSummaryService::class)->buildAllModulesSummary($user);
+        $text = app(ParticipantTrainingProgressSummaryService::class)->renderText($summary);
+        $filename = 'training-progress-summary-'.now()->format('Y-m-d').'.txt';
+
+        return response()->streamDownload(function () use ($text) {
+            echo $text;
+        }, $filename, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
+    }
+
+    public function progressSummary(TrainingModule $trainingModule): StreamedResponse
+    {
+        $user = portal_user();
+        abort_unless($user, 403);
+
+        $accessBlock = $this->trainingAccess->moduleAccessBlock($user, $trainingModule);
+        abort_if($accessBlock !== null, 403);
+
+        $trainingModule->load('contents');
+        $summary = app(ParticipantTrainingProgressSummaryService::class)->buildModuleSummary($user, $trainingModule);
+        $text = app(ParticipantTrainingProgressSummaryService::class)->renderText([
+            'generated_at' => now()->toIso8601String(),
+            'participant' => [
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'modules' => [$summary],
+        ]);
+
+        $slug = str($trainingModule->title)->slug()->limit(40)->toString() ?: 'module';
+        $filename = "training-transcript-{$slug}-".now()->format('Y-m-d').'.txt';
+
+        return response()->streamDownload(function () use ($text) {
+            echo $text;
+        }, $filename, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function availableCategories(User $user): array
+    {
+        $registeredModuleIds = $this->trainingAccess
+            ->participantModulesQuery($user)
+            ->clone()
+            ->reorder()
+            ->select('category')
+            ->distinct()
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->orderBy('category')
+            ->pluck('category')
+            ->map(fn ($category) => (string) $category)
+            ->values()
+            ->all();
+
+        return $registeredModuleIds;
     }
 
     public function show(TrainingModule $trainingModule)
@@ -83,13 +157,13 @@ class TrainingModuleController extends Controller
         $user = portal_user();
         abort_unless($user, 403);
 
-        if ($trainingModule->status !== 'published') {
-            abort(403);
-        }
-
-        $registeredModuleIds = app(CampaignRegistrationService::class)->registeredModuleIdsFor($user);
-        if ($registeredModuleIds !== [] && ! in_array((int) $trainingModule->id, $registeredModuleIds, true)) {
-            abort(403);
+        $accessBlock = $this->trainingAccess->moduleAccessBlock($user, $trainingModule);
+        if ($accessBlock !== null) {
+            return view('app', [
+                'section' => 'training_module_locked',
+                'training_module_lock' => $accessBlock,
+                'training_access_context' => $this->trainingAccess->buildContext($user),
+            ]);
         }
 
         $trainingModule->load(['contents.resources', 'owner']);
@@ -129,8 +203,6 @@ class TrainingModuleController extends Controller
         $trainingModule->contents->transform(function ($content) use ($trainingModule, $user, $attemptService) {
             $content->lesson_quiz = $attemptService->getParticipantMeta($trainingModule, $content, $user);
 
-            // During content review after a failed final assessment, keep lesson quiz
-            // results passed — participants only re-open lessons, they do not retake quizzes.
             if (! empty($content->content_review_required) && ($content->lesson_quiz['passed'] ?? false)) {
                 $meta = $content->lesson_quiz;
                 $meta['retake_required'] = false;
@@ -144,6 +216,7 @@ class TrainingModuleController extends Controller
         return view('app', [
             'section' => 'training_detail',
             'module' => $trainingModule,
+            'training_access_context' => $this->trainingAccess->buildContext($user),
         ]);
     }
 }

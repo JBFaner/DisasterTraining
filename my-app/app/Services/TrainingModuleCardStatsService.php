@@ -91,25 +91,92 @@ class TrainingModuleCardStatsService
             $moduleWithContents = $contentsByModule->get((int) $module->id);
             if (! $moduleWithContents || $lessonCount === 0) {
                 $module->completion_percentage = 0;
+                $this->applyResumeLessonMeta($module, null, null, $lessonCount);
+
                 continue;
             }
 
             $completed = 0;
+            $resumeContent = null;
+
             foreach ($moduleWithContents->contents as $content) {
                 $contentId = (int) $content->id;
+                $isCompleted = false;
+
                 if (isset($quizEnabledContentIds[$contentId])) {
                     if (isset($passedQuizContentIds[$contentId])) {
                         $completed++;
+                        $isCompleted = true;
                     }
-                    continue;
+                } elseif (isset($completedContentIds[$contentId])) {
+                    $completed++;
+                    $isCompleted = true;
                 }
 
-                if (isset($completedContentIds[$contentId])) {
-                    $completed++;
+                if ($resumeContent === null) {
+                    $previousContent = $moduleWithContents->contents
+                        ->slice(0, $moduleWithContents->contents->search(fn ($item) => (int) $item->id === $contentId))
+                        ->last();
+                    $previousCompleted = $previousContent === null
+                        || (isset($quizEnabledContentIds[(int) $previousContent->id])
+                            ? isset($passedQuizContentIds[(int) $previousContent->id])
+                            : isset($completedContentIds[(int) $previousContent->id]));
+
+                    if (! $isCompleted && $previousCompleted) {
+                        $resumeContent = $content;
+                    }
                 }
             }
 
+            if ($resumeContent === null && $completed === 0 && $moduleWithContents->contents->isNotEmpty()) {
+                $resumeContent = $moduleWithContents->contents->first();
+            }
+
             $module->completion_percentage = (int) round(($completed / $lessonCount) * 100);
+            $this->applyResumeLessonMeta(
+                $module,
+                $resumeContent,
+                $moduleWithContents,
+                $lessonCount,
+                $completed,
+            );
+        }
+    }
+
+    private function applyResumeLessonMeta(
+        TrainingModule $module,
+        ?\App\Models\TrainingContent $resumeContent,
+        ?TrainingModule $moduleWithContents,
+        int $lessonCount,
+        int $completedLessons = 0,
+    ): void {
+        if ($resumeContent) {
+            $sequence = 1;
+            if ($moduleWithContents) {
+                $index = $moduleWithContents->contents->search(fn ($item) => (int) $item->id === (int) $resumeContent->id);
+                $sequence = $index === false ? 1 : ((int) $index + 1);
+            }
+
+            $module->resume_content_id = (int) $resumeContent->id;
+            $module->resume_lesson_title = $resumeContent->title;
+            $module->resume_lesson_number = $sequence;
+            $module->resume_label = $completedLessons > 0
+                ? 'Resume lesson '.$sequence
+                : 'Start lesson '.$sequence;
+
+            return;
+        }
+
+        $module->resume_content_id = null;
+        $module->resume_lesson_title = null;
+        $module->resume_lesson_number = null;
+
+        if ($lessonCount > 0 && $completedLessons >= $lessonCount) {
+            $module->resume_label = 'Review module';
+        } elseif ($lessonCount > 0) {
+            $module->resume_label = 'Open module';
+        } else {
+            $module->resume_label = null;
         }
     }
 

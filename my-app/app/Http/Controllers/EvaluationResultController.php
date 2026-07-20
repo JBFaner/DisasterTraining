@@ -20,11 +20,15 @@ use App\Services\EvaluationScoringService;
 
 use App\Services\ParticipantEvaluationHubService;
 
+use App\Services\ParticipantEvaluationPortfolioService;
+
 use App\Services\TrainingResetService;
 
 use Illuminate\Http\Request;
 
 use Illuminate\Support\Facades\DB;
+
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 
 
@@ -266,6 +270,37 @@ class EvaluationResultController extends Controller
 
 
 
+    public function portfolio(Request $request)
+    {
+        $user = portal_user();
+        abort_unless($user && $user->role === 'PARTICIPANT', 403);
+
+        $portfolio = app(ParticipantEvaluationPortfolioService::class)->buildPortfolio($user);
+
+        return view('app', [
+            'section' => 'participant_evaluation_portfolio',
+            'participant_evaluation_portfolio' => $portfolio,
+            'evaluation_passing_score' => $this->scoringService->passingScore(),
+        ]);
+    }
+
+    public function portfolioDownload(Request $request): StreamedResponse
+    {
+        $user = portal_user();
+        abort_unless($user && $user->role === 'PARTICIPANT', 403);
+
+        $service = app(ParticipantEvaluationPortfolioService::class);
+        $portfolio = $service->buildPortfolio($user);
+        $text = $service->renderText($portfolio);
+        $filename = 'evaluation-portfolio-'.now()->format('Y-m-d').'.txt';
+
+        return response()->streamDownload(function () use ($text) {
+            echo $text;
+        }, $filename, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
+    }
+
     public function show(EvaluationResult $evaluationResult)
 
     {
@@ -292,7 +327,12 @@ class EvaluationResultController extends Controller
 
             && $this->trainingResetService->canResetEvaluation($evaluationResult);
 
-
+        if ($user?->role === 'PARTICIPANT') {
+            $trends = $this->participantEvaluationHub->moduleAttemptTrends($user);
+            $moduleId = (int) $evaluationResult->training_module_id;
+            $resultData['attempt_history'] = $this->participantEvaluationHub->attemptHistoryForResult($evaluationResult);
+            $resultData['attempt_trend'] = $trends[$moduleId][(int) $evaluationResult->id] ?? null;
+        }
 
         return view('app', [
 

@@ -19,9 +19,26 @@ export function evaluationsIndexWithTab(role, tab = 'modules') {
     return tab ? `${base}?tab=${tab}` : base;
 }
 
+export function evaluationsIndexWithFocus(role, focus = 'pending') {
+    const base = evaluationsIndex(role);
+    return focus ? `${base}?focus=${focus}` : base;
+}
+
+export function participantEvaluationPortfolioUrl(print = false) {
+    return print ? '/participant/evaluations/portfolio?print=1' : '/participant/evaluations/portfolio';
+}
+
 export function evaluationResultShow(role, resultId) {
     const base = isParticipantRole(role) ? '/participant/evaluations' : '/admin/evaluations';
     return `${base}/results/${resultId}`;
+}
+
+export function participantEventEvaluationShow(evaluationId) {
+    return `/participant/evaluations/event-drills/${evaluationId}`;
+}
+
+export function notificationsApi(role) {
+    return isParticipantRole(role) ? '/participant/notifications' : '/admin/notifications';
 }
 
 export function lessonQuizAttemptShow(attemptId) {

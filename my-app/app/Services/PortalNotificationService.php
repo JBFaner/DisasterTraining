@@ -9,8 +9,16 @@ use Illuminate\Support\Collection;
 
 class PortalNotificationService
 {
-    public function notify(User $user, array $payload): PortalNotification
+    public function __construct(
+        private readonly UserNotificationPreferenceService $preferenceService,
+    ) {}
+
+    public function notify(User $user, array $payload): ?PortalNotification
     {
+        if (! $this->preferenceService->wants($user, (string) $payload['type'])) {
+            return null;
+        }
+
         return PortalNotification::create([
             'user_id' => $user->id,
             'type' => $payload['type'],

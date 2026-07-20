@@ -11,6 +11,7 @@ use App\Models\TrainingModule;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\DatabaseBackupService;
+use App\Services\PortalNotificationFactory;
 use App\Services\SimulationEventLifecycleService;
 use App\Services\SimulationEventPlanningService;
 use App\Services\SimulationExerciseTemplateService;
@@ -22,6 +23,7 @@ class SimulationEventController extends Controller
     public function __construct(
         protected SimulationEventLifecycleService $lifecycle,
         protected SimulationEventPlanningService $planningService,
+        protected PortalNotificationFactory $notificationFactory,
     ) {}
 
     public function index()
@@ -536,8 +538,7 @@ class SimulationEventController extends Controller
     {
         $this->authorizeEventAccess();
 
-        // TODO: Send notifications to registered participants
-        // $this->notifyParticipants($simulationEvent, 'cancelled');
+        $this->notificationFactory->eventCancelled($simulationEvent);
 
         $old = $simulationEvent->getOriginal();
 
@@ -793,7 +794,7 @@ class SimulationEventController extends Controller
 
         // Participants can only view published and ongoing events
         if ($user && $user->role === 'PARTICIPANT') {
-            if (!in_array($simulationEvent->status, ['published', 'ongoing'])) {
+            if (! in_array($simulationEvent->status, ['published', 'ongoing', 'ended', 'completed'], true)) {
                 abort(404);
             }
 
@@ -813,11 +814,15 @@ class SimulationEventController extends Controller
             // Get registration count
             $registrationCount = $simulationEvent->registrations()->count();
 
+            $participantContext = app(\App\Services\ParticipantSimulationEventContextService::class)
+                ->buildForParticipant($user, $simulationEvent);
+
             return view('app', [
                 'section' => 'simulation_detail',
                 'event' => $simulationEvent,
                 'user_registration' => $userRegistration,
                 'registration_count' => $registrationCount,
+                'event_participant_context' => $participantContext,
             ]);
         }
 
@@ -954,12 +959,15 @@ class SimulationEventController extends Controller
             'approved_at' => $approvedAt,
         ]);
 
-        // Return appropriate message based on approval setting
         if ($autoApprovalEnabled) {
+            $this->notificationFactory->registrationApproved($user, $simulationEvent);
             return back()->with('status', '✅ You are successfully registered for this simulation event!');
-        } else {
-            return back()->with('status', '⏳ Registration submitted successfully. Your registration is pending admin approval.');
         }
+
+        $this->notificationFactory->registrationSubmitted($user, $simulationEvent);
+        $this->notificationFactory->registrationPending($simulationEvent, $user);
+
+        return back()->with('status', '⏳ Registration submitted successfully. Your registration is pending admin approval.');
     }
 
     /**
@@ -1072,5 +1080,25 @@ class SimulationEventController extends Controller
             'assigned_trainer_id' => ['nullable', 'exists:qualified_trainers,id'],
             'registration_deadline' => ['nullable', 'date'],
         ];
+    }
+
+    public function calendarExport(SimulationEvent $simulationEvent)
+    {
+        $user = portal_user();
+        if ($user && $user->role === 'PARTICIPANT') {
+            if (! in_array($simulationEvent->status, ['published', 'ongoing', 'ended', 'completed'], true)) {
+                abort(404);
+            }
+        } else {
+            $this->authorizeEventAccess();
+        }
+
+        $ics = app(\App\Services\SimulationEventCalendarService::class)->buildIcs($simulationEvent);
+        $filename = 'simulation-event-'.$simulationEvent->id.'.ics';
+
+        return response($ics, 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 }

@@ -32,6 +32,18 @@
             @isset($modulesPagination)
                 data-modules-pagination='@json($modulesPagination)'
             @endisset
+            @isset($training_access_context)
+                data-training-access-context='@json($training_access_context)'
+            @endisset
+            @isset($training_filters)
+                data-training-filters='@json($training_filters)'
+            @endisset
+            @isset($available_categories)
+                data-available-categories='@json($available_categories)'
+            @endisset
+            @isset($training_module_lock)
+                data-training-module-lock='@json($training_module_lock)'
+            @endisset
             @isset($module)
                 data-module='@json($module)'
             @endisset
@@ -67,6 +79,9 @@
             @endisset
             @isset($event)
                 data-event='@json($event)'
+            @endisset
+            @isset($event_participant_context)
+                data-event-participant-context='@json($event_participant_context)'
             @endisset
             @isset($event_lifecycle)
                 data-event-lifecycle='@json($event_lifecycle)'
@@ -176,6 +191,12 @@
             @endisset
             @isset($participant_evaluation_hub)
                 data-participant-evaluation-hub='@json($participant_evaluation_hub)'
+            @endisset
+            @isset($participant_event_evaluation)
+                data-participant-event-evaluation='@json($participant_event_evaluation)'
+            @endisset
+            @isset($participant_evaluation_portfolio)
+                data-participant-evaluation-portfolio='@json($participant_evaluation_portfolio)'
             @endisset
             @isset($barangay_profiles)
                 data-barangay-profiles='@json($barangay_profiles)'
@@ -353,6 +374,10 @@
             @endif
             @if ($errors->any())
                 data-errors='@json($errors->all())'
+                data-validation-errors='@json($errors->messages())'
+            @endif
+            @if (session()->getOldInput())
+                data-old-input='@json(session()->getOldInput())'
             @endif
         ></div>
         

@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\EventRegistration;
 use App\Models\SimulationEvent;
+use App\Services\PortalNotificationFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class EventRegistrationController extends Controller
 {
+    public function __construct(
+        private readonly PortalNotificationFactory $notificationFactory,
+    ) {}
     /**
      * Display registrations for a specific event.
      */
@@ -52,7 +56,13 @@ class EventRegistrationController extends Controller
             'approved_by' => portal_id(),
         ]);
 
-        // TODO: Send approval confirmation notification
+        $eventRegistration->loadMissing(['user', 'simulationEvent']);
+        if ($eventRegistration->user && $eventRegistration->simulationEvent) {
+            $this->notificationFactory->registrationApproved(
+                $eventRegistration->user,
+                $eventRegistration->simulationEvent,
+            );
+        }
 
         return back()->with('status', 'Registration approved.');
     }
@@ -79,7 +89,14 @@ class EventRegistrationController extends Controller
             'approved_by' => portal_id(),
         ]);
 
-        // TODO: Send rejection notice with reason
+        $eventRegistration->loadMissing(['user', 'simulationEvent']);
+        if ($eventRegistration->user && $eventRegistration->simulationEvent) {
+            $this->notificationFactory->registrationRejected(
+                $eventRegistration->user,
+                $eventRegistration->simulationEvent,
+                $data['rejection_reason'],
+            );
+        }
 
         return back()->with('status', 'Registration rejected.');
     }

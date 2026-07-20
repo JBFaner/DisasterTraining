@@ -1,5 +1,7 @@
 import React from 'react';
 import { Bell, CheckCheck, Loader2, X } from 'lucide-react';
+import { getPortalSessionHeaders } from '../utils/portalAuth';
+import { dashboardIndex, notificationsApi } from '../utils/portalRoutes';
 
 function formatRelativeTime(value) {
     if (!value) return '';
@@ -28,7 +30,11 @@ function groupNotifications(notifications) {
 }
 
 export function NotificationCenter({ user }) {
-    const canUseNotifications = user && ['LGU_ADMIN', 'LGU_TRAINER'].includes(user.role);
+    const canUseNotifications = user && ['LGU_ADMIN', 'LGU_TRAINER', 'PARTICIPANT'].includes(user.role);
+    const apiBase = React.useMemo(
+        () => (canUseNotifications ? notificationsApi(user.role) : ''),
+        [canUseNotifications, user?.role],
+    );
     const [open, setOpen] = React.useState(false);
     const [loading, setLoading] = React.useState(false);
     const [notifications, setNotifications] = React.useState([]);
@@ -36,15 +42,17 @@ export function NotificationCenter({ user }) {
     const panelRef = React.useRef(null);
 
     const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const requestHeaders = React.useMemo(() => ({
+        Accept: 'application/json',
+        ...getPortalSessionHeaders(),
+    }), []);
 
     const fetchNotifications = React.useCallback(async () => {
-        if (!canUseNotifications) return;
+        if (!canUseNotifications || !apiBase) return;
 
         setLoading(true);
         try {
-            const response = await fetch('/admin/notifications', {
-                headers: { Accept: 'application/json' },
-            });
+            const response = await fetch(apiBase, { headers: requestHeaders });
             if (!response.ok) return;
             const data = await response.json();
             setNotifications(data.notifications || []);
@@ -52,22 +60,20 @@ export function NotificationCenter({ user }) {
         } finally {
             setLoading(false);
         }
-    }, [canUseNotifications]);
+    }, [apiBase, canUseNotifications, requestHeaders]);
 
     const fetchUnreadCount = React.useCallback(async () => {
-        if (!canUseNotifications) return;
+        if (!canUseNotifications || !apiBase) return;
 
         try {
-            const response = await fetch('/admin/notifications/unread-count', {
-                headers: { Accept: 'application/json' },
-            });
+            const response = await fetch(`${apiBase}/unread-count`, { headers: requestHeaders });
             if (!response.ok) return;
             const data = await response.json();
             setUnreadCount(data.unread_count || 0);
         } catch {
             // ignore polling errors
         }
-    }, [canUseNotifications]);
+    }, [apiBase, canUseNotifications, requestHeaders]);
 
     React.useEffect(() => {
         if (!canUseNotifications) return undefined;
@@ -108,12 +114,12 @@ export function NotificationCenter({ user }) {
     }, [canUseNotifications, fetchUnreadCount, fetchNotifications, open]);
 
     const markRead = async (notification) => {
-        if (!notification?.id || notification.read_at) return;
+        if (!notification?.id || notification.read_at || !apiBase) return;
 
-        await fetch(`/admin/notifications/${notification.id}/read`, {
+        await fetch(`${apiBase}/${notification.id}/read`, {
             method: 'POST',
             headers: {
-                Accept: 'application/json',
+                ...requestHeaders,
                 'X-CSRF-TOKEN': csrfToken,
             },
         });
@@ -125,10 +131,12 @@ export function NotificationCenter({ user }) {
     };
 
     const markAllRead = async () => {
-        await fetch('/admin/notifications/read-all', {
+        if (!apiBase) return;
+
+        await fetch(`${apiBase}/read-all`, {
             method: 'POST',
             headers: {
-                Accept: 'application/json',
+                ...requestHeaders,
                 'X-CSRF-TOKEN': csrfToken,
             },
         });
@@ -273,6 +281,20 @@ export function NotificationCenter({ user }) {
                                 </div>
                             ))
                         )}
+
+                        <div className="sticky bottom-0 border-t border-slate-200 bg-slate-50 px-4 py-2 text-center no-print space-y-1">
+                            {user?.role === 'PARTICIPANT' && (
+                                <a
+                                    href={`${dashboardIndex(user.role)}#activity-feed`}
+                                    className="block text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                                >
+                                    View activity on dashboard
+                                </a>
+                            )}
+                            <a href="/profile#notification-preferences" className="block text-xs font-medium text-slate-600 hover:text-slate-800">
+                                Manage notification preferences
+                            </a>
+                        </div>
                     </div>
                 </>
             )}

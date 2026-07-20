@@ -37,7 +37,22 @@ import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
 import { ParticipantDashboard } from './pages/ParticipantDashboard';
 import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from './components/ParticipantEmptyState';
 import { ParticipantEvaluationHub } from './pages/ParticipantEvaluationHub';
+import { ParticipantEvaluationPortfolio } from './pages/ParticipantEvaluationPortfolio';
 import { ParticipantCertificatesPage } from './pages/ParticipantCertificatesPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { ParticipantEventEvaluationDetail } from './pages/ParticipantEventEvaluationDetail';
+import {
+    ParticipantTrainingAccessBanner,
+    ParticipantTrainingModuleLock,
+    ParticipantTrainingModulesEmpty,
+} from './components/ParticipantTrainingAccess';
+import {
+    ParticipantTrainingModuleFilters,
+} from './components/ParticipantTrainingModuleFilters';
+import {
+    isLowBandwidthModeEnabled,
+    setLowBandwidthMode,
+} from './utils/participantLowBandwidth';
 import { CampaignRequestShow } from './pages/CampaignRequestShow';
 import { SimulationEventPlanningDetail } from './pages/SimulationEventPlanningDetail';
 import AttendanceQrScanner from './components/AttendanceQrScanner';
@@ -352,6 +367,10 @@ if (rootElement) {
     const sectionAttr = rootElement.getAttribute('data-section') || 'dashboard';
     const modulesJson = rootElement.getAttribute('data-modules');
     const modulesPaginationJson = rootElement.getAttribute('data-modules-pagination');
+    const trainingAccessContextJson = rootElement.getAttribute('data-training-access-context');
+    const trainingFiltersJson = rootElement.getAttribute('data-training-filters');
+    const availableCategoriesJson = rootElement.getAttribute('data-available-categories');
+    const trainingModuleLockJson = rootElement.getAttribute('data-training-module-lock');
     const scenariosJson = rootElement.getAttribute('data-scenarios');
     const trainingModulesJson = rootElement.getAttribute('data-training-modules');
     const trainersJson = rootElement.getAttribute('data-trainers');
@@ -365,6 +384,7 @@ if (rootElement) {
     const exerciseTemplateFormJson = rootElement.getAttribute('data-exercise-template-form');
     const simulationPlanningJson = rootElement.getAttribute('data-simulation-planning');
     const eventJson = rootElement.getAttribute('data-event');
+    const eventParticipantContextJson = rootElement.getAttribute('data-event-participant-context');
     const eventLifecycleJson = rootElement.getAttribute('data-event-lifecycle');
     const participantsJson = rootElement.getAttribute('data-participants');
     const participantsPaginationJson = rootElement.getAttribute('data-participants-pagination');
@@ -382,9 +402,15 @@ if (rootElement) {
     const permissionsJson = rootElement.getAttribute('data-permissions');
     const flashStatus = rootElement.getAttribute('data-status');
     const errorsJson = rootElement.getAttribute('data-errors');
+    const validationErrorsJson = rootElement.getAttribute('data-validation-errors');
+    const oldInputJson = rootElement.getAttribute('data-old-input');
 
     let modules = [];
     let modulesPagination = null;
+    let trainingAccessContext = null;
+    let trainingFilters = { search: '', category: '' };
+    let availableCategories = [];
+    let trainingModuleLock = null;
     let scenarios = [];
     let trainingModules = [];
     let trainers = [];
@@ -397,6 +423,7 @@ if (rootElement) {
     let exerciseTemplateSummary = {};
     let exerciseTemplateForm = null;
     let currentEvent = null;
+    let eventParticipantContext = null;
     let currentEventLifecycle = null;
     let participants = [];
     let participantsPagination = null;
@@ -411,6 +438,8 @@ if (rootElement) {
     let myTrainings = [];
     let registrations = [];
     let flashErrors = [];
+    let validationErrors = {};
+    let oldInput = {};
     if (modulesJson) {
         try {
             modules = JSON.parse(modulesJson);
@@ -423,6 +452,34 @@ if (rootElement) {
             modulesPagination = JSON.parse(modulesPaginationJson);
         } catch (e) {
             console.error('Failed to parse modules pagination JSON', e);
+        }
+    }
+    if (trainingAccessContextJson) {
+        try {
+            trainingAccessContext = JSON.parse(trainingAccessContextJson);
+        } catch (e) {
+            console.error('Failed to parse training access context JSON', e);
+        }
+    }
+    if (trainingFiltersJson) {
+        try {
+            trainingFilters = JSON.parse(trainingFiltersJson);
+        } catch (e) {
+            console.error('Failed to parse training filters JSON', e);
+        }
+    }
+    if (availableCategoriesJson) {
+        try {
+            availableCategories = JSON.parse(availableCategoriesJson);
+        } catch (e) {
+            console.error('Failed to parse available categories JSON', e);
+        }
+    }
+    if (trainingModuleLockJson) {
+        try {
+            trainingModuleLock = JSON.parse(trainingModuleLockJson);
+        } catch (e) {
+            console.error('Failed to parse training module lock JSON', e);
         }
     }
     if (moduleJson) {
@@ -513,6 +570,13 @@ if (rootElement) {
             console.error('Failed to parse event JSON', e);
         }
     }
+    if (eventParticipantContextJson) {
+        try {
+            eventParticipantContext = JSON.parse(eventParticipantContextJson);
+        } catch (e) {
+            console.error('Failed to parse event participant context JSON', e);
+        }
+    }
     if (eventLifecycleJson) {
         try {
             currentEventLifecycle = JSON.parse(eventLifecycleJson);
@@ -596,11 +660,29 @@ if (rootElement) {
     }
     let participantEvaluationHub = null;
     const participantEvaluationHubJson = rootElement.getAttribute('data-participant-evaluation-hub');
+    let participantEventEvaluation = null;
+    const participantEventEvaluationJson = rootElement.getAttribute('data-participant-event-evaluation');
     if (participantEvaluationHubJson) {
         try {
             participantEvaluationHub = JSON.parse(participantEvaluationHubJson);
         } catch (e) {
             console.error('Failed to parse participant evaluation hub JSON', e);
+        }
+    }
+    if (participantEventEvaluationJson) {
+        try {
+            participantEventEvaluation = JSON.parse(participantEventEvaluationJson);
+        } catch (e) {
+            console.error('Failed to parse participant event evaluation JSON', e);
+        }
+    }
+    let participantEvaluationPortfolio = null;
+    const participantEvaluationPortfolioJson = rootElement.getAttribute('data-participant-evaluation-portfolio');
+    if (participantEvaluationPortfolioJson) {
+        try {
+            participantEvaluationPortfolio = JSON.parse(participantEvaluationPortfolioJson);
+        } catch (e) {
+            console.error('Failed to parse participant evaluation portfolio JSON', e);
         }
     }
     let participantCertificateEligibility = null;
@@ -685,6 +767,20 @@ if (rootElement) {
             }
         } catch (e) {
             console.error('Failed to parse errors JSON', e);
+        }
+    }
+    if (validationErrorsJson) {
+        try {
+            validationErrors = JSON.parse(validationErrorsJson);
+        } catch (e) {
+            console.error('Failed to parse validation errors JSON', e);
+        }
+    }
+    if (oldInputJson) {
+        try {
+            oldInput = JSON.parse(oldInputJson);
+        } catch (e) {
+            console.error('Failed to parse old input JSON', e);
         }
     }
 
@@ -1340,6 +1436,9 @@ if (rootElement) {
                                 sectionAttr.startsWith('my_attendance') ? 'my_attendance' :
                                 sectionAttr === 'my_trainings' ? 'my_trainings' :
                                     sectionAttr.startsWith('evaluation_results_participant') ? 'evaluation' :
+                                        sectionAttr === 'participant_event_evaluation' ? 'evaluation' :
+                                            sectionAttr === 'participant_evaluation_portfolio' ? 'evaluation' :
+                                        sectionAttr === 'training_module_locked' ? 'training' :
                                         sectionAttr === 'training_evaluation_results' ? 'evaluation' :
                                         sectionAttr === 'evaluation_result_detail' ? 'evaluation' :
                                         sectionAttr === 'campaign_request_show' ? 'training' :
@@ -1399,6 +1498,13 @@ if (rootElement) {
             return [
                 { label: 'Training Modules', href: trainingModulesIndex(role) },
                 { label: currentModule?.title || 'Details', href: null }
+            ];
+        }
+
+        if (sectionAttr === 'training_module_locked') {
+            return [
+                { label: 'Training Modules', href: trainingModulesIndex(role) },
+                { label: trainingModuleLock?.module?.title || 'Module Access', href: null },
             ];
         }
 
@@ -1511,6 +1617,20 @@ if (rootElement) {
             return [
                 { label: 'Evaluations', href: evaluationsIndexWithTab(role, 'modules') },
                 { label: 'Evaluation Report', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'participant_event_evaluation') {
+            return [
+                { label: 'Evaluations', href: evaluationsIndexWithTab(role, 'events') },
+                { label: 'Event Drill Report', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'participant_evaluation_portfolio') {
+            return [
+                { label: 'Evaluations', href: evaluationsIndex(role) },
+                { label: 'Portfolio Export', href: null },
             ];
         }
 
@@ -1741,6 +1861,10 @@ if (rootElement) {
             return currentModule?.title || 'Training Module';
         }
 
+        if (sectionAttr === 'training_module_locked') {
+            return trainingModuleLock?.module?.title || 'Module Access';
+        }
+
         if (sectionAttr === 'ai_scenario_attempt') {
             return 'Final AI Scenario Assessment';
         }
@@ -1751,6 +1875,10 @@ if (rootElement) {
 
         if (sectionAttr === 'evaluation_result_detail') {
             return 'Evaluation Report';
+        }
+
+        if (sectionAttr === 'participant_event_evaluation') {
+            return 'Event Drill Evaluation';
         }
 
         if (sectionAttr === 'campaign_request_show') {
@@ -1817,7 +1945,13 @@ if (rootElement) {
 
                         {sectionAttr === 'training' && (
                             role === 'PARTICIPANT' ? (
-                                <ParticipantTrainingModulesList modules={modules || []} modulesPagination={modulesPagination} />
+                                <ParticipantTrainingModulesList
+                                    modules={modules || []}
+                                    modulesPagination={modulesPagination}
+                                    trainingAccessContext={trainingAccessContext}
+                                    trainingFilters={trainingFilters}
+                                    availableCategories={availableCategories}
+                                />
                             ) : (
                                 <div className="-mt-1">
                                     <TrainingModulesTable modules={modules || []} modulesPagination={modulesPagination} />
@@ -1831,6 +1965,10 @@ if (rootElement) {
 
                         {sectionAttr === 'training_edit' && currentModule && (
                             <TrainingModuleEditForm module={currentModule} />
+                        )}
+
+                        {sectionAttr === 'training_module_locked' && trainingModuleLock && (
+                            <ParticipantTrainingModuleLock lock={trainingModuleLock} />
                         )}
 
                         {sectionAttr === 'training_detail' && (
@@ -1914,7 +2052,11 @@ if (rootElement) {
 
                         {sectionAttr === 'simulation_detail' && currentEvent && (
                             role === 'PARTICIPANT' ? (
-                                <ParticipantSimulationEventDetail event={currentEvent} role={role} />
+                                <ParticipantSimulationEventDetail
+                                    event={currentEvent}
+                                    role={role}
+                                    participantContext={eventParticipantContext}
+                                />
                             ) : (
                                 <SimulationEventLifecyclePage
                                     event={currentEvent}
@@ -1979,7 +2121,14 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'profile' && (
-                            <ProfilePage user={currentUser} />
+                            <ProfilePage
+                                user={currentUser}
+                                role={role}
+                                flashStatus={flashStatus || ''}
+                                flashErrors={flashErrors}
+                                validationErrors={validationErrors}
+                                oldInput={oldInput}
+                            />
                         )}
 
                         {sectionAttr === 'admin_users_index' && (
@@ -2298,6 +2447,17 @@ if (rootElement) {
                                 result={evaluationResult}
                                 passingScore={evaluationPassingScore}
                                 role={role}
+                            />
+                        )}
+
+                        {sectionAttr === 'participant_event_evaluation' && participantEventEvaluation && (
+                            <ParticipantEventEvaluationDetail report={participantEventEvaluation} />
+                        )}
+
+                        {sectionAttr === 'participant_evaluation_portfolio' && participantEvaluationPortfolio && (
+                            <ParticipantEvaluationPortfolio
+                                portfolio={participantEvaluationPortfolio}
+                                passingScore={evaluationPassingScore}
                             />
                         )}
 
@@ -3292,16 +3452,96 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     );
 }
 
-function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
+function ParticipantTrainingModulesList({
+    modules,
+    modulesPagination = null,
+    trainingAccessContext = null,
+    trainingFilters = { search: '', category: '' },
+    availableCategories = [],
+}) {
+    const initialFilters = React.useMemo(() => {
+        const params = new URLSearchParams(window.location.search);
+
+        return {
+            search: trainingFilters?.search || params.get('search') || '',
+            category: trainingFilters?.category || params.get('category') || '',
+        };
+    }, [trainingFilters?.search, trainingFilters?.category]);
+
     const [modulesData, setModulesData] = React.useState(modules || []);
     const [pagination, setPagination] = React.useState(modulesPagination);
+    const [accessContext, setAccessContext] = React.useState(trainingAccessContext);
+    const [categories, setCategories] = React.useState(availableCategories || []);
+    const [searchQuery, setSearchQuery] = React.useState(initialFilters.search);
+    const [filterCategory, setFilterCategory] = React.useState(initialFilters.category);
     const [isPageLoading, setIsPageLoading] = React.useState(false);
 
     const publishedModules = (modulesData || []).filter((m) => m.status === 'published');
+    const hasActiveFilters = Boolean(searchQuery.trim() || filterCategory);
 
     const effectivePagination = pagination;
     const currentPage = effectivePagination?.current_page ?? 1;
     const totalPages = effectivePagination?.last_page ?? 1;
+
+    const fetchModules = React.useCallback(async (page = 1) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', page);
+        url.searchParams.delete('search');
+        url.searchParams.delete('category');
+
+        if (searchQuery.trim()) {
+            url.searchParams.set('search', searchQuery.trim());
+        }
+        if (filterCategory) {
+            url.searchParams.set('category', filterCategory);
+        }
+
+        setIsPageLoading(true);
+        try {
+            const res = await fetch(url.toString(), {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to load page ${page}`);
+            }
+
+            const data = await res.json();
+            setModulesData(data.modules || []);
+            setPagination(data.pagination || null);
+            if (data.training_access_context) {
+                setAccessContext(data.training_access_context);
+            }
+            if (data.available_categories) {
+                setCategories(data.available_categories);
+            }
+            window.history.pushState({}, '', url);
+        } catch (error) {
+            console.error('Error loading participant training modules page', error);
+        } finally {
+            setIsPageLoading(false);
+        }
+    }, [filterCategory, searchQuery]);
+
+    React.useEffect(() => {
+        const isInitialLoad = !searchQuery.trim() && !filterCategory;
+        const urlHasFilters = new URLSearchParams(window.location.search).has('search')
+            || new URLSearchParams(window.location.search).has('category');
+
+        if (isInitialLoad && !urlHasFilters) {
+            return undefined;
+        }
+
+        const timer = window.setTimeout(() => {
+            fetchModules(1);
+        }, 300);
+
+        return () => window.clearTimeout(timer);
+    }, [searchQuery, filterCategory, fetchModules]);
 
     const handlePageChange = async (page) => {
         if (!effectivePagination) return;
@@ -3309,52 +3549,61 @@ function ParticipantTrainingModulesList({ modules, modulesPagination = null }) {
         const clamped = Math.max(1, Math.min(page, effectivePagination.last_page || 1));
         if (clamped === effectivePagination.current_page) return;
 
-        setIsPageLoading(true);
-        try {
-            const url = new URL(window.location.href);
-            url.searchParams.set('page', clamped);
+        await fetchModules(clamped);
+    };
 
-            const res = await fetch(url.toString(), {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-
-            if (!res.ok) {
-                throw new Error(`Failed to load page ${clamped}`);
-            }
-
-            const data = await res.json();
-            setModulesData(data.modules || []);
-            setPagination(data.pagination || null);
-            window.history.pushState({}, '', url);
-        } catch (error) {
-            console.error('Error loading participant training modules page', error);
-        } finally {
-            setIsPageLoading(false);
-        }
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setFilterCategory('');
     };
 
     return (
         <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-800">Training Modules</h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-semibold text-slate-800">Training Modules</h2>
+                <a
+                    href="/participant/training-modules/progress-summary"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                    <Download className="w-4 h-4" />
+                    Download progress summary
+                </a>
+            </div>
+            <ParticipantTrainingAccessBanner context={accessContext} />
+            <ParticipantTrainingModuleFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                category={filterCategory}
+                onCategoryChange={setFilterCategory}
+                categories={categories}
+                onClear={handleClearFilters}
+                isLoading={isPageLoading}
+            />
             <p className="text-sm text-slate-600 mb-2">
-                Browse available training modules. Click a module to start the first lesson.
+                {accessContext?.has_campaign_enrollment
+                    ? 'These modules are assigned to your campaign enrollment. Select a module to continue your lessons.'
+                    : 'Browse available training modules. Campaign-only modules show a lock until you register through your organizer\'s link.'}
             </p>
             {publishedModules.length === 0 ? (
-                <ParticipantEmptyState
-                    icon={BookOpen}
-                    {...PARTICIPANT_EMPTY_STATES.trainingModules}
-                />
+                hasActiveFilters ? (
+                    <ParticipantEmptyState
+                        icon={BookOpen}
+                        {...PARTICIPANT_EMPTY_STATES.trainingModulesFiltered}
+                    />
+                ) : accessContext?.has_campaign_enrollment ? (
+                    <ParticipantTrainingModulesEmpty context={accessContext} />
+                ) : (
+                    <ParticipantEmptyState
+                        icon={BookOpen}
+                        {...PARTICIPANT_EMPTY_STATES.trainingModules}
+                    />
+                )
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {publishedModules.map((module) => (
                         <ParticipantTrainingModuleCard
                             key={module.id}
                             module={module}
-                            href={`/participant/training-modules/${module.id}`}
                         />
                     ))}
                 </div>
@@ -3416,11 +3665,31 @@ function ParticipantTrainingLessonView({ module }) {
         [buildProgressState, sortedItems],
     );
 
+    const lessonFromUrl = React.useMemo(() => {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('lesson');
+        if (!raw) {
+            return null;
+        }
+
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? parsed : null;
+    }, []);
+
     const initialSelectedId = React.useMemo(() => {
+        if (lessonFromUrl) {
+            const fromUrl = initialProgress.find(
+                (lesson) => Number(lesson.id) === lessonFromUrl && lesson.is_unlocked,
+            );
+            if (fromUrl) {
+                return fromUrl.id;
+            }
+        }
+
         const firstUnlocked = initialProgress.find((lesson) => lesson.is_unlocked);
 
         return firstUnlocked?.id || sortedItems[0]?.id || null;
-    }, [initialProgress, sortedItems]);
+    }, [initialProgress, lessonFromUrl, sortedItems]);
 
     const initialCompleted = React.useMemo(
         () => initialProgress.filter((l) => l.is_completed).map((l) => l.id),
@@ -3440,6 +3709,7 @@ function ParticipantTrainingLessonView({ module }) {
         React.useState(initialUnlocked);
     const [aiTraining, setAiTraining] = React.useState(module?.ai_training || null);
     const [completionError, setCompletionError] = React.useState('');
+    const [lowBandwidth, setLowBandwidth] = React.useState(() => isLowBandwidthModeEnabled());
 
     const lessonProgress = React.useMemo(
         () => buildProgressState(sortedItems, completedLessonIds).map((lesson) => ({
@@ -3470,6 +3740,10 @@ function ParticipantTrainingLessonView({ module }) {
         }
 
         setSelectedLessonId(lessonId);
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('lesson', lessonId);
+        window.history.replaceState({}, '', url);
     };
 
     const toggleCompleted = async (lessonId) => {
@@ -3575,11 +3849,49 @@ function ParticipantTrainingLessonView({ module }) {
         const type = (mat.type || '').toLowerCase();
         const url = mat.path;
         const label = mat.label || url;
+        const resourceType = String(mat.type || type || '').toLowerCase();
 
-        const youtubeMatch = url.match(
+        const youtubeMatch = url && url.match(
             /(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/,
         );
         const isYouTube = youtubeMatch && youtubeMatch[1];
+        const youtubeWatchUrl = isYouTube
+            ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}`
+            : url;
+
+        const downloadLink = (href, text, fileType = 'File') => (
+            <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                download={resourceType === 'pdf' || resourceType === 'video' ? '' : undefined}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+            >
+                <Download className="w-4 h-4" />
+                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-slate-600">
+                    {fileType}
+                </span>
+                {text}
+            </a>
+        );
+
+        if (lowBandwidth && !downloadsDisabled && url) {
+            if (type === 'video' || type === 'pdf' || isYouTube) {
+                return (
+                    <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-sm font-medium text-slate-900">{label}</p>
+                        <p className="text-xs text-slate-600">
+                            Low-bandwidth mode saves data by skipping embedded players. Download or open the file when your connection allows.
+                        </p>
+                        {downloadLink(
+                            isYouTube ? youtubeWatchUrl : url,
+                            isYouTube ? 'Open video on YouTube' : `Download ${type || 'file'}`,
+                            isYouTube ? 'Video' : (type || 'File').toUpperCase(),
+                        )}
+                    </div>
+                );
+            }
+        }
 
         if (type === 'video') {
             if (isYouTube) {
@@ -3601,13 +3913,17 @@ function ParticipantTrainingLessonView({ module }) {
             }
 
             return (
-                <div className="space-y-1">
+                <div className="space-y-2">
                     <video
                         controls
+                        preload={lowBandwidth ? 'none' : 'metadata'}
                         src={url}
                         className="w-full rounded-lg border border-slate-200 bg-black"
                     />
-                    <p className="text-xs text-slate-600">{label}</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <p className="text-xs text-slate-600">{label}</p>
+                        {url && downloadLink(url, 'Download video', 'Video')}
+                    </div>
                 </div>
             );
         }
@@ -3643,11 +3959,12 @@ function ParticipantTrainingLessonView({ module }) {
             }
 
             return (
-                <div className="space-y-1">
+                <div className="space-y-2">
                     <a
                         href={url}
                         target="_blank"
                         rel="noreferrer"
+                        download
                         className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2 text-sm"
                     >
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-slate-600">
@@ -3655,10 +3972,12 @@ function ParticipantTrainingLessonView({ module }) {
                         </span>
                         <span>{label}</span>
                     </a>
-                    <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-[0.7rem] text-slate-500">
-                        PDF previews may open in a new tab depending on your
-                        browser settings.
-                    </div>
+                    {downloadLink(url, 'Save PDF for offline reading', 'PDF')}
+                    {!lowBandwidth && (
+                        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-[0.7rem] text-slate-500">
+                            PDF previews may open in a new tab depending on your browser settings.
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -3716,6 +4035,34 @@ function ParticipantTrainingLessonView({ module }) {
                 completedCount={completedCount}
                 totalLessons={totalLessons}
             />
+
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <label className="inline-flex items-start gap-3 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={lowBandwidth}
+                        onChange={(event) => {
+                            const enabled = event.target.checked;
+                            setLowBandwidth(enabled);
+                            setLowBandwidthMode(enabled);
+                        }}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-slate-900">Low-bandwidth mode</span>
+                        <span className="block text-xs text-slate-500">
+                            Prefer downloads and external links instead of embedded video players.
+                        </span>
+                    </span>
+                </label>
+                <a
+                    href={`/participant/training-modules/${module.id}/progress-summary`}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                    <Download className="w-4 h-4" />
+                    Download transcript
+                </a>
+            </div>
 
             {aiTraining ? (
                 <AiScenarioTrainingUnlock module={module} aiTraining={aiTraining} />
