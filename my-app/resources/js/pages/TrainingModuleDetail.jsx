@@ -81,6 +81,30 @@ const AUDIENCE_OPTIONS = [
     { value: 'others', label: 'Others' },
 ];
 
+const AUDIENCE_LABEL_TO_VALUE = Object.fromEntries(
+    AUDIENCE_OPTIONS.flatMap((option) => [
+        [option.value, option.value],
+        [option.label.toLowerCase(), option.value],
+        [option.label, option.value],
+    ]),
+);
+
+function normalizeTargetAudience(values = []) {
+    if (!Array.isArray(values)) return [];
+    return [...new Set(
+        values
+            .map((item) => {
+                const raw = String(item || '').trim();
+                if (!raw) return null;
+                if (AUDIENCE_LABEL_TO_VALUE[raw]) return AUDIENCE_LABEL_TO_VALUE[raw];
+                const lower = raw.toLowerCase();
+                if (AUDIENCE_LABEL_TO_VALUE[lower]) return AUDIENCE_LABEL_TO_VALUE[lower];
+                const asKey = lower.replace(/[\s-]+/g, '_');
+                return AUDIENCE_OPTIONS.some((opt) => opt.value === asKey) ? asKey : null;
+            })
+            .filter(Boolean),
+    )];
+}
 const RECOMMENDED_PARTICIPANTS_OPTIONS = [10, 15, 20, 25, 30];
 
 function toDateTimeLocalValue(value) {
@@ -861,7 +885,9 @@ export function TrainingModuleDetail({ module }) {
     const [relatedHazard] = React.useState(module.related_hazard || module.category || '');
     const moduleTitle = String(module.title || '').trim();
     const moduleShortDescription = String(module.short_description || module.description || '').trim();
-    const [targetAudience, setTargetAudience] = React.useState(Array.isArray(module.target_audience) ? module.target_audience : []);
+    const [targetAudience, setTargetAudience] = React.useState(
+        normalizeTargetAudience(Array.isArray(module.target_audience) ? module.target_audience : []),
+    );
     const [campaignRegistrationOpens, setCampaignRegistrationOpens] = React.useState(
         toDateTimeLocalValue(module.campaign_registration_opens),
     );

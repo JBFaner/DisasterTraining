@@ -9,14 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->json('notification_preferences')->nullable()->after('profile_picture');
+            if (! Schema::hasColumn('users', 'notification_preferences')) {
+                $table->json('notification_preferences')->nullable()->after('profile_picture');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('notification_preferences');
+            if (Schema::hasColumn('users', 'notification_preferences')) {
+                $table->dropColumn('notification_preferences');
+            }
         });
     }
 };

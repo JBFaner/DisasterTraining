@@ -120,7 +120,7 @@ class TrainingModuleController extends Controller
         $data['short_description'] = $data['short_description'] ?? Str::limit((string) ($data['description'] ?? ''), 500, '');
         $data['related_hazard'] = $data['related_hazard'] ?? ($data['category'] ?? null);
         $data['delivery_method'] = $data['delivery_method'] ?? 'in_person';
-        $data['target_audience'] = array_values(array_filter($data['target_audience'] ?? []));
+        $data['target_audience'] = \App\Support\TargetAudience::normalize($data['target_audience'] ?? []);
         $data['assigned_qualified_trainer_ids'] = $this->normalizeTrainerIds($data['assigned_qualified_trainer_ids'] ?? []);
         $data['available_training_sessions'] = $this->normalizeTrainingSessions($data['available_training_sessions'] ?? []);
         $data['learning_objectives'] = $this->normalizeObjectives($data['learning_objectives'] ?? []);
@@ -217,7 +217,9 @@ class TrainingModuleController extends Controller
             ?? Str::limit((string) ($data['description'] ?? $trainingModule->description ?? ''), 500, '');
         $data['related_hazard'] = $data['related_hazard'] ?? ($data['category'] ?? $trainingModule->category);
         $data['delivery_method'] = $data['delivery_method'] ?? $trainingModule->delivery_method ?? 'in_person';
-        $data['target_audience'] = array_values(array_filter($data['target_audience'] ?? $trainingModule->target_audience ?? []));
+        $data['target_audience'] = \App\Support\TargetAudience::normalize(
+            $data['target_audience'] ?? $trainingModule->target_audience ?? [],
+        );
         $data['assigned_qualified_trainer_ids'] = $this->normalizeTrainerIds($data['assigned_qualified_trainer_ids'] ?? $trainingModule->assigned_qualified_trainer_ids ?? []);
         $data['available_training_sessions'] = $this->normalizeTrainingSessions($data['available_training_sessions'] ?? $trainingModule->available_training_sessions ?? []);
 

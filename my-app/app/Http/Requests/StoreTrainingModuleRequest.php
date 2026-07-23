@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\TargetAudience;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -10,6 +11,15 @@ class StoreTrainingModuleRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user() !== null;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->exists('target_audience')) {
+            $this->merge([
+                'target_audience' => TargetAudience::normalize($this->input('target_audience')),
+            ]);
+        }
     }
 
     public function rules(): array
@@ -26,7 +36,7 @@ class StoreTrainingModuleRequest extends FormRequest
             'related_hazard' => ['nullable', 'string', 'max:255'],
             'delivery_method' => ['nullable', 'string', 'in:in_person,online'],
             'target_audience' => ['nullable', 'array'],
-            'target_audience.*' => ['required', 'string', 'in:residents,barangay_officials,emergency_responders,volunteers,students,employees,community_leaders,others'],
+            'target_audience.*' => ['required', 'string', 'in:'.implode(',', TargetAudience::KEYS)],
             'recommended_audience' => ['nullable', 'string', 'max:1000'],
             'lead_qualified_trainer_id' => ['nullable', 'integer', 'exists:qualified_trainers,id'],
             'assigned_qualified_trainer_ids' => ['nullable', 'array'],
@@ -52,6 +62,7 @@ class StoreTrainingModuleRequest extends FormRequest
             'title.required' => 'Module title is required.',
             'category.required' => 'Disaster category is required.',
             'learning_objectives.required' => 'At least one learning objective is required.',
+            'target_audience.*.in' => 'Please select a valid target audience from the list.',
         ];
     }
 
