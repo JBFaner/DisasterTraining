@@ -781,6 +781,17 @@ class SimulationExerciseTemplateService
             ])->values()->all(),
         ];
 
+        $cpsqcClient = app(\App\Services\Cpsqc\CpsqcPatrolApiClient::class);
+        $cpsqcConfigured = $cpsqcClient->isConfigured();
+        $cpsqcMembers = $cpsqcConfigured ? $cpsqcClient->marshalPoolMembers() : [];
+
+        $pools[] = [
+            'group_key' => 'cpsqc_patrol',
+            'group_label' => 'CPSQC Patrol — Marshals',
+            'integration_pending' => ! $cpsqcConfigured,
+            'members' => $cpsqcMembers,
+        ];
+
         $pools[] = [
             'group_key' => 'group3_personnel',
             'group_label' => 'Group 3 — Resource Allocation Personnel',

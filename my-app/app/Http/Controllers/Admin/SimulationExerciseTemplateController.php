@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SimulationExerciseTemplate;
+use App\Services\Cpsqc\CpsqcPatrolApiClient;
 use App\Services\SimulationExerciseTemplateAiService;
 use App\Services\SimulationExerciseTemplateService;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,7 @@ class SimulationExerciseTemplateController extends Controller
     public function __construct(
         private readonly SimulationExerciseTemplateService $templateService,
         private readonly SimulationExerciseTemplateAiService $aiService,
+        private readonly CpsqcPatrolApiClient $cpsqcClient,
     ) {}
 
     public function index(Request $request)
@@ -262,6 +264,137 @@ class SimulationExerciseTemplateController extends Controller
         return redirect()
             ->route('admin.simulation-exercise-templates.index')
             ->with('status', 'Template deleted.');
+    }
+
+    /**
+     * Request CPSQC patrols for an Exercise Plan (Marshals).
+     */
+    public function requestCpsqcPatrol(Request $request, ?SimulationExerciseTemplate $simulationExerciseTemplate = null): JsonResponse
+    {
+        $this->authorizeAccess();
+
+        $data = $request->validate([
+            'event_name' => ['required', 'string', 'max:255'],
+            'event_date' => ['required', 'date_format:Y-m-d'],
+            'event_start_time' => ['required', 'string', 'max:8'],
+            'event_end_time' => ['nullable', 'string', 'max:8'],
+            'event_location' => ['required', 'string', 'max:500'],
+            'patrols_needed' => ['required', 'integer', 'min:1', 'max:50'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
+            'contact_number' => ['nullable', 'string', 'max:50'],
+            'contact_email' => ['nullable', 'email', 'max:255'],
+            'contact_position' => ['nullable', 'string', 'max:255'],
+            'requesting_unit' => ['nullable', 'string', 'max:255'],
+            'event_description' => ['nullable', 'string', 'max:2000'],
+            'special_instructions' => ['nullable', 'string', 'max:2000'],
+            'source_reference_id' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        if ($simulationExerciseTemplate && empty($data['source_reference_id'])) {
+            $data['source_reference_id'] = 'exercise-plan:'.$simulationExerciseTemplate->id;
+        }
+
+        if ($simulationExerciseTemplate && empty($data['event_name'])) {
+            $data['event_name'] = (string) $simulationExerciseTemplate->title;
+        }
+
+        $payload = $this->cpsqcClient->buildRequestPayload($data);
+        $result = $this->cpsqcClient->submitPatrolRequest($payload);
+
+        if (! $result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Failed to submit patrol request to CPSQC.',
+                'response' => $result['response'],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Patrol request sent to CPSQC.',
+            'request_id' => $result['request_id'],
+            'response' => $result['response'],
+        ]);
+    }
+
+    /**
+     * List CPSQC patrol requests linked to this exercise plan (or all for our source group).
+     */
+    public function listCpsqcPatrolRequests(Request $request, ?SimulationExerciseTemplate $simulationExerciseTemplate = null): JsonResponse
+    {
+        $this->authorizeAccess();
+
+        $filters = [
+            'status' => $request->string('status')->toString() ?: null,
+            'source_group' => $request->string('source_group')->toString()
+                ?: (string) config('cpsqc.defaults.source_group', 'group_6'),
+            'source_reference_id' => $request->string('source_reference_id')->toString() ?: null,
+            'request_id' => $request->string('request_id')->toString() ?: null,
+        ];
+
+        if ($simulationExerciseTemplate && empty($filters['source_reference_id'])) {
+            $filters['source_reference_id'] = 'exercise-plan:'.$simulationExerciseTemplate->id;
+        }
+
+        $result = $this->cpsqcClient->listPatrolRequests(array_filter(
+            $filters,
+            fn ($value) => $value !== null && $value !== '',
+        ));
+
+        if (! $result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Failed to list CPSQC patrol requests.',
+                'requests' => [],
+                'marshals' => [],
+                'configured' => $this->cpsqcClient->isConfigured(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'configured' => $this->cpsqcClient->isConfigured(),
+            'requests' => $result['data'],
+            'marshals' => $this->cpsqcClient->marshalPoolMembers($result['data']),
+        ]);
+    }
+
+    /**
+     * Refresh approved CPSQC marshals for the personnel pool.
+     */
+    public function refreshCpsqcMarshals(): JsonResponse
+    {
+        $this->authorizeAccess();
+
+        if (! $this->cpsqcClient->isConfigured()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'CPSQC integration is not configured.',
+                'members' => [],
+                'configured' => false,
+            ], 422);
+        }
+
+        $list = $this->cpsqcClient->listPatrolRequests([
+            'status' => 'Approved',
+            'source_group' => (string) config('cpsqc.defaults.source_group', 'group_6'),
+        ]);
+
+        if (! $list['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $list['error'] ?? 'Failed to fetch CPSQC marshals.',
+                'members' => [],
+                'configured' => true,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'configured' => true,
+            'members' => $this->cpsqcClient->marshalPoolMembers($list['data']),
+            'request_count' => count($list['data']),
+        ]);
     }
 
     /**
