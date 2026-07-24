@@ -12,6 +12,9 @@ import {
     Clock,
     Pencil,
     BarChart3,
+    Loader2,
+    RefreshCw,
+    Shield,
 } from 'lucide-react';
 import {
     AdminPageShell,
@@ -131,6 +134,266 @@ function PersonnelRosterTable({ roster = [], emptyHint = 'No personnel roles on 
     );
 }
 
+function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled = false }) {
+    const defaults = cpsqc?.request_defaults || {};
+    const [busy, setBusy] = React.useState(false);
+    const [selectedIds, setSelectedIds] = React.useState(() => new Set(
+        (cpsqc?.assigned_marshals || [])
+            .map((row) => String(row.person_external_id || ''))
+            .filter(Boolean),
+    ));
+    const [form, setForm] = React.useState(() => ({
+        event_name: defaults.event_name || '',
+        event_date: defaults.event_date || '',
+        event_start_time: defaults.event_start_time || '08:00',
+        event_end_time: defaults.event_end_time || '',
+        event_location: defaults.event_location || '',
+        patrols_needed: defaults.patrols_needed || 1,
+        special_instructions: defaults.special_instructions || '',
+    }));
+
+    React.useEffect(() => {
+        setForm({
+            event_name: defaults.event_name || '',
+            event_date: defaults.event_date || '',
+            event_start_time: defaults.event_start_time || '08:00',
+            event_end_time: defaults.event_end_time || '',
+            event_location: defaults.event_location || '',
+            patrols_needed: defaults.patrols_needed || 1,
+            special_instructions: defaults.special_instructions || '',
+        });
+        setSelectedIds(new Set(
+            (cpsqc?.assigned_marshals || [])
+                .map((row) => String(row.person_external_id || ''))
+                .filter(Boolean),
+        ));
+    }, [cpsqc, defaults.event_name, defaults.event_date, defaults.event_location, defaults.patrols_needed]);
+
+    const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+    const available = cpsqc?.available_marshals || [];
+    const requests = cpsqc?.requests || [];
+    const configured = !!cpsqc?.configured;
+
+    const toggleMarshal = (memberId) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            const key = String(memberId);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
+
+    const requestPatrol = async () => {
+        if (!form.event_date || !form.event_start_time || !form.event_location.trim()) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Missing schedule details',
+                text: 'Event date, start time, and location are required to request CPSQC patrols.',
+            });
+            return;
+        }
+        setBusy(true);
+        try {
+            const response = await fetch(`/admin/simulation-events/${eventId}/cpsqc-patrol/request`, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({
+                    ...form,
+                    patrols_needed: Math.max(1, Number(form.patrols_needed) || 1),
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                await Swal.fire({ icon: 'error', title: 'Request failed', text: data.message || 'Unable to request CPSQC patrol.' });
+                return;
+            }
+            if (data.lifecycle) onLifecycleUpdate?.(data.lifecycle);
+            await Swal.fire({
+                icon: 'success',
+                title: 'Patrol requested',
+                text: data.request_id
+                    ? `Request ${data.request_id} sent. Approve and assign in CPSQC, then refresh marshals.`
+                    : 'Request sent. Approve and assign in CPSQC, then refresh marshals.',
+            });
+        } catch (error) {
+            await Swal.fire({ icon: 'error', title: 'Request failed', text: error.message || 'Unable to request CPSQC patrol.' });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const refreshMarshals = async () => {
+        setBusy(true);
+        try {
+            const response = await fetch(`/admin/simulation-events/${eventId}/cpsqc-patrol/marshals`, {
+                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                await Swal.fire({ icon: 'error', title: 'Refresh failed', text: data.message || 'Unable to refresh marshals.' });
+                return;
+            }
+            if (data.lifecycle) onLifecycleUpdate?.(data.lifecycle);
+        } catch (error) {
+            await Swal.fire({ icon: 'error', title: 'Refresh failed', text: error.message || 'Unable to refresh marshals.' });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const saveAssignments = async () => {
+        const assignments = available
+            .filter((member) => selectedIds.has(String(member.id)))
+            .map((member) => ({
+                role: 'Marshal',
+                source_group: 'cpsqc_patrol',
+                person_name: member.name,
+                person_external_id: String(member.id),
+                bpso_personnel_id: member.bpso_personnel_id || member.specialization || null,
+                patrol_request_id: member.patrol_request_id || null,
+                notes: null,
+            }));
+
+        setBusy(true);
+        try {
+            const response = await fetch(`/admin/simulation-events/${eventId}/personnel-assignments`, {
+                method: 'PUT',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({ assignments }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                await Swal.fire({ icon: 'error', title: 'Save failed', text: data.message || 'Unable to save marshal assignments.' });
+                return;
+            }
+            if (data.lifecycle) onLifecycleUpdate?.(data.lifecycle);
+            await Swal.fire({ icon: 'success', title: 'Marshals saved', text: `${assignments.length} marshal(s) assigned to this event.` });
+        } catch (error) {
+            await Swal.fire({ icon: 'error', title: 'Save failed', text: error.message || 'Unable to save marshal assignments.' });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                    <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-sky-700" />
+                        CPSQC Patrol Marshals
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1">
+                        Request patrols for this scheduled event. After CPSQC approves and assigns personnel, refresh and select marshals here.
+                    </p>
+                </div>
+                <AdminSecondaryButton onClick={refreshMarshals} disabled={!configured || busy || disabled}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    Refresh
+                </AdminSecondaryButton>
+            </div>
+
+            {!configured && (
+                <p className="text-sm text-amber-800">CPSQC integration is not configured. Set CPSQC_INTEGRATION_ENABLED and CPSQC_API_KEY.</p>
+            )}
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <label className="text-sm md:col-span-2">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Event Name</span>
+                    <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_name} onChange={(e) => setField('event_name', e.target.value)} disabled={!configured || busy || disabled} />
+                </label>
+                <label className="text-sm">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Patrols Needed</span>
+                    <input type="number" min="1" max="50" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.patrols_needed} onChange={(e) => setField('patrols_needed', Number(e.target.value) || 1)} disabled={!configured || busy || disabled} />
+                </label>
+                <label className="text-sm">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Event Date</span>
+                    <input type="date" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_date} onChange={(e) => setField('event_date', e.target.value)} disabled={!configured || busy || disabled} />
+                </label>
+                <label className="text-sm">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Start Time</span>
+                    <input type="time" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_start_time} onChange={(e) => setField('event_start_time', e.target.value)} disabled={!configured || busy || disabled} />
+                </label>
+                <label className="text-sm">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">End Time</span>
+                    <input type="time" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_end_time} onChange={(e) => setField('event_end_time', e.target.value)} disabled={!configured || busy || disabled} />
+                </label>
+                <label className="text-sm md:col-span-3">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Location</span>
+                    <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_location} onChange={(e) => setField('event_location', e.target.value)} disabled={!configured || busy || disabled} />
+                </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                <AdminPrimaryButton onClick={requestPatrol} disabled={!configured || busy || disabled}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                    Request Patrol from CPSQC
+                </AdminPrimaryButton>
+            </div>
+
+            {requests.length > 0 && (
+                <div className="space-y-2 border-t border-sky-200 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Requests for this event</p>
+                    {requests.slice(0, 5).map((req) => (
+                        <div key={req.request_id || req.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-700">
+                            <span>
+                                <span className="font-medium">{req.request_id || '—'}</span>
+                                {' · '}
+                                {req.status || '—'}
+                            </span>
+                            <span className="text-slate-500">{(req.assigned_personnel?.length || req.patrols_assigned || 0)} assigned</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="space-y-2 border-t border-sky-200 pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Approved marshals ({available.length})
+                </p>
+                {available.length === 0 ? (
+                    <p className="text-sm text-slate-500">No approved CPSQC personnel for this event yet.</p>
+                ) : (
+                    <ul className="space-y-2">
+                        {available.map((member) => {
+                            const id = String(member.id);
+                            const checked = selectedIds.has(id);
+                            return (
+                                <li key={id}>
+                                    <label className="flex items-center gap-3 rounded-lg border border-white bg-white px-3 py-2 text-sm text-slate-700 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            disabled={busy || disabled}
+                                            onChange={() => toggleMarshal(id)}
+                                        />
+                                        <span>
+                                            <span className="font-medium">{member.name}</span>
+                                            {member.specialization ? ` — ${member.specialization}` : ''}
+                                        </span>
+                                    </label>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+                <AdminSecondaryButton onClick={saveAssignments} disabled={!configured || busy || disabled || available.length === 0}>
+                    Save Marshal Assignments
+                </AdminSecondaryButton>
+            </div>
+        </div>
+    );
+}
+
 export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycle, role }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [lifecycle, setLifecycle] = React.useState(initialLifecycle || null);
@@ -169,6 +432,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
     const participants = lifecycleData?.participants || [];
     const equipment = lifecycleData?.equipment || [];
     const personnelRoster = lifecycleData?.personnel_roster || [];
+    const cpsqc = lifecycleData?.cpsqc || null;
     const evaluationMode = lifecycleData?.evaluation_mode || 'team';
     const evaluationModeLabel = lifecycleData?.evaluation_mode_label
         || (evaluationMode === 'individual' ? 'Individual (per participant)' : 'Team / overall');
@@ -563,7 +827,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                             <div>
                                 <h4 className="text-sm font-semibold text-slate-900">Exercise Plan Personnel</h4>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                    Roles and assignments from the exercise plan. Confirm coverage before publishing.
+                                    Roles from the exercise plan. CPSQC marshals are assigned per event below.
                                 </p>
                             </div>
                             <span className="text-xs font-semibold rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">
@@ -577,6 +841,16 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                 : 'Personnel roster is available for events created from an exercise plan.'}
                         />
                     </div>
+
+                    {(fromExercisePlan || cpsqc?.needed) && (
+                        <CpsqcMarshalPanel
+                            eventId={event.id}
+                            cpsqc={cpsqc}
+                            csrf={csrf}
+                            disabled={isSaving}
+                            onLifecycleUpdate={setLifecycle}
+                        />
+                    )}
                 </div>
             )}
 

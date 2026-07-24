@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Models\CampaignRequest;
 use App\Models\SimulationEvent;
+use App\Services\Cpsqc\CpsqcPatrolApiClient;
 use Carbon\Carbon;
 
 class SimulationEventLifecycleService
 {
     public function __construct(
         protected SimulationEventPlanningService $planningService,
+        protected CpsqcPatrolApiClient $cpsqcClient,
     ) {}
     public const EXECUTION_STEP_DEFINITIONS = [
         ['key' => 'pre_briefing', 'label' => 'Pre-Briefing'],
@@ -56,6 +58,7 @@ class SimulationEventLifecycleService
                 ? 'Individual (per participant)'
                 : 'Team / overall',
             'personnel_roster' => $personnelRoster,
+            'cpsqc' => $this->buildCpsqcPayload($event),
             'exercise_plan' => $template ? [
                 'id' => $template->id,
                 'title' => $template->title,
@@ -106,7 +109,7 @@ class SimulationEventLifecycleService
     {
         $template = $event->simulationExerciseTemplate;
         if (! $template) {
-            return [];
+            return $this->rosterFromEventAssignmentsOnly($event);
         }
 
         $template->loadMissing(['personnel.qualifiedTrainer', 'personnelAssignments.qualifiedTrainer']);
@@ -114,11 +117,21 @@ class SimulationEventLifecycleService
         $sourceLabels = [
             'group6_trainers' => 'Users & Roles / Trainers',
             'lgu_staff' => 'Users & Roles / Staff',
+            'cpsqc_patrol' => 'CPSQC Patrol — Marshals',
             'group3_personnel' => 'Group 3 — Resource Allocation',
             'group5_medical' => 'Group 5 — Medical & Safety',
         ];
 
-        $assignmentsByRole = $template->personnelAssignments
+        $eventAssignments = collect($event->event_personnel_assignments ?? [])
+            ->filter(fn ($row) => is_array($row) && filled($row['role'] ?? null))
+            ->values();
+        $eventRoles = $eventAssignments
+            ->map(fn ($row) => trim((string) $row['role']))
+            ->filter()
+            ->unique()
+            ->all();
+
+        $templateAssignmentsByRole = $template->personnelAssignments
             ->groupBy(fn ($item) => trim((string) $item->role));
 
         $rows = [];
@@ -129,14 +142,52 @@ class SimulationEventLifecycleService
                 continue;
             }
 
-            $roleAssignments = $assignmentsByRole->get($role, collect());
+            $recommended = (int) ($roleRow->recommended_count ?? 1);
+            $useEventAssignments = in_array($role, $eventRoles, true);
+
+            if ($useEventAssignments) {
+                $roleEventAssignments = $eventAssignments->filter(
+                    fn ($row) => trim((string) ($row['role'] ?? '')) === $role
+                );
+
+                if ($roleEventAssignments->isEmpty()) {
+                    $rows[] = [
+                        'role' => $role,
+                        'person_name' => null,
+                        'source_group' => null,
+                        'source_label' => '—',
+                        'recommended_count' => $recommended,
+                        'notes' => $roleRow->notes,
+                        'assigned' => false,
+                    ];
+                    continue;
+                }
+
+                foreach ($roleEventAssignments as $assignment) {
+                    $source = (string) ($assignment['source_group'] ?? '');
+                    $rows[] = [
+                        'role' => $role,
+                        'person_name' => $assignment['person_name'] ?? null,
+                        'source_group' => $source !== '' ? $source : null,
+                        'source_label' => $sourceLabels[$source] ?? ($source !== '' ? $source : '—'),
+                        'recommended_count' => $recommended,
+                        'notes' => $assignment['notes'] ?? $roleRow->notes,
+                        'assigned' => filled($assignment['person_name'] ?? null)
+                            || filled($assignment['person_external_id'] ?? null),
+                        'person_external_id' => $assignment['person_external_id'] ?? null,
+                    ];
+                }
+                continue;
+            }
+
+            $roleAssignments = $templateAssignmentsByRole->get($role, collect());
             if ($roleAssignments->isEmpty() && $roleRow->qualified_trainer_id) {
                 $rows[] = [
                     'role' => $role,
                     'person_name' => $roleRow->qualifiedTrainer?->name,
                     'source_group' => 'group6_trainers',
                     'source_label' => $sourceLabels['group6_trainers'],
-                    'recommended_count' => (int) ($roleRow->recommended_count ?? 1),
+                    'recommended_count' => $recommended,
                     'notes' => $roleRow->notes,
                     'assigned' => true,
                 ];
@@ -149,7 +200,7 @@ class SimulationEventLifecycleService
                     'person_name' => null,
                     'source_group' => null,
                     'source_label' => '—',
-                    'recommended_count' => (int) ($roleRow->recommended_count ?? 1),
+                    'recommended_count' => $recommended,
                     'notes' => $roleRow->notes,
                     'assigned' => false,
                 ];
@@ -164,7 +215,7 @@ class SimulationEventLifecycleService
                         ?: $assignment->qualifiedTrainer?->name,
                     'source_group' => $source ?: null,
                     'source_label' => $sourceLabels[$source] ?? ($source !== '' ? $source : '—'),
-                    'recommended_count' => (int) ($roleRow->recommended_count ?? 1),
+                    'recommended_count' => $recommended,
                     'notes' => $assignment->notes ?: $roleRow->notes,
                     'assigned' => filled($assignment->person_name)
                         || (bool) $assignment->qualified_trainer_id
@@ -173,30 +224,178 @@ class SimulationEventLifecycleService
             }
         }
 
-        // Orphan assignments whose role was removed from recommended personnel.
-        foreach ($template->personnelAssignments as $assignment) {
-            $role = trim((string) $assignment->role);
+        foreach ($eventAssignments as $assignment) {
+            $role = trim((string) ($assignment['role'] ?? ''));
             $alreadyListed = collect($rows)->contains(
                 fn (array $row) => $row['role'] === $role
-                    && ($row['person_name'] ?? null) === ($assignment->person_name ?: $assignment->qualifiedTrainer?->name)
+                    && ($row['person_name'] ?? null) === ($assignment['person_name'] ?? null)
+                    && ($row['person_external_id'] ?? null) === ($assignment['person_external_id'] ?? null)
             );
-            if ($alreadyListed) {
+            if ($alreadyListed || $role === '') {
                 continue;
             }
 
-            $source = (string) ($assignment->source_group ?? '');
+            $source = (string) ($assignment['source_group'] ?? '');
             $rows[] = [
-                'role' => $role !== '' ? $role : 'Assigned Personnel',
-                'person_name' => $assignment->person_name ?: $assignment->qualifiedTrainer?->name,
-                'source_group' => $source ?: null,
+                'role' => $role,
+                'person_name' => $assignment['person_name'] ?? null,
+                'source_group' => $source !== '' ? $source : null,
                 'source_label' => $sourceLabels[$source] ?? ($source !== '' ? $source : '—'),
                 'recommended_count' => 1,
-                'notes' => $assignment->notes,
-                'assigned' => true,
+                'notes' => $assignment['notes'] ?? null,
+                'assigned' => filled($assignment['person_name'] ?? null),
+                'person_external_id' => $assignment['person_external_id'] ?? null,
             ];
         }
 
         return array_values($rows);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function buildCpsqcPayload(SimulationEvent $event): array
+    {
+        $template = $event->simulationExerciseTemplate;
+        $marshalRole = $template?->personnel
+            ?->first(fn ($row) => trim((string) $row->role) === 'Marshal');
+        $recommendedMarshals = (int) ($marshalRole?->recommended_count ?? 0);
+        $needsMarshals = $recommendedMarshals > 0
+            || collect($event->event_personnel_assignments ?? [])->contains(
+                fn ($row) => is_array($row) && trim((string) ($row['role'] ?? '')) === 'Marshal'
+            );
+
+        $configured = $this->cpsqcClient->isConfigured();
+        $sourceRef = $this->cpsqcSourceReference($event);
+        $requests = [];
+        $availableMarshals = [];
+
+        if ($configured) {
+            $list = $this->cpsqcClient->listPatrolRequests([
+                'source_reference_id' => $sourceRef,
+                'source_group' => (string) config('cpsqc.defaults.source_group', 'group_6'),
+            ]);
+            if ($list['success']) {
+                $requests = $list['data'];
+            }
+
+            $approved = $this->cpsqcClient->listPatrolRequests([
+                'status' => 'Approved',
+                'source_reference_id' => $sourceRef,
+                'source_group' => (string) config('cpsqc.defaults.source_group', 'group_6'),
+            ]);
+            if ($approved['success']) {
+                $availableMarshals = $this->cpsqcClient->marshalPoolMembers($approved['data']);
+            }
+        }
+
+        $assignedMarshals = collect($event->event_personnel_assignments ?? [])
+            ->filter(fn ($row) => is_array($row) && trim((string) ($row['role'] ?? '')) === 'Marshal')
+            ->values()
+            ->all();
+
+        $eventDate = $event->event_date
+            ? Carbon::parse($event->event_date)->format('Y-m-d')
+            : '';
+        $startTime = $this->formatTimeForCpsqc($event->start_time);
+        $endTime = $this->formatTimeForCpsqc($event->end_time);
+        $location = trim((string) ($event->venue ?: $event->location ?: $event->building ?: ''));
+
+        return [
+            'configured' => $configured,
+            'needed' => $needsMarshals || $recommendedMarshals > 0,
+            'recommended_count' => max(1, $recommendedMarshals ?: 1),
+            'source_reference_id' => $sourceRef,
+            'request_defaults' => [
+                'event_name' => (string) $event->title,
+                'event_date' => $eventDate,
+                'event_start_time' => $startTime ?: '08:00',
+                'event_end_time' => $endTime,
+                'event_location' => $location,
+                'patrols_needed' => max(1, $recommendedMarshals ?: 1),
+                'special_instructions' => 'Assign marshals for disaster training simulation event.',
+            ],
+            'requests' => $requests,
+            'available_marshals' => $availableMarshals,
+            'assigned_marshals' => $assignedMarshals,
+        ];
+    }
+
+    public function cpsqcSourceReference(SimulationEvent $event): string
+    {
+        return 'simulation-event:'.$event->id;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $assignments
+     */
+    public function syncEventPersonnelAssignments(SimulationEvent $event, array $assignments): SimulationEvent
+    {
+        $normalized = [];
+        foreach (array_values($assignments) as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $role = trim((string) ($row['role'] ?? 'Marshal'));
+            $name = trim((string) ($row['person_name'] ?? ''));
+            if ($role === '' || $name === '') {
+                continue;
+            }
+            $normalized[] = [
+                'role' => $role,
+                'source_group' => (string) ($row['source_group'] ?? 'cpsqc_patrol'),
+                'person_name' => $name,
+                'person_external_id' => isset($row['person_external_id']) ? (string) $row['person_external_id'] : null,
+                'bpso_personnel_id' => $row['bpso_personnel_id'] ?? null,
+                'patrol_request_id' => $row['patrol_request_id'] ?? null,
+                'notes' => $row['notes'] ?? null,
+            ];
+        }
+
+        $event->update([
+            'event_personnel_assignments' => $normalized,
+            'updated_by' => portal_id(),
+        ]);
+
+        return $event->fresh();
+    }
+
+    private function formatTimeForCpsqc(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        try {
+            return Carbon::parse((string) $value)->format('H:i');
+        } catch (\Throwable) {
+            return substr((string) $value, 0, 5);
+        }
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function rosterFromEventAssignmentsOnly(SimulationEvent $event): array
+    {
+        return collect($event->event_personnel_assignments ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->map(function (array $assignment) {
+                $source = (string) ($assignment['source_group'] ?? '');
+
+                return [
+                    'role' => $assignment['role'] ?? 'Assigned Personnel',
+                    'person_name' => $assignment['person_name'] ?? null,
+                    'source_group' => $source !== '' ? $source : null,
+                    'source_label' => $source === 'cpsqc_patrol' ? 'CPSQC Patrol — Marshals' : ($source !== '' ? $source : '—'),
+                    'recommended_count' => 1,
+                    'notes' => $assignment['notes'] ?? null,
+                    'assigned' => filled($assignment['person_name'] ?? null),
+                    'person_external_id' => $assignment['person_external_id'] ?? null,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function buildReadinessChecklist(SimulationEvent $event): array
@@ -278,6 +477,29 @@ class SimulationEventLifecycleService
                 'required' => true,
             ],
         ];
+
+        $template = $event->simulationExerciseTemplate;
+        if ($template) {
+            $template->loadMissing('personnel');
+        }
+        $marshalRecommended = (int) ($template?->personnel
+            ?->first(fn ($row) => trim((string) $row->role) === 'Marshal')
+            ?->recommended_count ?? 0);
+        if ($marshalRecommended > 0 || $template?->personnel?->contains(fn ($row) => trim((string) $row->role) === 'Marshal')) {
+            $assignedMarshalCount = collect($event->event_personnel_assignments ?? [])
+                ->filter(fn ($row) => is_array($row)
+                    && trim((string) ($row['role'] ?? '')) === 'Marshal'
+                    && filled($row['person_name'] ?? null))
+                ->count();
+            $needed = max(1, $marshalRecommended ?: 1);
+            $items[] = [
+                'key' => 'cpsqc_marshals_assigned',
+                'label' => 'CPSQC Marshals Assigned',
+                'completed' => $assignedMarshalCount >= $needed,
+                'required' => true,
+                'detail' => sprintf('%d / %d assigned for this event', $assignedMarshalCount, $needed),
+            ];
+        }
 
         $allComplete = collect($items)->every(fn (array $item) => ! $item['required'] || $item['completed']);
 

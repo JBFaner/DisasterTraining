@@ -352,9 +352,6 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         // Simulation Exercise Templates (reusable exercise blueprints)
         Route::post('/simulation-exercise-templates/generate-plan', [SimulationExerciseTemplateController::class, 'generatePlan'])->name('admin.simulation-exercise-templates.generate-plan');
         Route::post('/simulation-exercise-templates/regenerate-section', [SimulationExerciseTemplateController::class, 'regenerateSection'])->name('admin.simulation-exercise-templates.regenerate-section');
-        Route::post('/simulation-exercise-templates/cpsqc-patrol/request', [SimulationExerciseTemplateController::class, 'requestCpsqcPatrol'])->name('admin.simulation-exercise-templates.cpsqc-patrol.request');
-        Route::get('/simulation-exercise-templates/cpsqc-patrol/requests', [SimulationExerciseTemplateController::class, 'listCpsqcPatrolRequests'])->name('admin.simulation-exercise-templates.cpsqc-patrol.list');
-        Route::get('/simulation-exercise-templates/cpsqc-patrol/marshals', [SimulationExerciseTemplateController::class, 'refreshCpsqcMarshals'])->name('admin.simulation-exercise-templates.cpsqc-patrol.marshals');
         Route::get('/simulation-exercise-templates', [SimulationExerciseTemplateController::class, 'index'])->name('admin.simulation-exercise-templates.index');
         Route::get('/simulation-exercise-templates/create', [SimulationExerciseTemplateController::class, 'create'])->name('admin.simulation-exercise-templates.create');
         Route::post('/simulation-exercise-templates', [SimulationExerciseTemplateController::class, 'store'])->name('admin.simulation-exercise-templates.store');
@@ -364,8 +361,6 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-exercise-templates/{simulationExerciseTemplate}/publish', [SimulationExerciseTemplateController::class, 'publish'])->name('admin.simulation-exercise-templates.publish');
         Route::post('/simulation-exercise-templates/{simulationExerciseTemplate}/archive', [SimulationExerciseTemplateController::class, 'archive'])->name('admin.simulation-exercise-templates.archive');
         Route::post('/simulation-exercise-templates/{simulationExerciseTemplate}/reuse', [SimulationExerciseTemplateController::class, 'reuse'])->name('admin.simulation-exercise-templates.reuse');
-        Route::post('/simulation-exercise-templates/{simulationExerciseTemplate}/cpsqc-patrol/request', [SimulationExerciseTemplateController::class, 'requestCpsqcPatrol'])->name('admin.simulation-exercise-templates.cpsqc-patrol.request-for');
-        Route::get('/simulation-exercise-templates/{simulationExerciseTemplate}/cpsqc-patrol/requests', [SimulationExerciseTemplateController::class, 'listCpsqcPatrolRequests'])->name('admin.simulation-exercise-templates.cpsqc-patrol.list-for');
         Route::delete('/simulation-exercise-templates/{simulationExerciseTemplate}', [SimulationExerciseTemplateController::class, 'destroy'])->name('admin.simulation-exercise-templates.destroy');
 
         Route::get('/simulation-events/create', [SimulationEventController::class, 'create'])->name('admin.simulation-events.create');
@@ -381,6 +376,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-events/{simulationEvent}/complete', [SimulationEventController::class, 'complete'])->name('admin.simulation-events.complete');
         Route::get('/simulation-events/{simulationEvent}/lifecycle', [SimulationEventLifecycleController::class, 'show'])->name('admin.simulation-events.lifecycle');
         Route::patch('/simulation-events/{simulationEvent}/readiness', [SimulationEventLifecycleController::class, 'updateReadiness'])->name('admin.simulation-events.readiness');
+        Route::post('/simulation-events/{simulationEvent}/cpsqc-patrol/request', [SimulationEventLifecycleController::class, 'requestCpsqcPatrol'])->name('admin.simulation-events.cpsqc-patrol.request');
+        Route::get('/simulation-events/{simulationEvent}/cpsqc-patrol/requests', [SimulationEventLifecycleController::class, 'listCpsqcPatrolRequests'])->name('admin.simulation-events.cpsqc-patrol.list');
+        Route::get('/simulation-events/{simulationEvent}/cpsqc-patrol/marshals', [SimulationEventLifecycleController::class, 'refreshCpsqcMarshals'])->name('admin.simulation-events.cpsqc-patrol.marshals');
+        Route::put('/simulation-events/{simulationEvent}/personnel-assignments', [SimulationEventLifecycleController::class, 'saveEventPersonnelAssignments'])->name('admin.simulation-events.personnel-assignments');
         Route::post('/simulation-events/{simulationEvent}/execution-steps/{step}', [SimulationEventLifecycleController::class, 'completeStep'])->name('admin.simulation-events.execution-steps.complete');
         Route::post('/simulation-events/{simulationEvent}/post-evaluation', [SimulationEventLifecycleController::class, 'storePostEvaluation'])->name('admin.simulation-events.post-evaluation');
         Route::delete('/simulation-events/{simulationEvent}', [SimulationEventController::class, 'destroy'])->name('admin.simulation-events.destroy');

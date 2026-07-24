@@ -421,10 +421,8 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
     const templateId = formData?.template?.id;
     const options = formData?.options || {};
     const resources = formData?.resources || [];
-    const [personnelPool, setPersonnelPool] = React.useState(() => formData?.personnel_pool || []);
+    const personnelPool = formData?.personnel_pool || [];
     const availablePersonCount = personnelPool.reduce((sum, pool) => sum + (pool.members?.length || 0), 0);
-    const cpsqcPool = personnelPool.find((pool) => pool.group_key === 'cpsqc_patrol');
-    const cpsqcConfigured = cpsqcPool ? !cpsqcPool.integration_pending : false;
 
     const [form, setForm] = React.useState(() => ({
         title: formData?.template?.title || '',
@@ -456,122 +454,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isGenerating, setIsGenerating] = React.useState(false);
     const [regeneratingSection, setRegeneratingSection] = React.useState(null);
-    const [cpsqcBusy, setCpsqcBusy] = React.useState(false);
-    const [cpsqcRequests, setCpsqcRequests] = React.useState([]);
-    const [cpsqcForm, setCpsqcForm] = React.useState(() => ({
-        event_name: formData?.template?.title || '',
-        event_date: '',
-        event_start_time: '08:00',
-        event_end_time: '',
-        event_location: '',
-        patrols_needed: 2,
-        contact_person: '',
-        contact_number: '',
-        special_instructions: 'Assign marshals for disaster training exercise plan.',
-    }));
-    const setCpsqcField = (key, value) => setCpsqcForm((prev) => ({ ...prev, [key]: value }));
-
-    const updateCpsqcPoolMembers = (members) => {
-        setPersonnelPool((prev) => {
-            const next = [...(prev || [])];
-            const index = next.findIndex((pool) => pool.group_key === 'cpsqc_patrol');
-            const group = {
-                group_key: 'cpsqc_patrol',
-                group_label: 'CPSQC Patrol — Marshals',
-                integration_pending: false,
-                members: members || [],
-            };
-            if (index >= 0) {
-                next[index] = { ...next[index], ...group, integration_pending: false };
-            } else {
-                next.push(group);
-            }
-            return next;
-        });
-    };
-
-    const refreshCpsqcMarshals = async () => {
-        setCpsqcBusy(true);
-        try {
-            const response = await fetch('/admin/simulation-exercise-templates/cpsqc-patrol/marshals', {
-                headers: { Accept: 'application/json', ...getCsrfHeaders() },
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success) {
-                await showAppAlert(data.message || 'Failed to refresh CPSQC marshals.');
-                return;
-            }
-            updateCpsqcPoolMembers(data.members || []);
-            await showAppAlert(`Loaded ${data.members?.length || 0} approved CPSQC marshal(s).`);
-        } catch (error) {
-            await showAppAlert(error.message || 'Failed to refresh CPSQC marshals.');
-        } finally {
-            setCpsqcBusy(false);
-        }
-    };
-
-    const loadCpsqcRequests = async () => {
-        const url = templateId
-            ? `/admin/simulation-exercise-templates/${templateId}/cpsqc-patrol/requests`
-            : '/admin/simulation-exercise-templates/cpsqc-patrol/requests';
-        try {
-            const response = await fetch(url, {
-                headers: { Accept: 'application/json', ...getCsrfHeaders() },
-            });
-            const data = await response.json().catch(() => ({}));
-            if (response.ok && data.success) {
-                setCpsqcRequests(data.requests || []);
-            }
-        } catch {
-            // non-blocking
-        }
-    };
-
-    const submitCpsqcPatrolRequest = async () => {
-        if (!cpsqcForm.event_name.trim() || !cpsqcForm.event_date || !cpsqcForm.event_start_time || !cpsqcForm.event_location.trim()) {
-            await showAppAlert('Fill event name, date, start time, and location before requesting CPSQC patrols.');
-            return;
-        }
-
-        setCpsqcBusy(true);
-        try {
-            const url = templateId
-                ? `/admin/simulation-exercise-templates/${templateId}/cpsqc-patrol/request`
-                : '/admin/simulation-exercise-templates/cpsqc-patrol/request';
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    ...getCsrfHeaders(),
-                },
-                body: JSON.stringify({
-                    ...cpsqcForm,
-                    event_name: cpsqcForm.event_name.trim() || form.title.trim(),
-                    patrols_needed: Math.max(1, Number(cpsqcForm.patrols_needed) || 1),
-                    source_reference_id: templateId ? `exercise-plan:${templateId}` : undefined,
-                }),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success) {
-                await showAppAlert(data.message || formatApiErrors(data) || 'CPSQC patrol request failed.');
-                return;
-            }
-            await showAppAlert(`Patrol request sent${data.request_id ? ` (${data.request_id})` : ''}. Approve it in CPSQC, then refresh marshals.`);
-            await loadCpsqcRequests();
-        } catch (error) {
-            await showAppAlert(error.message || 'CPSQC patrol request failed.');
-        } finally {
-            setCpsqcBusy(false);
-        }
-    };
-
-    React.useEffect(() => {
-        if (cpsqcConfigured) {
-            loadCpsqcRequests();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [templateId, cpsqcConfigured]);
 
     const personnelRoleOptions = React.useMemo(
         () => buildPersonnelRoleOptions(options.personnel_roles, personnel, personnelAssignments),
@@ -1333,9 +1215,13 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                 )}
             >
                 <p className="mb-4 text-sm text-slate-600">
-                    Define required roles and staffing levels, then assign specific people under each role from integrated groups.
-                    Use CPSQC below to request patrol marshals, then assign them to the Marshal role.
+                    Define required roles and staffing levels for this reusable template.
+                    Assign stable LGU trainers/staff here if needed. Request and assign CPSQC patrol marshals later in
+                    <strong> Simulation Readiness</strong> once the event has a date and venue.
                 </p>
+                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+                    Tip: Add a <strong>Marshal</strong> role with a recommended count only. Specific CPSQC personnel are assigned per scheduled event, not on the template.
+                </div>
                 <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 space-y-2">
                     {personnelPool.map((pool) => (
                         <div key={pool.group_key}>
@@ -1349,88 +1235,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                     ))}
                     {availablePersonCount === 0 && (
                         <p className="text-amber-700">No personnel available yet. Sync Group 6 trainers or wait for other group integrations.</p>
-                    )}
-                </div>
-
-                <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                            <p className="text-sm font-semibold text-slate-800">CPSQC Patrol Request (Marshals)</p>
-                            <p className="text-xs text-slate-600">
-                                {cpsqcConfigured
-                                    ? 'Request patrols from CPSQC. After they approve and assign personnel, refresh marshals into the pool.'
-                                    : 'CPSQC integration is off. Set CPSQC_INTEGRATION_ENABLED and CPSQC_API_BASE_URL in .env.'}
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <AdminSecondaryButton onClick={refreshCpsqcMarshals} disabled={!cpsqcConfigured || cpsqcBusy}>
-                                {cpsqcBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                Refresh Marshals
-                            </AdminSecondaryButton>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <label className="text-sm md:col-span-2">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Event Name</span>
-                            <input className={inputClass()} value={cpsqcForm.event_name} onChange={(e) => setCpsqcField('event_name', e.target.value)} placeholder={form.title || 'Exercise / event name'} disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Patrols Needed</span>
-                            <input type="number" min="1" max="50" className={inputClass()} value={cpsqcForm.patrols_needed} onChange={(e) => setCpsqcField('patrols_needed', Number(e.target.value) || 1)} disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Event Date</span>
-                            <input type="date" className={inputClass()} value={cpsqcForm.event_date} onChange={(e) => setCpsqcField('event_date', e.target.value)} disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Start Time</span>
-                            <input type="time" className={inputClass()} value={cpsqcForm.event_start_time} onChange={(e) => setCpsqcField('event_start_time', e.target.value)} disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">End Time (optional)</span>
-                            <input type="time" className={inputClass()} value={cpsqcForm.event_end_time} onChange={(e) => setCpsqcField('event_end_time', e.target.value)} disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm md:col-span-3">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Event Location</span>
-                            <input className={inputClass()} value={cpsqcForm.event_location} onChange={(e) => setCpsqcField('event_location', e.target.value)} placeholder="Venue / barangay address" disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Contact Person</span>
-                            <input className={inputClass()} value={cpsqcForm.contact_person} onChange={(e) => setCpsqcField('contact_person', e.target.value)} placeholder="Optional — uses .env default" disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Contact Number</span>
-                            <input className={inputClass()} value={cpsqcForm.contact_number} onChange={(e) => setCpsqcField('contact_number', e.target.value)} placeholder="Optional — uses .env default" disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                        <label className="text-sm md:col-span-3">
-                            <span className="mb-1 block text-xs font-semibold text-slate-600">Special Instructions</span>
-                            <input className={inputClass()} value={cpsqcForm.special_instructions} onChange={(e) => setCpsqcField('special_instructions', e.target.value)} disabled={!cpsqcConfigured || cpsqcBusy} />
-                        </label>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <AdminPrimaryButton onClick={submitCpsqcPatrolRequest} disabled={!cpsqcConfigured || cpsqcBusy}>
-                            {cpsqcBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
-                            Request Patrol from CPSQC
-                        </AdminPrimaryButton>
-                    </div>
-                    {cpsqcRequests.length > 0 && (
-                        <div className="mt-4 space-y-2 border-t border-sky-200 pt-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Recent requests for this plan</p>
-                            {cpsqcRequests.slice(0, 5).map((req) => (
-                                <div key={req.request_id || req.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white bg-white px-3 py-2 text-xs text-slate-700">
-                                    <span>
-                                        <span className="font-medium">{req.request_id || '—'}</span>
-                                        {' · '}
-                                        {req.event_name || 'Untitled'}
-                                        {' · '}
-                                        {req.status || '—'}
-                                    </span>
-                                    <span className="text-slate-500">
-                                        {(req.assigned_personnel?.length || req.patrols_assigned || 0)} assigned
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
                     )}
                 </div>
                 <div className="space-y-4">
@@ -1522,7 +1326,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                                                                                     <option key={`${pool.group_key}-${member.id}`} value={encodePersonRef(pool.group_key, member.id)}>
                                                                                         {member.name}
                                                                                         {member.specialization ? ` — ${member.specialization}` : ''}
-                                                                                        {member.barangay ? ` (${member.barangay})` : ''}
                                                                                     </option>
                                                                                 ))}
                                                                         </optgroup>

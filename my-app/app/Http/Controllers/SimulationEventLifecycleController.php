@@ -10,7 +10,8 @@ use Illuminate\Http\Request;
 class SimulationEventLifecycleController extends Controller
 {
     public function __construct(
-        protected SimulationEventLifecycleService $lifecycle
+        protected SimulationEventLifecycleService $lifecycle,
+        protected \App\Services\Cpsqc\CpsqcPatrolApiClient $cpsqcClient,
     ) {}
 
     public function show(SimulationEvent $simulationEvent)
@@ -47,6 +48,102 @@ class SimulationEventLifecycleController extends Controller
         return response()->json([
             'success' => true,
             'lifecycle' => $this->lifecycle->buildPayload($simulationEvent->fresh()),
+        ]);
+    }
+
+    public function requestCpsqcPatrol(Request $request, SimulationEvent $simulationEvent)
+    {
+        $this->authorizeEventAccess();
+
+        $defaults = $this->lifecycle->buildCpsqcPayload($simulationEvent)['request_defaults'] ?? [];
+
+        $data = $request->validate([
+            'event_name' => ['nullable', 'string', 'max:255'],
+            'event_date' => ['nullable', 'date_format:Y-m-d'],
+            'event_start_time' => ['nullable', 'string', 'max:8'],
+            'event_end_time' => ['nullable', 'string', 'max:8'],
+            'event_location' => ['nullable', 'string', 'max:500'],
+            'patrols_needed' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
+            'contact_number' => ['nullable', 'string', 'max:50'],
+            'contact_email' => ['nullable', 'email', 'max:255'],
+            'special_instructions' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $payload = $this->cpsqcClient->buildRequestPayload([
+            ...$defaults,
+            ...array_filter($data, fn ($value) => $value !== null && $value !== ''),
+            'source_reference_id' => $this->lifecycle->cpsqcSourceReference($simulationEvent),
+        ]);
+
+        $result = $this->cpsqcClient->submitPatrolRequest($payload);
+        if (! $result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Failed to submit patrol request to CPSQC.',
+                'response' => $result['response'],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Patrol request sent to CPSQC.',
+            'request_id' => $result['request_id'],
+            'lifecycle' => $this->lifecycle->buildPayload($simulationEvent->fresh()),
+        ]);
+    }
+
+    public function listCpsqcPatrolRequests(SimulationEvent $simulationEvent)
+    {
+        $this->authorizeEventAccess();
+
+        return response()->json([
+            'success' => true,
+            'lifecycle' => $this->lifecycle->buildPayload($simulationEvent),
+            'cpsqc' => $this->lifecycle->buildCpsqcPayload($simulationEvent),
+        ]);
+    }
+
+    public function refreshCpsqcMarshals(SimulationEvent $simulationEvent)
+    {
+        $this->authorizeEventAccess();
+
+        if (! $this->cpsqcClient->isConfigured()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'CPSQC integration is not configured.',
+                'lifecycle' => $this->lifecycle->buildPayload($simulationEvent),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'lifecycle' => $this->lifecycle->buildPayload($simulationEvent->fresh()),
+            'cpsqc' => $this->lifecycle->buildCpsqcPayload($simulationEvent->fresh()),
+        ]);
+    }
+
+    public function saveEventPersonnelAssignments(Request $request, SimulationEvent $simulationEvent)
+    {
+        $this->authorizeEventAccess();
+
+        $data = $request->validate([
+            'assignments' => ['required', 'array'],
+            'assignments.*.role' => ['required', 'string', 'max:255'],
+            'assignments.*.source_group' => ['nullable', 'string', 'max:255'],
+            'assignments.*.person_name' => ['required', 'string', 'max:255'],
+            'assignments.*.person_external_id' => ['nullable', 'string', 'max:255'],
+            'assignments.*.bpso_personnel_id' => ['nullable', 'string', 'max:255'],
+            'assignments.*.patrol_request_id' => ['nullable', 'string', 'max:255'],
+            'assignments.*.notes' => ['nullable', 'string'],
+        ]);
+
+        $event = $this->lifecycle->syncEventPersonnelAssignments($simulationEvent, $data['assignments']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Event personnel assignments saved.',
+            'lifecycle' => $this->lifecycle->buildPayload($event),
         ]);
     }
 
