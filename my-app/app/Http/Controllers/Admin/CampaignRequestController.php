@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\Group6\Group6ApiClientInterface;
 use App\Http\Controllers\Concerns\ManagesTrainingModuleAssets;
 use App\Http\Controllers\Controller;
 use App\Models\CampaignRequest;
@@ -11,6 +12,7 @@ use App\Support\CampaignPlanningPayload;
 use App\Support\CampaignRegistrationLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class CampaignRequestController extends Controller
 {
@@ -163,6 +165,44 @@ class CampaignRequestController extends Controller
             'registration_form_path' => '/campaigns/'.$campaignRequest->id.'/register',
         ]);
         $campaignRequest->update(['payload' => $payload]);
+        $campaignRequest->refresh();
+
+        // Push Training Intelligence to the external Campaign Planning system.
+        $outbound = app(Group6ApiClientInterface::class)->submitTrainingIntelligence($campaignRequest);
+        if ($outbound['success'] ?? false) {
+            $payload['external_campaign_id'] = $outbound['external_campaign_id'] ?? null;
+            $payload['external_campaign_synced_at'] = now()->toIso8601String();
+            $campaignRequest->update([
+                'payload' => $payload,
+                'remarks' => array_merge(
+                    is_array($campaignRequest->remarks) ? $campaignRequest->remarks : [],
+                    [
+                        'campaign_system_outbound' => [
+                            'success' => true,
+                            'external_campaign_id' => $outbound['external_campaign_id'] ?? null,
+                            'synced_at' => now()->toIso8601String(),
+                        ],
+                    ],
+                ),
+            ]);
+        } else {
+            Log::warning('Training Intelligence outbound sync failed', [
+                'campaign_request_id' => $campaignRequest->id,
+                'error' => $outbound['error'] ?? 'Unknown error',
+            ]);
+            $campaignRequest->update([
+                'remarks' => array_merge(
+                    is_array($campaignRequest->remarks) ? $campaignRequest->remarks : [],
+                    [
+                        'campaign_system_outbound' => [
+                            'success' => false,
+                            'error' => $outbound['error'] ?? 'Unknown error',
+                            'attempted_at' => now()->toIso8601String(),
+                        ],
+                    ],
+                ),
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -170,6 +210,9 @@ class CampaignRequestController extends Controller
                 'id' => $campaignRequest->id,
                 'status' => $campaignRequest->status,
                 'registration_link' => $registrationLink,
+                'external_campaign_id' => $outbound['external_campaign_id'] ?? null,
+                'external_sync_success' => (bool) ($outbound['success'] ?? false),
+                'external_sync_error' => $outbound['error'] ?? null,
             ],
         ]);
     }

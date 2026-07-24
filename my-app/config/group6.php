@@ -1,10 +1,10 @@
 <?php
 
 /**
- * Group 6 — external Campaign Planning & Scheduling team (separate system).
+ * Group 6 / Public Safety Campaign Management System integration.
  *
- * This app does NOT implement Group 6's modules. These settings only configure
- * integration points for receiving data from their API when it becomes available.
+ * Outbound (we → them): POST Training Intelligence to their campaigns API.
+ * Inbound (they → us): approve/reject via /api/integrations/campaign-planning.
  */
 return [
 
@@ -12,16 +12,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Group 6 API (their system — we consume data from them)
+    | Campaign System API (their deployed app)
     |--------------------------------------------------------------------------
     */
     'api' => [
-        'base_url' => rtrim((string) env('GROUP6_API_BASE_URL', ''), '/'),
+        'base_url' => rtrim((string) env('GROUP6_API_BASE_URL', 'https://campaign.alertaraqc.com'), '/'),
+        // Optional pre-issued Bearer JWT. If empty, we mint one with jwt.* settings.
         'key' => env('GROUP6_API_KEY'),
         'timeout' => (int) env('GROUP6_API_TIMEOUT', 30),
 
-        // Endpoint paths — update when Group 6 team provides their API spec
         'endpoints' => [
+            'campaigns' => env('GROUP6_ENDPOINT_CAMPAIGNS', '/api/v1/campaigns'),
+            'campaigns_public' => env('GROUP6_ENDPOINT_CAMPAIGNS_PUBLIC', '/api/v1/campaigns/public'),
             'participants' => env('GROUP6_ENDPOINT_PARTICIPANTS', '/api/v1/participants'),
             'trainers' => env('GROUP6_ENDPOINT_TRAINERS', '/api/v1/trainers'),
             'campaign_requests' => env('GROUP6_ENDPOINT_CAMPAIGN_REQUESTS', '/api/integrations/group6/campaign-requests'),
@@ -30,7 +32,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Inbound webhook — Group 6 pushes data to our app
+    | JWT used to call their protected endpoints (POST /api/v1/campaigns)
+    |--------------------------------------------------------------------------
+    | Their auth expects Authorization: Bearer <jwt> with a valid numeric "sub".
+    | Ask their team for a service-account user id + JWT secret for production.
+    */
+    'jwt' => [
+        'secret' => env('GROUP6_JWT_SECRET'),
+        'subject' => env('GROUP6_JWT_SUBJECT', '1'),
+        'issuer' => env('GROUP6_JWT_ISSUER', 'public-safety-campaign-system'),
+        'audience' => env('GROUP6_JWT_AUDIENCE', 'public-safety-campaign-system'),
+        'expiry_seconds' => (int) env('GROUP6_JWT_EXPIRY_SECONDS', 86400),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inbound webhook — Campaign System pushes / calls our approve/reject API
     |--------------------------------------------------------------------------
     */
     'inbound' => [

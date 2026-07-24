@@ -9,6 +9,7 @@ use App\Contracts\Group6\Group6InboundReceiverInterface;
 use App\Mail\CustomMailManager;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
+use App\Services\Group6\CampaignSystemApiClient;
 use App\Services\Group6\Group6EventReferenceProvider;
 use App\Services\Group6\Group6InboundReceiver;
 use App\Services\Group6\PlaceholderGroup6ApiClient;
@@ -29,9 +30,15 @@ class AppServiceProvider extends ServiceProvider
             return new CustomMailManager($app);
         });
 
-        // Group 6 — external system integration (placeholders until API is available)
+        // Campaign System (Group 6) — real HTTP client when enabled, else placeholder
         $this->app->bind(Group6InboundReceiverInterface::class, Group6InboundReceiver::class);
-        $this->app->bind(Group6ApiClientInterface::class, PlaceholderGroup6ApiClient::class);
+        $this->app->bind(Group6ApiClientInterface::class, function ($app) {
+            if (config('group6.enabled') && config('group6.api.base_url')) {
+                return $app->make(CampaignSystemApiClient::class);
+            }
+
+            return $app->make(PlaceholderGroup6ApiClient::class);
+        });
         $this->app->bind(Group6DataConsumerInterface::class, PlaceholderGroup6DataConsumer::class);
         $this->app->bind(Group6EventReferenceProviderInterface::class, Group6EventReferenceProvider::class);
 

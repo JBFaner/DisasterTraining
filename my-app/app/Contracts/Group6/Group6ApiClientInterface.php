@@ -2,10 +2,10 @@
 
 namespace App\Contracts\Group6;
 
+use App\Models\CampaignRequest;
+
 /**
- * HTTP client for calling Group 6's external API (when available).
- *
- * Placeholder implementation returns "not configured" until their API is ready.
+ * HTTP client for calling the external Campaign Planning system.
  */
 interface Group6ApiClientInterface
 {
@@ -24,4 +24,11 @@ interface Group6ApiClientInterface
      * @return array{success: bool, records: array<int, array<string, mixed>>, error: ?string}
      */
     public function fetchTrainers(): array;
+
+    /**
+     * Push Training Intelligence (campaign request) to their campaigns API.
+     *
+     * @return array{success: bool, external_campaign_id: ?int, response: ?array<string, mixed>, error: ?string}
+     */
+    public function submitTrainingIntelligence(CampaignRequest $campaignRequest): array;
 }
