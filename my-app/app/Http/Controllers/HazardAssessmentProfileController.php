@@ -306,7 +306,13 @@ class HazardAssessmentProfileController extends Controller
             'hazards.*.risk_level' => ['required', 'string', Rule::in($riskLevels)],
             'hazards.*.risk_score' => ['required', 'integer', 'min:0', 'max:100'],
             'hazards.*.description' => ['nullable', 'string'],
+            'hazards.*.exposure_scope' => ['nullable', 'string', Rule::in(config('hazard_assessment.exposure_scopes', []))],
+            'hazards.*.focus_area' => ['nullable', 'string', 'max:2000'],
             'hazards.*.source_agency' => ['required', 'string', Rule::in($agencies)],
+            'hazards.*.source_reference_number' => ['nullable', 'string', 'max:255'],
+            'hazards.*.reference_title' => ['nullable', 'string', 'max:255'],
+            'hazards.*.reference_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
+            'hazards.*.reference_url' => ['nullable', 'string', 'max:2048', 'url'],
             'hazards.*.date_assessed' => ['nullable', 'date'],
         ])['hazards'] ?? [];
     }
@@ -327,7 +333,15 @@ class HazardAssessmentProfileController extends Controller
                 'risk_level' => $hazard['risk_level'],
                 'risk_score' => (int) $hazard['risk_score'],
                 'description' => $hazard['description'] ?? null,
+                'exposure_scope' => $hazard['exposure_scope'] ?? null,
+                'focus_area' => $hazard['focus_area'] ?? null,
                 'source_agency' => $hazard['source_agency'],
+                'source_reference_number' => $hazard['source_reference_number'] ?? null,
+                'reference_title' => $hazard['reference_title'] ?? null,
+                'reference_year' => isset($hazard['reference_year']) && $hazard['reference_year'] !== ''
+                    ? (int) $hazard['reference_year']
+                    : null,
+                'reference_url' => $hazard['reference_url'] ?? null,
                 'date_assessed' => $assessed,
             ]);
             $latestAssessed = $assessed;
@@ -378,6 +392,8 @@ class HazardAssessmentProfileController extends Controller
         return [
             'hazard_types' => config('hazard_assessment.hazard_types', []),
             'risk_levels' => config('hazard_assessment.risk_levels', []),
+            'exposure_scopes' => config('hazard_assessment.exposure_scopes', []),
+            'exposure_scope_labels' => config('hazard_assessment.exposure_scope_labels', []),
             'source_agencies' => config('hazard_assessment.source_agencies', []),
             'source_agency_labels' => config('hazard_assessment.source_agency_labels', []),
             'document_types' => config('hazard_assessment.document_types', []),

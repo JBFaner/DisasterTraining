@@ -12,6 +12,12 @@ class QualifiedTrainer extends Model
 
     public const STATUS_INACTIVE = 'inactive';
 
+    public const ASSIGNMENT_AVAILABLE = 'available';
+
+    public const ASSIGNMENT_ASSIGNED_TO_SIMULATION = 'assigned_to_simulation';
+
+    public const ASSIGNMENT_UNAVAILABLE = 'unavailable';
+
     protected $fillable = [
         'user_id',
         'group6_external_id',
@@ -22,6 +28,7 @@ class QualifiedTrainer extends Model
         'barangay',
         'certifications',
         'status',
+        'assignment_status',
         'qualified_at',
         'last_synced_at',
         'metadata',
@@ -60,5 +67,10 @@ class QualifiedTrainer extends Model
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function isAssignmentAvailable(): bool
+    {
+        return $this->assignment_status === self::ASSIGNMENT_AVAILABLE;
     }
 }

@@ -37,6 +37,24 @@ return [
         'Very High',
     ],
 
+    /*
+     | How geographic exposure is described inside a barangay.
+     | - zone_specific: named streets / sitios / catchments from sources
+     | - barangay_wide: whole barangay (e.g. ground shaking, wind)
+     | - pattern_based: not one pin — e.g. dense housing fire-spread pattern
+     */
+    'exposure_scopes' => [
+        'zone_specific',
+        'barangay_wide',
+        'pattern_based',
+    ],
+
+    'exposure_scope_labels' => [
+        'zone_specific' => 'Specific zones (streets / sitios / catchments)',
+        'barangay_wide' => 'Barangay-wide',
+        'pattern_based' => 'Pattern-based (e.g. dense housing clusters)',
+    ],
+
     'risk_level_scores' => [
         'Low' => 25,
         'Moderate' => 50,

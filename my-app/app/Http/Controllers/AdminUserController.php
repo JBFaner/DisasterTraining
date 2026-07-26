@@ -592,6 +592,7 @@ class AdminUserController extends Controller
         }
 
         $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
+        $managedBySimulation = $user->assignment_status === User::ASSIGNMENT_ASSIGNED_TO_SIMULATION;
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
@@ -600,13 +601,17 @@ class AdminUserController extends Controller
             'barangay_id' => ['nullable', 'integer', 'exists:barangay_profiles,id'],
             'position' => ['nullable', 'string', 'max:120'],
         ];
+        if (! $managedBySimulation) {
+            // Manual edits: available ↔ unavailable only (never assigned_to_simulation from admin form)
+            $rules['assignment_status'] = ['required', 'in:available,unavailable'];
+        }
         if ($request->filled('password')) {
             $rules['password'] = ['required', 'confirmed', 'min:8'];
         }
 
         $data = $request->validate($rules);
 
-        $old = $user->only(['name', 'email', 'role', 'barangay_id', 'position']);
+        $old = $user->only(['name', 'email', 'role', 'barangay_id', 'position', 'assignment_status']);
 
         $position = $this->normalizePosition($data['position'] ?? null, $data['account_type']);
 
@@ -615,6 +620,9 @@ class AdminUserController extends Controller
         $user->role = $data['account_type'];
         $user->position = $position;
         $user->barangay_id = $data['barangay_id'] ?? null;
+        if (! $managedBySimulation && isset($data['assignment_status'])) {
+            $user->assignment_status = $data['assignment_status'];
+        }
         if (! empty($data['password'])) {
             $user->password = $data['password'];
         }
@@ -629,7 +637,7 @@ class AdminUserController extends Controller
             'status' => 'success',
             'description' => 'User account updated from Users & Roles.',
             'old_values' => $old,
-            'new_values' => $user->only(['name', 'email', 'role', 'barangay_id']),
+            'new_values' => $user->only(['name', 'email', 'role', 'barangay_id', 'assignment_status']),
         ]);
 
         return redirect()->route('admin.users.index')

@@ -373,6 +373,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-events/{simulationEvent}/cancel', [SimulationEventController::class, 'cancel'])->name('admin.simulation-events.cancel');
         Route::post('/simulation-events/{simulationEvent}/archive', [SimulationEventController::class, 'archive'])->name('admin.simulation-events.archive');
         Route::post('/simulation-events/{simulationEvent}/start', [SimulationEventController::class, 'start'])->name('admin.simulation-events.start');
+        Route::post('/simulation-events/{simulationEvent}/test-start', [SimulationEventController::class, 'testStart'])->name('admin.simulation-events.test-start');
         Route::post('/simulation-events/{simulationEvent}/complete', [SimulationEventController::class, 'complete'])->name('admin.simulation-events.complete');
         Route::get('/simulation-events/{simulationEvent}/lifecycle', [SimulationEventLifecycleController::class, 'show'])->name('admin.simulation-events.lifecycle');
         Route::patch('/simulation-events/{simulationEvent}/readiness', [SimulationEventLifecycleController::class, 'updateReadiness'])->name('admin.simulation-events.readiness');

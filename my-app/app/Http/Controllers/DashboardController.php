@@ -304,6 +304,8 @@ class DashboardController extends Controller
                             'completed_at' => $now,
                             'updated_by' => portal_id(),
                         ]);
+                        app(\App\Services\SimulationEventLifecycleService::class)
+                            ->releaseEventPersonnelAssignments($event->fresh());
                     }
                 } catch (\Exception $e) {
                     // skip

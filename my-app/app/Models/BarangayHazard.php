@@ -13,8 +13,13 @@ class BarangayHazard extends Model
         'risk_level',
         'risk_score',
         'description',
+        'exposure_scope',
+        'focus_area',
         'source_agency',
         'source_reference_number',
+        'reference_title',
+        'reference_year',
+        'reference_url',
         'date_assessed',
         'external_source_id',
         'metadata',
@@ -24,6 +29,7 @@ class BarangayHazard extends Model
     {
         return [
             'risk_score' => 'integer',
+            'reference_year' => 'integer',
             'date_assessed' => 'date',
             'metadata' => 'array',
         ];

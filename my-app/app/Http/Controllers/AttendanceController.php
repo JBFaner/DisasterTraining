@@ -45,6 +45,11 @@ class AttendanceController extends Controller
             return back()->with('status', 'Can only mark attendance for approved registrations.');
         }
 
+        $event = $eventRegistration->simulationEvent;
+        if ($event && in_array($event->status, ['completed', 'ended', 'archived', 'cancelled'], true)) {
+            return back()->with('status', 'Attendance is locked because this simulation is already finished.');
+        }
+
         $data = $request->validate([
             'check_in_method' => ['required', 'string', 'in:manual,qr_code,attendance_code,auto'],
             'status' => ['required', 'string', 'in:present,late,absent,excused,completed'],
@@ -99,6 +104,11 @@ class AttendanceController extends Controller
             return back()->with('status', 'Attendance is locked and cannot be modified.');
         }
 
+        $event = $attendance->simulationEvent;
+        if ($event && in_array($event->status, ['completed', 'ended', 'archived', 'cancelled'], true)) {
+            return back()->with('status', 'Attendance is locked because this simulation is already finished.');
+        }
+
         $previousStatus = $attendance->status;
 
         $data = $request->validate([
@@ -127,6 +137,13 @@ class AttendanceController extends Controller
     public function lock(SimulationEvent $simulationEvent)
     {
         $this->authorizeAttendanceAccess();
+
+        if (in_array($simulationEvent->status, ['completed', 'ended', 'archived'], true)) {
+            // Already finished — ensure records are locked (idempotent).
+            $simulationEvent->attendances()->update(['is_locked' => true]);
+
+            return back()->with('status', 'Attendance is already finalized for this completed simulation.');
+        }
 
         // First, automatically mark all unmarked approved participants as absent
         $approvedRegistrations = $simulationEvent->registrations()
@@ -386,6 +403,10 @@ class AttendanceController extends Controller
     public function bulkMark(Request $request, SimulationEvent $simulationEvent)
     {
         $this->authorizeAttendanceAccess();
+
+        if (in_array($simulationEvent->status, ['completed', 'ended', 'archived', 'cancelled'], true)) {
+            return back()->with('status', 'Attendance is locked because this simulation is already finished.');
+        }
 
         $data = $request->validate([
             'status' => ['required', 'string', 'in:present,absent,late,excused'],

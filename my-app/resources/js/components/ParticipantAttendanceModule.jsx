@@ -630,6 +630,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 sortDir={sortDir}
                 onSort={(key, dir) => { setSortKey(key); setSortDir(dir); }}
                 isLoading={isLoading}
+                skeletonRows={10}
                 pagination={pagination}
                 onPageChange={(page) => fetchParticipants(page)}
                 minWidth="900px"

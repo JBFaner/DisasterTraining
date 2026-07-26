@@ -71,6 +71,28 @@ export function UserDetailsPage({ user, currentUser, recentLogins, recentActions
         }
     };
 
+    const getAssignmentBadge = (status) => {
+        switch (status) {
+            case 'available':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'unavailable':
+                return 'bg-slate-50 text-slate-700 border-slate-200';
+            case 'assigned_to_simulation':
+                return 'bg-sky-50 text-sky-700 border-sky-200';
+            default:
+                return 'bg-slate-50 text-slate-700 border-slate-200';
+        }
+    };
+
+    const getAssignmentLabel = (status) => {
+        switch (status) {
+            case 'available': return 'Available';
+            case 'unavailable': return 'Unavailable';
+            case 'assigned_to_simulation': return 'Assigned to Simulation';
+            default: return status || 'Available';
+        }
+    };
+
     return (
         <div className="space-y-6 w-full overflow-x-hidden">
             {/* Header */}
@@ -139,6 +161,17 @@ export function UserDetailsPage({ user, currentUser, recentLogins, recentActions
                             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(user.status)}`}>
                                 {getStatusLabel(user.status)}
                             </span>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                                Assignment Status
+                            </label>
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getAssignmentBadge(user.assignment_status || 'available')}`}>
+                                {getAssignmentLabel(user.assignment_status || 'available')}
+                            </span>
+                            {user.assignment_status === 'assigned_to_simulation' && (
+                                <p className="mt-1 text-xs text-slate-500">Managed by Simulation Readiness</p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">

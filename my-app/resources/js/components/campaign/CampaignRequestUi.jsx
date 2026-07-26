@@ -256,20 +256,95 @@ export function CommunityRecommendationsTable({ communities }) {
     );
 }
 
+/** Single-barangay / primary match card for Training Intelligence (capstone-friendly). */
+export function PrimaryRecommendedCommunityCard({ community }) {
+    if (!community) return null;
+
+    const location = [community.municipality_city, community.province].filter(Boolean).join(', ') || '—';
+    const reason = community.recommendation_reason || community.recommendation || 'Matched from Hazard Assessment.';
+    const profileHref = community.barangay_profile_id
+        ? `/admin/hazard-assessment-profiles/${community.barangay_profile_id}`
+        : null;
+    const cite = community.reference_title
+        ? `${community.reference_title}${community.reference_year ? ` (${community.reference_year})` : ''}`
+        : null;
+    const scopeLabels = {
+        zone_specific: 'Specific zones',
+        barangay_wide: 'Barangay-wide',
+        pattern_based: 'Pattern-based exposure',
+    };
+    const scopeLabel = community.exposure_scope
+        ? (scopeLabels[community.exposure_scope] || community.exposure_scope)
+        : null;
+
+    return (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5 space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Primary recommended community</p>
+                    <h4 className="mt-1 text-xl font-semibold text-slate-900">{community.barangay_name}</h4>
+                    <p className="text-sm text-slate-600">{location}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                        {community.related_hazard || 'Hazard'}
+                    </span>
+                    <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-medium ${getRiskBadgeClass(community.risk_level)}`}>
+                        {community.risk_level || '—'} risk
+                    </span>
+                    {scopeLabel ? (
+                        <span className="inline-flex rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
+                            {scopeLabel}
+                        </span>
+                    ) : null}
+                </div>
+            </div>
+
+            {community.focus_area ? (
+                <div className="rounded-lg border border-emerald-100 bg-white/80 px-3 py-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Focus area inside the barangay</p>
+                    <p className="mt-1 text-sm text-slate-800 leading-relaxed">{community.focus_area}</p>
+                </div>
+            ) : null}
+
+            <p className="text-sm text-slate-700 leading-relaxed">{reason}</p>
+
+            {cite ? (
+                <p className="text-xs text-slate-600">
+                    <span className="font-semibold text-slate-700">Hazard Assessment reference: </span>
+                    {cite}
+                </p>
+            ) : null}
+
+            {profileHref ? (
+                <a
+                    href={profileHref}
+                    className="inline-flex text-sm font-medium text-emerald-800 hover:text-emerald-900 underline underline-offset-2"
+                >
+                    View Hazard Assessment profile
+                </a>
+            ) : null}
+        </div>
+    );
+}
+
 export function CampaignCommunityRecommendationsPanel({ recommendedPayload }) {
     const recommended = getRecommendedCommunityEntries(recommendedPayload);
+    const primary = recommended[0] || null;
+    const extras = recommended.slice(1);
 
     return (
         <div>
             <p className="text-xs text-slate-500">
-                Auto-generated priorities from Hazard Assessment. These are decision-support recommendations, not restrictions.
+                Matched from Hazard Assessment for this training&apos;s hazard. With a single study area, the system highlights the primary community instead of ranking many barangays.
             </p>
-            {recommended.length > 0 ? (
-                <div className="mt-3">
-                    <CommunityRecommendationsTable communities={recommended} />
+            {primary ? (
+                <div className="mt-3 space-y-3">
+                    <PrimaryRecommendedCommunityCard community={primary} />
+                    {extras.length > 0 ? <CommunityRecommendationsTable communities={extras} /> : null}
                 </div>
             ) : (
-                <p className="mt-3 text-sm text-slate-600">No recommended communities for this hazard profile.</p>
+                <p className="mt-3 text-sm text-slate-600">No recommended community matches this training hazard yet. Add or update a Hazard Assessment profile.</p>
             )}
         </div>
     );

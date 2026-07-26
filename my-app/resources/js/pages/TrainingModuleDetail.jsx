@@ -50,6 +50,7 @@ import {
     CampaignRequestProposedSessionsCell,
     CampaignRequestStatusBadge,
     CommunityRecommendationsTable,
+    PrimaryRecommendedCommunityCard,
     formatDate,
     formatDateTimeParts,
     formatTime,
@@ -1656,38 +1657,24 @@ export function TrainingModuleDetail({ module }) {
 
                     <AdminContentCard className="p-5">
                         <div className="mb-4">
-                            <h3 className="text-sm font-semibold text-slate-800">Recommended Communities</h3>
+                            <h3 className="text-sm font-semibold text-slate-800">
+                                {recommendedCommunityEntries.length <= 1 ? 'Recommended Community' : 'Recommended Communities'}
+                            </h3>
                             <p className="mt-1 text-xs text-slate-500">
-                                Priority-based recommendations from Hazard Assessment. Campaign teams may still include other communities when needed.
+                                Matched from Hazard Assessment for this training&apos;s hazard. Capstone scope focuses on one study area (San Agustin, Novaliches, Quezon City), so the system highlights that primary community instead of ranking many barangays.
                             </p>
                         </div>
 
-                        {recommendations?.summary ? (
-                            <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                    <p className="text-xs text-slate-500">Communities Found</p>
-                                    <p className="text-lg font-semibold text-slate-900">{recommendations.summary.total_communities}</p>
-                                </div>
-                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-                                    <p className="text-xs text-rose-700">Priority 1</p>
-                                    <p className="text-lg font-semibold text-rose-800">{recommendations.summary.high_priority}</p>
-                                </div>
-                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                    <p className="text-xs text-amber-700">Priority 2</p>
-                                    <p className="text-lg font-semibold text-amber-800">{recommendations.summary.medium_priority}</p>
-                                </div>
-                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                                    <p className="text-xs text-emerald-700">Priority 3</p>
-                                    <p className="text-lg font-semibold text-emerald-800">{recommendations.summary.low_priority}</p>
-                                </div>
-                            </div>
-                        ) : null}
-
                         {recommendedCommunityEntries.length > 0 ? (
-                            <CommunityRecommendationsTable communities={recommendedCommunityEntries} />
+                            <div className="space-y-3">
+                                <PrimaryRecommendedCommunityCard community={recommendedCommunityEntries[0]} />
+                                {recommendedCommunityEntries.length > 1 ? (
+                                    <CommunityRecommendationsTable communities={recommendedCommunityEntries.slice(1)} />
+                                ) : null}
+                            </div>
                         ) : (
                             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                                No communities currently match the selected hazard classification.
+                                No community currently matches this training hazard. Ensure the module&apos;s related hazard aligns with a Hazard Assessment record (e.g. Flood, Fire, Earthquake).
                             </div>
                         )}
                     </AdminContentCard>

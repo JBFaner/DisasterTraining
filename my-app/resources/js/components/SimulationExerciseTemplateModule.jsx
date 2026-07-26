@@ -8,8 +8,10 @@ import {
     Layers,
     Pencil,
     Plus,
+    Printer,
     Rocket,
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
@@ -25,6 +27,7 @@ import { AdminDataTable } from './admin/AdminDataTable';
 import { getCsrfHeaders } from '../utils/csrf';
 import { showAppAlert, showAppConfirm, formatApiErrors } from '../utils/appAlert';
 import { simulationEventHref } from '../utils/simulationEventNavigation';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 const STATUS_TONES = {
     draft: 'bg-amber-50 text-amber-800 border-amber-200',
@@ -73,6 +76,9 @@ export function SimulationExerciseTemplateModule({
     const [templateRows, setTemplateRows] = React.useState(templates);
     const [publishingId, setPublishingId] = React.useState(null);
     const [reuseCampaignHandled, setReuseCampaignHandled] = React.useState(false);
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const itemsPerPage = 10;
 
     const publishedTemplates = React.useMemo(
         () => templateRows.filter((item) => item.status === 'published'),
@@ -156,6 +162,45 @@ export function SimulationExerciseTemplateModule({
         const matchesType = !filterType || item.exercise_type === filterType;
         return matchesSearch && matchesCategory && matchesStatus && matchesType;
     }), [templateRows, searchQuery, filterCategory, filterStatus, filterType]);
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterCategory, filterStatus, filterType]);
+
+    React.useEffect(() => {
+        setIsLoading(true);
+        const timer = window.setTimeout(() => setIsLoading(false), 220);
+        return () => window.clearTimeout(timer);
+    }, [searchQuery, filterCategory, filterStatus, filterType, templateRows]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+    const paginatedTemplates = filtered.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage,
+    );
+
+    const handlePrint = React.useCallback(() => {
+        const html = buildPrintTableDocument({
+            title: 'Exercise Plans',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${filtered.length} plan(s)${filterCategory ? ` · Category: ${filterCategory}` : ''}${filterStatus ? ` · Status: ${filterStatus}` : ''}${searchQuery.trim() ? ` · Search: ${searchQuery.trim()}` : ''}`,
+            headers: ['#', 'Exercise Title', 'Category', 'Exercise Type', 'Duration', 'Status', 'Activities', 'Times Used'],
+            rows: filtered.map((row, index) => [
+                index + 1,
+                row.title || '—',
+                row.category || '—',
+                row.exercise_type || '—',
+                row.estimated_duration_minutes ? `${row.estimated_duration_minutes} min` : '—',
+                row.status || '—',
+                row.activities_count ?? 0,
+                row.events_count ?? 0,
+            ]),
+            emptyMessage: 'No exercise plans match the current filters.',
+        });
+
+        if (!printHtmlDocument(html, 'Exercise Plans')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    }, [filtered, filterCategory, filterStatus, searchQuery]);
 
     const handlePublish = async (row) => {
         const confirmed = await showAppConfirm({
@@ -288,6 +333,12 @@ export function SimulationExerciseTemplateModule({
                     setFilterStatus('');
                     setFilterType('');
                 }}
+                trailing={(
+                    <AdminPrimaryButton type="button" onClick={handlePrint}>
+                        <Printer className="w-4 h-4" />
+                        Print
+                    </AdminPrimaryButton>
+                )}
             >
                 <AdminFilterSelect label="Category" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
                     <option value="">All Categories</option>
@@ -311,11 +362,22 @@ export function SimulationExerciseTemplateModule({
 
             <AdminDataTable
                 columns={columns}
-                data={filtered}
+                data={paginatedTemplates}
+                isLoading={isLoading}
+                skeletonRows={10}
                 compact
                 emptyTitle="No exercise templates yet"
                 emptyDescription="Create reusable disaster training exercise templates that can be scheduled for multiple campaigns."
                 minWidth="1100px"
+                pagination={filtered.length > 0 ? {
+                    current_page: currentPage,
+                    last_page: totalPages,
+                    per_page: itemsPerPage,
+                    total: filtered.length,
+                    from: (currentPage - 1) * itemsPerPage + 1,
+                    to: Math.min(currentPage * itemsPerPage, filtered.length),
+                } : null}
+                onPageChange={setCurrentPage}
                 renderActions={(row) => (
                     <div className="flex items-center justify-end gap-2">
                         <a

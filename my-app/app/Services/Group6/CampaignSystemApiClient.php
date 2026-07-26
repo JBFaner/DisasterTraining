@@ -141,15 +141,33 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
         );
 
         $communities = $payload['recommended_communities']['communities'] ?? [];
-        $barangayNames = collect(is_array($communities) ? $communities : [])
+        $communityRows = collect(is_array($communities) ? $communities : []);
+        $barangayNames = $communityRows
             ->map(fn ($row) => is_array($row) ? ($row['barangay_name'] ?? null) : null)
             ->filter()
             ->values()
             ->all();
 
+        $primary = $communityRows->first(fn ($row) => is_array($row));
+        $focusArea = is_array($primary) ? trim((string) ($primary['focus_area'] ?? '')) : '';
+        $exposureScope = is_array($primary) ? (string) ($primary['exposure_scope'] ?? '') : '';
+
         $geographicScope = $barangayNames[0] ?? 'Quezon City';
         if (! str_starts_with(strtolower((string) $geographicScope), 'barangay') && $geographicScope !== 'Quezon City') {
             $geographicScope = 'Barangay '.$geographicScope;
+        }
+
+        $locationDetail = $geographicScope;
+        if ($focusArea !== '') {
+            $locationDetail = $geographicScope.' — '.$focusArea;
+        }
+
+        $targetZones = $barangayNames !== [] ? $barangayNames : ['Quezon City'];
+        if ($focusArea !== '' && $barangayNames !== []) {
+            $targetZones[] = $focusArea;
+        }
+        if ($exposureScope === 'pattern_based') {
+            $targetZones[] = 'Dense residential clusters (pattern-based fire exposure)';
         }
 
         $startDate = $this->toDateString($payload['registration_opens'] ?? null)
@@ -171,11 +189,11 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
             'start_date' => $startDate,
             'end_date' => $endDate,
             'objectives' => $description !== '' ? $description : 'Submitted from Disaster Training Intelligence.',
-            'location' => $geographicScope,
+            'location' => $locationDetail,
             'assigned_staff' => json_encode(
                 array_values(array_filter((array) ($payload['target_audience'] ?? [])))
             ),
-            'barangay_target_zones' => json_encode($barangayNames !== [] ? $barangayNames : ['Quezon City']),
+            'barangay_target_zones' => json_encode(array_values(array_unique($targetZones))),
             'budget' => '0',
             'staff_count' => max(1, $expected),
             // Traceability fields (ignored if their API strips unknown keys)
@@ -183,6 +201,8 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
             'source_campaign_request_id' => $campaignRequest->id,
             'source_training_module_id' => $campaignRequest->training_module_id,
             'registration_link' => $payload['registration_link'] ?? null,
+            'focus_area' => $focusArea !== '' ? $focusArea : null,
+            'exposure_scope' => $exposureScope !== '' ? $exposureScope : null,
         ];
     }
 

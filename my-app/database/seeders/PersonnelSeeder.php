@@ -108,22 +108,7 @@ class PersonnelSeeder extends Seeder
                 'position' => 'Marshal',
                 'role' => 'STAFF',
             ],
-            [
-                'email' => 'patricia.lim@lgu.local',
-                'name' => 'Dra. Patricia Lim',
-                'phone' => '09211234005',
-                'barangay' => 'Barangay Fairview',
-                'position' => 'Medical Team',
-                'role' => 'STAFF',
-            ],
-            [
-                'email' => 'angelica.dizon@lgu.local',
-                'name' => 'Nurse Angelica Dizon',
-                'phone' => '09261234010',
-                'barangay' => 'Barangay Sauyo',
-                'position' => 'Medical Team',
-                'role' => 'STAFF',
-            ],
+            // Medical Team → MedicalTeamSeeder (San Agustin / Novaliches QC)
             [
                 'email' => 'kristine.alonzo@lgu.local',
                 'name' => 'Kristine Mae Alonzo',
@@ -201,6 +186,6 @@ class PersonnelSeeder extends Seeder
 
         $bridge->syncAllTrainerMirrors();
 
-        $this->command?->info('Personnel seeded (4 Lead/Assistant trainers + 11 staff support). Password: trainer123');
+        $this->command?->info('Personnel seeded (4 Lead/Assistant trainers + 9 staff support; Medical Team via MedicalTeamSeeder). Password: trainer123');
     }
 }

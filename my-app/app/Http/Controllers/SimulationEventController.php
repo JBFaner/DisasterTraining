@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Resource;
+use App\Models\Attendance;
 use App\Models\BarangayProfile;
 use App\Models\ResourceEventAssignment;
 use App\Models\SimulationEvent;
@@ -470,6 +471,21 @@ class SimulationEventController extends Controller
     {
         $this->authorizeEventAccess();
 
+        if ($simulationEvent->simulation_exercise_template_id && ! $this->lifecycle->isReadyToStart($simulationEvent)) {
+            $message = 'Complete all readiness checklist items before publishing this simulation event.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()
+                ->to('/admin/simulation-events/'.$simulationEvent->id.'?tab=readiness')
+                ->with('status', $message);
+        }
+
         $old = $simulationEvent->getOriginal();
 
         $simulationEvent->update([
@@ -546,6 +562,8 @@ class SimulationEventController extends Controller
             'status' => 'cancelled',
             'updated_by' => portal_id(),
         ]);
+
+        $this->lifecycle->releaseEventPersonnelAssignments($simulationEvent);
 
         AuditLogger::log([
             'action' => 'Cancelled simulation event',
@@ -675,6 +693,87 @@ class SimulationEventController extends Controller
             ->with('status', 'Event started successfully. Status changed to Ongoing. Resources have been assigned.');
     }
 
+    /**
+     * Demo / presentation helper: publish if needed, set today's window, force status to ongoing.
+     * Bypasses schedule-time checks so presenters can test Execution / Attendance / Scoring immediately.
+     */
+    public function testStart(Request $request, SimulationEvent $simulationEvent)
+    {
+        $this->authorizeEventAccess();
+
+        $user = portal_user();
+        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+            abort(403, 'Only admins or trainers can use Test Start.');
+        }
+
+        if (in_array($simulationEvent->status, ['completed', 'ended', 'archived', 'cancelled'], true)) {
+            $message = 'Cannot test-start a finished or cancelled event.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return redirect()->back()->with('status', $message);
+        }
+
+        if ($simulationEvent->status === 'ongoing') {
+            $redirect = '/admin/simulation-events/'.$simulationEvent->id.'?tab=execution';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'redirect' => $redirect, 'message' => 'Event is already ongoing.']);
+            }
+
+            return redirect($redirect)->with('status', 'Event is already ongoing.');
+        }
+
+        $now = now();
+        $endAt = $now->copy()->setTime(21, 0, 0);
+        if ($endAt->lte($now)) {
+            $endAt = $now->copy()->addHours(3);
+        }
+
+        $old = $simulationEvent->getOriginal();
+
+        $simulationEvent->update([
+            'status' => 'ongoing',
+            'event_date' => $now->toDateString(),
+            'start_time' => $now->format('H:i'),
+            'end_time' => $endAt->format('H:i'),
+            'published_at' => $simulationEvent->published_at ?? $now,
+            'actual_start_time' => $now,
+            'started_by' => portal_id(),
+            'updated_by' => portal_id(),
+            'readiness_confirmations' => array_merge($simulationEvent->readiness_confirmations ?? [], [
+                'venue_confirmed' => true,
+                'schedule_confirmed' => true,
+            ]),
+        ]);
+
+        $this->autoAssignResources($simulationEvent);
+        $this->lifecycle->initializeExecutionProgress($simulationEvent->fresh());
+        $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Started (Test / Demo)');
+
+        AuditLogger::log([
+            'action' => 'Test-started simulation event',
+            'module' => 'Simulation Events',
+            'status' => 'success',
+            'description' => "Title: {$simulationEvent->title} (demo force start)",
+            'old_values' => $old,
+            'new_values' => $simulationEvent->fresh()->toArray(),
+        ]);
+
+        $redirect = '/admin/simulation-events/'.$simulationEvent->id.'?tab=execution';
+        $message = 'Test start OK — event is Ongoing until '.$endAt->format('g:i A').'.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'redirect' => $redirect,
+                'message' => $message,
+            ]);
+        }
+
+        return redirect($redirect)->with('status', $message);
+    }
+
     public function complete(SimulationEvent $simulationEvent)
     {
         $this->authorizeEventAccess();
@@ -694,7 +793,11 @@ class SimulationEventController extends Controller
             'updated_by' => portal_id(),
         ]);
 
+        $this->lifecycle->releaseEventPersonnelAssignments($simulationEvent);
+
         $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Completed');
+
+        $this->lockAttendanceOnCompletion($simulationEvent);
 
         // Auto-return all resources assigned to this event: mark assignments Returned and refresh resource available/status
         $assignments = ResourceEventAssignment::where('event_id', $simulationEvent->id)
@@ -734,7 +837,7 @@ class SimulationEventController extends Controller
         ]);
 
         return redirect()->back()
-            ->with('status', 'Event marked as completed. Resources have been returned to inventory. Evaluation can now be started.');
+            ->with('status', 'Event marked as completed. Attendance locked. Resources returned to inventory.');
     }
 
     /**
@@ -763,12 +866,58 @@ class SimulationEventController extends Controller
                             'completed_at' => $now,
                             'updated_by' => portal_id(),
                         ]);
+                        $this->lifecycle->releaseEventPersonnelAssignments($event->fresh());
+                        $this->lockAttendanceOnCompletion($event->fresh());
                     }
                 } catch (\Exception $e) {
                     // Skip events with invalid time format
                     return;
                 }
             });
+    }
+
+    /**
+     * Finalize attendance when a simulation is completed:
+     * unmarked approved participants become absent, then all records lock.
+     */
+    protected function lockAttendanceOnCompletion(SimulationEvent $simulationEvent): void
+    {
+        $approvedRegistrations = $simulationEvent->registrations()
+            ->where('status', 'approved')
+            ->with('attendance')
+            ->get();
+
+        foreach ($approvedRegistrations as $registration) {
+            $attendance = $registration->attendance;
+
+            if ($attendance && $attendance->status) {
+                continue;
+            }
+
+            if ($attendance) {
+                if (! $attendance->is_locked) {
+                    $attendance->update([
+                        'status' => 'absent',
+                        'check_in_method' => $attendance->check_in_method ?: 'auto',
+                        'checked_in_at' => $attendance->checked_in_at ?: now(),
+                        'marked_by' => portal_id(),
+                    ]);
+                }
+                continue;
+            }
+
+            Attendance::create([
+                'event_registration_id' => $registration->id,
+                'user_id' => $registration->user_id,
+                'simulation_event_id' => $registration->simulation_event_id,
+                'status' => 'absent',
+                'check_in_method' => 'auto',
+                'checked_in_at' => now(),
+                'marked_by' => portal_id(),
+            ]);
+        }
+
+        $simulationEvent->attendances()->update(['is_locked' => true]);
     }
 
     protected function authorizeEventAccess(): void

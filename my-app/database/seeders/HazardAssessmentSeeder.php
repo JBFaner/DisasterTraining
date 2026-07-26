@@ -22,259 +22,155 @@ class HazardAssessmentSeeder extends Seeder
 
         $uploader = User::whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER'])->first();
 
+        /*
+         | Capstone focus: Barangay San Agustin, Novaliches, Quezon City.
+         | Citations below point to publicly referenced QC/academic sources
+         | (findings summarized for demo — verify latest official maps for ops use).
+         */
+        $this->purgeUnrelatedProfiles();
+
         $profiles = [
             [
-                'location_name' => 'Commonwealth',
+                'location_name' => 'San Agustin',
+                'city_name' => 'Quezon City',
                 'profile' => [
-                    'contact_number' => '+63 2 1234 5678',
-                    'email_address' => 'commonwealth.brgy@example.gov.ph',
-                    'estimated_population' => 190000,
-                    'total_land_area' => 12.48,
-                    'number_of_households' => 42150,
+                    'contact_number' => '+63 2 8988 4242',
+                    'email_address' => 'sanagustin.brgy@quezoncity.gov.ph',
+                    'estimated_population' => 22000,
+                    'total_land_area' => 1.15,
+                    'number_of_households' => 4800,
                     'area_classification' => 'Urban',
-                    'hazard_notes' => 'Flood-prone areas along creeks; high-density residential zones near Commonwealth Avenue.',
-                    'external_source_id' => 'HAZ-QC-COMMONWEALTH-2026',
-                    'last_assessed_at' => now()->subMonths(2),
-                ],
-                'hazards' => [
-                    [
-                        'type' => 'Flood',
-                        'level' => 'High',
-                        'score' => 85,
-                        'agency' => 'MDRRMO',
-                        'reference' => 'QC-FLD-2026-014',
-                        'description' => 'Low-lying zones along waterways flood during habagat and intense typhoon rainfall.',
-                        'assessed_days_ago' => 45,
-                    ],
-                    [
-                        'type' => 'Fire',
-                        'level' => 'Moderate',
-                        'score' => 55,
-                        'agency' => 'BFP',
-                        'reference' => 'BFP-QC-FIRE-088',
-                        'description' => 'Dense residential blocks with informal electrical connections increase structural fire spread risk.',
-                        'assessed_days_ago' => 60,
-                    ],
-                    [
-                        'type' => 'Typhoon',
-                        'level' => 'Moderate',
-                        'score' => 58,
-                        'agency' => 'PAGASA',
-                        'reference' => 'PAGASA-WIND-2026-03',
-                        'description' => 'Strong winds can topple billboards and damage informal structures along major roads.',
-                        'assessed_days_ago' => 30,
-                    ],
-                ],
-                'documents' => [
-                    [
-                        'document_type' => 'Flood Hazard Map',
-                        'filename' => 'commonwealth-flood-hazard-map.txt',
-                        'content' => "Commonwealth Barangay Flood Hazard Map (Seeded Sample)\n\nHigh-risk zones: creek-adjacent sitios, underpass catchments, and low-lying pockets near Commonwealth Avenue service roads.\n\nRecommended action: pre-position sandbags before habagat season and activate barangay flood monitors.",
-                    ],
-                    [
-                        'document_type' => 'Hazard Assessment Report',
-                        'filename' => 'commonwealth-hazard-assessment-2026.txt',
-                        'content' => "Barangay Commonwealth Hazard Assessment Report (2026)\n\nPrepared by: Quezon City MDRRMO\n\nPrimary hazards: Flood (High), Fire (Moderate), Typhoon (Moderate).\n\nPopulation exposed in flood zones: approx. 28,000 residents.",
-                    ],
-                ],
-            ],
-            [
-                'location_name' => 'Batasan Hills',
-                'profile' => [
-                    'contact_number' => '+63 2 2345 6789',
-                    'email_address' => 'batasan.brgy@example.gov.ph',
-                    'estimated_population' => 150000,
-                    'total_land_area' => 8.20,
-                    'number_of_households' => 33200,
-                    'area_classification' => 'Urban',
-                    'hazard_notes' => 'Steep slopes in hillside sections; monitor rainfall during monsoon season and after prolonged downpours.',
-                    'external_source_id' => 'HAZ-QC-BATASAN-2026',
-                    'last_assessed_at' => now()->subMonths(3),
-                ],
-                'hazards' => [
-                    [
-                        'type' => 'Landslide',
-                        'level' => 'High',
-                        'score' => 78,
-                        'agency' => 'DENR-MGB',
-                        'reference' => 'MGB-QC-LS-017',
-                        'description' => 'Steep hillside communities require slope stabilization and rapid evacuation when soil saturation is high.',
-                        'assessed_days_ago' => 50,
-                    ],
-                    [
-                        'type' => 'Flood',
-                        'level' => 'Moderate',
-                        'score' => 60,
-                        'agency' => 'MDRRMO',
-                        'reference' => 'QC-FLD-2026-021',
-                        'description' => 'Creek overflow risk in southern sections after sustained rainfall.',
-                        'assessed_days_ago' => 40,
-                    ],
-                    [
-                        'type' => 'Earthquake',
-                        'level' => 'Moderate',
-                        'score' => 62,
-                        'agency' => 'PHIVOLCS',
-                        'reference' => 'PHIVOLCS-QC-EQ-09',
-                        'description' => 'Moderate ground shaking expected; hillside structures need structural integrity checks.',
-                        'assessed_days_ago' => 90,
-                    ],
-                ],
-                'documents' => [
-                    [
-                        'document_type' => 'Evacuation Map',
-                        'filename' => 'batasan-hills-evacuation-routes.txt',
-                        'content' => "Batasan Hills Evacuation Route Map (Seeded Sample)\n\nPrimary evacuation centers: covered court, elementary school gym, and Batasan multi-purpose hall.\n\nLandslide-prone ridges: follow ridge-line safe corridors marked in green on the official map.",
-                    ],
-                ],
-            ],
-            [
-                'location_name' => 'Bagong Silangan',
-                'profile' => [
-                    'contact_number' => '+63 2 3456 7890',
-                    'email_address' => 'bagongsilangan.brgy@example.gov.ph',
-                    'estimated_population' => 80000,
-                    'total_land_area' => 6.15,
-                    'number_of_households' => 17850,
-                    'area_classification' => 'Urban',
-                    'hazard_notes' => 'Near active fault segments; ensure earthquake preparedness drills and fire safety inspections are regular.',
-                    'external_source_id' => 'HAZ-QC-BAGONGSILANGAN-2026',
-                    'last_assessed_at' => now()->subMonth(),
-                ],
-                'hazards' => [
-                    [
-                        'type' => 'Earthquake',
-                        'level' => 'High',
-                        'score' => 88,
-                        'agency' => 'PHIVOLCS',
-                        'reference' => 'PHIVOLCS-QC-EQ-04',
-                        'description' => 'Proximity to the Valley Fault System increases seismic hazard for unreinforced residential structures.',
-                        'assessed_days_ago' => 35,
-                    ],
-                    [
-                        'type' => 'Flood',
-                        'level' => 'Moderate',
-                        'score' => 52,
-                        'agency' => 'PAGASA',
-                        'reference' => 'PAGASA-FLD-2026-11',
-                        'description' => 'Seasonal flooding in waterways and low-lying access roads.',
-                        'assessed_days_ago' => 25,
-                    ],
-                    [
-                        'type' => 'Fire',
-                        'level' => 'Moderate',
-                        'score' => 48,
-                        'agency' => 'BFP',
-                        'reference' => 'BFP-QC-FIRE-041',
-                        'description' => 'Informal settlement clusters have limited firebreak spacing and narrow access lanes.',
-                        'assessed_days_ago' => 55,
-                    ],
-                ],
-                'documents' => [
-                    [
-                        'document_type' => 'Disaster Risk Reduction Report',
-                        'filename' => 'bagong-silangan-drr-report-2026.txt',
-                        'content' => "Bagong Silangan DRR Report (2026)\n\nFocus: earthquake drill readiness, fire lane clearing, and flood early warning via barangay SMS chain.\n\nNext review date: December 2026.",
-                    ],
-                ],
-            ],
-            [
-                'location_name' => 'Holy Spirit',
-                'profile' => [
-                    'contact_number' => '+63 2 4567 8901',
-                    'email_address' => 'holyspirit.brgy@example.gov.ph',
-                    'estimated_population' => 110500,
-                    'total_land_area' => 9.75,
-                    'number_of_households' => 24680,
-                    'area_classification' => 'Urban',
-                    'hazard_notes' => 'Mixed residential-commercial zones; prioritize fire code compliance in dense market areas.',
-                    'external_source_id' => 'HAZ-QC-HOLYSPIRIT-2026',
+                    'hazard_notes' => 'Capstone study area: Barangay San Agustin, District 5 (Novaliches), Quezon City. Included in Quezon City Drainage Master Plan Phase I/II flood assessment coverage (all streets listed among field-validated flood-prone localities). Local BDRRM implementation studies also cite gaps in drills and early warning practice.',
+                    'external_source_id' => 'HAZ-QC-SAN-AGUSTIN-NOVALICHES-2025',
                     'last_assessed_at' => now()->subWeeks(3),
                 ],
                 'hazards' => [
                     [
-                        'type' => 'Fire',
+                        'type' => 'Flood',
                         'level' => 'High',
-                        'score' => 72,
-                        'agency' => 'BFP',
-                        'reference' => 'BFP-QC-FIRE-112',
-                        'description' => 'Market stalls and closely spaced housing elevate fire load and response difficulty.',
-                        'assessed_days_ago' => 20,
+                        'score' => 75,
+                        'agency' => 'MDRRMO',
+                        'reference' => 'QCDMP-V1-APP-A / Brgy. San Agustin',
+                        'reference_title' => 'Quezon City Drainage Master Plan (Phase I & II) — Areas Covered / Site Assessment',
+                        'reference_year' => 2025,
+                        'reference_url' => 'https://quezoncity.gov.ph/qc-profile/drainage-master-plan/',
+                        'description' => 'San Agustin is listed under QC Drainage Master Plan coverage with ALL STREETS noted among Phase I/II assessed localities. Low-lying residential streets experience street flooding and prolonged ponding during intense rainfall and typhoon-enhanced monsoon events; drainage capacity and creek/tributary overflow are primary drivers.',
+                        'exposure_scope' => 'zone_specific',
+                        'focus_area' => 'Barangay San Agustin — all streets under QC Drainage Master Plan Phase I/II assessed coverage; prioritize low-lying / drainage-constrained residential streets and ponding hotspots during heavy rainfall.',
+                        'assessed_days_ago' => 21,
                     ],
                     [
                         'type' => 'Typhoon',
-                        'level' => 'Moderate',
-                        'score' => 54,
+                        'level' => 'High',
+                        'score' => 75,
                         'agency' => 'PAGASA',
-                        'reference' => 'PAGASA-WIND-2026-07',
-                        'description' => 'Roof damage and flying debris risk during signal #2 and above events.',
+                        'reference' => 'PAGASA-NCR-TC / QCDMP rainfall context',
+                        'reference_title' => 'Tropical cyclone / monsoon rainfall impacts in NCR urban catchments (context for QC flood studies)',
+                        'reference_year' => 2024,
+                        'reference_url' => 'https://www.pagasa.dost.gov.ph/',
+                        'description' => 'Strong winds and extreme rainfall from tropical cyclones compound local flooding in Novaliches. Dense housing and roadside utilities raise exposure to wind damage, downed lines, and interrupted access during storms that also trigger flood conditions identified in the QC Drainage Master Plan.',
+                        'exposure_scope' => 'barangay_wide',
+                        'focus_area' => 'Whole of Barangay San Agustin (Novaliches, QC) — wind, rainfall, and utility disruption can affect residential areas barangay-wide during tropical cyclones.',
                         'assessed_days_ago' => 28,
                     ],
                     [
                         'type' => 'Earthquake',
                         'level' => 'Moderate',
-                        'score' => 65,
+                        'score' => 50,
                         'agency' => 'PHIVOLCS',
-                        'reference' => 'PHIVOLCS-QC-EQ-12',
-                        'description' => 'Moderate shaking may affect older commercial buildings near main roads.',
-                        'assessed_days_ago' => 70,
-                    ],
-                ],
-                'documents' => [
-                    [
-                        'document_type' => 'Fire Risk Assessment',
-                        'filename' => 'holy-spirit-fire-risk-assessment.txt',
-                        'content' => "Holy Spirit Fire Risk Assessment (Seeded Sample)\n\nHigh-risk nodes: public market, welding shops, and stacked residential alleys.\n\nMitigation: hydrant access clearing, BFP auxiliary training, and quarterly fire drills.",
-                    ],
-                ],
-            ],
-            [
-                'location_name' => 'Fairview',
-                'profile' => [
-                    'contact_number' => '+63 2 5678 9012',
-                    'email_address' => 'fairview.brgy@example.gov.ph',
-                    'estimated_population' => 95000,
-                    'total_land_area' => 7.40,
-                    'number_of_households' => 21100,
-                    'area_classification' => 'Urban',
-                    'hazard_notes' => 'Flood-prone tributaries and liquefaction-susceptible soils in reclaimed sections.',
-                    'external_source_id' => 'HAZ-QC-FAIRVIEW-2026',
-                    'last_assessed_at' => now()->subWeeks(5),
-                ],
-                'hazards' => [
-                    [
-                        'type' => 'Flood',
-                        'level' => 'High',
-                        'score' => 80,
-                        'agency' => 'MDRRMO',
-                        'reference' => 'QC-FLD-2026-033',
-                        'description' => 'Tributary overflow affects subdivisions and access roads during habagat and typhoon-enhanced rainfall events.',
-                        'assessed_days_ago' => 18,
+                        'reference' => 'PHIVOLCS / HazardHunterPH — NCR ground shaking',
+                        'reference_title' => 'PHIVOLCS Earthquake Hazard Maps / HazardHunterPH location assessment (NCR)',
+                        'reference_year' => 2024,
+                        'reference_url' => 'https://hazardhunter.georisk.gov.ph/map',
+                        'description' => 'Metro Manila including Quezon City is exposed to strong ground shaking from West Valley Fault and other regional sources. Barangay-level preparedness should assume damaging shaking scenarios; use HazardHunterPH / PHIVOLCS GeoHazards Portal for parcel-level ground shaking and related layers when planning drills.',
+                        'exposure_scope' => 'barangay_wide',
+                        'focus_area' => 'Whole of Barangay San Agustin — ground shaking is treated as barangay-wide (no single street pin); drills cover households and assembly areas across the barangay.',
+                        'assessed_days_ago' => 40,
                     ],
                     [
-                        'type' => 'Liquefaction',
+                        'type' => 'Fire',
                         'level' => 'Moderate',
-                        'score' => 57,
-                        'agency' => 'GeoRiskPH',
-                        'reference' => 'GEO-QC-LIQ-05',
-                        'description' => 'Saturated sandy soils may liquefy under strong earthquake shaking in select low-lying parcels.',
-                        'assessed_days_ago' => 95,
-                    ],
-                    [
-                        'type' => 'Typhoon',
-                        'level' => 'Moderate',
-                        'score' => 51,
-                        'agency' => 'PAGASA',
-                        'reference' => 'PAGASA-WIND-2026-02',
-                        'description' => 'Tree fall and power line damage risk across residential subdivisions.',
-                        'assessed_days_ago' => 32,
+                        'score' => 50,
+                        'agency' => 'BFP',
+                        'reference' => 'BFP-QC urban densification context',
+                        'reference_title' => 'Urban fire risk in dense residential blocks (BFP / LGU preparedness context)',
+                        'reference_year' => 2024,
+                        'reference_url' => 'https://bfp.gov.ph/',
+                        'description' => 'Compact residential pockets in San Agustin create moderate structural fire-spread risk where access lanes are narrow and electrical loading is high. Community fire drills and egress planning remain priority BDRRM activities alongside flood readiness.',
+                        'exposure_scope' => 'pattern_based',
+                        'focus_area' => 'Dense residential clusters / closely packed houses and narrow access lanes in San Agustin — fire can ignite anywhere, but spread risk is higher where homes are adjacent and egress is constrained (pattern-based, not one fixed street).',
+                        'assessed_days_ago' => 35,
                     ],
                 ],
                 'documents' => [
                     [
                         'document_type' => 'Flood Hazard Map',
-                        'filename' => 'fairview-flood-zones.txt',
-                        'content' => "Fairview Flood Zone Map (Seeded Sample)\n\nZone A (red): creek buffers and underpass-adjacent streets.\nZone B (yellow): moderate ponding in subdivisions after 80mm+ rainfall.\n\nAssembly: barangay hall and nearby school grounds.",
+                        'filename' => 'san-agustin-qcdmp-flood-coverage-summary.txt',
+                        'content' => <<<'TXT'
+Barangay San Agustin, Novaliches, Quezon City
+Flood coverage summary (capstone reference pack)
+
+Primary public source:
+- Quezon City Drainage Master Plan: Final Report (Phase I and II)
+  Portal: https://quezoncity.gov.ph/qc-profile/drainage-master-plan/
+  Related appendix listing: Areas Covered in Phases I and II
+  (San Agustin appears with ALL STREETS among assessed localities)
+
+Key takeaway for training / simulation planning:
+- Treat flood as the primary hazard for San Agustin readiness exercises.
+- Pre-position response for street flooding, blocked drainage, and evacuation
+  assistance for low-lying households during heavy rainfall advisories.
+
+Note: This seeded file summarizes publicly linked QC materials for demo.
+Confirm latest official maps and barangay flood monitors before operational use.
+TXT,
+                    ],
+                    [
+                        'document_type' => 'Hazard Assessment Report',
+                        'filename' => 'san-agustin-hazard-profile-2025.txt',
+                        'content' => <<<'TXT'
+Hazard Assessment Profile — Barangay San Agustin (Novaliches, Quezon City)
+Capstone reference summary (2025)
+
+Location scope: San Agustin, District 5 / Novaliches area, Quezon City, NCR.
+
+Documented hazards in this system profile:
+1) Flood — High
+   Based on QC Drainage Master Plan Phase I/II coverage and site assessment materials.
+2) Typhoon — High
+   Extreme rainfall/wind compounding flood and utility disruption (PAGASA NCR context).
+3) Earthquake — Moderate
+   Metro Manila ground-shaking exposure (PHIVOLCS / HazardHunterPH).
+4) Fire — Moderate
+   Dense urban residential fire-spread potential (BFP preparedness context).
+
+Academic / local governance reference (BDRRM practice):
+- "Implementation of Barangay Disaster Risk Reduction Management in Barangay
+   San Agustin Novaliches Quezon City" — Ascendens Asia / Bestlink College journal
+   https://ojs.aaresearchindex.com/index.php/aasgbcpjmra/article/view/13917
+  Study notes gaps in drills, early warning signals, and resident emergency planning —
+  aligning with the need for simulation-based training in this barangay.
+
+Recommended exercise focus: flood evacuation + early warning communication drills.
+TXT,
+                    ],
+                    [
+                        'document_type' => 'Other',
+                        'filename' => 'san-agustin-bdrrm-study-note.txt',
+                        'content' => <<<'TXT'
+Local BDRRM study note — San Agustin, Novaliches, Quezon City
+
+Citation:
+Ascendens Asia Singapore – Bestlink College of the Philippines
+Journal of Multidisciplinary Research, Vol. 4, No. 1
+Article: Implementation of Barangay Disaster Risk Reduction Management
+in Barangay San Agustin Novaliches Quezon City
+URL: https://ojs.aaresearchindex.com/index.php/aasgbcpjmra/article/view/13917
+
+Relevance to this training platform:
+- Supports choosing San Agustin as the capstone community for drills.
+- Highlights need for regular simulation exercises and early warning practice.
+TXT,
                     ],
                 ],
             ],
@@ -283,7 +179,13 @@ class HazardAssessmentSeeder extends Seeder
         $seededProfiles = [];
 
         foreach ($profiles as $entry) {
-            $philippineBarangay = PhilippineBarangay::where('name', $entry['location_name'])->first();
+            $query = PhilippineBarangay::query()->where('name', $entry['location_name']);
+
+            if (! empty($entry['city_name'])) {
+                $query->whereHas('city', fn ($q) => $q->where('name', $entry['city_name']));
+            }
+
+            $philippineBarangay = $query->first();
 
             if (! $philippineBarangay) {
                 $this->command?->warn("Skipping hazard profile for {$entry['location_name']}: barangay not found. Run PhilippinesLocationSeeder first.");
@@ -314,11 +216,17 @@ class HazardAssessmentSeeder extends Seeder
                     'risk_level' => $hazard['level'],
                     'risk_score' => $hazard['score'],
                     'description' => $hazard['description'],
+                    'exposure_scope' => $hazard['exposure_scope'] ?? null,
+                    'focus_area' => $hazard['focus_area'] ?? null,
                     'source_agency' => $hazard['agency'],
                     'source_reference_number' => $hazard['reference'] ?? null,
+                    'reference_title' => $hazard['reference_title'] ?? null,
+                    'reference_year' => $hazard['reference_year'] ?? null,
+                    'reference_url' => $hazard['reference_url'] ?? null,
                     'date_assessed' => now()->subDays($hazard['assessed_days_ago'] ?? 30)->toDateString(),
                     'metadata' => [
                         'seeded' => true,
+                        'capstone_focus' => $entry['location_name'] === 'San Agustin',
                         'training_recommendations' => config("hazard_assessment.training_recommendations.{$hazard['type']}", []),
                     ],
                 ]);
@@ -332,10 +240,64 @@ class HazardAssessmentSeeder extends Seeder
         $this->linkSimulationEvents($seededProfiles);
 
         $count = count($seededProfiles);
-        $this->command?->info("Hazard assessment profiles seeded ({$count} barangays).");
+        $this->command?->info("Hazard assessment profiles seeded ({$count} barangays). Capstone focus: San Agustin, Novaliches, QC.");
     }
 
-  /**
+    /**
+     * Keep only the San Agustin (Quezon City) capstone profile.
+     */
+    private function purgeUnrelatedProfiles(): void
+    {
+        $keepIds = BarangayProfile::query()
+            ->where('barangay_name', 'San Agustin')
+            ->where(function ($q) {
+                $q->where('municipality_city', 'Quezon City')
+                    ->orWhereHas('philippineBarangay.city', fn ($city) => $city->where('name', 'Quezon City'));
+            })
+            ->pluck('id');
+
+        $deleteQuery = BarangayProfile::query();
+        if ($keepIds->isNotEmpty()) {
+            $deleteQuery->whereNotIn('id', $keepIds);
+        }
+
+        $deleteIds = $deleteQuery->pluck('id');
+        if ($deleteIds->isEmpty()) {
+            return;
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'barangay_id') && $keepIds->isNotEmpty()) {
+            \Illuminate\Support\Facades\DB::table('users')
+                ->whereIn('barangay_id', $deleteIds)
+                ->update(['barangay_id' => $keepIds->first()]);
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('simulation_events', 'barangay_profile_id') && $keepIds->isNotEmpty()) {
+            \Illuminate\Support\Facades\DB::table('simulation_events')
+                ->whereIn('barangay_profile_id', $deleteIds)
+                ->update(['barangay_profile_id' => $keepIds->first()]);
+        }
+
+        if (
+            \Illuminate\Support\Facades\Schema::hasTable('resource_budget_proposals')
+            && \Illuminate\Support\Facades\Schema::hasColumn('resource_budget_proposals', 'barangay_profile_id')
+            && $keepIds->isNotEmpty()
+        ) {
+            \Illuminate\Support\Facades\DB::table('resource_budget_proposals')
+                ->whereIn('barangay_profile_id', $deleteIds)
+                ->update(['barangay_profile_id' => $keepIds->first()]);
+        }
+
+        BarangayProfile::query()->whereIn('id', $deleteIds)->each(function (BarangayProfile $profile) {
+            $profile->documents()->delete();
+            $profile->hazardRecords()->delete();
+            $profile->delete();
+        });
+
+        $this->command?->info('Purged unrelated hazard profiles; kept San Agustin (QC) only.');
+    }
+
+    /**
      * @param  array<int, array{document_type: string, filename: string, content: string}>  $documents
      */
     private function seedDocuments(BarangayProfile $profile, array $documents, ?int $uploaderId): void
@@ -371,20 +333,15 @@ class HazardAssessmentSeeder extends Seeder
      */
     private function linkSimulationEvents(array $profiles): void
     {
-        $links = [
-            'Quarterly Fire Drill - Barangay Hall' => $profiles['Commonwealth'] ?? null,
-            'Completed Earthquake Drill - Municipal Hall' => $profiles['Bagong Silangan'] ?? null,
-        ];
-
-        foreach ($links as $title => $profile) {
-            if (! $profile) {
-                continue;
-            }
-
-            SimulationEvent::query()
-                ->where('title', $title)
-                ->whereNull('barangay_profile_id')
-                ->update(['barangay_profile_id' => $profile->id]);
+        $sanAgustin = $profiles['San Agustin'] ?? null;
+        if (! $sanAgustin) {
+            return;
         }
+
+        SimulationEvent::query()
+            ->whereNull('barangay_profile_id')
+            ->orderByDesc('id')
+            ->limit(3)
+            ->update(['barangay_profile_id' => $sanAgustin->id]);
     }
 }

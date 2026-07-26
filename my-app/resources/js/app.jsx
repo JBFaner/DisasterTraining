@@ -56,7 +56,6 @@ import {
 } from './utils/participantLowBandwidth';
 import { CampaignRequestShow } from './pages/CampaignRequestShow';
 import { SimulationEventPlanningDetail } from './pages/SimulationEventPlanningDetail';
-import AttendanceQrScanner from './components/AttendanceQrScanner';
 import {
     ParticipantRegistrationAttendanceModule,
     QualifiedTrainerDetail,
@@ -125,6 +124,7 @@ import {
     AdminTableActionButton,
     AdminTablePagination,
 } from './components/admin/AdminDataTable';
+import { buildPrintTableDocument, printHtmlDocument } from './utils/printHtml';
 import * as Toast from '@radix-ui/react-toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
@@ -1917,7 +1917,7 @@ if (rootElement) {
                     breadcrumbs={breadcrumbs}
                     user={currentUser}
                 >
-                    <div className="w-full max-w-full mx-auto overflow-x-hidden">
+                    <div className="w-full max-w-full mx-auto overflow-x-clip">
 
                         {sectionAttr === 'dashboard' && (
                             role === 'PARTICIPANT' ? (
@@ -2307,6 +2307,35 @@ if (rootElement) {
                                                     </select>
                                                 </div>
                                                 <div>
+                                                    <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_assignment_status">Assignment Status</label>
+                                                    {currentUserData.assignment_status === 'assigned_to_simulation' ? (
+                                                        <>
+                                                            <input
+                                                                type="text"
+                                                                id="edit_assignment_status"
+                                                                value="Assigned to Simulation"
+                                                                disabled
+                                                                readOnly
+                                                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 cursor-not-allowed"
+                                                            />
+                                                            <p className="mt-1 text-xs text-slate-500">Managed by Simulation Readiness — released when the event completes or is cancelled.</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <select
+                                                                id="edit_assignment_status"
+                                                                name="assignment_status"
+                                                                defaultValue={currentUserData.assignment_status === 'unavailable' ? 'unavailable' : 'available'}
+                                                                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                                                            >
+                                                                <option value="available">Available</option>
+                                                                <option value="unavailable">Unavailable</option>
+                                                            </select>
+                                                            <p className="mt-1 text-xs text-slate-500">Manual availability for Simulation Readiness pools. Assigned to Simulation is set only via Readiness.</p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div>
                                                     <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="edit_name">Full Name <span className="text-rose-500">*</span></label>
                                                     <input id="edit_name" name="name" type="text" required defaultValue={currentUserData.name ?? ''} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
                                                 </div>
@@ -2500,7 +2529,7 @@ if (rootElement) {
                             <HazardAssessmentForm profile={null} options={hazardAssessmentOptions} />
                         )}
                         {(sectionAttr === 'hazard_assessment_profile_show' || sectionAttr === 'barangay_profile_show') && barangayProfile && (
-                            <HazardAssessmentDetail profile={barangayProfile} intelligence={hazardIntelligence} />
+                            <HazardAssessmentDetail profile={barangayProfile} intelligence={hazardIntelligence} options={hazardAssessmentOptions} />
                         )}
                         {(sectionAttr === 'hazard_assessment_profile_edit' || sectionAttr === 'barangay_profile_edit') && barangayProfile && (
                             <HazardAssessmentForm profile={barangayProfile} options={hazardAssessmentOptions} />
@@ -10547,6 +10576,8 @@ function EventAttendanceTable({ event, registrations = [] }) {
     const excusedCount = approvedRegistrations.filter(reg => reg.attendance?.status === 'excused').length;
     const notMarkedCount = approvedRegistrations.filter(reg => !reg.attendance || !reg.attendance.status).length;
     const attendanceRate = totalRegistered > 0 ? Math.round(((presentCount + lateCount) / totalRegistered) * 100) : 0;
+    const isAttendanceFinalized = ['completed', 'ended', 'archived', 'cancelled'].includes(String(event.status || '').toLowerCase())
+        || approvedRegistrations.some((reg) => reg.attendance?.is_locked);
 
     const getAttendanceStatusKey = (reg) => {
         const status = reg.attendance?.status;
@@ -10567,25 +10598,54 @@ function EventAttendanceTable({ event, registrations = [] }) {
         return statusKey === statusFilter;
     });
 
+    const handlePrintAttendance = React.useCallback(() => {
+        const rowsSource = filteredRegistrations.length > 0 ? filteredRegistrations : approvedRegistrations;
+        const html = buildPrintTableDocument({
+            title: `${event.title || 'Simulation Event'} — Attendance`,
+            subtitle: `Printed ${new Date().toLocaleString()} · ${rowsSource.length} participant(s) · Rate ${attendanceRate}% · Present ${presentCount} · Late ${lateCount} · Absent ${absentCount} · Not marked ${notMarkedCount}`,
+            headers: ['#', 'Participant', 'Email', 'Status', 'Check-in Method', 'Checked In At'],
+            rows: rowsSource.map((reg, index) => [
+                index + 1,
+                reg.user?.name || '—',
+                reg.user?.email || '—',
+                getAttendanceStatusKey(reg).replace('_', ' '),
+                reg.attendance?.check_in_method || '—',
+                reg.attendance?.checked_in_at
+                    ? new Date(reg.attendance.checked_in_at).toLocaleString()
+                    : '—',
+            ]),
+            emptyMessage: 'No approved participants to print.',
+        });
+
+        if (!printHtmlDocument(html, 'Event Attendance')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view.', 'warning');
+        }
+    }, [
+        approvedRegistrations,
+        attendanceRate,
+        absentCount,
+        event.title,
+        filteredRegistrations,
+        lateCount,
+        notMarkedCount,
+        presentCount,
+    ]);
+
     return (
         <div>
-            <div className="mb-4 flex items-center justify-between">
-                <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">← Back to Participants</a>
-                <div className="flex gap-2 items-center">
-                    <AttendanceQrScanner eventId={event.id} csrfToken={csrf} onSuccess={() => window.location.reload()} />
+            <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+                <a
+                    href={`/admin/simulation-events/${event.id}?tab=execution`}
+                    className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800"
+                >
+                    ← Back to Execution Progress
+                </a>
+                <div className="flex gap-2 items-center flex-wrap">
+                    <AdminPrimaryButton type="button" onClick={handlePrintAttendance}>
+                        <Printer className="w-4 h-4" />
+                        Print
+                    </AdminPrimaryButton>
                     <a href={`/admin/simulation-events/${event.id}/attendance/export`} className="inline-flex items-center rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-1.5">📥 Export CSV</a>
-                    <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/lock`} onSubmit={async (e) => {
-                        e.preventDefault();
-                        const result = await Swal.fire({
-                            title: 'Warning!', text: 'Lock attendance records? This cannot be undone.', icon: 'warning',
-                            showCancelButton: true, confirmButtonText: 'Yes, lock', cancelButtonText: 'Cancel',
-                            confirmButtonColor: '#f97316', cancelButtonColor: '#64748b',
-                        });
-                        if (result.isConfirmed) e.target.submit();
-                    }}>
-                        <input type="hidden" name="_token" value={csrf} />
-                        <button type="submit" className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1.5">🔒 Lock Attendance</button>
-                    </form>
                 </div>
             </div>
 
@@ -10610,7 +10670,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
             <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl shadow-sm border border-emerald-200 p-6 mb-4">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold text-slate-900">📊 Attendance Dashboard</h3>
-                    {!event.attendance_locked && (
+                    {!isAttendanceFinalized && (
                         <div className="flex gap-2">
                             <form method="POST" action={`/admin/simulation-events/${event.id}/attendance/bulk`} onSubmit={async (e) => {
                                 e.preventDefault();
@@ -10809,7 +10869,7 @@ function EventAttendanceTable({ event, registrations = [] }) {
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.check_in_method || 'Manual'}</td>
                                         <td className="px-4 py-2 text-slate-600 text-xs">{attendance?.checked_in_at ? formatDateTime(attendance.checked_in_at) : '—'}</td>
                                         <td className="px-4 py-2">
-                                            {!attendance?.is_locked && !isMarked ? (
+                                            {!isAttendanceFinalized && !attendance?.is_locked && !isMarked ? (
                                                 <div className="flex gap-2">
                                                     <form
                                                         method="POST"
@@ -11896,6 +11956,7 @@ function EvaluationParticipantsList({ event, evaluation, criteria, attendances, 
 // Evaluation Form Component
 function EvaluationForm({ event, evaluation, user, attendance, participantEvaluation, criteria, scores }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+    const formRef = React.useRef(null);
     const [formScores, setFormScores] = React.useState(() => {
         const initial = {};
         // Convert scores array to object if needed
@@ -11908,7 +11969,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
             const criterionName = criterion;
             const existingScore = scoresObj?.[criterionName] || scoresObj?.[String(criterionName)];
             initial[criterionName] = {
-                score: existingScore?.score || '',
+                score: existingScore?.score ?? '',
                 comment: existingScore?.comment || '',
             };
         });
@@ -11916,6 +11977,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
     });
     const [overallFeedback, setOverallFeedback] = React.useState(participantEvaluation?.overall_feedback || '');
     const [competencyRating, setCompetencyRating] = React.useState(participantEvaluation?.competency_rating || '');
+    const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
 
     const handleScoreChange = (criterion, field, value) => {
         setFormScores(prev => ({
@@ -11929,8 +11991,8 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
 
     // Calculate total score and percentage
     const calculateTotalScore = () => {
-        const scores = Object.values(formScores).map(s => parseFloat(s.score) || 0);
-        const totalScore = scores.reduce((sum, score) => sum + score, 0);
+        const scoreValues = Object.values(formScores).map(s => parseFloat(s.score) || 0);
+        const totalScore = scoreValues.reduce((sum, score) => sum + score, 0);
         const maxScore = criteria ? criteria.length * 10 : 0;
         const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(2) : 0;
         return { totalScore, maxScore, percentage };
@@ -11938,33 +12000,56 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
 
     const { totalScore, maxScore, percentage } = calculateTotalScore();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        
-        // Validation: Check if all criteria have scores
-        const missingScores = criteria?.filter(criterion => {
-            const scoreData = formScores[criterion] || {};
-            return !scoreData.score || scoreData.score === '';
-        });
+    const isLocked = evaluation?.status === 'locked' || evaluation?.locked_at;
 
-        if (missingScores && missingScores.length > 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Incomplete Evaluation',
-                text: 'Please provide a score for all evaluation criteria before submitting.',
-                confirmButtonColor: '#16a34a',
-            });
+    const missingCriteria = (criteria || []).filter((criterion) => {
+        const scoreData = formScores[criterion] || {};
+        return scoreData.score === '' || scoreData.score == null;
+    });
+    const scoredCount = (criteria?.length || 0) - missingCriteria.length;
+    const allScored = missingCriteria.length === 0 && (criteria?.length || 0) > 0;
+    const canSubmit = !isLocked && allScored && Boolean(competencyRating);
+    const passed = maxScore > 0 && (totalScore / maxScore) >= 0.7;
+
+    const showValidationFeedback = async () => {
+        const lines = [];
+        if (missingCriteria.length > 0) {
+            lines.push(`• Score all criteria (${scoredCount}/${criteria.length} done)`);
+            const preview = missingCriteria.slice(0, 4).map((name) => `  – ${name}`).join('<br>');
+            lines.push(preview + (missingCriteria.length > 4 ? `<br>  – +${missingCriteria.length - 4} more` : ''));
+        }
+        if (!competencyRating) {
+            lines.push('• Select a Competency Rating');
+        }
+        if (isLocked) {
+            lines.push('• This evaluation is locked and cannot be submitted');
+        }
+
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Incomplete Evaluation',
+            html: `<div class="text-left text-sm">${lines.join('<br>') || 'Please complete required fields before submitting.'}</div>`,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#16a34a',
+        });
+    };
+
+    const handleSubmitClick = async () => {
+        setAttemptedSubmit(true);
+
+        if (!canSubmit) {
+            await showValidationFeedback();
             return;
         }
 
-        // Confirmation dialog
         const result = await Swal.fire({
             title: 'Submit Final Score?',
             html: `
                 <div class="text-left">
-                    <p class="mb-2">Are you sure you want to submit this evaluation?</p>
-                    <p class="text-sm text-slate-600 mb-2"><strong>Total Score:</strong> ${totalScore.toFixed(2)} / ${maxScore}</p>
-                    <p class="text-sm text-slate-600"><strong>Final Percentage:</strong> ${percentage}%</p>
+                    <p class="mb-2">Submit evaluation for <strong>${user?.name || 'this participant'}</strong>?</p>
+                    <p class="text-sm text-slate-600 mb-1"><strong>Total Score:</strong> ${totalScore.toFixed(2)} / ${maxScore}</p>
+                    <p class="text-sm text-slate-600 mb-1"><strong>Percentage:</strong> ${percentage}%</p>
+                    <p class="text-sm text-slate-600"><strong>Competency:</strong> ${competencyRating}</p>
                 </div>
             `,
             icon: 'question',
@@ -11975,23 +12060,12 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
             cancelButtonColor: '#64748b',
         });
 
-        if (!result.isConfirmed) {
+        if (!result.isConfirmed || !formRef.current) {
             return;
         }
 
-        // After confirmation, submit the form normally so Laravel handles redirect & persistence
-        e.target.submit();
+        formRef.current.submit();
     };
-
-    const isLocked = evaluation?.status === 'locked' || evaluation?.locked_at;
-
-    const allScored = criteria?.every(c => {
-        const d = formScores[c] || {};
-        return d.score !== '' && d.score != null;
-    }) ?? false;
-    const canSubmit = !isLocked && allScored && Boolean(competencyRating);
-
-    const passed = maxScore > 0 && (totalScore / maxScore) >= 0.7;
 
     return (
         <div className="space-y-6">
@@ -12025,26 +12099,36 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
             )}
 
             <form
+                ref={formRef}
                 method="POST"
                 action={`/admin/simulation-events/${event.id}/evaluation/${user.id}`}
-                onSubmit={handleSubmit}
-                className="flex flex-col lg:flex-row gap-6"
+                onSubmit={(e) => e.preventDefault()}
+                className="flex flex-col lg:flex-row gap-6 items-start"
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="status" value="submitted" />
                 <input type="hidden" name="competency_rating" value={competencyRating} />
 
                 {/* Left Column - Criteria (70%) */}
-                <div className="flex-1 lg:w-[70%] space-y-4">
+                <div className="flex-1 w-full lg:w-[70%] space-y-4 min-w-0">
                     {criteria && criteria.length > 0 ? (
                         <>
                             {criteria.map((criterion, index) => {
                                 const criterionName = criterion;
                                 const scoreData = formScores[criterionName] || { score: '', comment: '' };
+                                const isMissing = attemptedSubmit && (scoreData.score === '' || scoreData.score == null);
                                 return (
-                                    <div key={index} className="rounded-xl bg-white border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow duration-200">
+                                    <div
+                                        key={index}
+                                        className={`rounded-xl bg-white border shadow-sm p-5 hover:shadow-md transition-shadow duration-200 ${
+                                            isMissing ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
+                                        }`}
+                                    >
                                         <label className="block text-sm font-semibold text-slate-800 mb-3">
                                             {criterionName} <span className="text-rose-500">*</span>
+                                            {isMissing && (
+                                                <span className="ml-2 text-xs font-medium text-rose-600">Required</span>
+                                            )}
                                         </label>
                                         {/* Segmented bar score selection (0-10) */}
                                         <div className="mb-3">
@@ -12065,7 +12149,6 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                                             checked={String(scoreData.score) === String(score)}
                                                             onChange={(e) => handleScoreChange(criterionName, 'score', e.target.value)}
                                                             disabled={isLocked}
-                                                            required
                                                             className="sr-only"
                                                         />
                                                         {score}
@@ -12090,16 +12173,22 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                                     </div>
                                 );
                             })}
-                            <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+                            <div
+                                className={`rounded-xl bg-white border shadow-sm p-5 ${
+                                    attemptedSubmit && !competencyRating ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
+                                }`}
+                            >
                                 <label className="block text-sm font-semibold text-slate-800 mb-2">
                                     Competency Rating <span className="text-rose-500">*</span>
+                                    {attemptedSubmit && !competencyRating && (
+                                        <span className="ml-2 text-xs font-medium text-rose-600">Required</span>
+                                    )}
                                 </label>
                                 <select
                                     value={competencyRating}
                                     onChange={(e) => setCompetencyRating(e.target.value)}
                                     disabled={isLocked}
                                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 disabled:bg-slate-50 mb-4"
-                                    required
                                 >
                                     <option value="">Select rating</option>
                                     <option value="Excellent">Excellent</option>
@@ -12127,11 +12216,17 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                     )}
                 </div>
 
-                {/* Right Column - Sticky Live Score Summary (30%) */}
-                <div className="lg:w-[30%] lg:min-w-[280px]">
-                    <div className="lg:sticky lg:top-6 rounded-xl bg-white border border-slate-200 shadow-md p-6 space-y-5">
+                {/* Right Column - Sticky Live Score Summary */}
+                <div className="w-full lg:w-[30%] lg:min-w-[280px] lg:self-start">
+                    <div className="lg:sticky lg:top-24 z-20 rounded-xl bg-white border border-slate-200 shadow-md p-6 space-y-5">
                         <h4 className="text-sm font-semibold text-slate-800">Live Score Summary</h4>
                         <div className="space-y-4">
+                            <div>
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Criteria Scored</p>
+                                <p className="text-lg font-bold text-slate-900 mt-1">
+                                    {scoredCount} / {criteria?.length || 0}
+                                </p>
+                            </div>
                             <div>
                                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Score</p>
                                 <p className="text-2xl font-bold text-slate-900 mt-1">{totalScore.toFixed(1)} / {maxScore}</p>
@@ -12155,28 +12250,37 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                             <div>
                                 <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold ${
                                     maxScore === 0 ? 'bg-slate-100 text-slate-600' :
+                                    !allScored ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                                     passed ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
                                     'bg-rose-100 text-rose-800 border border-rose-200'
                                 }`}>
-                                    {maxScore === 0 ? '—' : passed ? '✓ Pass' : '✗ Fail'}
+                                    {maxScore === 0 ? '—' : !allScored ? 'Incomplete' : passed ? '✓ Pass' : '✗ Fail'}
                                 </span>
                             </div>
                         </div>
                         {!isLocked && (
                             <div className="pt-4 border-t border-slate-200 space-y-2">
                                 <button
-                                    type="submit"
-                                    disabled={!canSubmit}
-                                    className="w-full inline-flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition-all duration-200 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)] disabled:hover:shadow-none"
+                                    type="button"
+                                    onClick={handleSubmitClick}
+                                    className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                                        canSubmit
+                                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-[0_0_0_3px_rgba(16,185,129,0.3)]'
+                                            : 'bg-slate-300 text-slate-600 hover:bg-slate-400 hover:text-white'
+                                    }`}
                                 >
                                     <ClipboardCheck className="w-4 h-4" />
                                     Submit Final Score
                                 </button>
                                 {!allScored && (
-                                    <p className="text-xs text-amber-600 text-center">Score all criteria to enable submit</p>
+                                    <p className="text-xs text-amber-700 text-center">
+                                        Score all criteria ({scoredCount}/{criteria?.length || 0}) — click Submit to see what’s missing
+                                    </p>
                                 )}
                                 {allScored && !competencyRating && (
-                                    <p className="text-xs text-amber-600 text-center">Select competency rating to enable submit</p>
+                                    <p className="text-xs text-amber-700 text-center">
+                                        Select competency rating before submitting
+                                    </p>
                                 )}
                                 <a
                                     href={`/admin/simulation-events/${event.id}/evaluation`}

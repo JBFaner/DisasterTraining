@@ -308,12 +308,16 @@ class HazardTrainingRecommendationService
                 'province' => $profile->province,
                 'related_hazard' => $best->hazard_type,
                 'risk_level' => $normalizedRiskLevel,
+                'exposure_scope' => $best->exposure_scope,
+                'focus_area' => $best->focus_area,
                 'priority_level' => $priorityBucket === 'high'
                     ? 'Priority 1'
                     : ($priorityBucket === 'medium' ? 'Priority 2' : 'Priority 3'),
                 'priority_score' => (int) $best->risk_score,
-                'recommendation_reason' => $this->buildTrainingRecommendationText($module, $best),
-                'recommendation' => $this->buildTrainingRecommendationText($module, $best),
+                'recommendation_reason' => $this->buildTrainingRecommendationText($module, $best, $profile),
+                'recommendation' => $this->buildTrainingRecommendationText($module, $best, $profile),
+                'reference_title' => $best->reference_title,
+                'reference_year' => $best->reference_year,
             ];
         }
 
@@ -369,16 +373,31 @@ class HazardTrainingRecommendationService
         return array_keys($normalized);
     }
 
-    private function buildTrainingRecommendationText(TrainingModule $module, BarangayHazard $hazard): string
-    {
+    private function buildTrainingRecommendationText(
+        TrainingModule $module,
+        BarangayHazard $hazard,
+        ?BarangayProfile $profile = null,
+    ): string {
+        $barangay = $profile?->barangay_name ?: 'This community';
         $hazardType = strtolower($hazard->hazard_type);
+        $risk = strtolower($hazard->risk_level);
 
-        return match ($hazard->risk_level) {
-            'Very High', 'High' => "Recommended due to high {$hazardType} susceptibility.",
-            'Moderate' => "Recommended based on moderate {$hazardType} exposure.",
-            'Low' => "Included based on low {$hazardType} exposure for broader preparedness.",
-            default => 'Recommended based on hazard assessment profile.',
-        };
+        $base = "{$barangay} matches this training because Hazard Assessment records {$risk} {$hazardType} risk";
+
+        if ($hazard->focus_area) {
+            $base .= " (focus: {$hazard->focus_area})";
+        }
+
+        if ($hazard->reference_title) {
+            $cite = $hazard->reference_title;
+            if ($hazard->reference_year) {
+                $cite .= " ({$hazard->reference_year})";
+            }
+
+            return "{$base}, supported by {$cite}.";
+        }
+
+        return "{$base} for this barangay.";
     }
 
     /**

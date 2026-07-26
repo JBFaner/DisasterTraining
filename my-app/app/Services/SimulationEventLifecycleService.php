@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Models\CampaignRequest;
+use App\Models\QualifiedTrainer;
 use App\Models\SimulationEvent;
+use App\Models\User;
 use App\Services\Cpsqc\CpsqcPatrolApiClient;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SimulationEventLifecycleService
 {
@@ -27,7 +31,7 @@ class SimulationEventLifecycleService
         $event->loadMissing([
             'assignedTrainer',
             'scenario.trainingModule',
-            'registrations.user',
+            'registrations.user.barangayProfile',
             'resources',
             'assignedResources.resource',
             'attendances.user',
@@ -58,6 +62,7 @@ class SimulationEventLifecycleService
                 ? 'Individual (per participant)'
                 : 'Team / overall',
             'personnel_roster' => $personnelRoster,
+            'assignment_pools' => $this->buildAssignmentPools($event),
             'cpsqc' => $this->buildCpsqcPayload($event),
             'exercise_plan' => $template ? [
                 'id' => $template->id,
@@ -76,9 +81,15 @@ class SimulationEventLifecycleService
                 ->where('status', 'approved')
                 ->map(fn ($registration) => [
                     'id' => $registration->user_id,
+                    'registration_id' => $registration->id,
                     'name' => $registration->user?->name,
                     'email' => $registration->user?->email,
+                    'phone' => $registration->user?->phone,
+                    'barangay' => $registration->user?->barangay
+                        ?: $registration->user?->barangayProfile?->barangay_name,
+                    'organization' => $registration->user?->organization,
                     'status' => $registration->status,
+                    'registered_at' => optional($registration->created_at)?->toDateTimeString(),
                 ])
                 ->values()
                 ->all(),
@@ -327,37 +338,204 @@ class SimulationEventLifecycleService
     }
 
     /**
-     * @param  list<array<string, mixed>>  $assignments
+     * Role pools for Readiness assignment (skips Marshal; CPSQC-only).
+     *
+     * @return list<array<string, mixed>>
      */
-    public function syncEventPersonnelAssignments(SimulationEvent $event, array $assignments): SimulationEvent
+    public function buildAssignmentPools(SimulationEvent $event): array
     {
-        $normalized = [];
+        $template = $event->simulationExerciseTemplate;
+        if (! $template) {
+            return [];
+        }
+
+        $template->loadMissing('personnel');
+
+        $eventAssignments = collect($event->event_personnel_assignments ?? [])
+            ->filter(fn ($row) => is_array($row) && filled($row['role'] ?? null))
+            ->values();
+
+        $alreadyTrainerIds = $eventAssignments
+            ->filter(fn ($row) => ($row['source_group'] ?? '') === 'group6_trainers')
+            ->map(fn ($row) => (int) ($row['qualified_trainer_id'] ?? 0))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $alreadyStaffIds = $eventAssignments
+            ->filter(fn ($row) => ($row['source_group'] ?? '') === 'lgu_staff')
+            ->map(fn ($row) => (int) ($row['person_external_id'] ?? 0))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $pools = [];
+
+        foreach ($template->personnel->sortBy('sort_order')->values() as $roleRow) {
+            $role = trim((string) $roleRow->role);
+            if ($role === '' || $role === 'Marshal') {
+                continue;
+            }
+
+            $recommended = (int) ($roleRow->recommended_count ?? 1);
+            $assigned = $eventAssignments
+                ->filter(fn ($row) => trim((string) ($row['role'] ?? '')) === $role)
+                ->values()
+                ->all();
+
+            if (in_array($role, ['Lead Trainer', 'Assistant Trainer'], true)) {
+                $members = QualifiedTrainer::query()
+                    ->active()
+                    ->with('user')
+                    ->orderBy('name')
+                    ->get()
+                    ->filter(function (QualifiedTrainer $trainer) use ($alreadyTrainerIds) {
+                        if (in_array($trainer->id, $alreadyTrainerIds, true)) {
+                            return true;
+                        }
+
+                        return $this->trainerIsAssignmentAvailable($trainer);
+                    })
+                    ->map(fn (QualifiedTrainer $trainer) => [
+                        'id' => $trainer->id,
+                        'name' => $trainer->name,
+                        'source_group' => 'group6_trainers',
+                        'position' => $trainer->user?->position ?? $trainer->specialization,
+                        'qualified_trainer_id' => $trainer->id,
+                    ])
+                    ->values()
+                    ->all();
+            } else {
+                $members = User::query()
+                    ->where('role', 'STAFF')
+                    ->where('status', 'active')
+                    ->where('position', $role)
+                    ->where(function ($query) use ($alreadyStaffIds) {
+                        $query->where('assignment_status', User::ASSIGNMENT_AVAILABLE);
+                        if ($alreadyStaffIds !== []) {
+                            $query->orWhereIn('id', $alreadyStaffIds);
+                        }
+                    })
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'position'])
+                    ->map(fn (User $user) => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'source_group' => 'lgu_staff',
+                        'position' => $user->position,
+                    ])
+                    ->values()
+                    ->all();
+            }
+
+            $pools[] = [
+                'role' => $role,
+                'recommended_count' => $recommended,
+                'members' => $members,
+                'assigned' => $assigned,
+            ];
+        }
+
+        return $pools;
+    }
+
+    /**
+     * Merge incoming assignments by role, persist JSON, and flip LGU/trainer statuses.
+     *
+     * @param  list<array<string, mixed>>  $assignments
+     * @param  list<string>|null  $replaceRoles  If null, infer roles from incoming rows.
+     */
+    public function syncEventPersonnelAssignments(
+        SimulationEvent $event,
+        array $assignments,
+        ?array $replaceRoles = null,
+    ): SimulationEvent {
+        $previous = collect($event->event_personnel_assignments ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->values();
+
+        $normalizedIncoming = [];
         foreach (array_values($assignments) as $row) {
             if (! is_array($row)) {
                 continue;
             }
-            $role = trim((string) ($row['role'] ?? 'Marshal'));
+            $role = trim((string) ($row['role'] ?? ''));
             $name = trim((string) ($row['person_name'] ?? ''));
             if ($role === '' || $name === '') {
                 continue;
             }
-            $normalized[] = [
+
+            $sourceGroup = trim((string) ($row['source_group'] ?? ''));
+            if ($sourceGroup === '') {
+                $sourceGroup = in_array($role, ['Lead Trainer', 'Assistant Trainer'], true)
+                    ? 'group6_trainers'
+                    : ($role === 'Marshal' ? 'cpsqc_patrol' : 'lgu_staff');
+            }
+
+            $normalized = [
                 'role' => $role,
-                'source_group' => (string) ($row['source_group'] ?? 'cpsqc_patrol'),
+                'source_group' => $sourceGroup,
                 'person_name' => $name,
-                'person_external_id' => isset($row['person_external_id']) ? (string) $row['person_external_id'] : null,
+                'person_external_id' => isset($row['person_external_id']) && $row['person_external_id'] !== ''
+                    ? (string) $row['person_external_id']
+                    : null,
+                'qualified_trainer_id' => ! empty($row['qualified_trainer_id'])
+                    ? (int) $row['qualified_trainer_id']
+                    : null,
                 'bpso_personnel_id' => $row['bpso_personnel_id'] ?? null,
                 'patrol_request_id' => $row['patrol_request_id'] ?? null,
                 'notes' => $row['notes'] ?? null,
             ];
+
+            if ($sourceGroup === 'group6_trainers' && ! $normalized['qualified_trainer_id'] && $normalized['person_external_id']) {
+                $normalized['qualified_trainer_id'] = (int) $normalized['person_external_id'];
+            }
+
+            $this->assertAssignableForSync($normalized, $previous);
+
+            $normalizedIncoming[] = $normalized;
         }
 
-        $event->update([
-            'event_personnel_assignments' => $normalized,
-            'updated_by' => portal_id(),
-        ]);
+        $rolesToReplace = $replaceRoles !== null
+            ? collect($replaceRoles)->map(fn ($role) => trim((string) $role))->filter()->unique()->values()->all()
+            : collect($normalizedIncoming)->pluck('role')->unique()->values()->all();
 
-        return $event->fresh();
+        $kept = $previous
+            ->filter(fn (array $row) => ! in_array(trim((string) ($row['role'] ?? '')), $rolesToReplace, true))
+            ->values();
+
+        $merged = $kept->concat($normalizedIncoming)->values()->all();
+
+        return DB::transaction(function () use ($event, $previous, $merged) {
+            $this->syncAssignmentStatuses($previous->all(), $merged);
+
+            $event->update([
+                'event_personnel_assignments' => $merged,
+                'updated_by' => portal_id(),
+            ]);
+
+            return $event->fresh();
+        });
+    }
+
+    /**
+     * Return LGU staff / trainers on this event to available. Does not wipe JSON or call CPSQC.
+     */
+    public function releaseEventPersonnelAssignments(SimulationEvent $event): void
+    {
+        $rows = collect($event->event_personnel_assignments ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->filter(fn (array $row) => in_array(
+                (string) ($row['source_group'] ?? ''),
+                ['lgu_staff', 'group6_trainers'],
+                true,
+            ));
+
+        foreach ($rows as $row) {
+            $this->setAssignmentStatusForRow($row, User::ASSIGNMENT_AVAILABLE);
+        }
     }
 
     private function formatTimeForCpsqc(mixed $value): string
@@ -371,6 +549,199 @@ class SimulationEventLifecycleService
         } catch (\Throwable) {
             return substr((string) $value, 0, 5);
         }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $previous
+     * @param  list<array<string, mixed>>  $merged
+     */
+    private function syncAssignmentStatuses(array $previous, array $merged): void
+    {
+        $previousKeys = $this->localAssignmentKeys($previous);
+        $mergedKeys = $this->localAssignmentKeys($merged);
+
+        foreach (array_diff($previousKeys, $mergedKeys) as $key) {
+            $row = $this->findRowByKey($previous, $key);
+            if ($row) {
+                $this->setAssignmentStatusForRow($row, User::ASSIGNMENT_AVAILABLE);
+            }
+        }
+
+        foreach (array_diff($mergedKeys, $previousKeys) as $key) {
+            $row = $this->findRowByKey($merged, $key);
+            if ($row) {
+                $this->setAssignmentStatusForRow($row, User::ASSIGNMENT_ASSIGNED_TO_SIMULATION);
+            }
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<string>
+     */
+    private function localAssignmentKeys(array $rows): array
+    {
+        $keys = [];
+        foreach ($rows as $row) {
+            $key = $this->localAssignmentKey($row);
+            if ($key !== null) {
+                $keys[] = $key;
+            }
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function localAssignmentKey(array $row): ?string
+    {
+        $source = (string) ($row['source_group'] ?? '');
+        if ($source === 'lgu_staff') {
+            $id = (int) ($row['person_external_id'] ?? 0);
+
+            return $id > 0 ? "lgu:{$id}" : null;
+        }
+        if ($source === 'group6_trainers') {
+            $id = (int) ($row['qualified_trainer_id'] ?? $row['person_external_id'] ?? 0);
+
+            return $id > 0 ? "trainer:{$id}" : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return array<string, mixed>|null
+     */
+    private function findRowByKey(array $rows, string $key): ?array
+    {
+        foreach ($rows as $row) {
+            if ($this->localAssignmentKey($row) === $key) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $previous
+     */
+    private function assertAssignableForSync(array $row, $previous): void
+    {
+        $source = (string) ($row['source_group'] ?? '');
+        if ($source === 'cpsqc_patrol' || $source === '') {
+            return;
+        }
+
+        if ($source === 'lgu_staff') {
+            $userId = (int) ($row['person_external_id'] ?? 0);
+            if ($userId <= 0) {
+                throw ValidationException::withMessages([
+                    'assignments' => 'LGU staff assignments require person_external_id (user id).',
+                ]);
+            }
+
+            $alreadyOnEvent = $previous->contains(
+                fn (array $existing) => ($existing['source_group'] ?? '') === 'lgu_staff'
+                    && (int) ($existing['person_external_id'] ?? 0) === $userId
+            );
+
+            $user = User::query()->find($userId);
+            if (! $user || $user->role !== 'STAFF' || $user->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'assignments' => "Staff member \"{$row['person_name']}\" is not an active STAFF user.",
+                ]);
+            }
+
+            if (! $alreadyOnEvent && $user->assignment_status !== User::ASSIGNMENT_AVAILABLE) {
+                throw ValidationException::withMessages([
+                    'assignments' => "Staff member \"{$user->name}\" is not available for assignment.",
+                ]);
+            }
+
+            return;
+        }
+
+        if ($source === 'group6_trainers') {
+            $trainerId = (int) ($row['qualified_trainer_id'] ?? $row['person_external_id'] ?? 0);
+            if ($trainerId <= 0) {
+                throw ValidationException::withMessages([
+                    'assignments' => 'Trainer assignments require qualified_trainer_id.',
+                ]);
+            }
+
+            $alreadyOnEvent = $previous->contains(
+                fn (array $existing) => ($existing['source_group'] ?? '') === 'group6_trainers'
+                    && (int) ($existing['qualified_trainer_id'] ?? $existing['person_external_id'] ?? 0) === $trainerId
+            );
+
+            $trainer = QualifiedTrainer::query()->with('user')->find($trainerId);
+            if (! $trainer || ! $trainer->isActive()) {
+                throw ValidationException::withMessages([
+                    'assignments' => "Trainer \"{$row['person_name']}\" is not an active qualified trainer.",
+                ]);
+            }
+
+            if (! $alreadyOnEvent && ! $this->trainerIsAssignmentAvailable($trainer)) {
+                throw ValidationException::withMessages([
+                    'assignments' => "Trainer \"{$trainer->name}\" is not available for assignment.",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function setAssignmentStatusForRow(array $row, string $status): void
+    {
+        $source = (string) ($row['source_group'] ?? '');
+
+        if ($source === 'lgu_staff') {
+            $userId = (int) ($row['person_external_id'] ?? 0);
+            if ($userId <= 0) {
+                return;
+            }
+            User::query()->whereKey($userId)->update(['assignment_status' => $status]);
+
+            return;
+        }
+
+        if ($source === 'group6_trainers') {
+            $trainerId = (int) ($row['qualified_trainer_id'] ?? $row['person_external_id'] ?? 0);
+            if ($trainerId <= 0) {
+                return;
+            }
+
+            $trainer = QualifiedTrainer::query()->find($trainerId);
+            if (! $trainer) {
+                return;
+            }
+
+            $trainer->update(['assignment_status' => $status]);
+            if ($trainer->user_id) {
+                User::query()->whereKey($trainer->user_id)->update(['assignment_status' => $status]);
+            }
+        }
+    }
+
+    private function trainerIsAssignmentAvailable(QualifiedTrainer $trainer): bool
+    {
+        if ($trainer->user_id) {
+            $user = $trainer->relationLoaded('user') ? $trainer->user : $trainer->user()->first();
+            if (! $user || $user->status !== 'active') {
+                return false;
+            }
+
+            return $user->assignment_status === User::ASSIGNMENT_AVAILABLE;
+        }
+
+        return $trainer->assignment_status === QualifiedTrainer::ASSIGNMENT_AVAILABLE;
     }
 
     /**
@@ -496,8 +867,46 @@ class SimulationEventLifecycleService
                 'key' => 'cpsqc_marshals_assigned',
                 'label' => 'CPSQC Marshals Assigned',
                 'completed' => $assignedMarshalCount >= $needed,
-                'required' => true,
-                'detail' => sprintf('%d / %d assigned for this event', $assignedMarshalCount, $needed),
+                // Optional: proceed even when CPSQC has no available marshals.
+                'required' => false,
+                'detail' => sprintf(
+                    '%d / %d assigned — recommended, not required to publish or start',
+                    $assignedMarshalCount,
+                    $needed,
+                ),
+            ];
+        }
+
+        $nonMarshalRoles = $template?->personnel
+            ?->filter(fn ($row) => trim((string) $row->role) !== '' && trim((string) $row->role) !== 'Marshal')
+            ->values();
+        if ($nonMarshalRoles && $nonMarshalRoles->isNotEmpty()) {
+            $eventAssignments = collect($event->event_personnel_assignments ?? [])
+                ->filter(fn ($row) => is_array($row));
+            $rolesFilled = 0;
+            $rolesNeeded = $nonMarshalRoles->count();
+            foreach ($nonMarshalRoles as $roleRow) {
+                $role = trim((string) $roleRow->role);
+                $needed = max(1, (int) ($roleRow->recommended_count ?? 1));
+                $assignedCount = $eventAssignments
+                    ->filter(fn ($row) => trim((string) ($row['role'] ?? '')) === $role
+                        && filled($row['person_name'] ?? null))
+                    ->count();
+                if ($assignedCount >= $needed) {
+                    $rolesFilled++;
+                }
+            }
+            $items[] = [
+                'key' => 'personnel_roles_assigned',
+                'label' => 'Personnel Roles Assigned',
+                'completed' => $rolesFilled >= $rolesNeeded,
+                // Optional: allow demo / proceed with partial staffing.
+                'required' => false,
+                'detail' => sprintf(
+                    '%d / %d roles filled — recommended, not required to publish or start',
+                    $rolesFilled,
+                    $rolesNeeded,
+                ),
             ];
         }
 
@@ -532,10 +941,18 @@ class SimulationEventLifecycleService
             return 'Ongoing';
         }
 
+        if ($event->status === 'draft') {
+            return 'Draft';
+        }
+
         $readiness ??= $this->buildReadinessChecklist($event);
 
         if ($event->status === 'published' && $readiness['all_complete']) {
             return 'Ready';
+        }
+
+        if ($event->status === 'published') {
+            return 'Scheduled';
         }
 
         return 'Scheduled';

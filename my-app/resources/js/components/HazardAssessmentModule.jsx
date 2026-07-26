@@ -99,6 +99,7 @@ function AgencyBadge({ agency, labels = {} }) {
 }
 
 function getHazardRecords(row) {
+    if (!row) return [];
     return row.hazard_records || row.hazardRecords || [];
 }
 
@@ -156,21 +157,6 @@ function HazardTypesCell({ row, hazardColors = {} }) {
     );
 }
 
-function SourceAgenciesCell({ row, labels = {} }) {
-    const agencies = [...new Set(getHazardRecords(row).map((h) => h.source_agency).filter(Boolean))];
-    if (agencies.length === 0) return <span className="text-slate-400">—</span>;
-    return (
-        <div className="flex flex-wrap gap-1">
-            {agencies.slice(0, 2).map((a) => (
-                <AgencyBadge key={a} agency={a} labels={labels} />
-            ))}
-            {agencies.length > 2 && (
-                <span className="text-xs text-slate-500">+{agencies.length - 2}</span>
-            )}
-        </div>
-    );
-}
-
 function RiskScoreBar({ score = 0, level }) {
     const pct = Math.max(0, Math.min(100, Number(score) || 0));
     const barColor = level === 'Very High' || level === 'High'
@@ -192,10 +178,6 @@ function RiskScoreBar({ score = 0, level }) {
     );
 }
 
-function agencyLabel(agency, labels = {}) {
-    return labels[agency] || agency || '—';
-}
-
 export function HazardAssessmentList({ profiles = [], summary = null, options = {} }) {
     const labels = options.source_agency_labels || {};
     const hazardTypes = options.hazard_types || [];
@@ -205,14 +187,11 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
     const [hazardFilter, setHazardFilter] = React.useState('all');
     const [riskFilter, setRiskFilter] = React.useState('all');
     const [sourceAgencyFilter, setSourceAgencyFilter] = React.useState('all');
-    const [municipalityFilter, setMunicipalityFilter] = React.useState('all');
-    const [provinceFilter, setProvinceFilter] = React.useState('all');
     const [sortKey, setSortKey] = React.useState('barangay_name');
     const [sortDir, setSortDir] = React.useState('asc');
     const [profilesData, setProfilesData] = React.useState(profiles || []);
     const [pagination, setPagination] = React.useState(null);
     const [summaryData, setSummaryData] = React.useState(summary);
-    const [filterOptions, setFilterOptions] = React.useState({ municipalities: [], provinces: [] });
     const [isLoading, setIsLoading] = React.useState(false);
 
     const sourceAgencies = options.source_agencies || [];
@@ -226,8 +205,6 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
             if (hazardFilter !== 'all') url.searchParams.set('hazard_filter', hazardFilter);
             if (riskFilter !== 'all') url.searchParams.set('risk_filter', riskFilter);
             if (sourceAgencyFilter !== 'all') url.searchParams.set('source_agency_filter', sourceAgencyFilter);
-            if (municipalityFilter !== 'all') url.searchParams.set('municipality_filter', municipalityFilter);
-            if (provinceFilter !== 'all') url.searchParams.set('province_filter', provinceFilter);
             url.searchParams.set('sort_by', sortKey);
             url.searchParams.set('sort_dir', sortDir);
 
@@ -240,32 +217,27 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
             setProfilesData(data.profiles || []);
             setPagination(data.pagination || null);
             setSummaryData(data.summary || summary);
-            if (data.filter_options) setFilterOptions(data.filter_options);
         } catch (error) {
             console.error(error);
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm, hazardFilter, riskFilter, sourceAgencyFilter, municipalityFilter, provinceFilter, sortKey, sortDir, summary]);
+    }, [searchTerm, hazardFilter, riskFilter, sourceAgencyFilter, sortKey, sortDir, summary]);
 
     const hasActiveFilters = hazardFilter !== 'all'
         || riskFilter !== 'all'
-        || sourceAgencyFilter !== 'all'
-        || municipalityFilter !== 'all'
-        || provinceFilter !== 'all';
+        || sourceAgencyFilter !== 'all';
 
     const clearFilters = () => {
         setHazardFilter('all');
         setRiskFilter('all');
         setSourceAgencyFilter('all');
-        setMunicipalityFilter('all');
-        setProvinceFilter('all');
     };
 
     React.useEffect(() => {
         const timer = setTimeout(() => fetchProfiles(1), 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, hazardFilter, riskFilter, sourceAgencyFilter, municipalityFilter, provinceFilter, sortKey, sortDir, fetchProfiles]);
+    }, [searchTerm, hazardFilter, riskFilter, sourceAgencyFilter, sortKey, sortDir, fetchProfiles]);
 
     const stats = summaryData || summary || {};
 
@@ -295,19 +267,41 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
     };
 
     const columns = [
-        { key: 'barangay_name', label: 'Barangay', sortable: true, render: (r) => <span className="font-medium text-slate-900">{r.barangay_name}</span> },
-        { key: 'municipality_city', label: 'Municipality', sortable: true, render: (r) => r.municipality_city || '—' },
-        { key: 'province', label: 'Province', sortable: true, render: (r) => r.province || '—' },
+        {
+            key: 'barangay_name',
+            label: 'Barangay',
+            sortable: true,
+            render: (r) => (
+                <div>
+                    <span className="font-medium text-slate-900">{r.barangay_name}</span>
+                    {r.municipality_city && (
+                        <p className="text-xs text-slate-500 mt-0.5">{r.municipality_city}</p>
+                    )}
+                </div>
+            ),
+        },
         { key: 'hazard_types', label: 'Hazards', sortable: false, render: (r) => <HazardTypesCell row={r} /> },
-        { key: 'highest_risk_hazard', label: 'Highest Risk Hazard', sortable: false, render: (r) => (
-            r.highest_risk_hazard
-                ? <HazardTypeBadge type={r.highest_risk_hazard} />
-                : <span className="text-slate-400">—</span>
-        ) },
-        { key: 'highest_risk_level', label: 'Highest Risk Level', sortable: false, render: (r) => <RiskBadge level={r.highest_risk_level} /> },
-        { key: 'highest_risk_score', label: 'Risk Score', sortable: false, render: (r) => (r.highest_risk_score != null ? `${r.highest_risk_score}%` : '—') },
-        { key: 'source_agencies', label: 'Source Agencies', sortable: false, render: (r) => <SourceAgenciesCell row={r} labels={labels} /> },
-        { key: 'last_assessed_at', label: 'Last Updated', sortable: true, render: (r) => formatDate(r.last_assessed_at || r.updated_at) },
+        {
+            key: 'highest_risk_level',
+            label: 'Highest risk',
+            sortable: false,
+            render: (r) => (
+                r.highest_risk_hazard || r.highest_risk_level
+                    ? (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {r.highest_risk_hazard ? <HazardTypeBadge type={r.highest_risk_hazard} /> : null}
+                            <RiskBadge level={r.highest_risk_level} />
+                        </div>
+                    )
+                    : <span className="text-slate-400">—</span>
+            ),
+        },
+        {
+            key: 'last_assessed_at',
+            label: 'Last updated',
+            sortable: true,
+            render: (r) => formatDate(r.last_assessed_at || r.updated_at),
+        },
     ];
 
     return (
@@ -315,7 +309,7 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
             <AdminPageHeader
                 icon={AlertTriangle}
                 title="Hazard Assessment Profile"
-                description="Central master data for hazard intelligence, AI scenarios, simulation planning, and participant location linkage."
+                description="Barangay hazard findings and research references for Quezon City — capstone focus: San Agustin, Novaliches."
                 actions={
                     <AdminPrimaryButton href="/admin/hazard-assessment-profiles/create">
                         <Plus className="w-4 h-4" />
@@ -324,13 +318,11 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
                 }
             />
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <SummaryCard label="Total Barangays" value={stats.total_barangays ?? 0} />
                 <SummaryCard label="High Risk" value={stats.high_risk_barangays ?? 0} accent="rose" />
                 <SummaryCard label="Flood Prone" value={stats.flood_prone ?? 0} accent="blue" />
                 <SummaryCard label="Fire Prone" value={stats.fire_prone ?? 0} accent="amber" />
-                <SummaryCard label="Earthquake Prone" value={stats.earthquake_prone ?? 0} accent="orange" />
-                <SummaryCard label="Avg Risk Score" value={stats.average_risk_score != null ? `${stats.average_risk_score}%` : '—'} accent="slate" />
             </div>
 
             <AdminCollapsibleFilterBar
@@ -354,18 +346,6 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
                         <option key={agency} value={agency}>{labels[agency] || agency}</option>
                     ))}
                 </AdminFilterSelect>
-                <AdminFilterSelect label="Municipality / City" value={municipalityFilter} onChange={(e) => setMunicipalityFilter(e.target.value)}>
-                    <option value="all">All Municipalities</option>
-                    {(filterOptions.municipalities || []).map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                    ))}
-                </AdminFilterSelect>
-                <AdminFilterSelect label="Province" value={provinceFilter} onChange={(e) => setProvinceFilter(e.target.value)}>
-                    <option value="all">All Provinces</option>
-                    {(filterOptions.provinces || []).map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                    ))}
-                </AdminFilterSelect>
             </AdminCollapsibleFilterBar>
 
             <AdminDataTable
@@ -375,11 +355,12 @@ export function HazardAssessmentList({ profiles = [], summary = null, options = 
                 sortDir={sortDir}
                 onSort={(key, dir) => { setSortKey(key); setSortDir(dir); }}
                 isLoading={isLoading}
+                skeletonRows={10}
                 pagination={pagination}
                 onPageChange={(page) => fetchProfiles(page)}
-                minWidth="1280px"
+                minWidth="720px"
                 emptyTitle="No hazard assessment profiles"
-                emptyDescription="Create a profile to record official hazard data for your barangays."
+                emptyDescription="Create a profile to record hazard findings and research references for your barangay."
                 renderActions={(row) => (
                     <>
                         <AdminTableActionButton href={`/admin/hazard-assessment-profiles/${row.id}`} icon={Eye} title="View" variant="view" />
@@ -408,12 +389,17 @@ function SummaryCard({ label, value, accent = 'slate' }) {
     );
 }
 
-export function HazardAssessmentDetail({ profile, intelligence = null }) {
+export function HazardAssessmentDetail({ profile, intelligence = null, options = {} }) {
     const hazards = getHazardRecords(profile);
     const documents = profile?.documents || [];
     const intel = intelligence || {};
     const recommendations = intel.recommended_training_modules || [];
     const scenarios = intel.suggested_scenarios || [];
+    const exposureLabels = options.exposure_scope_labels || {
+        zone_specific: 'Specific zones (streets / sitios / catchments)',
+        barangay_wide: 'Barangay-wide',
+        pattern_based: 'Pattern-based (e.g. dense housing clusters)',
+    };
 
     return (
         <AdminPageShell>
@@ -449,6 +435,9 @@ export function HazardAssessmentDetail({ profile, intelligence = null }) {
                             <DetailField label="Barangay" value={profile?.barangay_name || '—'} />
                             <DetailField label="Last Assessed" value={formatDate(profile?.last_assessed_at)} />
                             <DetailField label="Complete Barangay Address" value={profile?.barangay_address || '—'} className="col-span-2" />
+                            {profile?.hazard_notes && (
+                                <DetailField label="Area notes / study scope" value={profile.hazard_notes} className="col-span-2" />
+                            )}
                         </dl>
                     </section>
 
@@ -458,23 +447,67 @@ export function HazardAssessmentDetail({ profile, intelligence = null }) {
                             <p className="text-sm text-slate-500">No hazard records documented yet.</p>
                         ) : (
                             <div className="space-y-4">
-                                {hazards.map((h) => (
-                                    <div key={h.id || h.hazard_type} className="rounded-xl border border-slate-200 p-4">
-                                        <div className="flex items-start justify-between gap-4 mb-3">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <HazardTypeBadge type={h.hazard_type} />
-                                                    <AgencyBadge agency={h.source_agency} />
+                                {hazards.map((h) => {
+                                    const agencyLabel = h.source_agency || null;
+                                    const titlePart = h.reference_title
+                                        ? `${h.reference_title}${h.reference_year ? ` (${h.reference_year})` : ''}`
+                                        : null;
+                                    const refNo = h.source_reference_number || null;
+                                    const hasCitation = titlePart || agencyLabel || refNo || h.reference_url;
+
+                                    return (
+                                        <div key={h.id || h.hazard_type} className="rounded-xl border border-slate-200 p-4">
+                                            <div className="flex items-start justify-between gap-4 mb-3">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <HazardTypeBadge type={h.hazard_type} />
+                                                        <AgencyBadge agency={h.source_agency} />
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-0.5">
+                                                        Assessed: {formatDate(h.date_assessed)} · Updated: {formatDate(h.updated_at)}
+                                                    </p>
                                                 </div>
-                                                <p className="text-xs text-slate-500 mt-0.5">
-                                                    Assessed: {formatDate(h.date_assessed)} · Updated: {formatDate(h.updated_at)}
-                                                </p>
                                             </div>
+                                            <RiskScoreBar score={h.risk_score} level={h.risk_level} />
+                                            {h.exposure_scope && (
+                                                <p className="mt-3 text-xs text-slate-600">
+                                                    <span className="font-semibold text-slate-700">Exposure: </span>
+                                                    {exposureLabels[h.exposure_scope] || h.exposure_scope}
+                                                </p>
+                                            )}
+                                            {h.focus_area && (
+                                                <p className="mt-1 text-sm text-slate-700">
+                                                    <span className="font-semibold text-slate-800">Focus area: </span>
+                                                    {h.focus_area}
+                                                </p>
+                                            )}
+                                            {h.description && (
+                                                <p className="text-sm text-slate-600 mt-3">{h.description}</p>
+                                            )}
+                                            {hasCitation && (
+                                                <p className="mt-3 text-xs text-slate-600">
+                                                    <span className="font-semibold text-slate-700">Based on: </span>
+                                                    {titlePart || '—'}
+                                                    {agencyLabel ? ` · ${agencyLabel}` : ''}
+                                                    {refNo ? ` · Ref. ${refNo}` : ''}
+                                                    {h.reference_url && (
+                                                        <>
+                                                            {' · '}
+                                                            <a
+                                                                href={h.reference_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-emerald-700 hover:text-emerald-800 underline"
+                                                            >
+                                                                View source
+                                                            </a>
+                                                        </>
+                                                    )}
+                                                </p>
+                                            )}
                                         </div>
-                                        <RiskScoreBar score={h.risk_score} level={h.risk_level} />
-                                        {h.description && <p className="text-sm text-slate-600 mt-3">{h.description}</p>}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </section>
@@ -561,7 +594,13 @@ function emptyHazard(options) {
         risk_level: level,
         risk_score: defaultScores[level] || 50,
         description: '',
+        exposure_scope: 'zone_specific',
+        focus_area: '',
         source_agency: options.source_agencies?.[0] || 'MDRRMO',
+        source_reference_number: '',
+        reference_title: '',
+        reference_year: '',
+        reference_url: '',
         date_assessed: new Date().toISOString().slice(0, 10),
     };
 }
@@ -578,7 +617,13 @@ export function HazardAssessmentForm({ profile = null, options = {} }) {
                 risk_level: h.risk_level,
                 risk_score: h.risk_score,
                 description: h.description || '',
+                exposure_scope: h.exposure_scope || 'zone_specific',
+                focus_area: h.focus_area || '',
                 source_agency: h.source_agency,
+                source_reference_number: h.source_reference_number || '',
+                reference_title: h.reference_title || '',
+                reference_year: h.reference_year ?? '',
+                reference_url: h.reference_url || '',
                 date_assessed: h.date_assessed ? String(h.date_assessed).slice(0, 10) : '',
             }))
             : [emptyHazard(options)],
@@ -639,43 +684,133 @@ export function HazardAssessmentForm({ profile = null, options = {} }) {
                     </div>
 
                     {hazards.map((hazard, index) => (
-                        <div key={index} className="rounded-xl border border-slate-200 p-4 space-y-3">
+                        <div key={index} className="rounded-xl border border-slate-200 p-4 space-y-4">
                             <div className="flex items-center justify-between">
                                 <p className="text-sm font-medium text-slate-700">Hazard #{index + 1}</p>
                                 {hazards.length > 1 && (
                                     <button type="button" onClick={() => removeHazard(index)} className="text-xs text-rose-600 hover:text-rose-700">Remove</button>
                                 )}
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Hazard Type</label>
-                                    <select name={`hazards[${index}][hazard_type]`} value={hazard.hazard_type} onChange={(e) => updateHazard(index, 'hazard_type', e.target.value)} className={adminSelectClass}>
-                                        {(options.hazard_types || []).map((t) => <option key={t} value={t}>{t}</option>)}
-                                    </select>
+
+                            <div className="space-y-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Hazard</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Hazard Type</label>
+                                        <select name={`hazards[${index}][hazard_type]`} value={hazard.hazard_type} onChange={(e) => updateHazard(index, 'hazard_type', e.target.value)} className={adminSelectClass}>
+                                            {(options.hazard_types || []).map((t) => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Risk Level</label>
+                                        <select name={`hazards[${index}][risk_level]`} value={hazard.risk_level} onChange={(e) => updateHazard(index, 'risk_level', e.target.value)} className={adminSelectClass}>
+                                            {(options.risk_levels || []).map((t) => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <input type="hidden" name={`hazards[${index}][risk_score]`} value={hazard.risk_score} />
+                                        <p className="mt-1 text-[11px] text-slate-500">Score is set automatically from risk level for ranking.</p>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Finding (why this area is prone)</label>
+                                        <textarea
+                                            name={`hazards[${index}][description]`}
+                                            rows={2}
+                                            value={hazard.description}
+                                            onChange={(e) => updateHazard(index, 'description', e.target.value)}
+                                            placeholder="e.g. Low-lying zones along the creek flood during heavy rains..."
+                                            className={adminCompactInputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Exposure scope</label>
+                                        <select
+                                            name={`hazards[${index}][exposure_scope]`}
+                                            value={hazard.exposure_scope || 'zone_specific'}
+                                            onChange={(e) => updateHazard(index, 'exposure_scope', e.target.value)}
+                                            className={adminSelectClass}
+                                        >
+                                            {(options.exposure_scopes || ['zone_specific', 'barangay_wide', 'pattern_based']).map((scope) => (
+                                                <option key={scope} value={scope}>
+                                                    {options.exposure_scope_labels?.[scope] || scope}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="mt-1 text-[11px] text-slate-500">
+                                            Fire often uses pattern-based (dense housing), not one street pin.
+                                        </p>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Focus area inside the barangay</label>
+                                        <textarea
+                                            name={`hazards[${index}][focus_area]`}
+                                            rows={2}
+                                            value={hazard.focus_area}
+                                            onChange={(e) => updateHazard(index, 'focus_area', e.target.value)}
+                                            placeholder="e.g. QCDMP-listed streets / low-lying catchments — or dense residential clusters for fire"
+                                            className={adminCompactInputClass}
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Risk Level</label>
-                                    <select name={`hazards[${index}][risk_level]`} value={hazard.risk_level} onChange={(e) => updateHazard(index, 'risk_level', e.target.value)} className={adminSelectClass}>
-                                        {(options.risk_levels || []).map((t) => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Risk Score (%)</label>
-                                    <input type="number" min="0" max="100" name={`hazards[${index}][risk_score]`} value={hazard.risk_score} onChange={(e) => updateHazard(index, 'risk_score', e.target.value)} className={adminCompactInputClass} />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Source Agency</label>
-                                    <select name={`hazards[${index}][source_agency]`} value={hazard.source_agency} onChange={(e) => updateHazard(index, 'source_agency', e.target.value)} className={adminSelectClass}>
-                                        {(options.source_agencies || []).map((t) => <option key={t} value={t}>{options.source_agency_labels?.[t] || t}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Date Assessed</label>
-                                    <input type="date" name={`hazards[${index}][date_assessed]`} value={hazard.date_assessed} onChange={(e) => updateHazard(index, 'date_assessed', e.target.value)} className={adminCompactInputClass} />
-                                </div>
-                                <div className="md:col-span-3">
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Hazard Description</label>
-                                    <textarea name={`hazards[${index}][description]`} rows={2} value={hazard.description} onChange={(e) => updateHazard(index, 'description', e.target.value)} className={adminCompactInputClass} />
+                            </div>
+
+                            <div className="space-y-3 border-t border-slate-100 pt-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Research reference</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Source Agency</label>
+                                        <select name={`hazards[${index}][source_agency]`} value={hazard.source_agency} onChange={(e) => updateHazard(index, 'source_agency', e.target.value)} className={adminSelectClass}>
+                                            {(options.source_agencies || []).map((t) => <option key={t} value={t}>{options.source_agency_labels?.[t] || t}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Reference Title</label>
+                                        <input
+                                            type="text"
+                                            name={`hazards[${index}][reference_title]`}
+                                            value={hazard.reference_title}
+                                            onChange={(e) => updateHazard(index, 'reference_title', e.target.value)}
+                                            placeholder="e.g. PAGASA Flood Hazard Map"
+                                            className={adminCompactInputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Year</label>
+                                        <input
+                                            type="number"
+                                            min="1900"
+                                            max="2100"
+                                            name={`hazards[${index}][reference_year]`}
+                                            value={hazard.reference_year}
+                                            onChange={(e) => updateHazard(index, 'reference_year', e.target.value)}
+                                            placeholder="2023"
+                                            className={adminCompactInputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Date Assessed</label>
+                                        <input type="date" name={`hazards[${index}][date_assessed]`} value={hazard.date_assessed} onChange={(e) => updateHazard(index, 'date_assessed', e.target.value)} className={adminCompactInputClass} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Ref. No. (optional)</label>
+                                        <input
+                                            type="text"
+                                            name={`hazards[${index}][source_reference_number]`}
+                                            value={hazard.source_reference_number}
+                                            onChange={(e) => updateHazard(index, 'source_reference_number', e.target.value)}
+                                            placeholder="Map / document ID"
+                                            className={adminCompactInputClass}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Reference URL (optional)</label>
+                                        <input
+                                            type="url"
+                                            name={`hazards[${index}][reference_url]`}
+                                            value={hazard.reference_url}
+                                            onChange={(e) => updateHazard(index, 'reference_url', e.target.value)}
+                                            placeholder="https://..."
+                                            className={adminCompactInputClass}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>

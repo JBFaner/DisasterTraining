@@ -5,8 +5,10 @@ import {
     Eye,
     Pencil,
     Plus,
+    Printer,
 } from 'lucide-react';
-import { AdminStatCard } from './admin/AdminLayout';
+import Swal from 'sweetalert2';
+import { AdminStatCard, AdminPrimaryButton } from './admin/AdminLayout';
 import {
     AdminCollapsibleFilterBar,
     AdminFilterSelect,
@@ -21,6 +23,7 @@ import {
     filterApprovedCampaigns,
     resolveRowAction,
 } from '../utils/approvedCampaignDashboard';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 function ReadinessBadge({ row }) {
     const key = row.simulation_readiness || 'waiting_qualification';
@@ -215,6 +218,7 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
     const [filterPlanStatus, setFilterPlanStatus] = React.useState('');
     const [readyOnly, setReadyOnly] = React.useState(false);
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [isLoading, setIsLoading] = React.useState(true);
     const itemsPerPage = 10;
 
     const communities = React.useMemo(() => {
@@ -252,6 +256,12 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
         setCurrentPage(1);
     }, [searchQuery, filterCommunity, filterAudience, filterReadiness, filterPlanStatus, readyOnly]);
 
+    React.useEffect(() => {
+        setIsLoading(true);
+        const timer = window.setTimeout(() => setIsLoading(false), 220);
+        return () => window.clearTimeout(timer);
+    }, [searchQuery, filterCommunity, filterAudience, filterReadiness, filterPlanStatus, readyOnly, schedules]);
+
     const totalPages = Math.max(1, Math.ceil(filteredSchedules.length / itemsPerPage));
     const paginatedSchedules = filteredSchedules.slice(
         (currentPage - 1) * itemsPerPage,
@@ -261,6 +271,29 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
     const hasActiveFilters = Boolean(
         filterCommunity || filterAudience || filterReadiness || filterPlanStatus || readyOnly,
     );
+
+    const handlePrint = React.useCallback(() => {
+        const html = buildPrintTableDocument({
+            title: 'Approved Campaigns',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${filteredSchedules.length} campaign(s)${readyOnly ? ' · Ready only' : ''}${searchQuery.trim() ? ` · Search: ${searchQuery.trim()}` : ''}`,
+            headers: ['#', 'Campaign ID', 'Campaign Title', 'Community', 'Expected Participants', 'Registration Deadline', 'Readiness', 'Simulation Plan'],
+            rows: filteredSchedules.map((row, index) => [
+                index + 1,
+                campaignRowId(row),
+                row.campaign_title || row.training_title || '—',
+                row.recommended_community || row.community || '—',
+                row.expected_participants ?? '—',
+                formatDateTime(row.registration_deadline),
+                row.simulation_readiness_label || row.simulation_readiness || '—',
+                row.simulation_plan_badge_label || row.simulation_plan_status || '—',
+            ]),
+            emptyMessage: 'No approved campaigns match the current filters.',
+        });
+
+        if (!printHtmlDocument(html, 'Approved Campaigns')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    }, [filteredSchedules, readyOnly, searchQuery]);
 
     const columns = [
         {
@@ -351,15 +384,21 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
                     setReadyOnly(false);
                 }}
                 trailing={(
-                    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 whitespace-nowrap">
-                        <input
-                            type="checkbox"
-                            checked={readyOnly}
-                            onChange={(e) => setReadyOnly(e.target.checked)}
-                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        Ready for Simulation Only
-                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <AdminPrimaryButton type="button" onClick={handlePrint}>
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </AdminPrimaryButton>
+                        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 whitespace-nowrap">
+                            <input
+                                type="checkbox"
+                                checked={readyOnly}
+                                onChange={(e) => setReadyOnly(e.target.checked)}
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            Ready for Simulation Only
+                        </label>
+                    </div>
                 )}
             >
                 <AdminFilterSelect
@@ -415,21 +454,19 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
                     data={paginatedSchedules}
                     rowKey="campaign_request_id"
                     compact
+                    isLoading={isLoading}
+                    skeletonRows={10}
                     emptyTitle="No campaigns match your filters"
                     emptyDescription="Try adjusting your search or filter criteria."
                     minWidth="1180px"
-                    pagination={
-                        filteredSchedules.length > itemsPerPage
-                            ? {
-                                current_page: currentPage,
-                                last_page: totalPages,
-                                per_page: itemsPerPage,
-                                total: filteredSchedules.length,
-                                from: (currentPage - 1) * itemsPerPage + 1,
-                                to: Math.min(currentPage * itemsPerPage, filteredSchedules.length),
-                            }
-                            : null
-                    }
+                    pagination={filteredSchedules.length > 0 ? {
+                        current_page: currentPage,
+                        last_page: totalPages,
+                        per_page: itemsPerPage,
+                        total: filteredSchedules.length,
+                        from: (currentPage - 1) * itemsPerPage + 1,
+                        to: Math.min(currentPage * itemsPerPage, filteredSchedules.length),
+                    } : null}
                     onPageChange={setCurrentPage}
                     renderActions={(row) => (
                         <TableActionButton action={resolveRowAction(row)} />

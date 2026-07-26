@@ -15,6 +15,7 @@ import {
     Loader2,
     RefreshCw,
     Shield,
+    ChevronLeft,
 } from 'lucide-react';
 import {
     AdminPageShell,
@@ -24,6 +25,8 @@ import {
 } from './admin/AdminLayout';
 import { deriveSimulationEventStatus, getEventDateTime } from '../utils/simulationEventStatus';
 import { isExercisePlanEvent } from '../utils/simulationEventNavigation';
+
+const EMPTY_ASSIGNMENT_POOLS = [];
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -61,6 +64,7 @@ function formatTimelineTime(timeString, recordedAt) {
 
 function monitoringStatusTone(status) {
     const map = {
+        Draft: 'bg-slate-50 text-slate-700 border-slate-200',
         Scheduled: 'bg-sky-50 text-sky-700 border-sky-200',
         Ready: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         Ongoing: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -130,6 +134,229 @@ function PersonnelRosterTable({ roster = [], emptyHint = 'No personnel roles on 
                     ))}
                 </tbody>
             </table>
+        </div>
+    );
+}
+
+function memberOptionKey(member) {
+    if (!member) return '';
+    if (member.source_group === 'group6_trainers' || member.qualified_trainer_id) {
+        return `trainer:${member.qualified_trainer_id || member.id}`;
+    }
+    return `staff:${member.id}`;
+}
+
+function assignedOptionKey(row) {
+    if (!row) return '';
+    if (row.qualified_trainer_id || row.source_group === 'group6_trainers') {
+        return `trainer:${row.qualified_trainer_id || row.person_external_id || ''}`;
+    }
+    if (row.person_external_id) {
+        return `staff:${row.person_external_id}`;
+    }
+    return '';
+}
+
+function memberOptionLabel(member) {
+    const detail = member.position || member.specialization || '';
+    return detail ? `${member.name} — ${detail}` : (member.name || '—');
+}
+
+function buildInitialRoleSelections(pools = []) {
+    const next = {};
+    pools.forEach((pool) => {
+        if (!pool?.role || pool.role === 'Marshal') return;
+        const count = Math.max(1, Number(pool.recommended_count) || 1);
+        const membersByKey = new Map((pool.members || []).map((m) => [memberOptionKey(m), m]));
+        const slots = Array.from({ length: count }, () => '');
+        (pool.assigned || []).forEach((row, index) => {
+            if (index >= count) return;
+            const key = assignedOptionKey(row);
+            if (key && membersByKey.has(key)) {
+                slots[index] = key;
+            }
+        });
+        next[pool.role] = slots;
+    });
+    return next;
+}
+
+function RoleAssignmentPanel({ eventId, pools = [], csrf, onLifecycleUpdate, disabled = false }) {
+    const rolePools = React.useMemo(
+        () => (pools || []).filter((pool) => pool?.role && pool.role !== 'Marshal'),
+        [pools],
+    );
+    const [busy, setBusy] = React.useState(false);
+    const [selections, setSelections] = React.useState(() => buildInitialRoleSelections(rolePools));
+
+    React.useEffect(() => {
+        setSelections(buildInitialRoleSelections(rolePools));
+    }, [rolePools]);
+
+    const setSlot = (role, slotIndex, value) => {
+        setSelections((prev) => {
+            const current = [...(prev[role] || [])];
+            current[slotIndex] = value;
+            return { ...prev, [role]: current };
+        });
+    };
+
+    const saveAssignments = async () => {
+        const assignments = [];
+        const replaceRoles = rolePools.map((pool) => pool.role);
+
+        rolePools.forEach((pool) => {
+            const membersByKey = new Map((pool.members || []).map((m) => [memberOptionKey(m), m]));
+            const slots = selections[pool.role] || [];
+            slots.forEach((key) => {
+                if (!key) return;
+                const member = membersByKey.get(key);
+                if (!member) return;
+
+                if (member.source_group === 'group6_trainers' || member.qualified_trainer_id) {
+                    assignments.push({
+                        role: pool.role,
+                        source_group: 'group6_trainers',
+                        qualified_trainer_id: Number(member.qualified_trainer_id || member.id),
+                        person_name: member.name,
+                    });
+                } else {
+                    assignments.push({
+                        role: pool.role,
+                        source_group: 'lgu_staff',
+                        person_external_id: String(member.id),
+                        person_name: member.name,
+                    });
+                }
+            });
+        });
+
+        setBusy(true);
+        try {
+            const response = await fetch(`/admin/simulation-events/${eventId}/personnel-assignments`, {
+                method: 'PUT',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({ assignments, replace_roles: replaceRoles }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Save failed',
+                    text: data.message || 'Unable to save personnel assignments.',
+                });
+                return;
+            }
+            if (data.lifecycle) onLifecycleUpdate?.(data.lifecycle);
+            await Swal.fire({
+                icon: 'success',
+                title: 'Personnel saved',
+                text: `${assignments.length} assignment(s) saved for this event.`,
+            });
+        } catch (error) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Save failed',
+                text: error.message || 'Unable to save personnel assignments.',
+            });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    if (!rolePools.length) {
+        return (
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-slate-600" />
+                    Assign Personnel Roles
+                </h4>
+                <p className="text-sm text-slate-500 mt-2">
+                    No LGU or trainer roles on the linked exercise plan. Marshals are assigned via CPSQC below.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                    <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-emerald-700" />
+                        Assign Personnel Roles
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1">
+                        Assign LGU staff and qualified trainers here. Marshals are assigned via the CPSQC panel below.
+                    </p>
+                </div>
+                <AdminPrimaryButton onClick={saveAssignments} disabled={busy || disabled}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+                    Save Personnel Assignments
+                </AdminPrimaryButton>
+            </div>
+
+            <div className="space-y-4">
+                {rolePools.map((pool) => {
+                    const count = Math.max(1, Number(pool.recommended_count) || 1);
+                    const slots = selections[pool.role] || Array.from({ length: count }, () => '');
+                    const members = pool.members || [];
+
+                    return (
+                        <div key={pool.role} className="rounded-lg border border-white bg-white p-3 space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm font-semibold text-slate-800">{pool.role}</p>
+                                <span className="text-xs font-medium text-slate-500">
+                                    Recommended: {count}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                {slots.map((selectedKey, slotIndex) => {
+                                    const takenElsewhere = new Set(
+                                        slots
+                                            .filter((_, i) => i !== slotIndex)
+                                            .filter(Boolean),
+                                    );
+                                    return (
+                                        <label key={`${pool.role}-${slotIndex}`} className="text-sm">
+                                            <span className="mb-1 block text-xs font-semibold text-slate-600">
+                                                Slot {slotIndex + 1}
+                                            </span>
+                                            <select
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+                                                value={selectedKey}
+                                                disabled={busy || disabled}
+                                                onChange={(e) => setSlot(pool.role, slotIndex, e.target.value)}
+                                            >
+                                                <option value="">Unassigned</option>
+                                                {members.map((member) => {
+                                                    const key = memberOptionKey(member);
+                                                    if (!key) return null;
+                                                    const blocked = takenElsewhere.has(key) && key !== selectedKey;
+                                                    return (
+                                                        <option key={key} value={key} disabled={blocked}>
+                                                            {memberOptionLabel(member)}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {members.length === 0 && (
+                                <p className="text-xs text-amber-800">
+                                    No available people for this role right now.
+                                </p>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -317,15 +544,33 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
                 </label>
                 <label className="text-sm">
                     <span className="mb-1 block text-xs font-semibold text-slate-600">Event Date</span>
-                    <input type="date" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_date} onChange={(e) => setField('event_date', e.target.value)} disabled={!configured || busy || disabled} />
+                    <input
+                        type="date"
+                        disabled
+                        title="Set in Exercise Plan — not editable here"
+                        className="w-full cursor-default rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-700 disabled:opacity-100"
+                        value={form.event_date}
+                    />
                 </label>
                 <label className="text-sm">
                     <span className="mb-1 block text-xs font-semibold text-slate-600">Start Time</span>
-                    <input type="time" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_start_time} onChange={(e) => setField('event_start_time', e.target.value)} disabled={!configured || busy || disabled} />
+                    <input
+                        type="time"
+                        disabled
+                        title="Set in Exercise Plan — not editable here"
+                        className="w-full cursor-default rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-700 disabled:opacity-100"
+                        value={form.event_start_time}
+                    />
                 </label>
                 <label className="text-sm">
                     <span className="mb-1 block text-xs font-semibold text-slate-600">End Time</span>
-                    <input type="time" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.event_end_time} onChange={(e) => setField('event_end_time', e.target.value)} disabled={!configured || busy || disabled} />
+                    <input
+                        type="time"
+                        disabled
+                        title="Set in Exercise Plan — not editable here"
+                        className="w-full cursor-default rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-700 disabled:opacity-100"
+                        value={form.event_end_time}
+                    />
                 </label>
                 <label className="text-sm md:col-span-3">
                     <span className="mb-1 block text-xs font-semibold text-slate-600">Location</span>
@@ -408,9 +653,11 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
             lessons_learned: '',
         }
     );
+    const [selectedParticipant, setSelectedParticipant] = React.useState(null);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
+        setSelectedParticipant(null);
         const url = new URL(window.location.href);
         if (tabId === 'planning') {
             url.searchParams.delete('tab');
@@ -432,6 +679,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
     const participants = lifecycleData?.participants || [];
     const equipment = lifecycleData?.equipment || [];
     const personnelRoster = lifecycleData?.personnel_roster || [];
+    const assignmentPools = lifecycleData?.assignment_pools || EMPTY_ASSIGNMENT_POOLS;
     const cpsqc = lifecycleData?.cpsqc || null;
     const evaluationMode = lifecycleData?.evaluation_mode || 'team';
     const evaluationModeLabel = lifecycleData?.evaluation_mode_label
@@ -460,6 +708,15 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
     const canScoreParticipants = isIndividualEvaluation
         && (isOngoing || isCompleted)
         && checkedInCount > 0;
+    const scoreParticipantsBlockedReason = !isIndividualEvaluation
+        ? null
+        : isDraft
+            ? 'Complete readiness and publish the event first.'
+            : !(isOngoing || isCompleted)
+                ? 'Start the simulation first, then mark participants Present (or Late) in Attendance.'
+                : checkedInCount === 0
+                    ? 'Mark at least one participant Present (or Late) in Attendance before scoring.'
+                    : null;
 
     const now = new Date();
     const startDt = getEventDateTime(event.event_date, event.start_time);
@@ -608,12 +865,15 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                 description={`${formatDate(event.event_date)} • ${formatTime(event.start_time)} – ${formatTime(event.end_time)} • ${event.location || 'Location TBD'}`}
                 actions={
                     <div className="flex flex-wrap gap-2">
+                        <AdminSecondaryButton href="/admin/simulation-events?tab=events">
+                            <ChevronLeft className="w-4 h-4" /> Back
+                        </AdminSecondaryButton>
                         {isDraft && !fromExercisePlan && (
                             <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/edit`}>
                                 <Pencil className="w-4 h-4" /> Edit Planning
                             </AdminSecondaryButton>
                         )}
-                        {isDraft && fromExercisePlan && (
+                        {isDraft && fromExercisePlan && readiness?.all_complete && (
                             <form
                                 method="POST"
                                 action={`/admin/simulation-events/${event.id}/publish`}
@@ -622,7 +882,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                     const form = e.currentTarget;
                                     const result = await Swal.fire({
                                         title: 'Publish simulation event?',
-                                        text: 'Participants can register once this event is published.',
+                                        text: 'Event will move to Simulation Monitoring. Start the simulation when the schedule begins.',
                                         icon: 'question',
                                         showCancelButton: true,
                                         confirmButtonText: 'Publish',
@@ -636,10 +896,18 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                             body: new FormData(form),
                                             headers: { Accept: 'application/json' },
                                         });
-                                        if (!response.ok) throw new Error('Publish failed');
-                                        window.location.href = `/admin/simulation-events/${event.id}?tab=monitoring`;
-                                    } catch {
-                                        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to publish event.' });
+                                        const data = await response.json().catch(() => ({}));
+                                        if (!response.ok) {
+                                            throw new Error(data.message || 'Publish failed');
+                                        }
+                                        window.location.href = data.redirect
+                                            || `/admin/simulation-events/${event.id}?tab=monitoring`;
+                                    } catch (err) {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Cannot publish',
+                                            text: err?.message || 'Failed to publish event.',
+                                        });
                                     }
                                 }}
                             >
@@ -649,12 +917,69 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                 </AdminPrimaryButton>
                             </form>
                         )}
+                        {isDraft && fromExercisePlan && !readiness?.all_complete && (
+                            <button
+                                type="button"
+                                disabled
+                                title="Complete all readiness checklist items before publishing"
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 bg-slate-100 text-slate-400 rounded-lg font-medium text-sm cursor-not-allowed"
+                            >
+                                Publish Event
+                            </button>
+                        )}
                         {canStartEvent && (
                             <form method="POST" action={`/admin/simulation-events/${event.id}/start`} onSubmit={handleStartEvent}>
                                 <input type="hidden" name="_token" value={csrf} />
                                 <AdminPrimaryButton type="submit" disabled={isSaving}>
                                     <Play className="w-4 h-4" /> Start Simulation
                                 </AdminPrimaryButton>
+                            </form>
+                        )}
+                        {!isOngoing && !isCompleted && ['LGU_ADMIN', 'LGU_TRAINER'].includes(role) && (
+                            <form
+                                method="POST"
+                                action={`/admin/simulation-events/${event.id}/test-start`}
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const form = e.currentTarget;
+                                    const result = await Swal.fire({
+                                        title: 'Test Start (Demo)?',
+                                        text: 'Forces this event to Ongoing now (updates schedule to today) so you can demo Execution, Attendance, and Scoring. Use for presentation/testing only.',
+                                        icon: 'question',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Start for demo',
+                                        cancelButtonText: 'Cancel',
+                                        confirmButtonColor: '#16a34a',
+                                    });
+                                    if (!result.isConfirmed) return;
+                                    setIsSaving(true);
+                                    try {
+                                        const response = await fetch(form.action, {
+                                            method: 'POST',
+                                            body: new FormData(form),
+                                            headers: { Accept: 'application/json' },
+                                        });
+                                        const data = await response.json().catch(() => ({}));
+                                        if (!response.ok) {
+                                            throw new Error(data.message || 'Test start failed');
+                                        }
+                                        window.location.href = data.redirect
+                                            || `/admin/simulation-events/${event.id}?tab=execution`;
+                                    } catch (err) {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Test start failed',
+                                            text: err?.message || 'Could not force-start the event.',
+                                        });
+                                    } finally {
+                                        setIsSaving(false);
+                                    }
+                                }}
+                            >
+                                <input type="hidden" name="_token" value={csrf} />
+                                <AdminSecondaryButton type="submit" disabled={isSaving}>
+                                    <Play className="w-4 h-4" /> Test Start (Demo)
+                                </AdminSecondaryButton>
                             </form>
                         )}
                         {isOngoing && (
@@ -779,7 +1104,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                         <div>
                             <h3 className="text-sm font-semibold text-slate-900">Readiness Checklist</h3>
                             <p className="text-sm text-slate-600 mt-1">
-                                All items must be completed before the simulation can start.
+                                Required items must be completed before publish/start. Marshals and other personnel roles are recommended but optional when no assignees are available.
                             </p>
                         </div>
                         <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${readiness?.all_complete ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
@@ -802,6 +1127,9 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                             {item.automatic && (
                                                 <span className="ml-2 text-xs font-normal text-slate-500">(Automatic)</span>
                                             )}
+                                            {item.required === false && (
+                                                <span className="ml-2 text-xs font-normal text-slate-500">(Optional)</span>
+                                            )}
                                         </span>
                                         {item.detail && (
                                             <p className="text-xs text-slate-500 mt-0.5">{item.detail}</p>
@@ -822,12 +1150,22 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                         ))}
                     </ul>
 
+                    {fromExercisePlan && (
+                        <RoleAssignmentPanel
+                            eventId={event.id}
+                            pools={assignmentPools}
+                            csrf={csrf}
+                            disabled={isSaving}
+                            onLifecycleUpdate={setLifecycle}
+                        />
+                    )}
+
                     <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                                <h4 className="text-sm font-semibold text-slate-900">Exercise Plan Personnel</h4>
+                                <h4 className="text-sm font-semibold text-slate-900">Personnel Roster</h4>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                    Roles from the exercise plan. CPSQC marshals are assigned per event below.
+                                    Read-only summary of assigned roles. Assign LGU/trainer roles above; marshals via CPSQC below.
                                 </p>
                             </div>
                             <span className="text-xs font-semibold rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">
@@ -865,23 +1203,68 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <h3 className="text-sm font-semibold text-slate-900 mb-3">Assigned Participants</h3>
-                            {participants.length === 0 ? (
-                                <p className="text-sm text-slate-500">No approved participants yet.</p>
+                            {selectedParticipant ? (
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <h3 className="text-sm font-semibold text-slate-900">Participant Info</h3>
+                                        <AdminSecondaryButton type="button" onClick={() => setSelectedParticipant(null)}>
+                                            <ChevronLeft className="w-4 h-4" /> Back
+                                        </AdminSecondaryButton>
+                                    </div>
+                                    <dl className="grid grid-cols-1 gap-3 text-sm">
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</dt>
+                                            <dd className="mt-0.5 font-medium text-slate-900">{selectedParticipant.name || '—'}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt>
+                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.email || '—'}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
+                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.phone || '—'}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Barangay</dt>
+                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.barangay || '—'}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Organization</dt>
+                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.organization || '—'}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registration Status</dt>
+                                            <dd className="mt-0.5 text-slate-700 capitalize">{selectedParticipant.status || '—'}</dd>
+                                        </div>
+                                    </dl>
+                                </div>
                             ) : (
-                                <ul className="space-y-2 max-h-48 overflow-y-auto">
-                                    {participants.map((p) => (
-                                        <li key={p.id} className="text-sm text-slate-700 flex justify-between gap-2">
-                                            <span>{p.name || '—'}</span>
-                                            <span className="text-slate-400 text-xs">{p.email}</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <>
+                                    <h3 className="mb-3 text-sm font-semibold text-slate-900">Assigned Participants</h3>
+                                    {participants.length === 0 ? (
+                                        <p className="text-sm text-slate-500">No approved participants yet.</p>
+                                    ) : (
+                                        <ul className="space-y-2 max-h-48 overflow-y-auto">
+                                            {participants.map((p) => (
+                                                <li key={p.id}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedParticipant(p)}
+                                                        className="w-full rounded-lg border border-transparent px-2 py-1.5 text-left text-sm text-slate-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50"
+                                                    >
+                                                        <span className="font-medium text-emerald-800 underline-offset-2 hover:underline">{p.name || '—'}</span>
+                                                        <span className="mt-0.5 block text-xs text-slate-400">{p.email}</span>
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </>
                             )}
                         </div>
 
                         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <h3 className="text-sm font-semibold text-slate-900 mb-3">Assigned Equipment</h3>
+                            <h3 className="mb-3 text-sm font-semibold text-slate-900">Assigned Equipment</h3>
                             {equipment.length === 0 ? (
                                 <p className="text-sm text-slate-500">No equipment assigned.</p>
                             ) : (
@@ -926,7 +1309,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                        <h3 className="mb-4 text-sm font-semibold text-slate-900 flex items-center gap-2">
                             <Clock className="w-4 h-4 text-emerald-600" /> Event Timeline
                         </h3>
                         {timelineEntries.length === 0 ? (
@@ -1067,9 +1450,9 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                     Tip: mark <span className="font-semibold">Drill Started</span> first, then score as participants complete their turns.
                                 </p>
                             ) : null}
-                            {Number(attendance.checked_in ?? 0) === 0 ? (
+                            {scoreParticipantsBlockedReason ? (
                                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                                    Mark at least one participant Present (or Late) in Attendance before scoring.
+                                    {scoreParticipantsBlockedReason}
                                 </p>
                             ) : (
                                 <p className="text-sm text-violet-900">
@@ -1087,7 +1470,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                         type="button"
                                         disabled
                                         className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 bg-slate-100 text-slate-400 rounded-lg font-medium text-sm cursor-not-allowed"
-                                        title="Start simulation and mark Present participants first"
+                                        title={scoreParticipantsBlockedReason || 'Scoring not available yet'}
                                     >
                                         Score Participants
                                     </button>
@@ -1122,11 +1505,17 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                             Mark at least one participant as <span className="font-semibold">Present</span> (or Late)
                             in Attendance Management before Evaluation & Scoring. Absent participants cannot be scored.
                         </div>
+                    ) : isIndividualEvaluation && !(isOngoing || isCompleted) ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            Attendance is recorded, but scoring unlocks after you <span className="font-semibold">Start Simulation</span>.
+                            Individual skill scores (e.g. fire extinguisher use) are entered during or right after the drill.
+                        </div>
                     ) : (
                         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                             {attendance.checked_in} participant{Number(attendance.checked_in) === 1 ? '' : 's'} ready for scoring.
-                            Criteria follow PH drill practice (BFP / NSED-style): alarm response, evacuation discipline,
-                            accountability, PPE/safety, instructions, teamwork, and participation.
+                            {isIndividualEvaluation
+                                ? ' Score each present participant on hands-on / skill criteria after attendance.'
+                                : ' Criteria follow PH drill practice (BFP / NSED-style): alarm response, evacuation discipline, accountability, PPE/safety, instructions, teamwork, and participation.'}
                         </div>
                     )}
 
@@ -1134,7 +1523,23 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                         <AdminPrimaryButton href={`/admin/simulation-events/${event.id}/attendance`}>
                             Open Attendance Management
                         </AdminPrimaryButton>
-                        {Number(attendance.checked_in ?? 0) > 0 ? (
+                        {isIndividualEvaluation ? (
+                            canScoreParticipants ? (
+                                <AdminPrimaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
+                                    <ClipboardCheck className="w-4 h-4" />
+                                    Score Participants
+                                </AdminPrimaryButton>
+                            ) : (
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 bg-slate-100 text-slate-400 rounded-lg font-medium text-sm cursor-not-allowed"
+                                    title={scoreParticipantsBlockedReason || 'Scoring not available yet'}
+                                >
+                                    Score Participants
+                                </button>
+                            )
+                        ) : Number(attendance.checked_in ?? 0) > 0 ? (
                             <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
                                 Send to Evaluation & Scoring
                             </AdminSecondaryButton>
@@ -1162,9 +1567,21 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                 : ' — capture the drill after-action review for the whole team here.'}
                         </span>
                         {isIndividualEvaluation ? (
-                            <AdminSecondaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
-                                Open Participant Scoring
-                            </AdminSecondaryButton>
+                            canScoreParticipants ? (
+                                <AdminPrimaryButton href={`/admin/simulation-events/${event.id}/evaluation`}>
+                                    <ClipboardCheck className="w-4 h-4" />
+                                    Score Participants
+                                </AdminPrimaryButton>
+                            ) : (
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 bg-slate-100 text-slate-400 rounded-lg font-medium text-sm cursor-not-allowed"
+                                    title={scoreParticipantsBlockedReason || 'Scoring not available yet'}
+                                >
+                                    Score Participants
+                                </button>
+                            )
                         ) : null}
                     </div>
 

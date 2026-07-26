@@ -4,7 +4,7 @@ import { AdminContentCard } from './AdminLayout';
 
 /**
  * Reusable admin data table — Stronghold-style layout with sortable headers,
- * loading state, empty state, and optional pagination footer.
+ * skeleton loading ("bones"), empty state, and optional pagination footer.
  */
 export function AdminDataTable({
     columns = [],
@@ -14,6 +14,7 @@ export function AdminDataTable({
     sortDir = 'asc',
     onSort = null,
     isLoading = false,
+    skeletonRows = 10,
     emptyTitle = 'No records found',
     emptyDescription = 'Try adjusting your search or filter criteria.',
     pagination = null,
@@ -24,6 +25,8 @@ export function AdminDataTable({
 }) {
     const cellPadding = compact ? 'px-4 py-2.5' : 'px-5 py-4';
     const headerPadding = compact ? 'px-4 py-3' : 'px-5 py-4';
+    const colCount = columns.length + (renderActions ? 1 : 0);
+
     const SortIcon = ({ columnKey }) => {
         if (!onSort || !columns.find((c) => c.key === columnKey)?.sortable) {
             return null;
@@ -48,11 +51,6 @@ export function AdminDataTable({
     return (
         <AdminContentCard className="w-full">
             <div className="overflow-x-auto w-full relative">
-                {isLoading && (
-                    <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
-                        <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                )}
                 <table className="w-full text-sm" style={{ minWidth }}>
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
@@ -78,10 +76,42 @@ export function AdminDataTable({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
+                        {isLoading && (
+                            Array.from({ length: Math.max(1, skeletonRows) }).map((_, rowIndex) => (
+                                <tr key={`skeleton-${rowIndex}`} className="bg-white">
+                                    {columns.map((column, colIndex) => (
+                                        <td
+                                            key={`${column.key}-${rowIndex}`}
+                                            className={`${cellPadding} whitespace-nowrap ${
+                                                column.align === 'right' ? 'text-right' : ''
+                                            }`}
+                                        >
+                                            <div
+                                                className={`h-4 rounded-md bg-slate-200/90 animate-pulse ${
+                                                    colIndex % 3 === 0 ? 'w-4/5' : colIndex % 3 === 1 ? 'w-3/5' : 'w-2/3'
+                                                }`}
+                                                style={{
+                                                    width: colIndex % 3 === 0 ? '80%' : colIndex % 3 === 1 ? '60%' : '70%',
+                                                }}
+                                            />
+                                        </td>
+                                    ))}
+                                    {renderActions && (
+                                        <td className={`${cellPadding} whitespace-nowrap`}>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <div className="h-8 w-8 rounded-xl bg-slate-200/90 animate-pulse" />
+                                                <div className="h-8 w-8 rounded-xl bg-slate-200/90 animate-pulse" />
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))
+                        )}
+
                         {!isLoading && data.length === 0 && (
                             <tr>
                                 <td
-                                    colSpan={columns.length + (renderActions ? 1 : 0)}
+                                    colSpan={colCount}
                                     className="px-5 py-12 text-center"
                                 >
                                     <p className="text-slate-500 font-medium">{emptyTitle}</p>
@@ -89,7 +119,8 @@ export function AdminDataTable({
                                 </td>
                             </tr>
                         )}
-                        {data.map((row) => (
+
+                        {!isLoading && data.map((row) => (
                             <tr
                                 key={row[rowKey] ?? row.id}
                                 className="bg-white hover:bg-slate-50/80 transition-colors duration-150"
@@ -118,7 +149,7 @@ export function AdminDataTable({
                     </tbody>
                 </table>
             </div>
-            {pagination && onPageChange && pagination.total > 0 && (
+            {!isLoading && pagination && onPageChange && pagination.total > 0 && (
                 <AdminTablePagination
                     pagination={pagination}
                     onPageChange={onPageChange}

@@ -32,6 +32,7 @@ class StaffTrainerBridgeService
             'phone' => $user->phone,
             'barangay' => $user->barangay,
             'status' => $status,
+            'assignment_status' => $user->assignment_status ?: User::ASSIGNMENT_AVAILABLE,
             'last_synced_at' => now(),
             'user_id' => $user->id,
         ];

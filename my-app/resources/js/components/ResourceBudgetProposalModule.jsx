@@ -280,6 +280,7 @@ export function ResourceBudgetProposalList({ proposals = [], summary = null, opt
                 sortDir={sortDir}
                 onSort={(key, dir) => { setSortKey(key); setSortDir(dir); }}
                 isLoading={isLoading}
+                skeletonRows={10}
                 emptyTitle="No budget proposals yet"
                 emptyDescription="Create a proposal to justify funding for equipment and supplies."
                 pagination={pagination}

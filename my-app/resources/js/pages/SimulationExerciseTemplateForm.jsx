@@ -27,66 +27,6 @@ import { getCsrfHeaders } from '../utils/csrf';
 import { showAppAlert, showAppConfirm, formatApiErrors } from '../utils/appAlert';
 import { useLessonClosePrompt } from '../components/LessonFormFields';
 
-function encodePersonRef(sourceGroup, memberId) {
-    return `${sourceGroup}:${memberId}`;
-}
-
-function decodePersonRef(value) {
-    if (!value) return null;
-    const [source_group, ...rest] = String(value).split(':');
-    return { source_group, id: Number(rest.join(':')) };
-}
-
-function usesExternalPersonId(sourceGroup) {
-    return sourceGroup === 'lgu_staff' || sourceGroup === 'cpsqc_patrol';
-}
-
-function assignmentPersonRef(assignment) {
-    if (!assignment) return '';
-    if (assignment.person_ref) return assignment.person_ref;
-    if (usesExternalPersonId(assignment.source_group) && assignment.person_external_id) {
-        return encodePersonRef(assignment.source_group, assignment.person_external_id);
-    }
-    if (assignment.source_group && assignment.qualified_trainer_id) {
-        return encodePersonRef(assignment.source_group, assignment.qualified_trainer_id);
-    }
-    return '';
-}
-
-function findPoolMember(personnelPool, sourceGroup, memberId) {
-    const pool = (personnelPool || []).find((group) => group.group_key === sourceGroup);
-    return pool?.members?.find((member) => String(member.id) === String(memberId)) || null;
-}
-
-function availablePoolOptions(personnelPool, assignments, rowIndex) {
-    const currentRef = assignmentPersonRef(assignments[rowIndex]);
-    const assignedElsewhere = new Set(
-        (assignments || [])
-            .map((row, index) => {
-                if (index === rowIndex) return null;
-                return assignmentPersonRef(row) || null;
-            })
-            .filter(Boolean),
-    );
-
-    const options = [];
-    (personnelPool || []).forEach((pool) => {
-        (pool.members || []).forEach((member) => {
-            const ref = encodePersonRef(pool.group_key, member.id);
-            if (!assignedElsewhere.has(ref) || currentRef === ref) {
-                options.push({
-                    ...member,
-                    group_key: pool.group_key,
-                    group_label: pool.group_label,
-                    person_ref: ref,
-                });
-            }
-        });
-    });
-
-    return options;
-}
-
 function createPersonnelRowKey(seed) {
     return `personnel-${seed ?? Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -98,34 +38,8 @@ function withPersonnelRowKeys(rows = []) {
     }));
 }
 
-function linkAssignmentsToPersonnelRows(personnelRows, assignments = []) {
-    const roleCounts = {};
-
-    return assignments.map((assignment) => {
-        const role = assignment.role || '';
-        const candidates = personnelRows.filter((row) => row.role === role);
-        const idx = roleCounts[role] || 0;
-        roleCounts[role] = idx + 1;
-        const linkedRow = candidates[idx] || candidates[0];
-        const personRef = assignmentPersonRef(assignment);
-
-        return {
-            ...assignment,
-            personnel_row_key: assignment.personnel_row_key || linkedRow?.row_key || '',
-            person_ref: personRef,
-        };
-    });
-}
-
-function assignmentsForPersonnelRow(assignments, rowKey) {
-    return (assignments || []).filter((assignment) => assignment.personnel_row_key === rowKey);
-}
-
-function buildPersonnelRoleOptions(defaultRoles = [], personnel = [], assignments = []) {
-    const extras = [
-        ...personnel.map((row) => row.role),
-        ...assignments.map((row) => row.role),
-    ].filter(Boolean);
+function buildPersonnelRoleOptions(defaultRoles = [], personnel = []) {
+    const extras = personnel.map((row) => row.role).filter(Boolean);
 
     return [...new Set([...(defaultRoles || []), ...extras])];
 }
@@ -315,7 +229,7 @@ function hasGeneratedContent(formData) {
     );
 }
 
-function buildAiContext(form, activities, personnel, personnelAssignments, evaluationObjectives) {
+function buildAiContext(form, activities, personnel, evaluationObjectives) {
     return {
         title: form.title,
         category: form.category,
@@ -338,7 +252,7 @@ function buildAiContext(form, activities, personnel, personnelAssignments, evalu
             })),
         })),
         personnel,
-        personnel_assignments: personnelAssignments,
+        personnel_assignments: [],
         timeline_items: activities.map((activity, index) => ({
             start_time: activity.start_time,
             label: activity.title,
@@ -349,23 +263,10 @@ function buildAiContext(form, activities, personnel, personnelAssignments, evalu
     };
 }
 
-function normalizePersonnelAssignments(assignments = []) {
-    return assignments.map((row) => ({
-        id: row.id || null,
-        role: row.role || '',
-        source_group: row.source_group || '',
-        qualified_trainer_id: row.qualified_trainer_id || null,
-        person_name: row.person_name || '',
-        person_external_id: row.person_external_id || null,
-        notes: row.notes || '',
-    }));
-}
-
 function buildExerciseFormSnapshot({
     form,
     activities,
     personnel,
-    personnelAssignments,
     evaluationObjectives,
 }) {
     return {
@@ -387,7 +288,6 @@ function buildExerciseFormSnapshot({
         },
         activities,
         personnel: (personnel || []).map(({ row_key, ...row }) => row),
-        personnel_assignments: normalizePersonnelAssignments(personnelAssignments),
         evaluation_objectives: evaluationObjectives,
     };
 }
@@ -397,7 +297,6 @@ function applyPlanToState(plan, setters) {
         setForm,
         setActivities,
         setPersonnel,
-        setPersonnelAssignments,
         setEvaluationObjectives,
     } = setters;
 
@@ -411,9 +310,7 @@ function applyPlanToState(plan, setters) {
         estimated_duration_minutes: plan.estimated_duration_minutes ?? prev.estimated_duration_minutes ?? '',
     }));
     setActivities(applyTimelineToActivities(plan.activities || [], plan.timeline_items || []));
-    const personnelRows = withPersonnelRowKeys(plan.personnel || []);
-    setPersonnel(personnelRows);
-    setPersonnelAssignments((prev) => linkAssignmentsToPersonnelRows(personnelRows, prev));
+    setPersonnel(withPersonnelRowKeys(plan.personnel || []));
     setEvaluationObjectives(plan.evaluation_objectives || []);
 }
 
@@ -421,8 +318,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
     const templateId = formData?.template?.id;
     const options = formData?.options || {};
     const resources = formData?.resources || [];
-    const personnelPool = formData?.personnel_pool || [];
-    const availablePersonCount = personnelPool.reduce((sum, pool) => sum + (pool.members?.length || 0), 0);
 
     const [form, setForm] = React.useState(() => ({
         title: formData?.template?.title || '',
@@ -444,10 +339,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
         formData?.timeline_items || [],
     ));
     const [personnel, setPersonnel] = React.useState(() => withPersonnelRowKeys(formData?.personnel || []));
-    const [personnelAssignments, setPersonnelAssignments] = React.useState(() => linkAssignmentsToPersonnelRows(
-        withPersonnelRowKeys(formData?.personnel || []),
-        formData?.personnel_assignments || [],
-    ));
     const [evaluationObjectives, setEvaluationObjectives] = React.useState(formData?.evaluation_objectives || []);
     const [planGenerated, setPlanGenerated] = React.useState(() => mode !== 'create' || hasGeneratedContent(formData));
     const [isSaving, setIsSaving] = React.useState(false);
@@ -456,8 +347,8 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
     const [regeneratingSection, setRegeneratingSection] = React.useState(null);
 
     const personnelRoleOptions = React.useMemo(
-        () => buildPersonnelRoleOptions(options.personnel_roles, personnel, personnelAssignments),
-        [options.personnel_roles, personnel, personnelAssignments],
+        () => buildPersonnelRoleOptions(options.personnel_roles, personnel),
+        [options.personnel_roles, personnel],
     );
 
     const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -466,7 +357,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
         setForm,
         setActivities,
         setPersonnel,
-        setPersonnelAssignments,
         setEvaluationObjectives,
     }), []);
 
@@ -479,15 +369,14 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
             : Number(form.estimated_duration_minutes),
     });
 
-    const aiContext = () => buildAiContext(form, activities, personnel, personnelAssignments, evaluationObjectives);
+    const aiContext = () => buildAiContext(form, activities, personnel, evaluationObjectives);
 
     const currentSnapshot = React.useMemo(() => buildExerciseFormSnapshot({
         form,
         activities,
         personnel,
-        personnelAssignments,
         evaluationObjectives,
-    }), [form, activities, personnel, personnelAssignments, evaluationObjectives]);
+    }), [form, activities, personnel, evaluationObjectives]);
 
     const [baseline, setBaseline] = React.useState(() => buildExerciseFormSnapshot({
         form: {
@@ -506,7 +395,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
         },
         activities: hydrateActivitiesFromFormData(formData?.activities || [], formData?.timeline_items || []),
         personnel: formData?.personnel || [],
-        personnelAssignments: formData?.personnel_assignments || [],
         evaluationObjectives: formData?.evaluation_objectives || [],
     }));
 
@@ -518,12 +406,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
     const applySnapshot = React.useCallback((snapshot) => {
         setForm(snapshot.form);
         setActivities(hydrateActivitiesFromFormData(snapshot.activities || [], snapshot.timeline_items || []));
-        const personnelRows = withPersonnelRowKeys(snapshot.personnel || []);
-        setPersonnel(personnelRows);
-        setPersonnelAssignments(linkAssignmentsToPersonnelRows(
-            personnelRows,
-            snapshot.personnel_assignments || [],
-        ));
+        setPersonnel(withPersonnelRowKeys(snapshot.personnel || []));
         setEvaluationObjectives(snapshot.evaluation_objectives || []);
     }, []);
 
@@ -610,9 +493,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                     setActivities((prev) => applyTimelineToActivities(prev, result.timeline_items || []));
                 }
             } else if (section === 'personnel') {
-                const personnelRows = withPersonnelRowKeys(result.personnel || []);
-                setPersonnel(personnelRows);
-                setPersonnelAssignments((prev) => linkAssignmentsToPersonnelRows(personnelRows, prev));
+                setPersonnel(withPersonnelRowKeys(result.personnel || []));
             } else if (section === 'equipment') {
                 setActivities(result.activities || activities);
             } else if (section === 'scenario') {
@@ -684,57 +565,13 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
     ]);
 
     const removePersonnel = (index) => {
-        const rowKey = personnel[index]?.row_key;
         setPersonnel((prev) => prev.filter((_, i) => i !== index));
-        if (rowKey) {
-            setPersonnelAssignments((prev) => prev.filter((assignment) => assignment.personnel_row_key !== rowKey));
-        }
     };
 
     const updatePersonnelRole = (index, role) => {
-        const rowKey = personnel[index]?.row_key;
         setPersonnel((prev) => prev.map((item, i) => (i === index ? { ...item, role } : item)));
-        if (rowKey) {
-            setPersonnelAssignments((prev) => prev.map((assignment) => (
-                assignment.personnel_row_key === rowKey ? { ...assignment, role } : assignment
-            )));
-        }
     };
 
-    const addPersonnelAssignmentForRow = (row) => {
-        if (!row.role) {
-            showAppAlert({
-                title: 'Select a role first',
-                description: 'Choose a role before assigning personnel.',
-                icon: 'warning',
-            });
-            return;
-        }
-
-        setPersonnelAssignments((prev) => [
-            ...prev,
-            {
-                personnel_row_key: row.row_key,
-                role: row.role,
-                person_ref: '',
-                source_group: '',
-                qualified_trainer_id: '',
-                person_name: '',
-                notes: '',
-                sort_order: prev.length + 1,
-            },
-        ]);
-    };
-
-    const removePersonnelAssignment = (assignmentIndex) => {
-        setPersonnelAssignments((prev) => prev.filter((_, index) => index !== assignmentIndex));
-    };
-
-    const updatePersonnelAssignment = (assignmentIndex, patch) => {
-        setPersonnelAssignments((prev) => prev.map((item, index) => (
-            index === assignmentIndex ? { ...item, ...patch } : item
-        )));
-    };
     const addEvaluation = () => setEvaluationObjectives((prev) => [...prev, { heading: '', objective_text: '', activity_index: null, sort_order: prev.length + 1 }]);
 
     const activityLinkValue = (row) => {
@@ -776,40 +613,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
             status: resolvedStatus,
             activities,
             personnel,
-            personnel_assignments: personnelAssignments
-                .map((row) => {
-                    let sourceGroup = row.source_group || '';
-                    let trainerId = row.qualified_trainer_id || null;
-                    let personName = row.person_name || '';
-                    let personExternalId = row.person_external_id || null;
-
-                    if (row.person_ref) {
-                        const decoded = decodePersonRef(row.person_ref);
-                        if (decoded) {
-                            sourceGroup = decoded.source_group;
-                            const member = findPoolMember(personnelPool, sourceGroup, decoded.id);
-                            personName = member?.name || personName;
-                            if (usesExternalPersonId(sourceGroup)) {
-                                trainerId = null;
-                                personExternalId = String(decoded.id);
-                            } else {
-                                trainerId = decoded.id;
-                                personExternalId = null;
-                            }
-                        }
-                    }
-
-                    return {
-                        id: row.id,
-                        role: row.role,
-                        source_group: sourceGroup,
-                        qualified_trainer_id: trainerId,
-                        person_name: personName,
-                        person_external_id: personExternalId,
-                        notes: row.notes || '',
-                    };
-                })
-                .filter((row) => row.role && row.person_name),
+            personnel_assignments: [],
             evaluation_objectives: evaluationObjectives,
         };
 
@@ -839,7 +643,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                 form: { ...form, status: payload.status },
                 activities,
                 personnel,
-                personnelAssignments: payload.personnel_assignments,
                 evaluationObjectives,
             }));
 
@@ -1099,7 +902,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
             </CollapsibleSection>
 
             <CollapsibleSection
-                title="Exercise Activities"
+                title="Exercise Activities & Equipment Recommendation"
                 icon={ClipboardList}
                 defaultOpen={!planGenerated}
                 actions={(
@@ -1216,35 +1019,18 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
             >
                 <p className="mb-4 text-sm text-slate-600">
                     Define required roles and staffing levels for this reusable template.
-                    Assign stable LGU trainers/staff here if needed. Request and assign CPSQC patrol marshals later in
-                    <strong> Simulation Readiness</strong> once the event has a date and venue.
+                    Assign people in <strong>Simulation Readiness</strong> after the event has a schedule.
+                    Medical Team uses local LGU staff (by position), not Group 5.
+                    Request and assign CPSQC patrol marshals in Readiness once the event has a date and venue.
                 </p>
                 <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
                     Tip: Add a <strong>Marshal</strong> role with a recommended count only. Specific CPSQC personnel are assigned per scheduled event, not on the template.
-                </div>
-                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 space-y-2">
-                    {personnelPool.map((pool) => (
-                        <div key={pool.group_key}>
-                            <span className="font-medium text-slate-800">{pool.group_label}</span>
-                            {pool.integration_pending ? (
-                                <span className="text-amber-700"> — integration pending</span>
-                            ) : (
-                                <span className="text-emerald-700"> — {pool.members?.length || 0} available</span>
-                            )}
-                        </div>
-                    ))}
-                    {availablePersonCount === 0 && (
-                        <p className="text-amber-700">No personnel available yet. Sync Group 6 trainers or wait for other group integrations.</p>
-                    )}
                 </div>
                 <div className="space-y-4">
                     {personnel.length === 0 ? (
                         <p className="text-sm text-slate-500">No roles planned yet. Add roles manually or use AI Assist.</p>
                     ) : null}
-                    {personnel.map((row, index) => {
-                        const rowAssignments = assignmentsForPersonnelRow(personnelAssignments, row.row_key);
-
-                        return (
+                    {personnel.map((row, index) => (
                             <div key={row.row_key || row.id || `person-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                                     <label className="text-sm">
@@ -1282,89 +1068,6 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                                     </label>
                                 </div>
 
-                                <div className="mt-4 border-t border-slate-200 pt-4">
-                                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Assign Personnel</p>
-                                    {rowAssignments.length === 0 ? (
-                                        <p className="mb-3 text-sm text-slate-500">No one assigned to this role yet.</p>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {rowAssignments.map((assignment) => {
-                                                const assignmentIndex = personnelAssignments.findIndex((item) => item === assignment);
-                                                const poolOptions = availablePoolOptions(personnelPool, personnelAssignments, assignmentIndex);
-                                                const personRef = assignmentPersonRef(assignment);
-
-                                                return (
-                                                    <div key={assignment.id || `assign-${assignmentIndex}`} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-3 md:grid-cols-4">
-                                                        <label className="text-sm md:col-span-2">
-                                                            <span className="mb-1 block text-xs font-semibold text-slate-600">Person</span>
-                                                            <select
-                                                                className={inputClass()}
-                                                                value={personRef}
-                                                                disabled={availablePersonCount === 0}
-                                                                onChange={(e) => {
-                                                                    const decoded = decodePersonRef(e.target.value);
-                                                                    const member = decoded
-                                                                        ? findPoolMember(personnelPool, decoded.source_group, decoded.id)
-                                                                        : null;
-                                                                    const isExternal = usesExternalPersonId(decoded?.source_group);
-                                                                    updatePersonnelAssignment(assignmentIndex, {
-                                                                        person_ref: e.target.value,
-                                                                        source_group: decoded?.source_group || '',
-                                                                        qualified_trainer_id: isExternal ? '' : (decoded?.id || ''),
-                                                                        person_external_id: isExternal ? String(decoded.id) : null,
-                                                                        person_name: member?.name || '',
-                                                                    });
-                                                                }}
-                                                            >
-                                                                <option value="">{availablePersonCount > 0 ? 'Select person to assign…' : 'No personnel available'}</option>
-                                                                {personnelPool.map((pool) => (
-                                                                    pool.members?.length > 0 ? (
-                                                                        <optgroup key={pool.group_key} label={pool.group_label}>
-                                                                            {pool.members
-                                                                                .filter((member) => poolOptions.some((opt) => opt.person_ref === encodePersonRef(pool.group_key, member.id)))
-                                                                                .map((member) => (
-                                                                                    <option key={`${pool.group_key}-${member.id}`} value={encodePersonRef(pool.group_key, member.id)}>
-                                                                                        {member.name}
-                                                                                        {member.specialization ? ` — ${member.specialization}` : ''}
-                                                                                    </option>
-                                                                                ))}
-                                                                        </optgroup>
-                                                                    ) : null
-                                                                ))}
-                                                            </select>
-                                                        </label>
-                                                        <label className="text-sm md:col-span-2">
-                                                            <span className="mb-1 block text-xs font-semibold text-slate-600">Assignment Notes</span>
-                                                            <input
-                                                                className={inputClass()}
-                                                                placeholder="Optional assignment notes"
-                                                                value={assignment.notes || ''}
-                                                                onChange={(e) => updatePersonnelAssignment(assignmentIndex, { notes: e.target.value })}
-                                                            />
-                                                        </label>
-                                                        <div className="md:col-span-4 flex justify-end">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removePersonnelAssignment(assignmentIndex)}
-                                                                className="rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600"
-                                                            >
-                                                                Remove Assignment
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    <AdminSecondaryButton
-                                        onClick={() => addPersonnelAssignmentForRow(row)}
-                                        disabled={availablePersonCount === 0 || !row.role}
-                                        className="mt-3"
-                                    >
-                                        <Plus className="h-4 w-4" /> Assign Personnel
-                                    </AdminSecondaryButton>
-                                </div>
-
                                 <div className="mt-4 flex justify-end">
                                     <button
                                         type="button"
@@ -1375,8 +1078,7 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                                     </button>
                                 </div>
                             </div>
-                        );
-                    })}
+                    ))}
                     <AdminSecondaryButton onClick={addPersonnel}>
                         <Plus className="h-4 w-4" /> Add Personnel Role
                     </AdminSecondaryButton>

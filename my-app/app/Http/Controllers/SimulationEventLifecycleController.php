@@ -133,12 +133,19 @@ class SimulationEventLifecycleController extends Controller
             'assignments.*.source_group' => ['nullable', 'string', 'max:255'],
             'assignments.*.person_name' => ['required', 'string', 'max:255'],
             'assignments.*.person_external_id' => ['nullable', 'string', 'max:255'],
+            'assignments.*.qualified_trainer_id' => ['nullable', 'integer'],
             'assignments.*.bpso_personnel_id' => ['nullable', 'string', 'max:255'],
             'assignments.*.patrol_request_id' => ['nullable', 'string', 'max:255'],
             'assignments.*.notes' => ['nullable', 'string'],
+            'replace_roles' => ['nullable', 'array'],
+            'replace_roles.*' => ['string', 'max:255'],
         ]);
 
-        $event = $this->lifecycle->syncEventPersonnelAssignments($simulationEvent, $data['assignments']);
+        $event = $this->lifecycle->syncEventPersonnelAssignments(
+            $simulationEvent,
+            $data['assignments'],
+            $data['replace_roles'] ?? null,
+        );
 
         return response()->json([
             'success' => true,

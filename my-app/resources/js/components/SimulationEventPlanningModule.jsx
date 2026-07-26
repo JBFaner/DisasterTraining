@@ -5,8 +5,10 @@ import {
     Download,
     Eye,
     Layers,
+    Printer,
     ShieldCheck,
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
@@ -26,6 +28,7 @@ import { deriveSimulationEventStatus } from '../utils/simulationEventStatus';
 import { ApprovedCampaignSchedulesTable } from './ApprovedCampaignSchedulesTable';
 import { SimulationExerciseTemplateModule } from './SimulationExerciseTemplateModule';
 import { SimulationPlanningEventsTab } from './SimulationPlanningEventsTab';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -77,6 +80,7 @@ function CompletedEventHistoryTab({ events = [] }) {
     const [filterTrainer, setFilterTrainer] = React.useState('');
     const [filterParticipant, setFilterParticipant] = React.useState('');
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [isLoading, setIsLoading] = React.useState(true);
     const itemsPerPage = 10;
 
     const completedEvents = React.useMemo(
@@ -145,6 +149,12 @@ function CompletedEventHistoryTab({ events = [] }) {
         setCurrentPage(1);
     }, [searchQuery, filterModule, filterDateFrom, filterDateTo, filterStatus, filterTrainer, filterParticipant]);
 
+    React.useEffect(() => {
+        setIsLoading(true);
+        const timer = window.setTimeout(() => setIsLoading(false), 220);
+        return () => window.clearTimeout(timer);
+    }, [searchQuery, filterModule, filterDateFrom, filterDateTo, filterStatus, filterTrainer, filterParticipant, completedEvents]);
+
     const totalPages = Math.max(1, Math.ceil(filteredEvents.length / itemsPerPage));
     const paginatedEvents = filteredEvents.slice(
         (currentPage - 1) * itemsPerPage,
@@ -154,6 +164,39 @@ function CompletedEventHistoryTab({ events = [] }) {
     const hasActiveFilters = Boolean(
         filterModule || filterDateFrom || filterDateTo || filterStatus || filterTrainer || filterParticipant
     );
+
+    const handlePrint = React.useCallback(() => {
+        const html = buildPrintTableDocument({
+            title: 'Completed Event History',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${filteredEvents.length} event(s)${filterModule ? ` · Module: ${filterModule}` : ''}${filterStatus ? ` · Status: ${filterStatus}` : ''}${searchQuery.trim() ? ` · Search: ${searchQuery.trim()}` : ''}`,
+            headers: ['#', 'Simulation Title', 'Training Module', 'Trainer', 'Participants', 'Completion Date', 'Status', 'Evaluation', 'Attendance'],
+            rows: filteredEvents.map((event, index) => {
+                const evaluation = event.evaluation_summary || {};
+                const evaluationText = [evaluation.success_level, evaluation.overall_remarks].filter(Boolean).join(' — ') || 'No evaluation recorded';
+                const attendance = event.attendance_summary || {};
+                const attendanceText = attendance.registered
+                    ? `${attendance.checked_in ?? 0}/${attendance.registered} checked in (${attendance.completion_rate ?? 0}%)`
+                    : '—';
+
+                return [
+                    index + 1,
+                    event.title || '—',
+                    event.scenario?.training_module?.title || '—',
+                    event.assigned_trainer?.name || '—',
+                    event.approved_registrations_count ?? 0,
+                    formatDate(event.completed_at || event.event_date),
+                    event.monitoring_status || deriveSimulationEventStatus(event),
+                    evaluationText,
+                    attendanceText,
+                ];
+            }),
+            emptyMessage: 'No completed events match the current filters.',
+        });
+
+        if (!printHtmlDocument(html, 'Completed Event History')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    }, [filteredEvents, filterModule, filterStatus, searchQuery]);
 
     const columns = [
         {
@@ -230,6 +273,12 @@ function CompletedEventHistoryTab({ events = [] }) {
                     setFilterTrainer('');
                     setFilterParticipant('');
                 }}
+                trailing={(
+                    <AdminPrimaryButton type="button" onClick={handlePrint}>
+                        <Printer className="w-4 h-4" />
+                        Print
+                    </AdminPrimaryButton>
+                )}
             >
                 <AdminFilterSelect label="Training Module" value={filterModule} onChange={(e) => setFilterModule(e.target.value)}>
                     <option value="">All Modules</option>
@@ -272,24 +321,22 @@ function CompletedEventHistoryTab({ events = [] }) {
             <AdminDataTable
                 columns={columns}
                 data={paginatedEvents}
+                isLoading={isLoading}
+                skeletonRows={10}
                 emptyTitle={completedEvents.length === 0 ? 'No completed simulations yet' : 'No records match your filters'}
                 emptyDescription={
                     completedEvents.length === 0
                         ? 'Completed simulations will appear here after events are finished.'
                         : 'Try adjusting your search or filter criteria.'
                 }
-                pagination={
-                    filteredEvents.length > itemsPerPage
-                        ? {
-                            current_page: currentPage,
-                            last_page: totalPages,
-                            per_page: itemsPerPage,
-                            total: filteredEvents.length,
-                            from: (currentPage - 1) * itemsPerPage + 1,
-                            to: Math.min(currentPage * itemsPerPage, filteredEvents.length),
-                        }
-                        : null
-                }
+                pagination={filteredEvents.length > 0 ? {
+                    current_page: currentPage,
+                    last_page: totalPages,
+                    per_page: itemsPerPage,
+                    total: filteredEvents.length,
+                    from: (currentPage - 1) * itemsPerPage + 1,
+                    to: Math.min(currentPage * itemsPerPage, filteredEvents.length),
+                } : null}
                 onPageChange={setCurrentPage}
                 renderActions={(row) => (
                     <AdminTableActionButton

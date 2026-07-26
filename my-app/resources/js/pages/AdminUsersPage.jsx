@@ -92,6 +92,32 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
         }
     };
 
+    const getAssignmentBadge = (status) => {
+        switch (status) {
+            case 'available':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'unavailable':
+                return 'bg-slate-50 text-slate-700 border-slate-200';
+            case 'assigned_to_simulation':
+                return 'bg-sky-50 text-sky-700 border-sky-200';
+            default:
+                return 'bg-slate-50 text-slate-700 border-slate-200';
+        }
+    };
+
+    const getAssignmentLabel = (status) => {
+        switch (status) {
+            case 'available':
+                return 'Available';
+            case 'unavailable':
+                return 'Unavailable';
+            case 'assigned_to_simulation':
+                return 'Assigned to Simulation';
+            default:
+                return status || 'Available';
+        }
+    };
+
     const handleManualVerify = (user) => {
         const form = document.createElement('form');
         form.method = 'POST';
@@ -228,7 +254,7 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
 
             <AdminContentCard className="w-full">
                 <div className="overflow-x-auto w-full">
-                    <table className="w-full min-w-[980px] text-sm">
+                    <table className="w-full min-w-[1100px] text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">User ID</th>
@@ -238,6 +264,7 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Position</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Barangay</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Status</th>
+                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Assignment</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Created</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Last Login</th>
                                 <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
@@ -246,7 +273,7 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
                         <tbody className="divide-y divide-slate-100">
                             {filteredUsers.length === 0 && (
                                 <tr>
-                                    <td colSpan={10} className="px-5 py-12 text-center">
+                                    <td colSpan={11} className="px-5 py-12 text-center">
                                         <p className="text-slate-500 font-medium">No users match your search or filters.</p>
                                         <p className="text-slate-400 text-xs mt-1">Try adjusting the search or filter criteria.</p>
                                     </td>
@@ -276,6 +303,12 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
                                         <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(user.status)}`}>
                                             <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                                             <span className="capitalize">{user.status?.replace('_', ' ') || 'N/A'}</span>
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-4 whitespace-nowrap">
+                                        <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-0.5 text-xs font-medium ${getAssignmentBadge(user.assignment_status || 'available')}`}>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+                                            {getAssignmentLabel(user.assignment_status || 'available')}
                                         </span>
                                     </td>
                                     <td className="px-5 py-4 text-sm text-slate-600 whitespace-nowrap">

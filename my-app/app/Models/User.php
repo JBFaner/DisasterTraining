@@ -12,6 +12,12 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ASSIGNMENT_AVAILABLE = 'available';
+
+    public const ASSIGNMENT_ASSIGNED_TO_SIMULATION = 'assigned_to_simulation';
+
+    public const ASSIGNMENT_UNAVAILABLE = 'unavailable';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -36,6 +42,7 @@ class User extends Authenticatable
         'organization',
         'participant_id',
         'status',
+        'assignment_status',
         'registered_at',
         'group6_external_id',
         'registration_source',
@@ -100,6 +107,11 @@ class User extends Authenticatable
     public function isParticipant()
     {
         return $this->role === 'PARTICIPANT';
+    }
+
+    public function isAssignmentAvailable(): bool
+    {
+        return $this->assignment_status === self::ASSIGNMENT_AVAILABLE;
     }
 
     public function barangayProfile()

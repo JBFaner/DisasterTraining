@@ -14,7 +14,6 @@ use App\Models\SimulationExercisePersonnel;
 use App\Models\SimulationExercisePersonnelAssignment;
 use App\Models\SimulationExerciseTemplate;
 use App\Models\SimulationExerciseTimelineItem;
-use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -698,7 +697,7 @@ class SimulationExerciseTemplateService
      */
     private function serializePersonnelAssignments(SimulationExerciseTemplate $template): array
     {
-        $assignments = $template->personnelAssignments
+        return $template->personnelAssignments
             ->map(fn (SimulationExercisePersonnelAssignment $item) => [
                 'id' => $item->id,
                 'role' => $item->role,
@@ -711,133 +710,26 @@ class SimulationExerciseTemplateService
             ])
             ->values()
             ->all();
-
-        if ($assignments !== []) {
-            return $assignments;
-        }
-
-        return $template->personnel
-            ->filter(fn (SimulationExercisePersonnel $item) => $item->qualified_trainer_id)
-            ->map(fn (SimulationExercisePersonnel $item) => [
-                'id' => null,
-                'role' => $item->role,
-                'source_group' => 'group6_trainers',
-                'qualified_trainer_id' => $item->qualified_trainer_id,
-                'person_name' => $item->qualifiedTrainer?->name ?? 'Trainer',
-                'person_external_id' => null,
-                'notes' => $item->notes,
-                'sort_order' => $item->sort_order,
-            ])
-            ->values()
-            ->all();
     }
 
     /**
+     * Templates are role-only; person pools live on Simulation Readiness.
+     *
      * @return list<array<string, mixed>>
      */
     private function buildPersonnelPool(): array
     {
-        $pools = [];
-
-        $trainers = QualifiedTrainer::active()
-            ->fromStaffUsers()
-            ->with('user')
-            ->orderBy('name')
-            ->get();
-
-        $pools[] = [
-            'group_key' => 'group6_trainers',
-            'group_label' => 'LGU Trainers (Lead / Assistant)',
-            'integration_pending' => false,
-            'members' => $trainers->map(fn (QualifiedTrainer $trainer) => [
-                'id' => $trainer->id,
-                'name' => $trainer->name,
-                'specialization' => $trainer->specialization,
-                'position' => $trainer->user?->position ?? $trainer->specialization,
-                'barangay' => $trainer->barangay,
-                'source_group' => 'group6_trainers',
-                'member_kind' => 'qualified_trainer',
-            ])->values()->all(),
-        ];
-
-        $staff = User::query()
-            ->where('role', 'STAFF')
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'position', 'barangay', 'email']);
-
-        $pools[] = [
-            'group_key' => 'lgu_staff',
-            'group_label' => 'LGU Staff (Support personnel)',
-            'integration_pending' => false,
-            'members' => $staff->map(fn (User $user) => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'specialization' => $user->position,
-                'position' => $user->position,
-                'barangay' => $user->barangay,
-                'source_group' => 'lgu_staff',
-                'member_kind' => 'user',
-            ])->values()->all(),
-        ];
-
-        $pools[] = [
-            'group_key' => 'group3_personnel',
-            'group_label' => 'Group 3 — Resource Allocation Personnel',
-            'integration_pending' => true,
-            'members' => [],
-        ];
-
-        $pools[] = [
-            'group_key' => 'group5_medical',
-            'group_label' => 'Group 5 — Medical & Safety Personnel',
-            'integration_pending' => true,
-            'members' => [],
-        ];
-
-        return $pools;
+        return [];
     }
 
     /**
+     * Clear person rows so templates stay role-only going forward.
+     *
      * @param  list<array<string, mixed>>  $assignments
      */
     private function syncPersonnelAssignments(SimulationExerciseTemplate $template, array $assignments): void
     {
-        $keptIds = [];
-
-        foreach (array_values($assignments) as $index => $row) {
-            $role = trim((string) ($row['role'] ?? ''));
-            $personName = trim((string) ($row['person_name'] ?? ''));
-            if ($role === '' || $personName === '') {
-                continue;
-            }
-
-            $item = isset($row['id'])
-                ? $template->personnelAssignments()->whereKey($row['id'])->first()
-                : null;
-
-            $payload = [
-                'role' => $role,
-                'source_group' => (string) ($row['source_group'] ?? 'group6_trainers'),
-                'qualified_trainer_id' => ! empty($row['qualified_trainer_id'])
-                    ? (int) $row['qualified_trainer_id']
-                    : null,
-                'person_name' => $personName,
-                'person_external_id' => $row['person_external_id'] ?? null,
-                'notes' => $row['notes'] ?? null,
-                'sort_order' => $index + 1,
-            ];
-
-            if ($item) {
-                $item->update($payload);
-            } else {
-                $item = $template->personnelAssignments()->create($payload);
-            }
-
-            $keptIds[] = $item->id;
-        }
-
-        $template->personnelAssignments()->whereNotIn('id', $keptIds)->delete();
+        $template->personnelAssignments()->delete();
     }
 
     /**
