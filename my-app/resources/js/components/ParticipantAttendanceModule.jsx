@@ -94,24 +94,36 @@ export function ParticipantRegistrationAttendanceModule({
                 icon={Users}
                 title="Participant Registration & Attendance"
                 description="Manage participants, event registrations, and attendance. Trainers and other staff are managed under Users & Roles."
-                actions={activeTab === 'participants' ? (
+                actions={(
                     <div className="flex flex-wrap items-center gap-2">
-                        <AdminSecondaryButton
+                        <AdminPrimaryButton
+                            type="button"
                             onClick={() => {
-                                if (typeof window !== 'undefined') {
+                                if (typeof window === 'undefined') return;
+                                if (activeTab === 'participants') {
                                     window.dispatchEvent(new CustomEvent('participant-registry-print'));
+                                    return;
+                                }
+                                if (activeTab === 'registrations') {
+                                    window.dispatchEvent(new CustomEvent('event-registrations-print'));
+                                    return;
+                                }
+                                if (activeTab === 'attendance') {
+                                    window.dispatchEvent(new CustomEvent('event-attendance-list-print'));
                                 }
                             }}
                         >
                             <Printer className="w-4 h-4" />
                             Print
-                        </AdminSecondaryButton>
-                        <AdminPrimaryButton href="/participant/register">
-                            <UserPlus className="w-4 h-4" />
-                            Register New Participant
                         </AdminPrimaryButton>
+                        {activeTab === 'participants' && (
+                            <AdminPrimaryButton href="/participant/register">
+                                <UserPlus className="w-4 h-4" />
+                                Register New Participant
+                            </AdminPrimaryButton>
+                        )}
                     </div>
-                ) : null}
+                )}
             />
 
             {activeTab === 'participants' && (
@@ -518,9 +530,16 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
     const columns = [
         {
             key: 'name',
-            label: 'Full Name',
+            label: 'Participant',
             sortable: true,
-            render: (row) => <span className="text-sm font-medium text-slate-900">{row.name}</span>,
+            render: (row) => (
+                <div className="min-w-[160px]">
+                    <span className="text-sm font-medium text-slate-900">{row.name || '—'}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">
+                        {row.phone || 'No contact number'}
+                    </span>
+                </div>
+            ),
         },
         {
             key: 'email',
@@ -537,11 +556,6 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
             key: 'email_verified_at',
             label: 'Email Status',
             render: (row) => <EmailStatusBadge verifiedAt={row.email_verified_at} />,
-        },
-        {
-            key: 'phone',
-            label: 'Contact Number',
-            render: (row) => <span className="text-sm text-slate-700">{row.phone || '—'}</span>,
         },
         {
             key: 'training_status',

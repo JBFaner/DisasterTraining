@@ -9045,6 +9045,59 @@ function CertificationModule({
                         <AdminPrimaryButton
                             type="button"
                             onClick={() => {
+                                if (activeTab === 'eligible') {
+                                    const html = buildPrintTableDocument({
+                                        title: 'Eligible Participants — Certification',
+                                        subtitle: `Printed ${new Date().toLocaleString()} · ${filteredEligible.length} participant(s)`,
+                                        headers: ['#', 'Participant', 'Event', 'Score', 'Attendance', 'Cert Status'],
+                                        rows: filteredEligible.map((row, index) => [
+                                            index + 1,
+                                            row.user_name || '—',
+                                            row.event_title || '—',
+                                            row.score != null ? `${row.score}%` : '—',
+                                            row.attendance_status || '—',
+                                            row.cert_status || '—',
+                                        ]),
+                                        emptyMessage: 'No eligible participants to print.',
+                                    });
+                                    if (!printHtmlDocument(html, 'Eligible Participants')) {
+                                        Swal.fire('Unable to print', 'Could not prepare the print view.', 'warning');
+                                    }
+                                    return;
+                                }
+                                if (activeTab === 'history') {
+                                    const html = buildPrintTableDocument({
+                                        title: 'Issued Certificates',
+                                        subtitle: `Printed ${new Date().toLocaleString()} · ${filteredIssued.length} certificate(s)`,
+                                        headers: ['#', 'Certificate ID', 'Name', 'Event', 'Issue Date', 'Issued By'],
+                                        rows: filteredIssued.map((c, index) => [
+                                            index + 1,
+                                            c.certificate_number || '—',
+                                            c.user?.name || '—',
+                                            c.simulation_event?.title || '—',
+                                            c.issued_at ? formatDateTime(c.issued_at) : '—',
+                                            c.issuer?.name || '—',
+                                        ]),
+                                        emptyMessage: 'No issued certificates to print.',
+                                    });
+                                    if (!printHtmlDocument(html, 'Issued Certificates')) {
+                                        Swal.fire('Unable to print', 'Could not prepare the print view.', 'warning');
+                                    }
+                                    return;
+                                }
+                                Swal.fire({
+                                    icon: 'info',
+                                    title: 'Print',
+                                    text: 'Switch to Eligible Participants or Issued History to print a table.',
+                                });
+                            }}
+                        >
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </AdminPrimaryButton>
+                        <AdminPrimaryButton
+                            type="button"
+                            onClick={() => {
                                 if (filteredEligible.length === 0) {
                                     Swal.fire({
                                         icon: 'info',
@@ -9226,99 +9279,103 @@ function CertificationModule({
                 )}
             </AdminCollapsibleFilterBar>
 
-            {/* Eligible Participants - Profile-style rows */}
+            {/* Eligible Participants — table */}
             {activeTab === 'eligible' && (
-                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div>
-                            <h3 className="text-sm font-semibold text-slate-800">Eligible Participants</h3>
-                            {(dateFrom || dateTo) && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                    Event date range:
-                                    {' '}
-                                    <span className="font-medium text-slate-700">
-                                        {dateFrom ? formatDate(dateFrom) : 'Any start'}
-                                        {' '}
-                                        –
-                                        {' '}
-                                        {dateTo ? formatDate(dateTo) : 'Any end'}
-                                    </span>
-                                </p>
-                            )}
-                        </div>
-                        {eligibleParticipantsPagination?.total > 0 && (
-                            <p className="text-xs text-slate-500">
-                                {eligibleParticipantsPagination.total} participant{eligibleParticipantsPagination.total === 1 ? '' : 's'} total
-                            </p>
-                        )}
-                    </div>
-                    <div className="p-4 space-y-3">
-                    {filteredEligible.length === 0 ? (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-12 text-center text-slate-500">No participants match filters.</div>
-                    ) : (
-                        filteredEligible.map((row) => {
-                            const initials = getInitials(row.user_name);
-                            const avatarColor = getAvatarColor(row.user_name);
-                            return (
-                                <div key={`${row.user_id}-${row.event_id}`} className="flex items-center gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 transition-all duration-250">
-                                    <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold text-white shadow-md ${avatarColor}`}>
-                                        {initials}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-slate-900">{row.user_name}</p>
-                                        <p className="text-sm text-slate-600 truncate">{row.event_title}</p>
-                                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                            <span className="text-xs text-slate-500">{row.score != null ? `${row.score}%` : '—'} score</span>
-                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
-                                                row.attendance_status === 'present' || row.attendance_status === 'completed'
-                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
-                                            }`}>
-                                                {row.attendance_status === 'present' || row.attendance_status === 'completed' ? '✓ Present' : (row.attendance_status || '—')}
-                                            </span>
-                                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
-                                                row.cert_status === 'eligible' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 ring-1 ring-emerald-200/50' :
-                                                row.cert_status === 'not_eligible' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                                                'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
-                                            }`}>
-                                                {row.cert_status === 'eligible' ? 'Eligible' : row.cert_status === 'not_eligible' ? 'Not Eligible' : 'Pending'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {row.certificate_issued ? (
-                                            row.certificate_id && (
-                                                <a href={`/certificates/${row.certificate_id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all duration-250" title="Preview Certificate">
-                                                    <Eye className="w-4 h-4" />
-                                                </a>
-                                            )
-                                        ) : (
-                                            <>
-                                                <a href={`/admin/simulation-events/${row.event_id}/evaluation/summary`} className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="View Details">
-                                                    <Eye className="w-4 h-4" />
-                                                </a>
-                                                {row.cert_status === 'eligible' && (
-                                                    <button type="button" onClick={() => handleIssueCertificate(row)} className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all duration-250" title="Issue Certificate">
-                                                        <Award className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                                <a href={`/admin/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-md transition-all duration-250" title="Preview Template">
-                                                    <FileText className="w-4 h-4" />
-                                                </a>
-                                            </>
-                                        )}
-                                    </div>
+                <AdminDataTable
+                    columns={[
+                        {
+                            key: 'user_name',
+                            label: 'Participant',
+                            render: (row) => (
+                                <div className="min-w-[140px]">
+                                    <span className="text-sm font-medium text-slate-900">{row.user_name || '—'}</span>
+                                    <span className="mt-0.5 block text-xs text-slate-500">{row.event_title || '—'}</span>
                                 </div>
-                            );
-                        })
+                            ),
+                        },
+                        {
+                            key: 'score',
+                            label: 'Score',
+                            render: (row) => (
+                                <span className="text-sm text-slate-700">
+                                    {row.score != null ? `${row.score}%` : '—'}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'attendance_status',
+                            label: 'Attendance',
+                            render: (row) => (
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                    row.attendance_status === 'present' || row.attendance_status === 'completed'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}>
+                                    {row.attendance_status === 'present' || row.attendance_status === 'completed'
+                                        ? 'Present'
+                                        : (row.attendance_status || '—')}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'cert_status',
+                            label: 'Cert Status',
+                            render: (row) => (
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                    row.cert_status === 'eligible' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                    row.cert_status === 'not_eligible' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                    'bg-amber-100 text-amber-800 border border-amber-200'
+                                }`}>
+                                    {row.cert_status === 'eligible' ? 'Eligible' : row.cert_status === 'not_eligible' ? 'Not Eligible' : 'Pending'}
+                                </span>
+                            ),
+                        },
+                    ]}
+                    data={filteredEligible}
+                    rowKey={(row) => `${row.user_id}-${row.event_id}`}
+                    emptyTitle="No participants match filters"
+                    emptyDescription="Try adjusting event, status, or date filters."
+                    minWidth="900px"
+                    pagination={eligibleParticipantsPagination}
+                    onPageChange={handleEligiblePageChange}
+                    renderActions={(row) => (
+                        <>
+                            {row.certificate_issued ? (
+                                row.certificate_id ? (
+                                    <AdminTableActionButton
+                                        href={`/certificates/${row.certificate_id}/view`}
+                                        icon={Eye}
+                                        title="Preview Certificate"
+                                        variant="view"
+                                    />
+                                ) : null
+                            ) : (
+                                <>
+                                    <AdminTableActionButton
+                                        href={`/admin/simulation-events/${row.event_id}/evaluation/summary`}
+                                        icon={Eye}
+                                        title="View Details"
+                                        variant="view"
+                                    />
+                                    {row.cert_status === 'eligible' && (
+                                        <AdminTableActionButton
+                                            onClick={() => handleIssueCertificate(row)}
+                                            icon={Award}
+                                            title="Issue Certificate"
+                                            variant="edit"
+                                        />
+                                    )}
+                                    <AdminTableActionButton
+                                        href={`/admin/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`}
+                                        icon={FileText}
+                                        title="Preview Template"
+                                        variant="default"
+                                    />
+                                </>
+                            )}
+                        </>
                     )}
-                    </div>
-                    {eligibleParticipantsPagination && (
-                        <AdminTablePagination
-                            pagination={eligibleParticipantsPagination}
-                            onPageChange={handleEligiblePageChange}
-                        />
-                    )}
-                </div>
+                />
             )}
 
             {/* Templates tab - Card layout */}
@@ -9360,81 +9417,72 @@ function CertificationModule({
                 </div>
             )}
 
-            {/* Issued History - Modern table */}
+            {/* Issued History — table */}
             {activeTab === 'history' && (
-                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div>
-                            <h3 className="text-sm font-semibold text-slate-800">Issued Certificates</h3>
-                            {(dateFrom || dateTo) && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                    Date range:
-                                    {' '}
-                                    <span className="font-medium text-slate-700">
-                                        {dateFrom ? formatDate(dateFrom) : 'Any start'}
-                                        {' '}
-                                        –
-                                        {' '}
-                                        {dateTo ? formatDate(dateTo) : 'Any end'}
-                                    </span>
-                                </p>
-                            )}
-                        </div>
-                        {issuedCertificatesPagination?.total > 0 && (
-                            <p className="text-xs text-slate-500">
-                                {issuedCertificatesPagination.total} certificate{issuedCertificatesPagination.total === 1 ? '' : 's'} total
-                            </p>
-                        )}
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                            <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Certificate ID</th>
-                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Name</th>
-                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Event</th>
-                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Issue Date</th>
-                                    <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Issued By</th>
-                                    <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredIssued.length === 0 ? (
-                                    <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-500">No issued certificates.</td></tr>
-                                ) : (
-                                    filteredIssued.map((c, idx) => (
-                                        <tr key={c.id} className={`hover:bg-slate-50/80 transition-colors duration-200 ${idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}>
-                                            <td className="px-5 py-4 font-mono text-xs text-slate-700">{c.certificate_number}</td>
-                                            <td className="px-5 py-4 font-medium text-slate-800">{c.user?.name}</td>
-                                            <td className="px-5 py-4 text-slate-600">{c.simulation_event?.title}</td>
-                                            <td className="px-5 py-4 text-slate-600">{c.issued_at ? formatDateTime(c.issued_at) : '—'}</td>
-                                            <td className="px-5 py-4 text-slate-600">{c.issuer?.name || '—'}</td>
-                                            <td className="px-5 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <a href={`/certificates/${c.id}/view`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:shadow-md transition-all" title="View / Print PDF">
-                                                        <FileText className="w-4 h-4" />
-                                                    </a>
-                                                    <button type="button" onClick={() => handleRevoke(c.id)} className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:shadow-md transition-all" title="Revoke">
-                                                        <XCircle className="w-4 h-4" />
-                                                    </button>
-                                                    <a href="/admin/certification" className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md transition-all" title="Reissue">
-                                                        <RotateCcw className="w-4 h-4" />
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    {issuedCertificatesPagination && (
-                        <AdminTablePagination
-                            pagination={issuedCertificatesPagination}
-                            onPageChange={handleHistoryPageChange}
-                        />
+                <AdminDataTable
+                    columns={[
+                        {
+                            key: 'certificate_number',
+                            label: 'Certificate ID',
+                            render: (row) => (
+                                <span className="font-mono text-xs text-slate-700">{row.certificate_number || '—'}</span>
+                            ),
+                        },
+                        {
+                            key: 'user',
+                            label: 'Name',
+                            render: (row) => (
+                                <span className="text-sm font-medium text-slate-800">{row.user?.name || '—'}</span>
+                            ),
+                        },
+                        {
+                            key: 'event',
+                            label: 'Event',
+                            render: (row) => (
+                                <span className="text-sm text-slate-600">{row.simulation_event?.title || '—'}</span>
+                            ),
+                        },
+                        {
+                            key: 'issued_at',
+                            label: 'Issue Date',
+                            render: (row) => (
+                                <span className="text-sm text-slate-600 whitespace-nowrap">
+                                    {row.issued_at ? formatDateTime(row.issued_at) : '—'}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'issuer',
+                            label: 'Issued By',
+                            render: (row) => (
+                                <span className="text-sm text-slate-600">{row.issuer?.name || '—'}</span>
+                            ),
+                        },
+                    ]}
+                    data={filteredIssued}
+                    rowKey="id"
+                    emptyTitle="No issued certificates"
+                    emptyDescription="Issued certificates will appear here after you issue them."
+                    minWidth="960px"
+                    pagination={issuedCertificatesPagination}
+                    onPageChange={handleHistoryPageChange}
+                    renderActions={(row) => (
+                        <>
+                            <AdminTableActionButton
+                                href={`/certificates/${row.id}/view`}
+                                icon={FileText}
+                                title="View / Print PDF"
+                                variant="view"
+                            />
+                            <AdminTableActionButton
+                                onClick={() => handleRevoke(row.id)}
+                                icon={XCircle}
+                                title="Revoke"
+                                variant="danger"
+                            />
+                        </>
                     )}
-                </div>
+                />
             )}
 
             {/* Automation Rules - Rule cards */}
@@ -9579,6 +9627,7 @@ function RegistrationEventsTable({ events = [] }) {
     const [currentPage, setCurrentPage] = React.useState(1);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
+    const [isLoading, setIsLoading] = React.useState(true);
     const visibleEvents = events.filter(e => ['published', 'ongoing', 'completed'].includes(e.status));
 
     const filteredEvents = visibleEvents.filter((e) => {
@@ -9594,6 +9643,44 @@ function RegistrationEventsTable({ events = [] }) {
     const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const pageEvents = filteredEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+
+    React.useEffect(() => {
+        setIsLoading(true);
+        const timer = window.setTimeout(() => setIsLoading(false), 220);
+        return () => window.clearTimeout(timer);
+    }, [searchTerm, statusFilter, events]);
+
+    const handlePrint = React.useCallback(() => {
+        const html = buildPrintTableDocument({
+            title: 'Event Registrations',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${filteredEvents.length} event(s)${statusFilter !== 'all' ? ` · Status: ${statusFilter}` : ''}${searchTerm.trim() ? ` · Search: ${searchTerm.trim()}` : ''}`,
+            headers: ['#', 'Event Title', 'Scenario', 'Status', 'Date', 'Time', 'Location', 'Registrations'],
+            rows: filteredEvents.map((event, index) => [
+                index + 1,
+                event.title || '—',
+                event.scenario?.title || '—',
+                event.status || '—',
+                formatDate(event.event_date),
+                `${formatTime(event.start_time)} – ${formatTime(event.end_time)}`,
+                event.location || '—',
+                event.registrations_count ?? 0,
+            ]),
+            emptyMessage: 'No events match the current filters.',
+        });
+        if (!printHtmlDocument(html, 'Event Registrations')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view.', 'warning');
+        }
+    }, [filteredEvents, searchTerm, statusFilter]);
+
+    React.useEffect(() => {
+        const onPrint = () => handlePrint();
+        window.addEventListener('event-registrations-print', onPrint);
+        return () => window.removeEventListener('event-registrations-print', onPrint);
+    }, [handlePrint]);
 
     const handleExportCsv = () => {
         const escapeCsv = (value) => {
@@ -9631,6 +9718,53 @@ function RegistrationEventsTable({ events = [] }) {
         if (currentPage > totalPages) setCurrentPage(1);
     }, [currentPage, totalPages]);
 
+    const columns = [
+        {
+            key: 'title',
+            label: 'Event',
+            render: (row) => (
+                <div className="min-w-[200px]">
+                    <span className="text-sm font-medium text-slate-900">{row.title || '—'}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">{row.location || 'Location TBD'}</span>
+                </div>
+            ),
+        },
+        {
+            key: 'scenario',
+            label: 'Scenario',
+            render: (row) => <span className="text-sm text-slate-700">{row.scenario?.title || '—'}</span>,
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (row) => (
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    row.status === 'published' ? 'bg-blue-100 text-blue-800' :
+                    row.status === 'ongoing' ? 'bg-emerald-100 text-emerald-800' :
+                    row.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
+                    'bg-slate-100 text-slate-700'
+                }`}>
+                    {row.status || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'event_date',
+            label: 'Schedule',
+            render: (row) => (
+                <span className="text-sm text-slate-700 whitespace-nowrap">
+                    {formatDate(row.event_date)} · {formatTime(row.start_time)}–{formatTime(row.end_time)}
+                </span>
+            ),
+        },
+        {
+            key: 'registrations_count',
+            label: 'Registrations',
+            align: 'right',
+            render: (row) => <span className="text-sm font-medium text-slate-900">{row.registrations_count ?? 0}</span>,
+        },
+    ];
+
     return (
         <div>
             <AdminCollapsibleFilterBar
@@ -9640,10 +9774,16 @@ function RegistrationEventsTable({ events = [] }) {
                 hasActiveFilters={statusFilter !== 'all'}
                 onClearFilters={() => setStatusFilter('all')}
                 trailing={(
-                    <AdminPrimaryButton type="button" onClick={handleExportCsv}>
-                        <Download className="w-4 h-4" />
-                        Export CSV
-                    </AdminPrimaryButton>
+                    <>
+                        <AdminPrimaryButton type="button" onClick={handlePrint}>
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </AdminPrimaryButton>
+                        <AdminSecondaryButton type="button" onClick={handleExportCsv}>
+                            <Download className="w-4 h-4" />
+                            Export CSV
+                        </AdminSecondaryButton>
+                    </>
                 )}
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -9654,81 +9794,44 @@ function RegistrationEventsTable({ events = [] }) {
                 </AdminFilterSelect>
             </AdminCollapsibleFilterBar>
 
-            {/* Event Cards Layout */}
-            <div className="space-y-4">
-                {pageEvents.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-12 text-center text-slate-500">
-                        {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
-                    </div>
-                ) : (
-                    <>
-                        {pageEvents.map((event) => {
-                            const statusColor = event.status === 'published' ? 'bg-blue-100 text-blue-800' :
-                                event.status === 'ongoing' ? 'bg-emerald-100 text-emerald-800' :
-                                    event.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
-                                        'bg-slate-100 text-slate-700';
-                            return (
-                                <div
-                                    key={event.id}
-                                    className="bg-white rounded-xl border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 transition-all duration-200 overflow-hidden"
-                                >
-                                    <div className="p-5">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
-                                                <div className="space-y-1 text-sm text-slate-600">
-                                                    <div className="flex items-center gap-2">
-                                                        <span>📍</span>
-                                                        <span>{event.location || 'Location TBD'}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span>📖</span>
-                                                        <span>
-                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
-                                                {event.status}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-slate-600">👥</span>
-                                                <span className="text-sm font-medium text-slate-900">{event.registrations_count || 0} Registered</span>
-                                            </div>
-                                            <a
-                                                href={`/admin/simulation-events/${event.id}/registrations`}
-                                                className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
-                                            >
-                                                Manage Registrations
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-                            itemsPerPage={ITEMS_PER_PAGE}
-                            totalItems={totalItems}
-                        />
-                    </>
+            <AdminDataTable
+                columns={columns}
+                data={pageEvents}
+                rowKey="id"
+                isLoading={isLoading}
+                skeletonRows={10}
+                emptyTitle={visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your filters'}
+                emptyDescription="Try adjusting your search or status filter."
+                minWidth="960px"
+                pagination={totalItems > 0 ? {
+                    current_page: currentPage,
+                    last_page: totalPages,
+                    per_page: ITEMS_PER_PAGE,
+                    total: totalItems,
+                    from: totalItems === 0 ? 0 : startIndex + 1,
+                    to: Math.min(startIndex + ITEMS_PER_PAGE, totalItems),
+                } : null}
+                onPageChange={setCurrentPage}
+                renderActions={(row) => (
+                    <AdminTableActionButton
+                        href={`/admin/simulation-events/${row.id}/registrations`}
+                        icon={Eye}
+                        title="Manage Registrations"
+                        variant="view"
+                    />
                 )}
-            </div>
+            />
         </div>
     );
 }
 
-// Attendance Tab - Shows events with attendance tracking (card + shadow style like Resources)
+// Attendance Tab - event list for attendance tracking
 function AttendanceEventsTable({ events = [] }) {
     const ITEMS_PER_PAGE = 10;
     const [currentPage, setCurrentPage] = React.useState(1);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
+    const [isLoading, setIsLoading] = React.useState(true);
     const visibleEvents = events.filter(e => ['published', 'ongoing', 'completed'].includes(e.status));
 
     const filteredEvents = visibleEvents.filter((e) => {
@@ -9744,6 +9847,44 @@ function AttendanceEventsTable({ events = [] }) {
     const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const pageEvents = filteredEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+
+    React.useEffect(() => {
+        setIsLoading(true);
+        const timer = window.setTimeout(() => setIsLoading(false), 220);
+        return () => window.clearTimeout(timer);
+    }, [searchTerm, statusFilter, events]);
+
+    const handlePrint = React.useCallback(() => {
+        const html = buildPrintTableDocument({
+            title: 'Event Attendance',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${filteredEvents.length} event(s)${statusFilter !== 'all' ? ` · Status: ${statusFilter}` : ''}${searchTerm.trim() ? ` · Search: ${searchTerm.trim()}` : ''}`,
+            headers: ['#', 'Event Title', 'Scenario', 'Status', 'Date', 'Time', 'Location', 'Approved Participants'],
+            rows: filteredEvents.map((event, index) => [
+                index + 1,
+                event.title || '—',
+                event.scenario?.title || '—',
+                event.status || '—',
+                formatDate(event.event_date),
+                `${formatTime(event.start_time)} – ${formatTime(event.end_time)}`,
+                event.location || '—',
+                event.approved_registrations_count ?? 0,
+            ]),
+            emptyMessage: 'No events match the current filters.',
+        });
+        if (!printHtmlDocument(html, 'Event Attendance')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view.', 'warning');
+        }
+    }, [filteredEvents, searchTerm, statusFilter]);
+
+    React.useEffect(() => {
+        const onPrint = () => handlePrint();
+        window.addEventListener('event-attendance-list-print', onPrint);
+        return () => window.removeEventListener('event-attendance-list-print', onPrint);
+    }, [handlePrint]);
 
     const handleExportCsv = () => {
         const escapeCsv = (value) => {
@@ -9781,6 +9922,53 @@ function AttendanceEventsTable({ events = [] }) {
         if (currentPage > totalPages) setCurrentPage(1);
     }, [currentPage, totalPages]);
 
+    const columns = [
+        {
+            key: 'title',
+            label: 'Event',
+            render: (row) => (
+                <div className="min-w-[200px]">
+                    <span className="text-sm font-medium text-slate-900">{row.title || '—'}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">{row.location || 'Location TBD'}</span>
+                </div>
+            ),
+        },
+        {
+            key: 'scenario',
+            label: 'Scenario',
+            render: (row) => <span className="text-sm text-slate-700">{row.scenario?.title || '—'}</span>,
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (row) => (
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    row.status === 'published' ? 'bg-blue-100 text-blue-800' :
+                    row.status === 'ongoing' ? 'bg-emerald-100 text-emerald-800' :
+                    row.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
+                    'bg-slate-100 text-slate-700'
+                }`}>
+                    {row.status || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'event_date',
+            label: 'Schedule',
+            render: (row) => (
+                <span className="text-sm text-slate-700 whitespace-nowrap">
+                    {formatDate(row.event_date)} · {formatTime(row.start_time)}–{formatTime(row.end_time)}
+                </span>
+            ),
+        },
+        {
+            key: 'approved_registrations_count',
+            label: 'Approved',
+            align: 'right',
+            render: (row) => <span className="text-sm font-medium text-slate-900">{row.approved_registrations_count ?? 0}</span>,
+        },
+    ];
+
     return (
         <div>
             <AdminCollapsibleFilterBar
@@ -9790,10 +9978,16 @@ function AttendanceEventsTable({ events = [] }) {
                 hasActiveFilters={statusFilter !== 'all'}
                 onClearFilters={() => setStatusFilter('all')}
                 trailing={(
-                    <AdminPrimaryButton type="button" onClick={handleExportCsv}>
-                        <Download className="w-4 h-4" />
-                        Export CSV
-                    </AdminPrimaryButton>
+                    <>
+                        <AdminPrimaryButton type="button" onClick={handlePrint}>
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </AdminPrimaryButton>
+                        <AdminSecondaryButton type="button" onClick={handleExportCsv}>
+                            <Download className="w-4 h-4" />
+                            Export CSV
+                        </AdminSecondaryButton>
+                    </>
                 )}
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -9804,71 +9998,33 @@ function AttendanceEventsTable({ events = [] }) {
                 </AdminFilterSelect>
             </AdminCollapsibleFilterBar>
 
-            {/* Event Cards Layout */}
-            <div className="space-y-4">
-                {pageEvents.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-md p-12 text-center text-slate-500">
-                        {visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your search criteria.'}
-                    </div>
-                ) : (
-                    <>
-                        {pageEvents.map((event) => {
-                            const statusColor = event.status === 'published' ? 'bg-blue-100 text-blue-800' :
-                                event.status === 'ongoing' ? 'bg-emerald-100 text-emerald-800' :
-                                    event.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
-                                        'bg-slate-100 text-slate-700';
-                            return (
-                                <div
-                                    key={event.id}
-                                    className="bg-white rounded-xl border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 transition-all duration-200 overflow-hidden"
-                                >
-                                    <div className="p-5">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-slate-900 mb-2">📘 {event.title}</h3>
-                                                <div className="space-y-1 text-sm text-slate-600">
-                                                    <div className="flex items-center gap-2">
-                                                        <span>📍</span>
-                                                        <span>{event.location || 'Location TBD'}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span>📖</span>
-                                                        <span>
-                                                            {formatDate(event.event_date)} | {formatTime(event.start_time)}–{formatTime(event.end_time)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
-                                                {event.status}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-slate-600">👥</span>
-                                                <span className="text-sm font-medium text-slate-900">{event.approved_registrations_count || 0} Approved Participants</span>
-                                            </div>
-                                            <a
-                                                href={`/admin/simulation-events/${event.id}/attendance`}
-                                                className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
-                                            >
-                                                Track Attendance
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-                            itemsPerPage={ITEMS_PER_PAGE}
-                            totalItems={totalItems}
-                        />
-                    </>
+            <AdminDataTable
+                columns={columns}
+                data={pageEvents}
+                rowKey="id"
+                isLoading={isLoading}
+                skeletonRows={10}
+                emptyTitle={visibleEvents.length === 0 ? 'No published/ongoing/completed events yet.' : 'No events match your filters'}
+                emptyDescription="Try adjusting your search or status filter."
+                minWidth="960px"
+                pagination={totalItems > 0 ? {
+                    current_page: currentPage,
+                    last_page: totalPages,
+                    per_page: ITEMS_PER_PAGE,
+                    total: totalItems,
+                    from: totalItems === 0 ? 0 : startIndex + 1,
+                    to: Math.min(startIndex + ITEMS_PER_PAGE, totalItems),
+                } : null}
+                onPageChange={setCurrentPage}
+                renderActions={(row) => (
+                    <AdminTableActionButton
+                        href={`/admin/simulation-events/${row.id}/attendance`}
+                        icon={ClipboardCheck}
+                        title="Track Attendance"
+                        variant="view"
+                    />
                 )}
-            </div>
+            />
         </div>
     );
 }
@@ -12103,7 +12259,7 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                 method="POST"
                 action={`/admin/simulation-events/${event.id}/evaluation/${user.id}`}
                 onSubmit={(e) => e.preventDefault()}
-                className="flex flex-col lg:flex-row gap-6 items-start"
+                className="flex flex-col lg:flex-row gap-6"
             >
                 <input type="hidden" name="_token" value={csrf} />
                 <input type="hidden" name="status" value="submitted" />
@@ -12217,8 +12373,8 @@ function EvaluationForm({ event, evaluation, user, attendance, participantEvalua
                 </div>
 
                 {/* Right Column - Sticky Live Score Summary */}
-                <div className="w-full lg:w-[30%] lg:min-w-[280px] lg:self-start">
-                    <div className="lg:sticky lg:top-24 z-20 rounded-xl bg-white border border-slate-200 shadow-md p-6 space-y-5">
+                <div className="w-full lg:w-[30%] lg:min-w-[280px] lg:self-start lg:sticky lg:top-20">
+                    <div className="rounded-xl bg-white border border-slate-200 shadow-md p-6 space-y-5">
                         <h4 className="text-sm font-semibold text-slate-800">Live Score Summary</h4>
                         <div className="space-y-4">
                             <div>

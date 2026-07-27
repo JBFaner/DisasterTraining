@@ -94,7 +94,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 text-slate-900 flex overflow-x-clip">
+        <div className="min-h-screen bg-slate-100 text-slate-900 flex">
             {/* Mobile Top App Bar */}
             <header className="no-print md:hidden fixed top-0 left-0 right-0 h-14 bg-slate-900 text-slate-50 flex items-center justify-between px-4 z-50 shadow-lg">
                 {/* Left Navigation Toggle */}
@@ -292,7 +292,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
 
             {/* Main content */}
             <main
-                className={`flex-1 min-w-0 transition-all duration-300 pt-14 md:pt-0 ${isCollapsed ? 'md:ml-20' : 'md:ml-80'} w-full max-w-full overflow-x-clip`}
+                className={`flex-1 min-w-0 transition-all duration-300 pt-14 md:pt-0 ${isCollapsed ? 'md:ml-20' : 'md:ml-80'} w-full max-w-full`}
             >
                 <TopBar
                     moduleName={moduleName}
@@ -303,7 +303,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                 />
                 {/* Breadcrumbs - Below TopBar */}
                 {breadcrumbs && breadcrumbs.length > 0 && (
-                    <div className="no-print bg-white border-b border-slate-200 px-6 py-2 w-full max-w-full overflow-x-clip">
+                    <div className="no-print bg-white border-b border-slate-200 px-6 py-2 w-full max-w-full overflow-x-hidden">
                         <nav className="flex items-center gap-1.5 text-xs text-slate-600">
                             {breadcrumbs.map((crumb, index) => (
                                 <React.Fragment key={index}>
@@ -327,7 +327,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         </nav>
                     </div>
                 )}
-                <div className="p-6 w-full max-w-full overflow-x-clip box-border">
+                <div className="p-6 w-full max-w-full box-border">
                     {children}
                 </div>
             </main>
