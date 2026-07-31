@@ -7,7 +7,8 @@
  * and pull approved assigned_personnel via GET /api/patrol_requests.php
  * for Exercise Plan Marshal assignments.
  *
- * Note: CPSQC currently allows source_group group_6 | group_8 only.
+ * Note: CPSQC historically allowed group_6 | group_8; ask them to whitelist
+ *       CPSQC_SOURCE_GROUP (e.g. marshall) before switching away from group_6.
  */
 return [
 
@@ -32,8 +33,8 @@ return [
     */
     'defaults' => [
         'source' => env('CPSQC_SOURCE', 'partner_api'),
-        // CPSQC whitelist: group_6 | group_8 (until they add disaster_training)
-        'source_group' => env('CPSQC_SOURCE_GROUP', 'group_6'),
+        // CPSQC whitelist currently: group_6 | group_8 (Disaster Training = group_8)
+        'source_group' => env('CPSQC_SOURCE_GROUP', 'group_8'),
         'requesting_unit' => env('CPSQC_REQUESTING_UNIT', 'Disaster Preparedness Training and Simulation'),
         'contact_person' => env('CPSQC_CONTACT_PERSON', 'LGU Training Admin'),
         'contact_position' => env('CPSQC_CONTACT_POSITION', 'Training Coordinator'),

@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             RegisteredParticipantForEvaluationSeeder::class,
             DemoEvaluationAndCertificationSeeder::class,
             RandomParticipantAttendanceSeeder::class,
+            RealisticParticipantProgressSeeder::class,
         ]);
     }
 }
