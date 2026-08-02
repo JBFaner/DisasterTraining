@@ -9,26 +9,23 @@ import {
     AdminContentCard,
     AdminStatCard,
 } from '../components/admin/AdminLayout';
+import { AdminTablePagination } from '../components/admin/AdminDataTable';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
 
-function StatusBadge({ attempt }) {
-    if (attempt.status === 'in_progress') {
-        return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-amber-50 text-amber-800 border-amber-200">In Progress</span>;
-    }
-    if (attempt.status === 'expired') {
-        return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-200">Expired</span>;
-    }
-    if (attempt.passed) {
-        return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">Passed</span>;
-    }
-    return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-rose-50 text-rose-700 border-rose-200">Failed</span>;
-}
-
-function statusLabel(attempt) {
-    if (attempt.status === 'in_progress') return 'In Progress';
-    if (attempt.status === 'expired') return 'Expired';
-    return attempt.passed ? 'Passed' : 'Failed';
+function ProgressStatusPill({ status }) {
+    const complete = status === 'completed';
+    return (
+        <span
+            className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                complete
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-amber-200 bg-amber-50 text-amber-800'
+            }`}
+        >
+            {complete ? 'Complete' : 'In Progress'}
+        </span>
+    );
 }
 
 export function LessonQuizResultsIndex({
@@ -36,6 +33,8 @@ export function LessonQuizResultsIndex({
     pagination = null,
     analytics = null,
     modules = [],
+    lessons = [],
+    lessonColumns = [],
     batches = [],
     filters = {},
 }) {
@@ -74,6 +73,7 @@ export function LessonQuizResultsIndex({
         else url.searchParams.delete('status');
         if (moduleFilter) url.searchParams.set('training_module_id', moduleFilter);
         else url.searchParams.delete('training_module_id');
+        url.searchParams.delete('training_content_id');
         if (batchFilter) url.searchParams.set('batch_filter', batchFilter);
         else url.searchParams.delete('batch_filter');
         if (participantName.trim()) url.searchParams.set('participant_name', participantName.trim());
@@ -98,31 +98,28 @@ export function LessonQuizResultsIndex({
         const moduleLabel = moduleFilter
             ? (modules || []).find((m) => String(m.id) === String(moduleFilter))?.title || moduleFilter
             : 'All Modules';
-        const batchLabel = batchFilter
-            ? (batches || []).find((b) => String(b.id) === String(batchFilter))?.label || batchFilter
-            : 'All Batches';
+
+        const headers = ['#', 'Participant', 'Module', 'Batch', 'Status', 'Progress'];
+        const rows = (attempts || []).map((row, index) => [
+            index + 1,
+            row.participant?.name || '—',
+            row.training_module?.title || '—',
+            row.batch_label || row.batch?.label || '—',
+            row.progress_status === 'completed' ? 'Complete' : 'In Progress',
+            `${row.completed_lessons ?? row.passed_lessons ?? 0}/${row.total_lessons ?? '—'} lessons`,
+        ]);
 
         const html = buildPrintTableDocument({
-            title: 'Lesson Quiz Results',
-            subtitle: `Printed ${new Date().toLocaleString()} · ${(attempts || []).length} row(s) · Module: ${moduleLabel} · Batch: ${batchLabel}${participantName.trim() ? ` · Participant: ${participantName.trim()}` : ''}${statusFilter ? ` · Status: ${statusFilter}` : ''}${dateFrom || dateTo ? ` · Dates: ${dateFrom || '…'} to ${dateTo || '…'}` : ''}`,
-            headers: ['#', 'Participant', 'Module', 'Lesson', 'Attempt', 'Score', '%', 'Status', 'Completed'],
-            rows: (attempts || []).map((row, index) => [
-                index + 1,
-                row.participant?.name || '—',
-                row.training_module?.title || '—',
-                row.lesson?.title || '—',
-                `#${row.attempt_number ?? '—'}`,
-                `${row.score ?? 0}/${row.total_questions ?? 0}`,
-                row.percentage != null ? `${Number(row.percentage).toFixed(1)}%` : '—',
-                statusLabel(row),
-                row.completed_at ? new Date(row.completed_at).toLocaleString() : '—',
-            ]),
+            title: 'Lesson Quiz Results by Participant',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${(attempts || []).length} participant row(s)${pagination?.total ? ` of ${pagination.total}` : ''} · Module: ${moduleLabel}`,
+            headers,
+            rows,
         });
 
         if (!printHtmlDocument(html, 'Lesson Quiz Results')) {
             Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
         }
-    }, [attempts, modules, batches, moduleFilter, batchFilter, participantName, statusFilter, dateFrom, dateTo]);
+    }, [attempts, pagination, modules, moduleFilter]);
 
     React.useEffect(() => {
         const onPrint = () => handlePrint();
@@ -143,12 +140,17 @@ export function LessonQuizResultsIndex({
                 </div>
             )}
 
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Each row is one participant. Status shows Complete or In Progress. Click a name to open Lesson 1–5 scores and review answers.
+            </div>
+
             <AdminCollapsibleFilterBar
                 searchValue={search}
                 onSearchChange={(e) => setSearch(e.target.value)}
-                searchPlaceholder="Search participant, module, or lesson..."
-                hasActiveFilters={Boolean(statusFilter || moduleFilter || batchFilter || participantName || dateFrom || dateTo)}
+                searchPlaceholder="Search participant or module..."
+                hasActiveFilters={Boolean(statusFilter || moduleFilter || batchFilter || participantName || dateFrom || dateTo || search)}
                 onClearFilters={() => {
+                    setSearch('');
                     setStatusFilter('');
                     setModuleFilter('');
                     setBatchFilter('');
@@ -166,10 +168,8 @@ export function LessonQuizResultsIndex({
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="">All Status</option>
-                    <option value="passed">Passed</option>
-                    <option value="failed">Failed</option>
+                    <option value="completed">Complete</option>
                     <option value="in_progress">In Progress</option>
-                    <option value="expired">Expired</option>
                 </AdminFilterSelect>
                 <AdminFilterSelect label="Training Module" value={moduleFilter} onChange={(e) => handleModuleChange(e.target.value)}>
                     <option value="">All Modules</option>
@@ -203,33 +203,41 @@ export function LessonQuizResultsIndex({
                             <tr>
                                 <th className="text-left px-4 py-3">Participant</th>
                                 <th className="text-left px-4 py-3">Module</th>
-                                <th className="text-left px-4 py-3">Lesson</th>
-                                <th className="text-left px-4 py-3">Attempt</th>
-                                <th className="text-left px-4 py-3">Score</th>
-                                <th className="text-left px-4 py-3">%</th>
+                                <th className="text-left px-4 py-3">Batch</th>
                                 <th className="text-left px-4 py-3">Status</th>
-                                <th className="text-left px-4 py-3">Completed</th>
+                                <th className="text-left px-4 py-3">Progress</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {(attempts || []).length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                                        No lesson quiz attempts yet.
+                                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                                        No lesson quiz participants yet.
                                     </td>
                                 </tr>
                             ) : (
                                 attempts.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/80">
-                                        <td className="px-4 py-3 font-medium text-slate-900">{row.participant?.name || '—'}</td>
+                                    <tr key={`${row.participant?.id}-${row.training_module?.id}`} className="hover:bg-slate-50/80">
+                                        <td className="px-4 py-3 font-medium text-slate-900">
+                                            {row.detail_href ? (
+                                                <a
+                                                    href={row.detail_href}
+                                                    className="text-emerald-700 hover:text-emerald-800 hover:underline"
+                                                    title="View lesson 1–5 scores"
+                                                >
+                                                    {row.participant?.name || '—'}
+                                                </a>
+                                            ) : (
+                                                row.participant?.name || '—'
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-slate-700">{row.training_module?.title || '—'}</td>
-                                        <td className="px-4 py-3 text-slate-700 max-w-[220px] truncate">{row.lesson?.title || '—'}</td>
-                                        <td className="px-4 py-3 text-slate-600">#{row.attempt_number}</td>
-                                        <td className="px-4 py-3">{row.score ?? 0}/{row.total_questions ?? 0}</td>
-                                        <td className="px-4 py-3 font-semibold">{row.percentage != null ? `${Number(row.percentage).toFixed(1)}%` : '—'}</td>
-                                        <td className="px-4 py-3"><StatusBadge attempt={row} /></td>
-                                        <td className="px-4 py-3 text-xs text-slate-500">
-                                            {row.completed_at ? new Date(row.completed_at).toLocaleString() : '—'}
+                                        <td className="px-4 py-3 text-slate-700">{row.batch_label || row.batch?.label || '—'}</td>
+                                        <td className="px-4 py-3">
+                                            <ProgressStatusPill status={row.progress_status} />
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-700">
+                                            {row.completed_lessons ?? 0}/{row.total_lessons ?? (lessonColumns?.length || lessons?.length || 5)} lessons
                                         </td>
                                     </tr>
                                 ))
@@ -237,21 +245,15 @@ export function LessonQuizResultsIndex({
                         </tbody>
                     </table>
                 </div>
+                {pagination && pagination.total > 0 ? (
+                    <AdminTablePagination
+                        pagination={pagination}
+                        onPageChange={(page) => {
+                            window.location.href = buildPageUrl(page);
+                        }}
+                    />
+                ) : null}
             </AdminContentCard>
-
-            {pagination && pagination.last_page > 1 && (
-                <div className="flex items-center justify-between text-sm text-slate-600">
-                    <span>Page {pagination.current_page} of {pagination.last_page} ({pagination.total} records)</span>
-                    <div className="flex gap-2">
-                        {pagination.current_page > 1 && (
-                            <a href={buildPageUrl(pagination.current_page - 1)} className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50">Previous</a>
-                        )}
-                        {pagination.current_page < pagination.last_page && (
-                            <a href={buildPageUrl(pagination.current_page + 1)} className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50">Next</a>
-                        )}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

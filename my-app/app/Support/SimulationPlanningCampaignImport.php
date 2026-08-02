@@ -50,6 +50,7 @@ class SimulationPlanningCampaignImport
             'disaster_type' => self::resolveDisasterType($module, $planning),
             'simulation_plan_status' => self::resolvePlanStatus($request),
             'simulation_event_id' => $request->simulation_event_id,
+            'demo_force_ready' => (bool) data_get($request->payload, 'demo_force_ready', false),
         ];
     }
 

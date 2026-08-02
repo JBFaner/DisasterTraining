@@ -14,15 +14,12 @@ class SimulationExerciseTemplate extends Model
 
     public const STATUS_ARCHIVED = 'archived';
 
+    /** Core hazard categories always shown in the Exercise Plan dropdown. */
     public const CATEGORIES = [
         'Fire Safety',
         'Earthquake',
         'Flood',
         'Typhoon',
-        'Landslide',
-        'First Aid',
-        'Rescue',
-        'Multi-Hazard',
     ];
 
     public const EXERCISE_TYPES = [
@@ -30,6 +27,50 @@ class SimulationExerciseTemplate extends Model
         'Functional Exercise',
         'Full Scale Exercise',
     ];
+
+    /**
+     * Dropdown options: core categories first, then custom categories already used
+     * on exercise plans or training modules (e.g. new module categories).
+     *
+     * @return list<string>
+     */
+    public static function availableCategoryOptions(): array
+    {
+        $extras = static::query()
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category')
+            ->all();
+
+        try {
+            $moduleCats = TrainingModule::query()
+                ->whereNotNull('category')
+                ->where('category', '!=', '')
+                ->distinct()
+                ->orderBy('category')
+                ->pluck('category')
+                ->all();
+            $extras = array_merge($extras, $moduleCats);
+        } catch (\Throwable) {
+            // Training modules table may be unavailable in some contexts.
+        }
+
+        $core = self::CATEGORIES;
+        $custom = [];
+        foreach ($extras as $category) {
+            $label = trim((string) $category);
+            if ($label === '' || in_array($label, $core, true) || in_array($label, $custom, true)) {
+                continue;
+            }
+            $custom[] = $label;
+        }
+
+        sort($custom, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return array_values(array_merge($core, $custom));
+    }
 
     /** Per-participant skill scoring during execution (e.g. fire extinguisher hands-on). */
     public const EVALUATION_MODE_INDIVIDUAL = 'individual';

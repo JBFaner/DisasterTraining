@@ -159,6 +159,30 @@ class SimulationEventPlanningController extends Controller
         ]);
     }
 
+    /**
+     * Presentation helper: force readiness quotas/deadlines as met for a campaign.
+     */
+    public function demoMeetQuota(Request $request, CampaignRequest $campaignRequest)
+    {
+        $this->authorizeAccess();
+        abort_unless($campaignRequest->status === 'approved', 422, 'Only approved campaigns can use Meet Quota (Demo).');
+
+        if ($campaignRequest->simulation_event_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This campaign already has a simulation event.',
+            ], 422);
+        }
+
+        $updated = $this->planningService->enableDemoMeetQuota($campaignRequest);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Demo quota met. You can now use a published exercise plan for this campaign.',
+            'schedule' => $this->planningService->serializeScheduleForDashboard($updated),
+        ]);
+    }
+
     protected function authorizeAccess(): void
     {
         $user = portal_user();

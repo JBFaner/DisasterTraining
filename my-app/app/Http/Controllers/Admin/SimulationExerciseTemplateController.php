@@ -70,7 +70,7 @@ class SimulationExerciseTemplateController extends Controller
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::CATEGORIES)],
+            'category' => ['required', 'string', 'max:100'],
             'exercise_type' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::EXERCISE_TYPES)],
             'estimated_duration_minutes' => ['nullable', 'integer', 'min:15', 'max:1440'],
         ]);
@@ -92,7 +92,7 @@ class SimulationExerciseTemplateController extends Controller
         $data = $request->validate([
             'section' => ['required', 'string', 'in:objectives,activities,timeline,personnel,equipment,scenario,evaluation_objectives'],
             'title' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::CATEGORIES)],
+            'category' => ['required', 'string', 'max:100'],
             'exercise_type' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::EXERCISE_TYPES)],
             'estimated_duration_minutes' => ['nullable', 'integer', 'min:15', 'max:1440'],
             'context' => ['nullable', 'array'],
@@ -271,7 +271,7 @@ class SimulationExerciseTemplateController extends Controller
     {
         return $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::CATEGORIES)],
+            'category' => ['required', 'string', 'max:100'],
             'exercise_type' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::EXERCISE_TYPES)],
             'evaluation_mode' => ['nullable', 'string', 'in:'.implode(',', SimulationExerciseTemplate::EVALUATION_MODES)],
             'difficulty_level' => ['required', 'string', 'in:'.implode(',', SimulationExerciseTemplate::DIFFICULTY_LEVELS)],

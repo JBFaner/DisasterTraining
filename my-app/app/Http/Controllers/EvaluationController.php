@@ -88,6 +88,57 @@ class EvaluationController extends Controller
     }
 
     /**
+     * Admin: participant lesson quiz scores (Lessons 1–N) with links to answer review.
+     */
+    public function showParticipantLessonQuizzes(Request $request, \App\Models\User $user)
+    {
+        $this->authorizeEvaluationAccess();
+        abort_unless($user->role === 'PARTICIPANT', 404);
+
+        $moduleId = $request->filled('training_module_id')
+            ? $request->integer('training_module_id')
+            : null;
+
+        return view('app', [
+            'section' => 'lesson_quiz_participant_detail',
+            'lesson_quiz_participant_detail' => $this->hubService->participantLessonQuizDetail($user, $moduleId),
+        ]);
+    }
+
+    /**
+     * Admin view of a completed (or in-progress) lesson quiz attempt score.
+     */
+    public function showLessonQuizAttempt(\App\Models\LessonQuizAttempt $attempt)
+    {
+        $this->authorizeEvaluationAccess();
+
+        $attempt->loadMissing(['user', 'trainingModule', 'trainingContent', 'config']);
+
+        $payload = $attempt->toParticipantArray();
+        $payload['participant'] = $attempt->user ? [
+            'id' => $attempt->user->id,
+            'name' => $attempt->user->name,
+            'email' => $attempt->user->email,
+        ] : null;
+        $payload['training_module'] = $attempt->trainingModule ? [
+            'id' => $attempt->trainingModule->id,
+            'title' => $attempt->trainingModule->title,
+        ] : null;
+        $payload['lesson'] = $attempt->trainingContent ? [
+            'id' => $attempt->trainingContent->id,
+            'title' => $attempt->trainingContent->title,
+        ] : null;
+        // Admins can always review answers on completed/expired attempts.
+        $payload['show_answer_review'] = $attempt->isCompleted();
+        $payload['total_questions'] = count($attempt->generated_questions ?? []);
+
+        return view('app', [
+            'section' => 'lesson_quiz_attempt_detail',
+            'lesson_quiz_attempt_detail' => $payload,
+        ]);
+    }
+
+    /**
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
     protected function loadCompletedEvents(Request $request)

@@ -39,20 +39,6 @@ function formatDate(dateString) {
     });
 }
 
-function monitoringStatusTone(status) {
-    const map = {
-        Scheduled: 'bg-sky-50 text-sky-700 border-sky-200',
-        Ready: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        Ongoing: 'bg-blue-50 text-blue-700 border-blue-200',
-        Completed: 'bg-slate-50 text-slate-700 border-slate-200',
-        Cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
-        completed: 'bg-slate-50 text-slate-700 border-slate-200',
-        ended: 'bg-rose-50 text-rose-700 border-rose-200',
-        archived: 'bg-amber-50 text-amber-800 border-amber-200',
-    };
-    return map[status] || 'bg-slate-50 text-slate-700 border-slate-200';
-}
-
 function getInitialTab() {
     if (typeof window === 'undefined') return 'schedules';
     const params = new URLSearchParams(window.location.search);
@@ -169,25 +155,25 @@ function CompletedEventHistoryTab({ events = [] }) {
         const html = buildPrintTableDocument({
             title: 'Completed Event History',
             subtitle: `Printed ${new Date().toLocaleString()} · ${filteredEvents.length} event(s)${filterModule ? ` · Module: ${filterModule}` : ''}${filterStatus ? ` · Status: ${filterStatus}` : ''}${searchQuery.trim() ? ` · Search: ${searchQuery.trim()}` : ''}`,
-            headers: ['#', 'Simulation Title', 'Training Module', 'Trainer', 'Participants', 'Completion Date', 'Status', 'Evaluation', 'Attendance'],
+            headers: ['#', 'Simulation Title', 'Training Module', 'Trainer', 'Participants', 'Completion Date', 'Evaluation'],
             rows: filteredEvents.map((event, index) => {
                 const evaluation = event.evaluation_summary || {};
-                const evaluationText = [evaluation.success_level, evaluation.overall_remarks].filter(Boolean).join(' — ') || 'No evaluation recorded';
+                const evaluationText = evaluation.success_level
+                    || [evaluation.overall_remarks].filter(Boolean).join(' — ')
+                    || 'No evaluation';
                 const attendance = event.attendance_summary || {};
-                const attendanceText = attendance.registered
-                    ? `${attendance.checked_in ?? 0}/${attendance.registered} checked in (${attendance.completion_rate ?? 0}%)`
-                    : '—';
+                const participantText = attendance.registered
+                    ? `${event.approved_registrations_count ?? 0} (${attendance.checked_in ?? 0} checked in)`
+                    : String(event.approved_registrations_count ?? 0);
 
                 return [
                     index + 1,
                     event.title || '—',
                     event.scenario?.training_module?.title || '—',
                     event.assigned_trainer?.name || '—',
-                    event.approved_registrations_count ?? 0,
+                    participantText,
                     formatDate(event.completed_at || event.event_date),
-                    event.monitoring_status || deriveSimulationEventStatus(event),
                     evaluationText,
-                    attendanceText,
                 ];
             }),
             emptyMessage: 'No completed events match the current filters.',
@@ -202,58 +188,70 @@ function CompletedEventHistoryTab({ events = [] }) {
         {
             key: 'title',
             label: 'Simulation Title',
-            render: (row) => <span className="font-medium text-slate-900">{row.title}</span>,
+            render: (row) => (
+                <a
+                    href={`/admin/simulation-events/${row.id}?tab=evaluation`}
+                    className="font-medium text-slate-900 line-clamp-2 max-w-[220px] hover:text-emerald-700"
+                    title={row.title || ''}
+                >
+                    {row.title || '—'}
+                </a>
+            ),
         },
         {
             key: 'module',
-            label: 'Training Module',
-            render: (row) => row.scenario?.training_module?.title || '—',
+            label: 'Module',
+            render: (row) => (
+                <span className="text-slate-700 truncate max-w-[140px] block" title={row.scenario?.training_module?.title || ''}>
+                    {row.scenario?.training_module?.title || '—'}
+                </span>
+            ),
         },
         {
             key: 'trainer',
             label: 'Trainer',
-            render: (row) => row.assigned_trainer?.name || '—',
+            render: (row) => (
+                <span className="text-slate-700 truncate max-w-[120px] block" title={row.assigned_trainer?.name || ''}>
+                    {row.assigned_trainer?.name || '—'}
+                </span>
+            ),
         },
         {
             key: 'participants',
             label: 'Participants',
-            render: (row) => row.approved_registrations_count ?? 0,
-        },
-        {
-            key: 'completion_date',
-            label: 'Completion Date',
-            render: (row) => formatDate(row.completed_at || row.event_date),
-        },
-        {
-            key: 'status',
-            label: 'Status',
+            align: 'right',
             render: (row) => {
-                const status = row.monitoring_status || deriveSimulationEventStatus(row);
+                const attendance = row.attendance_summary || {};
+                const total = row.approved_registrations_count ?? 0;
+                if (!attendance.registered) {
+                    return <span className="font-medium text-slate-900">{total}</span>;
+                }
                 return (
-                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${monitoringStatusTone(status)}`}>
-                        {status}
+                    <span className="text-slate-800" title={`${attendance.checked_in ?? 0}/${attendance.registered} checked in`}>
+                        <span className="font-medium">{total}</span>
+                        <span className="block text-[11px] text-slate-500">{attendance.checked_in ?? 0} in</span>
                     </span>
                 );
             },
         },
         {
-            key: 'evaluation',
-            label: 'Evaluation Summary',
-            className: 'max-w-xs',
-            render: (row) => {
-                const evaluation = row.evaluation_summary || {};
-                const summaryParts = [evaluation.success_level, evaluation.overall_remarks].filter(Boolean);
-                const summary = summaryParts.length > 0 ? summaryParts.join(' — ') : 'No evaluation recorded';
-                return <span className="text-slate-600 truncate block max-w-xs" title={summary}>{summary}</span>;
-            },
+            key: 'completion_date',
+            label: 'Completed',
+            render: (row) => formatDate(row.completed_at || row.event_date),
         },
         {
-            key: 'attendance',
-            label: 'Attendance Summary',
+            key: 'evaluation',
+            label: 'Evaluation',
             render: (row) => {
-                const attendance = row.attendance_summary || {};
-                if (!attendance.registered) return '—';
-                return `${attendance.checked_in ?? 0}/${attendance.registered} checked in (${attendance.completion_rate ?? 0}%)`;
+                const evaluation = row.evaluation_summary || {};
+                const level = evaluation.success_level || '';
+                const remarks = evaluation.overall_remarks || '';
+                const summary = [level, remarks].filter(Boolean).join(' — ') || 'No evaluation';
+                return (
+                    <span className="text-slate-600 truncate block max-w-[160px]" title={summary}>
+                        {level || '—'}
+                    </span>
+                );
             },
         },
     ];
@@ -346,7 +344,7 @@ function CompletedEventHistoryTab({ events = [] }) {
                         variant="view"
                     />
                 )}
-                minWidth="1100px"
+                minWidth="860px"
             />
         </div>
     );

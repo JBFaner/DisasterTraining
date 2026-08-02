@@ -20,6 +20,7 @@ export function AdminDataTable({
     pagination = null,
     onPageChange = null,
     renderActions = null,
+    onRowClick = null,
     minWidth = '900px',
     compact = false,
 }) {
@@ -133,7 +134,10 @@ export function AdminDataTable({
                         {!isLoading && data.map((row, index) => (
                             <tr
                                 key={resolveRowKey(row, index)}
-                                className="bg-white hover:bg-slate-50/80 transition-colors duration-150"
+                                className={`bg-white hover:bg-slate-50/80 transition-colors duration-150 ${
+                                    onRowClick ? 'cursor-pointer' : ''
+                                }`}
+                                onClick={onRowClick ? () => onRowClick(row) : undefined}
                             >
                                 {columns.map((column) => (
                                     <td
@@ -148,7 +152,10 @@ export function AdminDataTable({
                                     </td>
                                 ))}
                                 {renderActions && (
-                                    <td className={`${cellPadding} whitespace-nowrap`}>
+                                    <td
+                                        className={`${cellPadding} whitespace-nowrap`}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
                                         <div className="flex items-center justify-end gap-2">
                                             {renderActions(row, index)}
                                         </div>

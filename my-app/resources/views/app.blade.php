@@ -303,6 +303,9 @@
             @isset($lesson_quiz_attempt)
                 data-lesson-quiz-attempt='@json($lesson_quiz_attempt)'
             @endisset
+            @isset($lesson_quiz_attempt_detail)
+                data-lesson-quiz-attempt-detail='@json($lesson_quiz_attempt_detail)'
+            @endisset
             @isset($ai_scenario_attempt)
                 data-ai-scenario-attempt='@json($ai_scenario_attempt)'
             @endisset
@@ -329,6 +332,15 @@
             @endisset
             @isset($lesson_quiz_batches)
                 data-lesson-quiz-batches='@json($lesson_quiz_batches)'
+            @endisset
+            @isset($lesson_quiz_lessons)
+                data-lesson-quiz-lessons='@json($lesson_quiz_lessons)'
+            @endisset
+            @isset($lesson_quiz_lesson_columns)
+                data-lesson-quiz-lesson-columns='@json($lesson_quiz_lesson_columns)'
+            @endisset
+            @isset($lesson_quiz_participant_detail)
+                data-lesson-quiz-participant-detail='@json($lesson_quiz_participant_detail)'
             @endisset
             @isset($overall_summary)
                 data-overall-summary='@json($overall_summary)'

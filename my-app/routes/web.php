@@ -349,6 +349,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-planning/{campaignRequest}/ai-draft', [SimulationEventPlanningController::class, 'generateAiDraft'])->name('admin.simulation-planning.ai-draft');
         Route::post('/simulation-planning/{campaignRequest}/generate', [SimulationEventPlanningController::class, 'generateEvent'])->name('admin.simulation-planning.generate');
         Route::get('/simulation-planning/{campaignRequest}/training-summary', [SimulationEventPlanningController::class, 'trainingSummary'])->name('admin.simulation-planning.training-summary');
+        Route::post('/simulation-planning/{campaignRequest}/demo-meet-quota', [SimulationEventPlanningController::class, 'demoMeetQuota'])->name('admin.simulation-planning.demo-meet-quota');
 
         // Simulation Exercise Templates (reusable exercise blueprints)
         Route::post('/simulation-exercise-templates/generate-plan', [SimulationExerciseTemplateController::class, 'generatePlan'])->name('admin.simulation-exercise-templates.generate-plan');
@@ -489,6 +490,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
 
         // Evaluation & Scoring System (simulation event scoring dashboard)
         Route::get('/evaluations', [EvaluationController::class, 'index'])->name('admin.evaluations.index');
+        Route::get('/evaluations/lesson-quizzes/participants/{user}', [EvaluationController::class, 'showParticipantLessonQuizzes'])
+            ->name('admin.evaluations.lesson-quizzes.participant');
+        Route::get('/evaluations/lesson-quiz-attempts/{attempt}', [EvaluationController::class, 'showLessonQuizAttempt'])
+            ->name('admin.evaluations.lesson-quiz-attempts.show');
         Route::get('/evaluations/training-results', [EvaluationResultController::class, 'index'])->name('admin.evaluation-results.index');
         Route::post('/evaluations/reset-bulk', [EvaluationResultController::class, 'bulkReset'])->name('admin.evaluations.reset-bulk');
         Route::get('/evaluations/results/{evaluationResult}', [EvaluationResultController::class, 'show'])->name('admin.evaluation-results.show');

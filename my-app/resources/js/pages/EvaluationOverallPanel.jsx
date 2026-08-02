@@ -7,8 +7,15 @@ import {
     AdminFilterSelect,
     AdminPrimaryButton,
 } from '../components/admin/AdminLayout';
+import { AdminTablePagination } from '../components/admin/AdminDataTable';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
+
+function formatScoreFraction(score, total) {
+    if (score == null) return '—';
+    if (total == null || total === 0) return String(score);
+    return `${score}/${total}`;
+}
 
 function formatDate(value) {
     if (!value) return '—';
@@ -34,11 +41,32 @@ function StatCard({ label, value, hint, icon: Icon }) {
     );
 }
 
-function PassedTable({ title, columns, rows, emptyLabel }) {
+function PassedTable({ title, columns, rows, emptyLabel, totalCount = null }) {
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 10;
+    const totalPages = Math.max(1, Math.ceil((rows || []).length / itemsPerPage));
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [rows]);
+
+    const pageRows = (rows || []).slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage,
+    );
+    const listTotal = (rows || []).length;
+
     return (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-slate-200 px-5 py-3">
+            <div className="border-b border-slate-200 px-5 py-3 flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+                {totalCount != null ? (
+                    <p className="text-xs text-slate-500">
+                        {totalCount > listTotal
+                            ? `Loaded ${listTotal} of ${totalCount}`
+                            : `${totalCount} record${totalCount === 1 ? '' : 's'}`}
+                    </p>
+                ) : null}
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
@@ -50,15 +78,15 @@ function PassedTable({ title, columns, rows, emptyLabel }) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {rows.length === 0 ? (
+                        {pageRows.length === 0 ? (
                             <tr>
                                 <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
                                     {emptyLabel}
                                 </td>
                             </tr>
                         ) : (
-                            rows.map((row, index) => (
-                                <tr key={`${title}-${index}`} className="hover:bg-slate-50/80">
+                            pageRows.map((row, index) => (
+                                <tr key={`${title}-${row.id ?? index}`} className="hover:bg-slate-50/80">
                                     {columns.map((column) => (
                                         <td key={column.key} className="px-4 py-3 text-slate-700">
                                             {column.render ? column.render(row) : (row[column.key] ?? '—')}
@@ -70,7 +98,29 @@ function PassedTable({ title, columns, rows, emptyLabel }) {
                     </tbody>
                 </table>
             </div>
+            {listTotal > 0 ? (
+                <AdminTablePagination
+                    pagination={{
+                        current_page: currentPage,
+                        last_page: totalPages,
+                        per_page: itemsPerPage,
+                        total: listTotal,
+                        from: (currentPage - 1) * itemsPerPage + 1,
+                        to: Math.min(currentPage * itemsPerPage, listTotal),
+                    }}
+                    onPageChange={setCurrentPage}
+                />
+            ) : null}
         </div>
+    );
+}
+
+function participantLink(row) {
+    if (!row.detail_href) return row.participant_name || '—';
+    return (
+        <a href={row.detail_href} className="font-medium text-emerald-700 hover:text-emerald-800 hover:underline">
+            {row.participant_name || '—'}
+        </a>
     );
 }
 
@@ -111,7 +161,7 @@ export function EvaluationOverallPanel({
             row.participant_name || '—',
             row.module_title || '—',
             row.lesson_title || '—',
-            row.percentage != null ? `${row.percentage}%` : '—',
+            formatScoreFraction(row.score, row.total_questions),
             formatDate(row.completed_at),
         ]);
         const scenarioRows = (scenarioPassed || []).map((row, index) => [
@@ -120,7 +170,7 @@ export function EvaluationOverallPanel({
             row.participant_name || '—',
             row.module_title || '—',
             '—',
-            row.score != null ? `${row.score}%` : '—',
+            formatScoreFraction(row.score, row.total_questions),
             formatDate(row.completed_at),
         ]);
         const simulationRows = (simulationPassed || []).map((row, index) => [
@@ -135,8 +185,8 @@ export function EvaluationOverallPanel({
 
         const html = buildPrintTableDocument({
             title: 'Overall Passed Participants',
-            subtitle: `Printed ${new Date().toLocaleString()} · Module: ${moduleLabel}${participantName.trim() ? ` · Name: ${participantName.trim()}` : ''}${search.trim() ? ` · Search: ${search.trim()}` : ''} · Lesson passed: ${summary.lesson_quiz_passed ?? 0} · Scenario passed: ${summary.final_scenario_passed ?? 0} · Simulation passed: ${summary.simulation_event_passed ?? 0}`,
-            headers: ['#', 'Stage', 'Participant', 'Module / Event', 'Lesson', 'Score', 'Date'],
+            subtitle: `Printed ${new Date().toLocaleString()} · Module: ${moduleLabel}${participantName.trim() ? ` · Name: ${participantName.trim()}` : ''}${search.trim() ? ` · Search: ${search.trim()}` : ''} · Lesson passed: ${summary.lesson_quiz_passed ?? 0} (avg ${summary.lesson_quiz_average_percentage ?? '—'}%) · Scenario passed: ${summary.final_scenario_passed ?? 0} (avg ${summary.final_scenario_average_percentage ?? '—'}%) · Simulation passed: ${summary.simulation_event_passed ?? 0} (avg ${summary.simulation_event_average_score ?? '—'})`,
+            headers: ['#', 'Stage', 'Participant', 'Module / Event', 'Lesson Title', 'Score', 'Date'],
             rows: [...lessonRows, ...scenarioRows, ...simulationRows],
         });
 
@@ -193,19 +243,19 @@ export function EvaluationOverallPanel({
                 <StatCard
                     label="Passed Lesson Quizzes"
                     value={summary.lesson_quiz_passed ?? 0}
-                    hint={`${summary.lesson_quiz_attempts_passed ?? 0} passed attempts`}
+                    hint={`${summary.lesson_quiz_attempts_passed ?? 0} passed attempts${summary.lesson_quiz_average_percentage != null ? ` · avg ${summary.lesson_quiz_average_percentage}%` : ''}`}
                     icon={BookOpen}
                 />
                 <StatCard
                     label="Passed Final Scenario"
                     value={summary.final_scenario_passed ?? 0}
-                    hint={`${summary.final_scenario_results_passed ?? 0} passed results`}
+                    hint={`${summary.final_scenario_results_passed ?? 0} passed results${summary.final_scenario_average_percentage != null ? ` · avg ${summary.final_scenario_average_percentage}%` : ''}`}
                     icon={GraduationCap}
                 />
                 <StatCard
                     label="Passed Simulation Event"
                     value={summary.simulation_event_passed ?? 0}
-                    hint={`${summary.simulation_event_results_passed ?? 0} passed event scores`}
+                    hint={`${summary.simulation_event_results_passed ?? 0} passed event scores${summary.simulation_event_average_score != null ? ` · avg ${summary.simulation_event_average_score}` : ''}`}
                     icon={ClipboardList}
                 />
             </div>
@@ -214,15 +264,20 @@ export function EvaluationOverallPanel({
                 title="Passed Lesson Quizzes"
                 emptyLabel="No passed lesson quiz attempts yet."
                 rows={lessonPassed}
+                totalCount={summary.lesson_quiz_attempts_passed ?? lessonPassed.length}
                 columns={[
-                    { key: 'participant_name', label: 'Participant' },
+                    {
+                        key: 'participant_name',
+                        label: 'Participant',
+                        render: (row) => participantLink(row),
+                    },
                     { key: 'participant_email', label: 'Email' },
                     { key: 'module_title', label: 'Module' },
-                    { key: 'lesson_title', label: 'Lesson' },
+                    { key: 'lesson_title', label: 'Lesson Title' },
                     {
-                        key: 'percentage',
+                        key: 'score',
                         label: 'Score',
-                        render: (row) => (row.percentage != null ? `${row.percentage}%` : '—'),
+                        render: (row) => formatScoreFraction(row.score, row.total_questions),
                     },
                     {
                         key: 'completed_at',
@@ -236,14 +291,19 @@ export function EvaluationOverallPanel({
                 title="Passed Final Scenario Evaluation"
                 emptyLabel="No passed final scenario evaluations yet."
                 rows={scenarioPassed}
+                totalCount={summary.final_scenario_results_passed ?? scenarioPassed.length}
                 columns={[
-                    { key: 'participant_name', label: 'Participant' },
+                    {
+                        key: 'participant_name',
+                        label: 'Participant',
+                        render: (row) => participantLink(row),
+                    },
                     { key: 'participant_email', label: 'Email' },
                     { key: 'module_title', label: 'Module' },
                     {
                         key: 'score',
                         label: 'Score',
-                        render: (row) => (row.score != null ? `${row.score}%` : '—'),
+                        render: (row) => formatScoreFraction(row.score, row.total_questions),
                     },
                     {
                         key: 'completed_at',
@@ -257,14 +317,23 @@ export function EvaluationOverallPanel({
                 title="Passed Simulation Event Evaluations"
                 emptyLabel="No passed simulation event evaluations yet."
                 rows={simulationPassed}
+                totalCount={summary.simulation_event_results_passed ?? simulationPassed.length}
                 columns={[
-                    { key: 'participant_name', label: 'Participant' },
+                    {
+                        key: 'participant_name',
+                        label: 'Participant',
+                        render: (row) => participantLink(row),
+                    },
                     { key: 'participant_email', label: 'Email' },
                     { key: 'event_title', label: 'Simulation Event' },
                     {
                         key: 'average_score',
-                        label: 'Average Score',
-                        render: (row) => (row.average_score != null ? Number(row.average_score).toFixed(1) : '—'),
+                        label: 'Avg Score',
+                        render: (row) => (
+                            row.average_score != null
+                                ? Number(row.average_score).toFixed(1)
+                                : '—'
+                        ),
                     },
                     {
                         key: 'eligible_for_certification',

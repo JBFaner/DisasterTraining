@@ -115,21 +115,8 @@ class EvaluationResultController extends Controller
                 $query->where('status', EvaluationResult::STATUS_PASSED);
 
             } elseif ($status === 'in_progress') {
-
-                $query->whereExists(function ($sub) {
-
-                    $sub->select(DB::raw(1))
-
-                        ->from('ai_scenario_attempts')
-
-                        ->whereColumn('ai_scenario_attempts.user_id', 'evaluation_results.participant_id')
-
-                        ->whereColumn('ai_scenario_attempts.training_module_id', 'evaluation_results.training_module_id')
-
-                        ->where('ai_scenario_attempts.status', AiScenarioAttempt::STATUS_IN_PROGRESS);
-
-                });
-
+                // Results are created on completion only; hub uses attempt-based listing.
+                $query->whereRaw('1 = 0');
             } else {
 
                 $query->where('status', $status);

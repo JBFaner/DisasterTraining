@@ -10,6 +10,7 @@ import {
     Plus,
     Printer,
     Rocket,
+    Trash2,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import {
@@ -242,6 +243,93 @@ export function SimulationExerciseTemplateModule({
         }
     };
 
+    const handleArchive = async (row) => {
+        const confirmed = await showAppConfirm({
+            title: 'Archive exercise plan?',
+            description: `"${row.title}" will be hidden from new reuse flows. Existing simulation events are not affected.`,
+            confirmLabel: 'Archive',
+            cancelLabel: 'Cancel',
+            confirmVariant: 'danger',
+        });
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/admin/simulation-exercise-templates/${row.id}/archive`, {
+                method: 'POST',
+                headers: { Accept: 'application/json', ...getCsrfHeaders() },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(formatApiErrors(data, 'Failed to archive exercise plan.'));
+            }
+
+            setTemplateRows((prev) => prev.map((item) => (
+                item.id === row.id ? { ...item, ...(data.template || { status: 'archived' }) } : item
+            )));
+            showAppAlert({
+                title: 'Exercise plan archived',
+                description: `"${row.title}" is now archived.`,
+                icon: 'success',
+            });
+        } catch (error) {
+            showAppAlert({
+                title: 'Archive failed',
+                description: error.message || 'Could not archive exercise plan.',
+                icon: 'error',
+            });
+        }
+    };
+
+    const handleDelete = async (row) => {
+        const usedCount = Number(row.events_count || 0);
+        if (usedCount > 0) {
+            const archiveInstead = await showAppConfirm({
+                title: 'Cannot delete this plan',
+                description: `"${row.title}" is linked to ${usedCount} simulation event(s). Archive it instead so history stays intact?`,
+                confirmLabel: 'Archive',
+                cancelLabel: 'Cancel',
+                confirmVariant: 'danger',
+            });
+            if (archiveInstead) {
+                await handleArchive(row);
+            }
+            return;
+        }
+
+        const confirmed = await showAppConfirm({
+            title: 'Delete exercise plan?',
+            description: `Permanently delete "${row.title}"? This cannot be undone.`,
+            confirmLabel: 'Delete',
+            cancelLabel: 'Cancel',
+            confirmVariant: 'danger',
+        });
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/admin/simulation-exercise-templates/${row.id}`, {
+                method: 'DELETE',
+                headers: { Accept: 'application/json', ...getCsrfHeaders() },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(formatApiErrors(data, 'Failed to delete exercise plan.'));
+            }
+
+            setTemplateRows((prev) => prev.filter((item) => item.id !== row.id));
+            showAppAlert({
+                title: 'Exercise plan deleted',
+                description: `"${row.title}" was removed.`,
+                icon: 'success',
+            });
+        } catch (error) {
+            showAppAlert({
+                title: 'Delete failed',
+                description: error.message || 'Could not delete exercise plan.',
+                icon: 'error',
+            });
+        }
+    };
+
     const handleReuse = async () => {
         if (!reuseForm.template_id) {
             showAppAlert({
@@ -413,6 +501,17 @@ export function SimulationExerciseTemplateModule({
                             >
                                 <Rocket className="w-3.5 h-3.5" />
                                 Reuse
+                            </button>
+                        ) : null}
+                        {row.status !== 'archived' ? (
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(row)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                                title={Number(row.events_count || 0) > 0 ? 'Linked to events — will offer Archive' : 'Delete'}
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete
                             </button>
                         ) : null}
                     </div>

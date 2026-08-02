@@ -44,6 +44,29 @@ function buildPersonnelRoleOptions(defaultRoles = [], personnel = []) {
     return [...new Set([...(defaultRoles || []), ...extras])];
 }
 
+const ADD_CATEGORY_VALUE = '__add_category__';
+
+function buildCategorySelectOptions(options = {}, currentCategory = '') {
+    const core = options.core_categories || ['Fire Safety', 'Earthquake', 'Flood', 'Typhoon'];
+    const all = [...(options.categories || []), ...core];
+    const current = String(currentCategory || '').trim();
+    if (current) {
+        all.push(current);
+    }
+
+    const unique = [];
+    all.forEach((item) => {
+        const label = String(item || '').trim();
+        if (!label || unique.includes(label)) return;
+        unique.push(label);
+    });
+
+    // Core first (stable order), then the rest alphabetically.
+    const coreSet = new Set(core);
+    const extras = unique.filter((item) => !coreSet.has(item)).sort((a, b) => a.localeCompare(b));
+    return [...core, ...extras];
+}
+
 function defaultActivityStartTime(index, previousActivity = null) {
     if (previousActivity?.start_time) {
         const [hours, minutes] = String(previousActivity.start_time).split(':').map(Number);
@@ -351,8 +374,28 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
         [options.personnel_roles, personnel],
     );
 
+    const categoryOptions = React.useMemo(
+        () => buildCategorySelectOptions(options, form.category),
+        [options, form.category],
+    );
+
+    const [addingCategory, setAddingCategory] = React.useState(() => {
+        const initial = formData?.template?.category || 'Fire Safety';
+        const known = buildCategorySelectOptions(formData?.options || {}, initial);
+        return Boolean(initial) && !known.includes(initial);
+    });
+
     const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
+    const handleCategorySelect = (value) => {
+        if (value === ADD_CATEGORY_VALUE) {
+            setAddingCategory(true);
+            setField('category', '');
+            return;
+        }
+        setAddingCategory(false);
+        setField('category', value);
+    };
     const setters = React.useMemo(() => ({
         setForm,
         setActivities,
@@ -817,9 +860,28 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                             Exercise Category
                             <span className="text-rose-600"> *</span>
                         </span>
-                        <select className={`mt-1 ${inputClass()}`} value={form.category} onChange={(e) => setField('category', e.target.value)}>
-                            {(options.categories || []).map((item) => <option key={item} value={item}>{item}</option>)}
+                        <select
+                            className={`mt-1 ${inputClass()}`}
+                            value={addingCategory ? ADD_CATEGORY_VALUE : (categoryOptions.includes(form.category) ? form.category : ADD_CATEGORY_VALUE)}
+                            onChange={(e) => handleCategorySelect(e.target.value)}
+                        >
+                            {categoryOptions.map((item) => (
+                                <option key={item} value={item}>{item}</option>
+                            ))}
+                            <option value={ADD_CATEGORY_VALUE}>+ Add category…</option>
                         </select>
+                        {addingCategory ? (
+                            <input
+                                className={`mt-2 ${inputClass()}`}
+                                value={form.category}
+                                onChange={(e) => setField('category', e.target.value)}
+                                placeholder="e.g. First Aid, Tsunami, Landslide"
+                                autoFocus
+                            />
+                        ) : null}
+                        <p className="mt-1.5 text-xs text-slate-500">
+                            Core: Fire Safety, Earthquake, Flood, Typhoon. Add a category when you have a new module or hazard type.
+                        </p>
                     </label>
                     <label className="text-sm">
                         <span className="font-medium text-slate-700">

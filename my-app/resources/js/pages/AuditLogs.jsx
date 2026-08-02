@@ -1,17 +1,31 @@
 import React from 'react';
-import { Download, ChevronDown, ChevronUp, CheckCircle2, XCircle, Shield, User as UserIcon, Clock, ClipboardCheck } from 'lucide-react';
+import {
+    Download,
+    ChevronDown,
+    ChevronUp,
+    CheckCircle2,
+    XCircle,
+    Shield,
+    User as UserIcon,
+    Clock,
+    ClipboardCheck,
+    Printer,
+} from 'lucide-react';
+import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
     AdminCollapsibleFilterBar,
     AdminFilterSelect,
     AdminFilterInput,
+    AdminPrimaryButton,
     AdminSecondaryButton,
     AdminContentCard,
 } from '../components/admin/AdminLayout';
+import { AdminTablePagination } from '../components/admin/AdminDataTable';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 const statusConfig = {
-    // System-level results
     success: {
         label: 'Success',
         color: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -24,7 +38,6 @@ const statusConfig = {
         dot: 'bg-rose-500',
         icon: XCircle,
     },
-    // Record / operation states
     draft: {
         label: 'Draft',
         color: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -77,7 +90,7 @@ export function AuditLogs() {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState('');
     const [page, setPage] = React.useState(1);
-    const [meta, setMeta] = React.useState({ current_page: 1, last_page: 1, total: 0 });
+    const [meta, setMeta] = React.useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [moduleOptions, setModuleOptions] = React.useState(MODULE_OPTIONS_FALLBACK);
     const [search, setSearch] = React.useState('');
     const [filters, setFilters] = React.useState({
@@ -90,23 +103,33 @@ export function AuditLogs() {
     const [sortBy, setSortBy] = React.useState('performed_at');
     const [sortDir, setSortDir] = React.useState('desc');
     const [expandedId, setExpandedId] = React.useState(null);
+    const [isPrinting, setIsPrinting] = React.useState(false);
+
+    const buildQueryParams = React.useCallback((overrides = {}) => {
+        const params = new URLSearchParams({
+            page: String(overrides.page ?? page),
+            sort_by: sortBy,
+            sort_dir: sortDir,
+            per_page: String(overrides.per_page ?? 10),
+        });
+
+        if (overrides.export_all) {
+            params.set('export_all', '1');
+        }
+
+        if (search) params.append('search', search);
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) params.append(key, value);
+        });
+
+        return params;
+    }, [page, sortBy, sortDir, search, filters]);
 
     const fetchLogs = React.useCallback(async () => {
         setLoading(true);
         setError('');
         try {
-            const params = new URLSearchParams({
-                page: String(page),
-                sort_by: sortBy,
-                sort_dir: sortDir,
-                per_page: '15',
-            });
-
-            if (search) params.append('search', search);
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value) params.append(key, value);
-            });
-
+            const params = buildQueryParams();
             const response = await fetch(`/admin/api/audit-logs?${params.toString()}`, {
                 headers: { Accept: 'application/json' },
                 credentials: 'same-origin',
@@ -119,13 +142,13 @@ export function AuditLogs() {
                     setError(`Failed to load audit logs (HTTP ${response.status}).`);
                 }
                 setLogs([]);
-                setMeta({ current_page: 1, last_page: 1, total: 0 });
+                setMeta({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
                 return;
             }
 
             const data = await response.json();
             setLogs(data.data || []);
-            setMeta(data.meta || { current_page: 1, last_page: 1, total: 0 });
+            setMeta(data.meta || { current_page: 1, last_page: 1, total: 0, per_page: 10 });
 
             const apiModules = data.filters?.modules;
             if (Array.isArray(apiModules) && apiModules.length > 0) {
@@ -141,14 +164,14 @@ export function AuditLogs() {
         } finally {
             setLoading(false);
         }
-    }, [page, sortBy, sortDir, search, filters]);
+    }, [buildQueryParams]);
 
     React.useEffect(() => {
         fetchLogs();
     }, [fetchLogs]);
 
     const handleFilterChange = (field, value) => {
-        setFilters(prev => ({ ...prev, [field]: value }));
+        setFilters((prev) => ({ ...prev, [field]: value }));
         setPage(1);
     };
 
@@ -159,66 +182,22 @@ export function AuditLogs() {
 
     const handleSort = (field) => {
         if (sortBy === field) {
-            setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'));
+            setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
         } else {
             setSortBy(field);
             setSortDir('asc');
         }
     };
 
-    const handleExport = (format) => {
-        const params = new URLSearchParams({ format });
+    const handleExportExcel = () => {
+        const params = buildQueryParams({ page: 1 });
+        params.set('format', 'xlsx');
+        params.delete('page');
+        params.delete('per_page');
+        params.delete('sort_by');
+        params.delete('sort_dir');
+        params.delete('export_all');
         window.location.href = `/admin/api/audit-logs/export?${params.toString()}`;
-    };
-
-    const getDisplayStatus = (log) => {
-        const action = (log.action || '').toLowerCase();
-        const recordStatus = (log.new_values?.status || log.old_values?.status || '').toLowerCase();
-
-        // 1) Hard failure always shows as Failed
-        if (log.status === 'failed') {
-            return 'failed';
-        }
-
-        // 2) Deletion operations
-        if (action.includes('delete')) {
-            return 'deleted';
-        }
-
-        // 3) Archive operations
-        if (action.includes('archive')) {
-            return 'archived';
-        }
-
-        // 4) Publish operations
-        if (action.includes('publish')) {
-            return 'published';
-        }
-
-        // 5) Explicit record status field takes precedence for draft/published/archived
-        if (['draft', 'published', 'archived'].includes(recordStatus)) {
-            return recordStatus;
-        }
-
-        // 6) Generic update operations
-        if (action.includes('update') || action.includes('updated') || action.includes('edit')) {
-            return 'updated';
-        }
-
-        // 7) Default: generic success (e.g. login/logout/OTP verified)
-        return 'success';
-    };
-
-    const renderStatusBadge = (displayStatus) => {
-        const cfg = statusConfig[displayStatus] || statusConfig.success;
-        const Icon = cfg.icon;
-        return (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shadow-sm ${cfg.color}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                <Icon className="w-3 h-3 drop-shadow-sm" />
-                <span>{cfg.label}</span>
-            </span>
-        );
     };
 
     const formatDateTime = (value) => {
@@ -233,6 +212,93 @@ export function AuditLogs() {
         });
     };
 
+    const getDisplayStatus = (log) => {
+        const action = (log.action || '').toLowerCase();
+        const recordStatus = (log.new_values?.status || log.old_values?.status || '').toLowerCase();
+
+        if (log.status === 'failed') return 'failed';
+        if (action.includes('delete')) return 'deleted';
+        if (action.includes('archive')) return 'archived';
+        if (action.includes('publish')) return 'published';
+        if (['draft', 'published', 'archived'].includes(recordStatus)) return recordStatus;
+        if (action.includes('update') || action.includes('updated') || action.includes('edit')) return 'updated';
+        return 'success';
+    };
+
+    const handlePrint = async () => {
+        if (isPrinting) return;
+        setIsPrinting(true);
+        try {
+            const params = buildQueryParams({ page: 1, export_all: true });
+            const response = await fetch(`/admin/api/audit-logs?${params.toString()}`, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) throw new Error('Failed to load filtered audit logs for print');
+            const data = await response.json();
+            const rows = (data.data || []).map((log) => {
+                const displayStatus = getDisplayStatus(log);
+                return [
+                    formatDateTime(log.performed_at || log.created_at),
+                    log.action || '—',
+                    log.user_name || 'System',
+                    log.user_role || '—',
+                    log.description || '—',
+                    log.module || '—',
+                    statusConfig[displayStatus]?.label || displayStatus,
+                ];
+            });
+
+            const filterBits = [
+                search ? `search="${search}"` : null,
+                filters.user ? `user=${filters.user}` : null,
+                filters.status ? `status=${filters.status}` : null,
+                filters.module ? `module=${filters.module}` : null,
+                filters.date_from || filters.date_to
+                    ? `dates=${[filters.date_from, filters.date_to].filter(Boolean).join(' → ')}`
+                    : null,
+            ].filter(Boolean);
+
+            const html = buildPrintTableDocument({
+                title: 'Audit Logs',
+                subtitle: `Printed ${new Date().toLocaleString()} · ${rows.length} record(s)${filterBits.length ? ` · Filters: ${filterBits.join(', ')}` : ' · All records'}`,
+                headers: ['Date & Time', 'Action', 'User', 'Role', 'Details', 'Module', 'Status'],
+                rows,
+                emptyMessage: 'No audit logs match the current filters.',
+            });
+
+            if (!printHtmlDocument(html, 'Audit Logs')) {
+                Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Unable to print', 'Failed to load the filtered audit log list for printing.', 'error');
+        } finally {
+            setIsPrinting(false);
+        }
+    };
+
+    const renderStatusBadge = (displayStatus) => {
+        const cfg = statusConfig[displayStatus] || statusConfig.success;
+        const Icon = cfg.icon;
+        return (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shadow-sm ${cfg.color}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                <Icon className="w-3 h-3 drop-shadow-sm" />
+                <span>{cfg.label}</span>
+            </span>
+        );
+    };
+
+    const pagination = {
+        current_page: meta.current_page || 1,
+        last_page: Math.max(1, meta.last_page || 1),
+        per_page: meta.per_page || 10,
+        total: meta.total || 0,
+        from: meta.total === 0 ? 0 : ((meta.current_page || 1) - 1) * (meta.per_page || 10) + 1,
+        to: Math.min((meta.current_page || 1) * (meta.per_page || 10), meta.total || 0),
+    };
+
     return (
         <AdminPageShell>
             <AdminPageHeader
@@ -241,17 +307,23 @@ export function AuditLogs() {
                 description="View system activity and user actions."
                 actions={
                     <>
-                        <AdminSecondaryButton onClick={() => handleExport('csv')}>
-                            <Download className="w-4 h-4" />
-                            CSV
-                        </AdminSecondaryButton>
-                        <AdminSecondaryButton onClick={() => handleExport('xlsx')}>
+                        <AdminPrimaryButton
+                            type="button"
+                            onClick={handlePrint}
+                            disabled={isPrinting || meta.total === 0}
+                            title="Print filtered audit logs"
+                        >
+                            <Printer className="w-4 h-4" />
+                            {isPrinting ? 'Preparing…' : 'Print'}
+                        </AdminPrimaryButton>
+                        <AdminSecondaryButton
+                            type="button"
+                            onClick={handleExportExcel}
+                            disabled={meta.total === 0}
+                            title="Export filtered audit logs to Excel"
+                        >
                             <Download className="w-4 h-4" />
                             Excel
-                        </AdminSecondaryButton>
-                        <AdminSecondaryButton onClick={() => handleExport('pdf')}>
-                            <Download className="w-4 h-4" />
-                            PDF
                         </AdminSecondaryButton>
                     </>
                 }
@@ -304,25 +376,28 @@ export function AuditLogs() {
             </AdminCollapsibleFilterBar>
 
             <AdminContentCard>
-                    {error && (
-                        <div className="mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            {error}
-                        </div>
-                    )}
-                    <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr] gap-4 px-5 py-4 text-xs font-semibold text-slate-600 bg-slate-50 border-b border-slate-200">
-                    <button className="flex items-center gap-1 text-left" onClick={() => handleSort('performed_at')}>
+                {error && (
+                    <div className="mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        {error}
+                    </div>
+                )}
+                <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr] gap-4 px-5 py-4 text-xs font-semibold text-slate-600 bg-slate-50 border-b border-slate-200">
+                    <button type="button" className="flex items-center gap-1 text-left" onClick={() => handleSort('performed_at')}>
                         <Clock className="w-3 h-3" />
-                        <span>When</span>
+                        <span>Date & Time</span>
                         {sortBy === 'performed_at' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </button>
-                    <button className="flex items-center gap-1 text-left" onClick={() => handleSort('user_name')}>
+                    <button type="button" className="flex items-center gap-1 text-left" onClick={() => handleSort('user_name')}>
                         <UserIcon className="w-3 h-3" />
-                        <span>Who</span>
+                        <span>User</span>
                         {sortBy === 'user_name' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </button>
-                    <span className="text-left">What</span>
-                    <span className="text-left">Where</span>
-                    <button className="flex items-center gap-1 text-left" onClick={() => handleSort('status')}>
+                    <span className="text-left">Details</span>
+                    <button type="button" className="flex items-center gap-1 text-left" onClick={() => handleSort('module')}>
+                        <span>Module</span>
+                        {sortBy === 'module' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </button>
+                    <button type="button" className="flex items-center gap-1 text-left" onClick={() => handleSort('status')}>
                         <Shield className="w-3 h-3" />
                         <span>Status</span>
                         {sortBy === 'status' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
@@ -439,7 +514,6 @@ export function AuditLogs() {
                                                             const oldStatus = log.old_values?.status;
                                                             const newStatus = log.new_values?.status;
                                                             if (!oldStatus && !newStatus) return null;
-                                                            // If we have a change, show it inline, e.g. "(draft → published)"
                                                             if (oldStatus && newStatus && oldStatus !== newStatus) {
                                                                 return (
                                                                     <span className="text-[0.7rem] text-slate-500 ml-1 capitalize">
@@ -447,7 +521,6 @@ export function AuditLogs() {
                                                                     </span>
                                                                 );
                                                             }
-                                                            // If only new status exists, show it once
                                                             if (!oldStatus && newStatus) {
                                                                 return (
                                                                     <span className="text-[0.7rem] text-slate-500 ml-1 capitalize">
@@ -492,35 +565,13 @@ export function AuditLogs() {
                     })}
                 </ul>
 
-                {/* Pagination */}
-                {meta.total > 0 && (
-                    <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 bg-slate-50 text-sm text-slate-600">
-                        <div>
-                            Page <span className="font-semibold">{meta.current_page}</span> of{' '}
-                            <span className="font-semibold">{meta.last_page}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                disabled={meta.current_page <= 1}
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Prev
-                            </button>
-                            <button
-                                type="button"
-                                disabled={meta.current_page >= meta.last_page}
-                                onClick={() => setPage(p => Math.min(meta.last_page, p + 1))}
-                                className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
+                {!loading && (
+                    <AdminTablePagination
+                        pagination={pagination}
+                        onPageChange={setPage}
+                    />
                 )}
             </AdminContentCard>
         </AdminPageShell>
     );
 }
-

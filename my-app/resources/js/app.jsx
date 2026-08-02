@@ -38,6 +38,9 @@ import {
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationHub } from './pages/EvaluationHub';
 import { EvaluationResultDetail } from './pages/EvaluationResultDetail';
+import { LessonQuizAttemptDetail } from './pages/LessonQuizAttemptDetail';
+import { LessonQuizParticipantDetail } from './pages/LessonQuizParticipantDetail';
+import { AdminDashboardOverview } from './pages/AdminDashboardOverview';
 import { ParticipantDashboard } from './pages/ParticipantDashboard';
 import { ParticipantEmptyState, PARTICIPANT_EMPTY_STATES } from './components/ParticipantEmptyState';
 import { ParticipantEvaluationHub } from './pages/ParticipantEvaluationHub';
@@ -884,6 +887,7 @@ if (rootElement) {
     const lessonQuizModulesJson = rootElement.getAttribute('data-lesson-quiz-modules');
     const lessonQuizConfigsJson = rootElement.getAttribute('data-lesson-quiz-configs');
     const lessonQuizAttemptJson = rootElement.getAttribute('data-lesson-quiz-attempt');
+    const lessonQuizAttemptDetailJson = rootElement.getAttribute('data-lesson-quiz-attempt-detail');
     const evaluationResultsJson = rootElement.getAttribute('data-evaluation-results');
     const evaluationResultsPaginationJson = rootElement.getAttribute('data-evaluation-results-pagination');
     const evaluationAnalyticsJson = rootElement.getAttribute('data-evaluation-analytics');
@@ -899,6 +903,9 @@ if (rootElement) {
     const lessonQuizMonitoringModulesJson = rootElement.getAttribute('data-lesson-quiz-monitoring-modules');
     const lessonQuizFiltersJson = rootElement.getAttribute('data-lesson-quiz-filters');
     const lessonQuizBatchesJson = rootElement.getAttribute('data-lesson-quiz-batches');
+    const lessonQuizLessonsJson = rootElement.getAttribute('data-lesson-quiz-lessons');
+    const lessonQuizLessonColumnsJson = rootElement.getAttribute('data-lesson-quiz-lesson-columns');
+    const lessonQuizParticipantDetailJson = rootElement.getAttribute('data-lesson-quiz-participant-detail');
     const overallSummaryJson = rootElement.getAttribute('data-overall-summary');
     const overallLessonPassedJson = rootElement.getAttribute('data-overall-lesson-passed');
     const overallScenarioPassedJson = rootElement.getAttribute('data-overall-scenario-passed');
@@ -1066,6 +1073,7 @@ if (rootElement) {
     let lessonQuizModules = [];
     let lessonQuizConfigs = [];
     let lessonQuizAttempt = null;
+    let lessonQuizAttemptDetail = null;
     let evaluationResults = [];
     let evaluationResultsPagination = null;
     let evaluationAnalytics = null;
@@ -1081,6 +1089,9 @@ if (rootElement) {
     let lessonQuizMonitoringModules = [];
     let lessonQuizFilters = {};
     let lessonQuizBatches = [];
+    let lessonQuizLessons = [];
+    let lessonQuizLessonColumns = [];
+    let lessonQuizParticipantDetail = null;
     let overallSummary = null;
     let overallLessonPassed = [];
     let overallScenarioPassed = [];
@@ -1195,6 +1206,13 @@ if (rootElement) {
             console.error('Failed to parse lesson quiz attempt JSON', e);
         }
     }
+    if (lessonQuizAttemptDetailJson) {
+        try {
+            lessonQuizAttemptDetail = JSON.parse(lessonQuizAttemptDetailJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz attempt detail JSON', e);
+        }
+    }
     if (evaluationResultsJson) {
         try {
             evaluationResults = JSON.parse(evaluationResultsJson);
@@ -1290,6 +1308,27 @@ if (rootElement) {
             lessonQuizBatches = JSON.parse(lessonQuizBatchesJson);
         } catch (e) {
             console.error('Failed to parse lesson quiz batches JSON', e);
+        }
+    }
+    if (lessonQuizLessonsJson) {
+        try {
+            lessonQuizLessons = JSON.parse(lessonQuizLessonsJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz lessons JSON', e);
+        }
+    }
+    if (lessonQuizLessonColumnsJson) {
+        try {
+            lessonQuizLessonColumns = JSON.parse(lessonQuizLessonColumnsJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz lesson columns JSON', e);
+        }
+    }
+    if (lessonQuizParticipantDetailJson) {
+        try {
+            lessonQuizParticipantDetail = JSON.parse(lessonQuizParticipantDetailJson);
+        } catch (e) {
+            console.error('Failed to parse lesson quiz participant detail JSON', e);
         }
     }
     if (overallSummaryJson) {
@@ -1465,6 +1504,8 @@ if (rootElement) {
                                         sectionAttr === 'training_module_locked' ? 'training' :
                                         sectionAttr === 'training_evaluation_results' ? 'evaluation' :
                                         sectionAttr === 'evaluation_result_detail' ? 'evaluation' :
+                                        sectionAttr === 'lesson_quiz_attempt_detail' ? 'evaluation' :
+                                        sectionAttr === 'lesson_quiz_participant_detail' ? 'evaluation' :
                                         sectionAttr === 'campaign_request_show' ? 'training' :
                                         sectionAttr === 'simulation_planning_show' ? 'simulation' :
                                         sectionAttr.startsWith('certification_participant') ? 'certification' :
@@ -1653,6 +1694,20 @@ if (rootElement) {
             ];
         }
 
+        if (sectionAttr === 'lesson_quiz_attempt_detail') {
+            return [
+                { label: 'Evaluations', href: evaluationsIndexWithTab(role, 'lessons') },
+                { label: 'Lesson Quiz Result', href: null },
+            ];
+        }
+
+        if (sectionAttr === 'lesson_quiz_participant_detail') {
+            return [
+                { label: 'Evaluations', href: evaluationsIndexWithTab(role, 'lessons') },
+                { label: lessonQuizParticipantDetail?.participant?.name || 'Participant lessons', href: null },
+            ];
+        }
+
         if (sectionAttr === 'participant_event_evaluation') {
             return [
                 { label: 'Evaluations', href: evaluationsIndexWithTab(role, 'events') },
@@ -1822,6 +1877,8 @@ if (rootElement) {
             'resources',
             'evaluation_dashboard',
             'evaluation_hub',
+            'lesson_quiz_attempt_detail',
+            'lesson_quiz_participant_detail',
             'training_evaluation_results',
             'evaluation_results_participant',
             'certification',
@@ -1913,6 +1970,16 @@ if (rootElement) {
 
         if (sectionAttr === 'evaluation_result_detail') {
             return 'Evaluation Report';
+        }
+
+        if (sectionAttr === 'lesson_quiz_attempt_detail') {
+            return 'Lesson Quiz Result';
+        }
+
+        if (sectionAttr === 'lesson_quiz_participant_detail') {
+            return lessonQuizParticipantDetail?.participant?.name
+                ? `${lessonQuizParticipantDetail.participant.name} · Lessons`
+                : 'Participant Lesson Quizzes';
         }
 
         if (sectionAttr === 'participant_event_evaluation') {
@@ -2479,6 +2546,8 @@ if (rootElement) {
                                 lessonQuizPagination={lessonQuizPagination}
                                 lessonQuizAnalytics={lessonQuizAnalytics}
                                 lessonQuizModules={lessonQuizMonitoringModules}
+                                lessonQuizLessons={lessonQuizLessons}
+                                lessonQuizLessonColumns={lessonQuizLessonColumns}
                                 lessonQuizBatches={lessonQuizBatches}
                                 lessonQuizFilters={lessonQuizFilters}
                                 overallSummary={overallSummary}
@@ -2514,6 +2583,14 @@ if (rootElement) {
                                 passingScore={evaluationPassingScore}
                                 role={role}
                             />
+                        )}
+
+                        {sectionAttr === 'lesson_quiz_attempt_detail' && (
+                            <LessonQuizAttemptDetail attempt={lessonQuizAttemptDetail} />
+                        )}
+
+                        {sectionAttr === 'lesson_quiz_participant_detail' && (
+                            <LessonQuizParticipantDetail detail={lessonQuizParticipantDetail} />
                         )}
 
                         {sectionAttr === 'participant_event_evaluation' && participantEventEvaluation && (
@@ -2615,602 +2692,8 @@ if (rootElement) {
     );
 }
 
-function DashboardOverview({ modules, events, participants, role, dashboardStats, dashboardCharts, hazardAnalytics = null }) {
-    const stats = dashboardStats || {};
-    const charts = dashboardCharts || {};
-    const hazard = hazardAnalytics || {};
-    const activeEvents = stats.active_events ?? 0;
-    const upcomingEvents = stats.upcoming_events ?? 0;
-    const totalParticipants = stats.total_participants ?? (participants?.length || 0);
-    const certificatesCount = stats.certificates_count ?? 0;
-    const eventsStartingToday = stats.events_starting_today ?? 0;
-    const pendingEvaluations = stats.pending_evaluations_count ?? 0;
-    const pendingCertificates = stats.pending_certificates_count ?? 0;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const eventDateStr = (e) => {
-        const d = e.event_date;
-        return !d ? null : typeof d === 'string' ? d : (d.date || d);
-    };
-    const eventDate = (e) => {
-        const str = eventDateStr(e);
-        return str ? new Date(str) : null;
-    };
-    const upcomingEventList = (events || []).filter((e) => {
-        const d = eventDate(e);
-        return d && d >= today && ['published', 'ongoing'].includes(e.status);
-    }).slice(0, 10);
-    const completedRecent = (events || []).filter((e) => e.status === 'completed').slice(0, 5);
-    const recentModules = (modules || []).slice(0, 5);
-
-    // Build recent activity items (dynamic feed)
-    const activityItems = [];
-    completedRecent.forEach((e) => {
-        activityItems.push({ type: 'event_completed', label: `${e.title} completed`, time: e.completed_at || e.updated_at, link: `/admin/simulation-events/${e.id}` });
-    });
-    recentModules.forEach((m) => {
-        activityItems.push({ type: 'module', label: `Module: ${m.title}`, time: m.updated_at, link: trainingModuleShow(role, m.id) });
-    });
-    activityItems.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
-    const recentActivity = activityItems.slice(0, 8);
-
-    // Calendar: get current month and dates that have events
-    const calendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const eventDatesSet = new Set();
-    (events || []).forEach((e) => {
-        const d = eventDate(e);
-        if (d && d >= today && d.getMonth() === calendarMonth.getMonth() && d.getFullYear() === calendarMonth.getFullYear()) {
-            eventDatesSet.add(d.getDate());
-        }
-    });
-    const firstDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
-    const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
-    const calendarDays = [];
-    for (let i = 0; i < firstDay; i++) calendarDays.push(null);
-    for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
-
-    // Insights: most active module (first published by title), improvement placeholder
-    const publishedModules = (modules || []).filter((m) => m.status === 'published');
-    const mostActiveModule = publishedModules.length ? publishedModules[0]?.title : '—';
-    const topScenario = (events || []).filter((e) => e.status === 'completed' && e.scenario).length
-        ? (events.find((e) => e.status === 'completed' && e.scenario)?.scenario?.title || '—')
-        : '—';
-
-    const KpiCard = ({ title, value, href, Icon, trend }) => {
-        const content = (
-            <div className="relative rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md transition-all duration-250 hover:shadow-lg hover:-translate-y-0.5">
-                <div className="absolute right-4 top-4 text-slate-300">
-                    <Icon className="w-8 h-8" />
-                </div>
-                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
-                <p className="mt-1 text-[38px] font-bold tracking-tight text-slate-900">{value}</p>
-                {trend != null && (
-                    <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
-                        <TrendingUp className="w-3.5 h-3.5" /> {trend}
-                    </p>
-                )}
-            </div>
-        );
-        if (href) return <a href={href} className="block">{content}</a>;
-        return content;
-    };
-
-    const monthLabels = charts.drills_per_month?.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    const primaryGreen = '#059669';
-    const secondaryGreen = '#10B981';
-    const softGreen = '#A7F3D0';
-    const slate = '#0F172A';
-
-    const disasterDistributionChartData = charts.disaster_distribution && charts.disaster_distribution.labels?.length
-        ? {
-            labels: charts.disaster_distribution.labels,
-            datasets: [
-                {
-                    data: charts.disaster_distribution.data,
-                    backgroundColor: [
-                        primaryGreen,
-                        secondaryGreen,
-                        softGreen,
-                        '#D1FAE5',
-                        '#E5E7EB',
-                    ],
-                    borderWidth: 0,
-                },
-            ],
-        }
-        : null;
-
-    const evaluationStatusChartData = charts.evaluation_status && charts.evaluation_status.labels?.length
-        ? {
-            labels: charts.evaluation_status.labels,
-            datasets: [
-                {
-                    data: charts.evaluation_status.data,
-                    backgroundColor: [
-                        primaryGreen,
-                        '#FBBF24',
-                        '#EF4444',
-                    ],
-                    borderWidth: 0,
-                },
-            ],
-        }
-        : null;
-
-    const drillsPerMonthChartData = charts.drills_per_month
-        ? {
-            labels: monthLabels,
-            datasets: [
-                {
-                    label: 'Drills',
-                    data: charts.drills_per_month.data,
-                    backgroundColor: primaryGreen,
-                    borderRadius: 8,
-                    maxBarThickness: 32,
-                },
-            ],
-        }
-        : null;
-
-    const performanceTrendChartData = charts.performance_trend
-        ? {
-            labels: charts.performance_trend.labels || monthLabels,
-            datasets: [
-                {
-                    label: 'Average Score (%)',
-                    data: charts.performance_trend.data,
-                    borderColor: primaryGreen,
-                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                    tension: 0.35,
-                    fill: true,
-                    pointRadius: 3,
-                    pointHoverRadius: 4,
-                    pointBackgroundColor: primaryGreen,
-                },
-            ],
-        }
-        : null;
-
-    const baseChartOptions = {
-        plugins: {
-            legend: {
-                display: true,
-                labels: {
-                    font: { size: 11 },
-                    color: '#64748B',
-                    usePointStyle: true,
-                },
-            },
-            tooltip: {
-                borderWidth: 0,
-                backgroundColor: '#020617',
-                titleFont: { size: 11 },
-                bodyFont: { size: 11 },
-            },
-        },
-    };
-
-    const buildDoughnutOptions = (chartData) => ({
-        ...baseChartOptions,
-        cutout: '70%',
-        plugins: {
-            ...baseChartOptions.plugins,
-            legend: {
-                ...baseChartOptions.plugins.legend,
-                labels: {
-                    ...baseChartOptions.plugins.legend.labels,
-                    generateLabels: (chart) => {
-                        const data = chartData || chart.data;
-                        const dataset = data.datasets?.[0] || { data: [] };
-                        const total = (dataset.data || []).reduce((sum, value) => sum + (Number(value) || 0), 0) || 0;
-
-                        return (data.labels || []).map((label, index) => {
-                            const rawValue = dataset.data?.[index] ?? 0;
-                            const value = Number(rawValue) || 0;
-                            const percent = total > 0 ? Math.round((value / total) * 100) : 0;
-
-                            return {
-                                text: `${label} — ${value} (${percent}%)`,
-                                fillStyle: Array.isArray(dataset.backgroundColor)
-                                    ? dataset.backgroundColor[index] || primaryGreen
-                                    : dataset.backgroundColor || primaryGreen,
-                                strokeStyle: '#ffffff',
-                                lineWidth: 0,
-                                hidden: chart.getDatasetMeta(0).data[index]?.hidden || value === 0,
-                                index,
-                            };
-                        });
-                    },
-                },
-            },
-        },
-    });
-
-    const barOptions = {
-        ...baseChartOptions,
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: {
-                    color: '#6B7280',
-                    font: { size: 11 },
-                },
-            },
-            y: {
-                grid: {
-                    color: '#E5E7EB',
-                    drawBorder: false,
-                },
-                ticks: {
-                    color: '#6B7280',
-                    font: { size: 11 },
-                    precision: 0,
-                },
-            },
-        },
-    };
-
-    const lineOptions = {
-        ...baseChartOptions,
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: {
-                    color: '#6B7280',
-                    font: { size: 11 },
-                },
-            },
-            y: {
-                grid: {
-                    color: '#E5E7EB',
-                    drawBorder: false,
-                },
-                ticks: {
-                    color: '#6B7280',
-                    font: { size: 11 },
-                    callback: (value) => `${value}%`,
-                },
-                suggestedMin: 0,
-                suggestedMax: 100,
-            },
-        },
-    };
-
-    return (
-        <div className="space-y-8 pb-8">
-            {/* Header — larger, more spacing */}
-            <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-100 rounded-2xl shadow-md">
-                    <LayoutDashboard className="w-8 h-8 text-emerald-600" />
-                </div>
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-                    <p className="text-slate-600 mt-0.5">Operations command center for disaster training</p>
-                </div>
-            </div>
-
-            {/* Row 1 — Operational KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <KpiCard title="Active Events" value={activeEvents} href={simulationEventsIndex(role)} Icon={Play} trend={activeEvents > 0 ? 'Live' : null} />
-                <KpiCard title="Upcoming" value={upcomingEvents} href={simulationEventsIndex(role)} Icon={CalendarClock} />
-                <KpiCard title="Participants" value={totalParticipants} href={role !== 'PARTICIPANT' ? participantsIndex() : null} Icon={Users} />
-                <KpiCard title="Certificates" value={certificatesCount} href={role !== 'PARTICIPANT' ? certificationIndex(role) : null} Icon={Award} />
-            </div>
-
-            {role !== 'PARTICIPANT' && hazard.total_barangays != null && (
-                <>
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-slate-900">Hazard Assessment Analytics</h2>
-                        <a href="/admin/hazard-assessment-profiles" className="text-sm text-emerald-700 hover:text-emerald-800 font-medium">View profiles →</a>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <KpiCard title="Total Barangays" value={hazard.total_barangays ?? 0} href="/admin/hazard-assessment-profiles" Icon={MapPin} />
-                        <KpiCard title="Flood Prone" value={hazard.flood_prone ?? 0} Icon={AlertTriangle} />
-                        <KpiCard title="Fire Prone" value={hazard.fire_prone ?? 0} Icon={AlertTriangle} />
-                        <KpiCard title="Earthquake Prone" value={hazard.earthquake_prone ?? 0} Icon={AlertTriangle} />
-                        <KpiCard title="High Risk" value={hazard.high_risk_barangays ?? 0} Icon={AlertTriangle} />
-                        <KpiCard title="Avg Risk Score" value={hazard.average_risk_score != null ? `${hazard.average_risk_score}%` : '—'} Icon={BarChart3} />
-                    </div>
-                    {(hazard.hazard_distribution && Object.keys(hazard.hazard_distribution).length > 0) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                                <h3 className="text-sm font-bold text-slate-900 mb-3">Hazard Distribution</h3>
-                                <ul className="space-y-2 text-sm">
-                                    {Object.entries(hazard.hazard_distribution).map(([type, count]) => (
-                                        <li key={type} className="flex justify-between">
-                                            <span className="text-slate-700">{type}</span>
-                                            <span className="font-semibold text-slate-900">{count}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            {hazard.agency_distribution && Object.keys(hazard.agency_distribution).length > 0 && (
-                                <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                                    <h3 className="text-sm font-bold text-slate-900 mb-3">Source Agency Distribution</h3>
-                                    <ul className="space-y-2 text-sm">
-                                        {Object.entries(hazard.agency_distribution).map(([agency, count]) => (
-                                            <li key={agency} className="flex justify-between">
-                                                <span className="text-slate-700">{agency}</span>
-                                                <span className="font-semibold text-slate-900">{count}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </>
-            )}
-
-            {role !== 'PARTICIPANT' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md flex flex-col">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                                <BarChart3 className="w-5 h-5 text-emerald-600" />
-                                Disaster Distribution
-                            </h2>
-                            <span className="text-xs text-slate-500">By drill type</span>
-                        </div>
-                        {disasterDistributionChartData ? (
-                            <div className="h-64">
-                                <Doughnut data={disasterDistributionChartData} options={buildDoughnutOptions(disasterDistributionChartData)} />
-                            </div>
-                        ) : (
-                            <p className="text-sm text-slate-500">No drills yet with a recorded disaster type.</p>
-                        )}
-                    </div>
-                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md flex flex-col">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                                <ClipboardCheck className="w-5 h-5 text-emerald-600" />
-                                Evaluation Status
-                            </h2>
-                            <span className="text-xs text-slate-500">Across completed drills</span>
-                        </div>
-                        {evaluationStatusChartData ? (
-                            <div className="h-64">
-                                <Doughnut data={evaluationStatusChartData} options={buildDoughnutOptions(evaluationStatusChartData)} />
-                            </div>
-                        ) : (
-                            <p className="text-sm text-slate-500">No evaluation data available yet.</p>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Row 3 — Requires Attention */}
-            {(eventsStartingToday > 0 || pendingEvaluations > 0 || pendingCertificates > 0 || (role !== 'PARTICIPANT')) && (
-                <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/60 to-white p-6 shadow-md">
-                    <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
-                        <AlertTriangle className="w-5 h-5 text-amber-600" />
-                        Requires Attention
-                    </h2>
-                    <ul className="space-y-2">
-                        {eventsStartingToday > 0 && (
-                            <li>
-                                <a href="/admin/simulation-events" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
-                                    {eventsStartingToday} event{eventsStartingToday !== 1 ? 's' : ''} starting today
-                                </a>
-                            </li>
-                        )}
-                        {pendingEvaluations > 0 && (
-                            <li>
-                                <a href="/admin/evaluations" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
-                                    {pendingEvaluations} participant{pendingEvaluations !== 1 ? 's' : ''} not evaluated
-                                </a>
-                            </li>
-                        )}
-                        {pendingCertificates > 0 && (
-                            <li>
-                                <a href="/admin/certification" className="text-sm text-slate-700 hover:text-emerald-600 font-medium">
-                                    {pendingCertificates} pending certificate{pendingCertificates !== 1 ? 's' : ''}
-                                </a>
-                            </li>
-                        )}
-                        {eventsStartingToday === 0 && pendingEvaluations === 0 && pendingCertificates === 0 && role !== 'PARTICIPANT' && (
-                            <li className="text-sm text-slate-500">No pending items. You’re all set.</li>
-                        )}
-                    </ul>
-                </div>
-            )}
-
-            {/* Row 4 — Drills per month (bar chart) */}
-            {role !== 'PARTICIPANT' && (
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                            <BarChart3 className="w-5 h-5 text-emerald-600" />
-                            Drills Per Month
-                        </h2>
-                        <span className="text-xs text-slate-500">Current year</span>
-                    </div>
-                    {drillsPerMonthChartData ? (
-                        <div className="h-72">
-                            <Bar data={drillsPerMonthChartData} options={barOptions} />
-                        </div>
-                    ) : (
-                        <p className="text-sm text-slate-500">No drills recorded for the current year.</p>
-                    )}
-                </div>
-            )}
-
-            {/* Row 5 — Performance trend (line chart) + numeric overview (LGU admin only) */}
-            {role !== 'PARTICIPANT' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                                <TrendingUp className="w-5 h-5 text-emerald-600" />
-                                Performance Trend
-                            </h2>
-                            <span className="text-xs text-slate-500">Average score over time</span>
-                        </div>
-                        {performanceTrendChartData ? (
-                            <div className="h-72">
-                                <Line data={performanceTrendChartData} options={lineOptions} />
-                            </div>
-                        ) : (
-                            <p className="text-sm text-slate-500">No submitted evaluation scores yet.</p>
-                        )}
-                    </div>
-                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
-                            <BarChart3 className="w-5 h-5 text-slate-500" />
-                            Performance Overview
-                        </h2>
-                        <ul className="space-y-3 text-sm">
-                            <li className="flex justify-between">
-                                <span className="text-slate-600">Average Score</span>
-                                <span className="font-semibold text-slate-900">{stats.average_score != null ? `${stats.average_score}%` : '—'}</span>
-                            </li>
-                            <li className="flex justify-between">
-                                <span className="text-slate-600">Pass Rate</span>
-                                <span className="font-semibold text-slate-900">{stats.pass_rate != null ? `${stats.pass_rate}%` : '—'}</span>
-                            </li>
-                            <li className="flex justify-between">
-                                <span className="text-slate-600">Attendance Rate</span>
-                                <span className="font-semibold text-slate-900">{stats.attendance_rate != null ? `${stats.attendance_rate}%` : '—'}</span>
-                            </li>
-                        </ul>
-                        <p className="text-xs text-slate-400 mt-3">View details on Evaluations page</p>
-                    </div>
-                </div>
-            )}
-
-            {/* Row 6 — Activity + Upcoming events (visual overview) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
-                            <Activity className="w-5 h-5 text-slate-500" />
-                            Recent Activity
-                        </h2>
-                        <ul className="space-y-3">
-                            {recentActivity.length > 0 ? (
-                                recentActivity.map((item, i) => (
-                                    <li key={i}>
-                                        <a href={item.link || '#'} className="text-sm text-slate-700 hover:text-emerald-600 flex items-center gap-2">
-                                            <span className="text-slate-400">•</span>
-                                            {item.label}
-                                        </a>
-                                    </li>
-                                ))
-                            ) : (
-                                <li className="text-sm text-slate-500">No recent activity yet.</li>
-                            )}
-                        </ul>
-                    </div>
-                </div>
-                <div>
-                    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
-                            <Calendar className="w-5 h-5 text-slate-500" />
-                            Upcoming Events
-                        </h2>
-                        <div className="space-y-2">
-                            {upcomingEventList.length > 0 ? (
-                                upcomingEventList.slice(0, 5).map((e) => (
-                                    <a key={e.id} href={`/admin/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
-                                        <span className="font-medium text-slate-900">{e.title}</span>
-                                        <span className="ml-2 text-slate-500">{formatDate(eventDateStr(e))}</span>
-                                    </a>
-                                ))
-                            ) : (
-                                <p className="text-sm text-slate-500">No upcoming events this month.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Row 7 — Quick Actions 2x3 icon grid */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {role !== 'PARTICIPANT' && (
-                        <>
-                            <a href="/admin/training-modules/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
-                                <BookOpen className="w-10 h-10 text-emerald-600" />
-                                <span className="text-sm font-medium text-slate-700">+ Module</span>
-                            </a>
-                            <a href="/admin/ai-scenario-training/final-assessment" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
-                                <Sparkles className="w-10 h-10 text-emerald-600" />
-                                <span className="text-sm font-medium text-slate-700">Final Assessment</span>
-                            </a>
-                            <a href="/admin/simulation-events/create" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
-                                <CalendarClock className="w-10 h-10 text-emerald-600" />
-                                <span className="text-sm font-medium text-slate-700">+ Event</span>
-                            </a>
-                        </>
-                    )}
-                    <a href="/admin/participants" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
-                        <Users className="w-10 h-10 text-emerald-600" />
-                        <span className="text-sm font-medium text-slate-700">Participants</span>
-                    </a>
-                    <a href="/admin/evaluations" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
-                        <ClipboardList className="w-10 h-10 text-emerald-600" />
-                        <span className="text-sm font-medium text-slate-700">Evaluate</span>
-                    </a>
-                    <a href="#" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 py-8 transition-all duration-250 hover:shadow-md hover:-translate-y-1 hover:border-emerald-200 hover:bg-emerald-50/50">
-                        <FileText className="w-10 h-10 text-emerald-600" />
-                        <span className="text-sm font-medium text-slate-700">Reports</span>
-                    </a>
-                </div>
-            </div>
-
-            {/* Row 5 — Upcoming Events Calendar */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
-                    <Calendar className="w-5 h-5 text-slate-500" />
-                    Upcoming Events — {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500">
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                            <span key={d}>{d}</span>
-                        ))}
-                        {calendarDays.map((d, i) => (
-                            <span
-                                key={i}
-                                className={`inline-flex h-8 items-center justify-center rounded-lg ${d == null ? 'invisible' : eventDatesSet.has(d) ? 'bg-emerald-100 text-emerald-800 font-bold' : 'text-slate-600'}`}
-                            >
-                                {d ?? ''}
-                            </span>
-                        ))}
-                    </div>
-                    <div className="space-y-2">
-                        {upcomingEventList.length > 0 ? (
-                            upcomingEventList.slice(0, 5).map((e) => (
-                                <a key={e.id} href={`/admin/simulation-events/${e.id}`} className="block rounded-xl border border-slate-200 p-3 text-sm hover:bg-slate-50 hover:border-emerald-200">
-                                    <span className="font-medium text-slate-900">{e.title}</span>
-                                    <span className="ml-2 text-slate-500">{formatDate(eventDateStr(e))}</span>
-                                </a>
-                            ))
-                        ) : (
-                            <p className="text-sm text-slate-500">No upcoming events this month.</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Row 6 — System Insights */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md">
-                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 mb-4">
-                    <Zap className="w-5 h-5 text-amber-500" />
-                    Insights
-                </h2>
-                <ul className="space-y-2 text-sm text-slate-700">
-                    <li>Most active module: <span className="font-semibold text-slate-900">{mostActiveModule}</span></li>
-                    <li>Top scenario (recent): <span className="font-semibold text-slate-900">{topScenario}</span></li>
-                    <li>Trend: Aggregate metrics available on Evaluations and Certification pages.</li>
-                </ul>
-            </div>
-        </div>
-    );
+function DashboardOverview(props) {
+    return <AdminDashboardOverview {...props} />;
 }
 
 function TrainingModulesTable({ modules = [], modulesPagination = null }) {

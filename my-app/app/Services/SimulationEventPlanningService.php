@@ -75,13 +75,17 @@ class SimulationEventPlanningService
         $schedule = $this->serializeSchedule($request);
         $summary = $this->buildTrainingSummaryForCampaign($request);
         $planData = $this->serializePlan($request->simulationPlan);
+
+        $demoForceReady = $this->campaignHasDemoForceReady($request);
+        if ($demoForceReady) {
+            $schedule['demo_force_ready'] = true;
+        }
+
         $readiness = $this->buildReadiness($schedule, $summary, $planData);
 
         $registrationPassed = (bool) ($readiness['registration_deadline_passed'] ?? false);
-        $trainingCompletionPassed = $this->trainingCompletionDeadlineHasPassed(
-            $schedule['training_completion_deadline'] ?? null,
-        );
-        $qualified = (int) ($summary['qualified_for_simulation'] ?? 0);
+        $trainingCompletionPassed = (bool) ($readiness['training_completion_deadline_passed'] ?? false);
+        $qualified = (int) ($readiness['qualified_participants'] ?? $summary['qualified_for_simulation'] ?? 0);
         $minimum = (int) ($schedule['minimum_qualified_participants'] ?? 0);
         $simulationReadiness = $this->resolveDashboardReadiness(
             $request,
@@ -116,6 +120,7 @@ class SimulationEventPlanningService
             'has_simulation_plan' => $request->simulation_event_id !== null,
             'published_exercise_plans_available' => $this->publishedExercisePlanCount() > 0,
             'simulation_event_status' => $request->simulationEvent?->status,
+            'demo_force_ready' => $demoForceReady,
             'planning_href' => '/admin/simulation-planning/'.$request->id,
             'simulation_event_href' => $request->simulation_event_id
                 ? '/admin/simulation-events/'.$request->simulation_event_id
@@ -302,6 +307,16 @@ PROMPT;
         $trainingCompletionDeadlinePassed = $this->trainingCompletionDeadlineHasPassed(
             $schedule['training_completion_deadline'] ?? null,
         );
+
+        // Presentation / demo override: treat deadlines + quota as met without fake participants.
+        if (! empty($schedule['demo_force_ready'])) {
+            $registrationDeadlinePassed = true;
+            $trainingCompletionDeadlinePassed = true;
+            if ($minimum > 0 && $qualified < $minimum) {
+                $qualified = $minimum;
+            }
+        }
+
         $registrationValidationMessage = $registrationDeadlinePassed
             ? null
             : 'Registration is still open. Simulation planning will be available after the registration deadline.';
@@ -390,6 +405,7 @@ PROMPT;
         return [
             'approved_schedule' => true,
             'registration_deadline_passed' => $registrationDeadlinePassed,
+            'training_completion_deadline_passed' => $trainingCompletionDeadlinePassed,
             'registration_validation_message' => $registrationValidationMessage,
             'qualified_validation_message' => $qualifiedValidationMessage,
             'validation_messages' => array_values(array_filter([
@@ -691,6 +707,29 @@ PROMPT;
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    protected function campaignHasDemoForceReady(CampaignRequest $request): bool
+    {
+        return (bool) data_get($request->payload, 'demo_force_ready', false);
+    }
+
+    /**
+     * Presentation helper: mark campaign readiness quotas/deadlines as met.
+     */
+    public function enableDemoMeetQuota(CampaignRequest $request): CampaignRequest
+    {
+        $payload = $request->payload;
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+
+        $payload['demo_force_ready'] = true;
+        $payload['demo_force_ready_at'] = now()->toIso8601String();
+        $request->payload = $payload;
+        $request->save();
+
+        return $request->fresh(['trainingModule', 'simulationPlan', 'simulationEvent']);
     }
 
     protected function trainingCompletionDeadlineHasPassed(?string $deadline): bool

@@ -9,6 +9,7 @@ import {
     AdminContentCard,
     AdminStatCard,
 } from '../components/admin/AdminLayout';
+import { AdminTablePagination } from '../components/admin/AdminDataTable';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
 
@@ -186,33 +187,20 @@ export function EvaluationEventsPanel({ events = [], filters = {} }) {
                         </tbody>
                     </table>
                 </div>
+                {totalEvents > 0 ? (
+                    <AdminTablePagination
+                        pagination={{
+                            current_page: currentPage,
+                            last_page: totalPages,
+                            per_page: itemsPerPage,
+                            total: totalEvents,
+                            from: totalEvents === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1,
+                            to: Math.min(currentPage * itemsPerPage, totalEvents),
+                        }}
+                        onPageChange={setCurrentPage}
+                    />
+                ) : null}
             </AdminContentCard>
-
-            {totalEvents > itemsPerPage && (
-                <div className="flex items-center justify-between text-sm text-slate-600">
-                    <span>
-                        Page {currentPage} of {totalPages} ({totalEvents} events)
-                    </span>
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40"
-                        >
-                            Previous
-                        </button>
-                        <button
-                            type="button"
-                            disabled={currentPage === totalPages}
-                            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40"
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

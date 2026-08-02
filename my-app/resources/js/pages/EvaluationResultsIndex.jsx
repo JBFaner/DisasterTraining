@@ -24,27 +24,18 @@ import {
     AdminContentCard,
     AdminStatCard,
 } from '../components/admin/AdminLayout';
+import { AdminTablePagination } from '../components/admin/AdminDataTable';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
-function formatDuration(seconds) {
-    if (seconds == null || seconds < 0) return '—';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${String(secs).padStart(2, '0')}`;
-}
-
-function StatusBadge({ status }) {
-    const passed = status === 'passed';
-    const failed = status === 'needs_improvement';
-    const label = passed ? 'Passed' : failed ? 'Failed' : 'In Progress';
-    const classes = passed
+function StatusBadge({ status, isInProgress = false }) {
+    const complete = !isInProgress && (status === 'passed' || status === 'needs_improvement' || status === 'completed');
+    const label = complete ? 'Complete' : 'In Progress';
+    const classes = complete
         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-        : failed
-            ? 'bg-rose-50 text-rose-700 border-rose-200'
-            : 'bg-amber-50 text-amber-800 border-amber-200';
+        : 'bg-amber-50 text-amber-800 border-amber-200';
 
     return (
         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border ${classes}`}>
@@ -262,14 +253,13 @@ export function EvaluationResultsIndex({
         const html = buildPrintTableDocument({
             title: 'Final Scenario Evaluation Results',
             subtitle: `Printed ${new Date().toLocaleString()} · ${(results || []).length} row(s) · Module: ${moduleLabel}${statusFilter ? ` · Status: ${statusFilter}` : ''}${search ? ` · Search: ${search}` : ''}${dateFrom || dateTo ? ` · Dates: ${dateFrom || '…'} to ${dateTo || '…'}` : ''}`,
-            headers: ['#', 'Participant', 'Module', 'Attempt', 'Score %', 'Status', 'Completed'],
+            headers: ['#', 'Participant', 'Module', 'Scenario', 'Status', 'Completed'],
             rows: (results || []).map((row, index) => [
                 index + 1,
                 row.participant?.name || '—',
-                row.training_module?.title || row.scenario_title || '—',
-                row.attempt_number != null ? `#${row.attempt_number}` : '—',
-                row.percentage != null ? `${Number(row.percentage).toFixed(1)}%` : (row.score != null ? String(row.score) : '—'),
-                row.status === 'passed' ? 'Passed' : (row.status === 'needs_improvement' ? 'Failed' : (row.status || '—')),
+                row.training_module?.title || '—',
+                row.scenario_title || '—',
+                (row.is_in_progress || row.status === 'in_progress') ? 'In Progress' : 'Complete',
                 row.completed_at ? new Date(row.completed_at).toLocaleString() : '—',
             ]),
         });
@@ -426,8 +416,7 @@ export function EvaluationResultsIndex({
                     <>
                         <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                             <option value="">All Status</option>
-                            <option value="passed">Passed</option>
-                            <option value="failed">Failed</option>
+                            <option value="completed">Complete</option>
                             <option value="in_progress">In Progress</option>
                         </AdminFilterSelect>
                         <AdminFilterSelect label="Training Module" value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
@@ -448,7 +437,9 @@ export function EvaluationResultsIndex({
                 <AdminFilterInput label="Date to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </AdminCollapsibleFilterBar>
 
-            <p className="text-xs text-slate-500 -mt-2 mb-4 text-right">Passing score: {passingScore}%</p>
+            <p className="text-xs text-slate-500 -mt-2 mb-4">
+                Status shows Complete or In Progress for monitoring. Click a participant name to open full score details. Passing score: {passingScore}%.
+            </p>
 
             <AdminContentCard>
                 {viewMode === 'list' || isParticipant ? (
@@ -470,12 +461,7 @@ export function EvaluationResultsIndex({
                                     {!isParticipant && <th className="text-left px-4 py-3">Participant</th>}
                                     <th className="text-left px-4 py-3">Training Module</th>
                                     <th className="text-left px-4 py-3">Scenario</th>
-                                    <th className="text-left px-4 py-3">Difficulty</th>
-                                    <th className="text-left px-4 py-3">Attempt</th>
-                                    <th className="text-left px-4 py-3">Score</th>
-                                    <th className="text-left px-4 py-3">%</th>
                                     <th className="text-left px-4 py-3">Status</th>
-                                    <th className="text-left px-4 py-3">Duration</th>
                                     <th className="text-left px-4 py-3">Completed</th>
                                     <th className="text-right px-4 py-3">Actions</th>
                                 </tr>
@@ -483,7 +469,7 @@ export function EvaluationResultsIndex({
                             <tbody className="divide-y divide-slate-100">
                                 {(results || []).length === 0 ? (
                                     <tr>
-                                        <td colSpan={isParticipant ? 10 : (isAdmin && resettableIds.length > 0 ? 12 : 11)} className="px-4 py-8 text-center text-slate-500">
+                                        <td colSpan={isParticipant ? 5 : (isAdmin && resettableIds.length > 0 ? 7 : 6)} className="px-4 py-8 text-center text-slate-500">
                                             No evaluation records yet.
                                         </td>
                                     </tr>
@@ -503,30 +489,38 @@ export function EvaluationResultsIndex({
                                                 </td>
                                             )}
                                             {!isParticipant && (
-                                                <td className="px-4 py-3 font-medium text-slate-900">{row.participant?.name || '—'}</td>
+                                                <td className="px-4 py-3 font-medium text-slate-900">
+                                                    {row.detail_href || (!row.is_in_progress && row.id) ? (
+                                                        <a
+                                                            href={row.detail_href || `/admin/evaluations/results/${row.id}`}
+                                                            className="text-emerald-700 hover:text-emerald-800 hover:underline"
+                                                            title="View evaluation score"
+                                                        >
+                                                            {row.participant?.name || '—'}
+                                                        </a>
+                                                    ) : (
+                                                        row.participant?.name || '—'
+                                                    )}
+                                                </td>
                                             )}
                                             <td className="px-4 py-3 text-slate-700">{row.training_module?.title || '—'}</td>
-                                            <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{row.scenario_title}</td>
-                                            <td className="px-4 py-3 capitalize text-slate-600">{row.difficulty}</td>
-                                            <td className="px-4 py-3 text-slate-600">
-                                                {(() => {
-                                                    const attemptNum = row.attempt_number ?? row.ai_scenario_attempt?.attempt_number;
-                                                    return attemptNum ? `#${attemptNum}` : '—';
-                                                })()}
+                                            <td className="px-4 py-3 text-slate-700 max-w-[240px] truncate">{row.scenario_title}</td>
+                                            <td className="px-4 py-3">
+                                                <StatusBadge status={row.status} isInProgress={Boolean(row.is_in_progress || row.status === 'in_progress')} />
                                             </td>
-                                            <td className="px-4 py-3">{row.correct_answers}/{row.total_questions}</td>
-                                            <td className="px-4 py-3 font-semibold">{Number(row.percentage).toFixed(1)}%</td>
-                                            <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
-                                            <td className="px-4 py-3 text-xs text-slate-500">{formatDuration(row.duration_seconds ?? row.ai_scenario_attempt?.duration_seconds)}</td>
                                             <td className="px-4 py-3 text-xs text-slate-500">{row.completed_at ? new Date(row.completed_at).toLocaleString() : '—'}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex justify-end gap-1 flex-wrap">
-                                                    <a href={`/admin/evaluations/results/${row.id}`} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="View Result">
-                                                        <Eye className="w-4 h-4" />
-                                                    </a>
-                                                    <button type="button" onClick={() => window.open(`/admin/evaluations/results/${row.id}?print=1`, '_blank')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="Print">
-                                                        <Printer className="w-4 h-4" />
-                                                    </button>
+                                                    {!row.is_in_progress && (
+                                                        <>
+                                                            <a href={`/admin/evaluations/results/${row.id}`} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="View Result">
+                                                                <Eye className="w-4 h-4" />
+                                                            </a>
+                                                            <button type="button" onClick={() => window.open(`/admin/evaluations/results/${row.id}?print=1`, '_blank')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="Print">
+                                                                <Printer className="w-4 h-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                     {isAdmin && row.can_reset && (
                                                         <button
                                                             type="button"
@@ -538,7 +532,7 @@ export function EvaluationResultsIndex({
                                                             Reset
                                                         </button>
                                                     )}
-                                                    {isAdmin && (
+                                                    {isAdmin && !row.is_in_progress && (
                                                         <button type="button" onClick={() => handleDelete(row.id, row.participant?.name)} className="p-2 rounded-lg hover:bg-rose-50 text-rose-600" title="Delete">
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
@@ -560,12 +554,16 @@ export function EvaluationResultsIndex({
                                         <p className="font-semibold text-slate-900">{row.participant?.name}</p>
                                         <p className="text-xs text-slate-500">{row.training_module?.title}</p>
                                     </div>
-                                    <StatusBadge status={row.status} />
+                                    <StatusBadge status={row.status} isInProgress={Boolean(row.is_in_progress || row.status === 'in_progress')} />
                                 </div>
                                 <p className="text-sm text-slate-700 line-clamp-2">{row.scenario_title}</p>
-                                <p className="text-2xl font-bold text-emerald-700">{Number(row.percentage).toFixed(1)}%</p>
+                                <p className="text-xs text-slate-500">
+                                    {row.completed_at ? `Completed ${new Date(row.completed_at).toLocaleString()}` : 'In progress — open detail for scores after finish'}
+                                </p>
                                 <div className="flex gap-2 pt-2 flex-wrap">
-                                    <AdminPrimaryButton href={`/admin/evaluations/results/${row.id}`} className="text-xs py-1.5">View Result</AdminPrimaryButton>
+                                    {!row.is_in_progress && (
+                                        <AdminPrimaryButton href={`/admin/evaluations/results/${row.id}`} className="text-xs py-1.5">View Result</AdminPrimaryButton>
+                                    )}
                                     {row.can_reset && (
                                         <AdminSecondaryButton type="button" onClick={() => handleReset(row)} className="text-xs py-1.5 text-amber-800 border-amber-200">
                                             <RotateCcw className="w-3.5 h-3.5" /> Reset
@@ -578,31 +576,24 @@ export function EvaluationResultsIndex({
                 )}
             </AdminContentCard>
 
-            {pagination && pagination.last_page > 1 && (
-                <div className="flex items-center justify-between text-sm text-slate-600">
-                    <span>
-                        Page {pagination.current_page} of {pagination.last_page} ({pagination.total} records)
-                    </span>
-                    <div className="flex gap-2">
-                        {pagination.current_page > 1 && (
-                            <a
-                                href={`?${new URLSearchParams({ ...filters, ...(embedded ? { tab: filters.tab || 'modules' } : {}), page: pagination.current_page - 1 }).toString()}`}
-                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
-                            >
-                                Previous
-                            </a>
-                        )}
-                        {pagination.current_page < pagination.last_page && (
-                            <a
-                                href={`?${new URLSearchParams({ ...filters, ...(embedded ? { tab: filters.tab || 'modules' } : {}), page: pagination.current_page + 1 }).toString()}`}
-                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
-                            >
-                                Next
-                            </a>
-                        )}
-                    </div>
+            {pagination && pagination.total > 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    <AdminTablePagination
+                        pagination={pagination}
+                        onPageChange={(page) => {
+                            const params = new URLSearchParams({
+                                ...filters,
+                                ...(embedded ? { tab: filters.tab || 'modules' } : {}),
+                                page: String(page),
+                            });
+                            Object.keys(Object.fromEntries(params.entries())).forEach((key) => {
+                                if (!params.get(key)) params.delete(key);
+                            });
+                            window.location.href = `?${params.toString()}`;
+                        }}
+                    />
                 </div>
-            )}
+            ) : null}
         </>
     );
 

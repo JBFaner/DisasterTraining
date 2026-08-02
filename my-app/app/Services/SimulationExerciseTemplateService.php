@@ -145,7 +145,8 @@ class SimulationExerciseTemplateService
                 'sort_order' => $item->sort_order,
             ])->values()->all(),
             'options' => [
-                'categories' => SimulationExerciseTemplate::CATEGORIES,
+                'categories' => SimulationExerciseTemplate::availableCategoryOptions(),
+                'core_categories' => SimulationExerciseTemplate::CATEGORIES,
                 'exercise_types' => SimulationExerciseTemplate::EXERCISE_TYPES,
                 'evaluation_modes' => SimulationExerciseTemplate::EVALUATION_MODES,
                 'difficulty_levels' => SimulationExerciseTemplate::DIFFICULTY_LEVELS,
@@ -258,7 +259,7 @@ class SimulationExerciseTemplateService
             $errors[] = 'Exercise title is required.';
         }
 
-        if (! in_array((string) $template->category, SimulationExerciseTemplate::CATEGORIES, true)) {
+        if (trim((string) $template->category) === '') {
             $errors[] = 'Exercise category is required.';
         }
 

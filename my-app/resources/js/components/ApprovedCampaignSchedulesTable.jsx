@@ -3,6 +3,7 @@ import {
     AlertTriangle,
     ClipboardList,
     Eye,
+    FlaskConical,
     Pencil,
     Plus,
     Printer,
@@ -24,6 +25,8 @@ import {
     resolveRowAction,
 } from '../utils/approvedCampaignDashboard';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
+import { getCsrfHeaders } from '../utils/csrf';
+import { showAppAlert, showAppConfirm, formatApiErrors } from '../utils/appAlert';
 
 function ReadinessBadge({ row }) {
     const key = row.simulation_readiness || 'waiting_qualification';
@@ -211,6 +214,7 @@ function ApprovedCampaignsEmptyState() {
 }
 
 export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
+    const [scheduleRows, setScheduleRows] = React.useState(schedules);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [filterCommunity, setFilterCommunity] = React.useState('');
     const [filterAudience, setFilterAudience] = React.useState('');
@@ -219,29 +223,34 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
     const [readyOnly, setReadyOnly] = React.useState(false);
     const [currentPage, setCurrentPage] = React.useState(1);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [meetingQuotaId, setMeetingQuotaId] = React.useState(null);
     const itemsPerPage = 10;
 
+    React.useEffect(() => {
+        setScheduleRows(schedules);
+    }, [schedules]);
+
     const communities = React.useMemo(() => {
-        const values = schedules
+        const values = scheduleRows
             .map((row) => row.recommended_community || row.community)
             .filter((value) => value && value !== '—');
         return [...new Set(values)].sort();
-    }, [schedules]);
+    }, [scheduleRows]);
 
     const audiences = React.useMemo(() => {
-        const values = schedules.flatMap((row) => {
+        const values = scheduleRows.flatMap((row) => {
             if (Array.isArray(row.target_audience) && row.target_audience.length > 0) {
                 return row.target_audience;
             }
             return row.target_audience_label ? [row.target_audience_label] : [];
         });
         return [...new Set(values)].sort();
-    }, [schedules]);
+    }, [scheduleRows]);
 
-    const summary = React.useMemo(() => computeDashboardSummary(schedules), [schedules]);
+    const summary = React.useMemo(() => computeDashboardSummary(scheduleRows), [scheduleRows]);
 
     const filteredSchedules = React.useMemo(
-        () => filterApprovedCampaigns(schedules, {
+        () => filterApprovedCampaigns(scheduleRows, {
             searchQuery,
             community: filterCommunity,
             targetAudience: filterAudience,
@@ -249,7 +258,7 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
             planStatus: filterPlanStatus,
             readyOnly,
         }),
-        [schedules, searchQuery, filterCommunity, filterAudience, filterReadiness, filterPlanStatus, readyOnly],
+        [scheduleRows, searchQuery, filterCommunity, filterAudience, filterReadiness, filterPlanStatus, readyOnly],
     );
 
     React.useEffect(() => {
@@ -260,7 +269,7 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
         setIsLoading(true);
         const timer = window.setTimeout(() => setIsLoading(false), 220);
         return () => window.clearTimeout(timer);
-    }, [searchQuery, filterCommunity, filterAudience, filterReadiness, filterPlanStatus, readyOnly, schedules]);
+    }, [searchQuery, filterCommunity, filterAudience, filterReadiness, filterPlanStatus, readyOnly, scheduleRows]);
 
     const totalPages = Math.max(1, Math.ceil(filteredSchedules.length / itemsPerPage));
     const paginatedSchedules = filteredSchedules.slice(
@@ -340,7 +349,55 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
         },
     ];
 
-    const showGlobalEmpty = schedules.length === 0;
+    const showGlobalEmpty = scheduleRows.length === 0;
+
+    const handleMeetQuota = async (row) => {
+        const campaignId = campaignRowId(row);
+        if (!campaignId) return;
+
+        const confirmed = await showAppConfirm({
+            title: 'Meet Quota (Demo)?',
+            description: `Mark "${row.campaign_title || 'this campaign'}" as ready for presentation? This skips registration/training deadlines and minimum qualified participants.`,
+            confirmLabel: 'Meet Quota',
+            cancelLabel: 'Cancel',
+            confirmVariant: 'primary',
+        });
+        if (!confirmed) return;
+
+        setMeetingQuotaId(campaignId);
+        try {
+            const response = await fetch(`/admin/simulation-planning/${campaignId}/demo-meet-quota`, {
+                method: 'POST',
+                headers: { Accept: 'application/json', ...getCsrfHeaders() },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(formatApiErrors(data, 'Failed to apply demo quota.'));
+            }
+
+            if (data.schedule) {
+                setScheduleRows((prev) => prev.map((item) => (
+                    Number(campaignRowId(item)) === Number(campaignId)
+                        ? { ...item, ...data.schedule }
+                        : item
+                )));
+            }
+
+            showAppAlert({
+                title: 'Demo quota met',
+                description: data.message || 'Campaign is ready. You can use a published exercise plan now.',
+                icon: 'success',
+            });
+        } catch (error) {
+            showAppAlert({
+                title: 'Meet Quota failed',
+                description: error.message || 'Could not apply demo quota.',
+                icon: 'error',
+            });
+        } finally {
+            setMeetingQuotaId(null);
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -468,9 +525,31 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
                         to: Math.min(currentPage * itemsPerPage, filteredSchedules.length),
                     } : null}
                     onPageChange={setCurrentPage}
-                    renderActions={(row) => (
-                        <TableActionButton action={resolveRowAction(row)} />
-                    )}
+                    renderActions={(row) => {
+                        const action = resolveRowAction(row);
+                        const showMeetQuota = !row.can_create_plan
+                            && !row.simulation_event_id
+                            && !row.demo_force_ready
+                            && row.simulation_readiness !== 'simulation_created';
+
+                        return (
+                            <>
+                                <TableActionButton action={action} />
+                                {showMeetQuota ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleMeetQuota(row)}
+                                        disabled={meetingQuotaId === campaignRowId(row)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                                        title="Presentation only — mark quota/deadlines as met"
+                                    >
+                                        <FlaskConical className="w-3.5 h-3.5" />
+                                        {meetingQuotaId === campaignRowId(row) ? 'Applying…' : 'Meet Quota (Demo)'}
+                                    </button>
+                                ) : null}
+                            </>
+                        );
+                    }}
                 />
             )}
         </div>

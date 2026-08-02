@@ -8,8 +8,8 @@ import { EvaluationOverallPanel } from './EvaluationOverallPanel';
 import { EVALUATION_HUB_PRINT_EVENT } from './evaluationHubEvents';
 
 const TABS = [
-    { id: 'lessons', label: 'Lesson Quizzes', icon: BookOpen, description: 'Per-lesson quiz attempts and pass/fail results.' },
-    { id: 'modules', label: 'Evaluation', icon: GraduationCap, description: 'Final AI scenario training scores per module.' },
+    { id: 'lessons', label: 'Lesson Quizzes', icon: BookOpen, description: 'Participant progress (Complete / In Progress). Open a name for Lesson 1–5 scores.' },
+    { id: 'modules', label: 'Evaluation', icon: GraduationCap, description: 'Final AI scenario status. Open a name for full score details.' },
     { id: 'events', label: 'Simulation Event', icon: ClipboardList, description: 'Post-drill scoring for completed simulation events.' },
     { id: 'overall', label: 'Overall', icon: LayoutDashboard, description: 'Combined list of who passed each stage.' },
 ];
@@ -29,6 +29,8 @@ export function EvaluationHub({
     lessonQuizPagination = null,
     lessonQuizAnalytics = null,
     lessonQuizModules = [],
+    lessonQuizLessons = [],
+    lessonQuizLessonColumns = [],
     lessonQuizBatches = [],
     lessonQuizFilters = {},
     overallSummary = null,
@@ -116,6 +118,8 @@ export function EvaluationHub({
                     pagination={lessonQuizPagination}
                     analytics={lessonQuizAnalytics}
                     modules={lessonQuizModules}
+                    lessons={lessonQuizLessons}
+                    lessonColumns={lessonQuizLessonColumns}
                     batches={lessonQuizBatches}
                     filters={lessonQuizFilters}
                 />

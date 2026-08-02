@@ -85,8 +85,12 @@ class AuditLogController extends Controller
 
         $query->orderBy($sortBy, $sortDir);
 
-        $perPage = (int) $request->get('per_page', 15);
-        $perPage = max(5, min(50, $perPage));
+        $perPage = (int) $request->get('per_page', 10);
+        if ($request->boolean('export_all')) {
+            $perPage = min(max((int) $query->count(), 1), 1000);
+        } else {
+            $perPage = max(5, min(50, $perPage));
+        }
 
         $logs = $query->paginate($perPage);
 
@@ -116,9 +120,16 @@ class AuditLogController extends Controller
     {
         $this->authorizeAuditAccess();
 
-        $format = $request->get('format', 'csv');
-
         $query = AuditLog::query()->orderBy('performed_at', 'desc');
+
+        if ($request->filled('user')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('user_name', 'like', '%'.$request->user.'%')
+                    ->orWhereHas('user', function ($uq) use ($request) {
+                        $uq->where('name', 'like', '%'.$request->user.'%');
+                    });
+            });
+        }
 
         if ($request->filled('module')) {
             $query->where('module', $request->module);
@@ -135,39 +146,27 @@ class AuditLogController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', '%' . $search . '%')
-                    ->orWhere('action', 'like', '%' . $search . '%')
-                    ->orWhere('user_name', 'like', '%' . $search . '%');
+                $q->where('description', 'like', '%'.$search.'%')
+                    ->orWhere('action', 'like', '%'.$search.'%')
+                    ->orWhere('user_name', 'like', '%'.$search.'%')
+                    ->orWhere('module', 'like', '%'.$search.'%');
             });
         }
 
         $logs = $query->get();
 
-        if ($format === 'xlsx') {
-            $format = 'csv';
-        }
-
-        if ($format === 'pdf') {
-            $filename = 'audit_logs_' . date('Y-m-d_His') . '.pdf';
-            $headers = [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            ];
-
-            $html = view('emails.audit-logs-pdf', ['logs' => $logs])->render();
-
-            return response($html, 200, $headers);
-        }
-
-        $filename = 'audit_logs_' . date('Y-m-d_His') . '.csv';
+        // Excel-friendly CSV (opens cleanly in Excel / Google Sheets).
+        $filename = 'audit_logs_'.date('Y-m-d_His').'.csv';
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
         $callback = function () use ($logs) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['When', 'User', 'Role', 'Action', 'Module', 'Status', 'IP Address', 'Description']);
+            // UTF-8 BOM so Excel displays special characters correctly.
+            fwrite($file, "\xEF\xBB\xBF");
+            fputcsv($file, ['Date & Time', 'User', 'Role', 'Action', 'Module', 'Status', 'IP Address', 'Details']);
 
             foreach ($logs as $log) {
                 fputcsv($file, [

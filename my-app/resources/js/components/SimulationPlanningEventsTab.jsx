@@ -297,6 +297,9 @@ export function SimulationPlanningEventsTab({
                     emptyTitle="No events match your filters"
                     emptyDescription="Try adjusting your search or filter criteria."
                     minWidth="1000px"
+                    onRowClick={(row) => {
+                        window.location.href = simulationEventHref(row);
+                    }}
                     pagination={filteredEvents.length > 0 ? {
                         current_page: currentPage,
                         last_page: totalPages,
