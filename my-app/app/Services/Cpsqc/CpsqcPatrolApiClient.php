@@ -143,8 +143,8 @@ class CpsqcPatrolApiClient
     public function marshalPoolMembers(?array $requests = null): array
     {
         if ($requests === null) {
+            // Do not filter by Approved only — Patrol may return Scheduled once personnel are assigned.
             $result = $this->listPatrolRequests([
-                'status' => 'Approved',
                 'source_group' => (string) config('cpsqc.defaults.source_group', 'disaster-preparedness'),
             ]);
 
@@ -152,7 +152,12 @@ class CpsqcPatrolApiClient
                 return [];
             }
 
-            $requests = $result['data'];
+            $requests = array_values(array_filter(
+                $result['data'],
+                static fn ($req) => is_array($req)
+                    && is_array($req['assigned_personnel'] ?? null)
+                    && count($req['assigned_personnel']) > 0
+            ));
         }
 
         $members = [];
@@ -239,6 +244,96 @@ class CpsqcPatrolApiClient
             'event_description' => $input['event_description'] ?? null,
             'special_instructions' => $input['special_instructions'] ?? null,
         ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    /**
+     * Notify Patrol that the simulation started — assigned personnel → On Patrol.
+     *
+     * @return array{success: bool, error: ?string, response: ?array<string, mixed>}
+     */
+    public function markSimulationStarted(string $sourceReferenceId): array
+    {
+        return $this->postLifecycle('start_simulation', $sourceReferenceId);
+    }
+
+    /**
+     * Notify Patrol that the simulation completed — assigned personnel → Available.
+     *
+     * @return array{success: bool, error: ?string, response: ?array<string, mixed>}
+     */
+    public function markSimulationCompleted(string $sourceReferenceId): array
+    {
+        return $this->postLifecycle('complete_simulation', $sourceReferenceId);
+    }
+
+    /**
+     * @return array{success: bool, error: ?string, response: ?array<string, mixed>}
+     */
+    private function postLifecycle(string $action, string $sourceReferenceId): array
+    {
+        if (! $this->isConfigured()) {
+            return [
+                'success' => false,
+                'error' => 'CPSQC integration is not configured.',
+                'response' => null,
+            ];
+        }
+
+        $sourceReferenceId = trim($sourceReferenceId);
+        if ($sourceReferenceId === '') {
+            return [
+                'success' => false,
+                'error' => 'Missing source_reference_id.',
+                'response' => null,
+            ];
+        }
+
+        $url = $this->url((string) config('cpsqc.api.endpoints.lifecycle', '/api/patrol_requests_lifecycle.php'));
+
+        try {
+            $response = $this->http()->post($url, [
+                'action' => $action,
+                'source_reference_id' => $sourceReferenceId,
+                'source_group' => (string) config('cpsqc.defaults.source_group', 'disaster-preparedness'),
+            ]);
+            $body = $this->decodeBody($response->body(), $response->json());
+
+            if (! $response->successful() || ! ($body['success'] ?? false)) {
+                $error = is_string($body['error'] ?? null)
+                    ? $body['error']
+                    : (is_string($body['message'] ?? null) ? $body['message'] : 'CPSQC lifecycle update failed (HTTP '.$response->status().').');
+
+                Log::warning('CPSQC lifecycle update failed', [
+                    'action' => $action,
+                    'source_reference_id' => $sourceReferenceId,
+                    'status' => $response->status(),
+                    'body' => $body,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => $error,
+                    'response' => $body,
+                ];
+            }
+
+            return [
+                'success' => true,
+                'error' => null,
+                'response' => $body,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('CPSQC lifecycle exception', [
+                'action' => $action,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Unable to reach CPSQC: '.$e->getMessage(),
+                'response' => null,
+            ];
+        }
     }
 
     private function http()

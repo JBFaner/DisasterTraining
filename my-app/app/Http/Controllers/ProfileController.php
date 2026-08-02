@@ -104,7 +104,58 @@ class ProfileController extends Controller
             'new_values' => ['profile_picture' => $url],
         ]);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile picture updated successfully.',
+                'profile_picture' => $url,
+            ]);
+        }
+
         return back()->with('status', 'Profile picture updated successfully.');
+    }
+
+    public function deletePicture(Request $request)
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! $user->profile_picture) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No profile picture to remove.',
+                    'errors' => ['profile_picture' => ['No profile picture to remove.']],
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'profile_picture' => 'No profile picture to remove.',
+            ]);
+        }
+
+        $oldPicture = $user->profile_picture;
+        $user->profile_picture = null;
+        $user->save();
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'Removed profile picture',
+            'module' => 'Profile',
+            'status' => 'success',
+            'description' => 'User removed their profile picture.',
+            'old_values' => ['profile_picture' => $oldPicture],
+            'new_values' => ['profile_picture' => null],
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile picture removed.',
+            ]);
+        }
+
+        return back()->with('status', 'Profile picture removed.');
     }
 
     public function requestEmailChange(Request $request)

@@ -678,6 +678,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [ProfileController::class, 'updateBasic'])->name('profile.update');
     Route::post('/profile/picture', [ProfileController::class, 'updatePicture'])->name('profile.picture.update');
+    Route::delete('/profile/picture', [ProfileController::class, 'deletePicture'])->name('profile.picture.destroy');
     Route::post('/profile/email', [ProfileController::class, 'requestEmailChange'])->name('profile.email.request');
     Route::get('/profile/email/confirm/{token}', [ProfileController::class, 'confirmEmailChange'])->name('profile.email.confirm');
     Route::post('/profile/email/resend', [ProfileController::class, 'resendEmailChange'])->name('profile.email.resend');

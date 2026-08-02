@@ -16,6 +16,7 @@ import {
     RefreshCw,
     Shield,
     ChevronLeft,
+    ChevronDown,
 } from 'lucide-react';
 import {
     AdminPageShell,
@@ -375,31 +376,53 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
         event_start_time: defaults.event_start_time || '08:00',
         event_end_time: defaults.event_end_time || '',
         event_location: defaults.event_location || '',
-        patrols_needed: defaults.patrols_needed || 1,
+        patrols_needed: '',
         special_instructions: defaults.special_instructions || '',
     }));
+    const [patrolsMenuOpen, setPatrolsMenuOpen] = React.useState(false);
+    const patrolsFieldRef = React.useRef(null);
 
     React.useEffect(() => {
-        setForm({
+        setForm((prev) => ({
             event_name: defaults.event_name || '',
             event_date: defaults.event_date || '',
             event_start_time: defaults.event_start_time || '08:00',
             event_end_time: defaults.event_end_time || '',
             event_location: defaults.event_location || '',
-            patrols_needed: defaults.patrols_needed || 1,
+            // Keep user-typed value; never auto-fill from plan recommended count
+            patrols_needed: prev.patrols_needed,
             special_instructions: defaults.special_instructions || '',
-        });
+        }));
         setSelectedIds(new Set(
             (cpsqc?.assigned_marshals || [])
                 .map((row) => String(row.person_external_id || ''))
                 .filter(Boolean),
         ));
-    }, [cpsqc, defaults.event_name, defaults.event_date, defaults.event_location, defaults.patrols_needed]);
+    }, [cpsqc, defaults.event_name, defaults.event_date, defaults.event_location]);
+
+    React.useEffect(() => {
+        if (!patrolsMenuOpen) return undefined;
+        const onDocClick = (event) => {
+            if (patrolsFieldRef.current && !patrolsFieldRef.current.contains(event.target)) {
+                setPatrolsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', onDocClick);
+        return () => document.removeEventListener('mousedown', onDocClick);
+    }, [patrolsMenuOpen]);
 
     const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
     const available = cpsqc?.available_marshals || [];
     const requests = cpsqc?.requests || [];
     const configured = !!cpsqc?.configured;
+    const patrolsSuggestions = React.useMemo(() => {
+        const recommended = Number(defaults.patrols_needed) || 0;
+        const base = [1, 2, 3, 4, 5, 6, 8, 10];
+        if (recommended > 0 && !base.includes(recommended)) {
+            return [...base, recommended].sort((a, b) => a - b);
+        }
+        return base;
+    }, [defaults.patrols_needed]);
 
     const toggleMarshal = (memberId) => {
         setSelectedIds((prev) => {
@@ -412,6 +435,15 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
     };
 
     const requestPatrol = async () => {
+        const patrolsNeeded = Number(form.patrols_needed);
+        if (!Number.isFinite(patrolsNeeded) || patrolsNeeded < 1) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Patrols needed required',
+                text: 'Type or select how many patrols you need (at least 1).',
+            });
+            return;
+        }
         if (!form.event_date || !form.event_start_time || !form.event_location.trim()) {
             await Swal.fire({
                 icon: 'warning',
@@ -431,7 +463,7 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
                 },
                 body: JSON.stringify({
                     ...form,
-                    patrols_needed: Math.max(1, Number(form.patrols_needed) || 1),
+                    patrols_needed: Math.max(1, Math.min(50, Math.floor(patrolsNeeded))),
                 }),
             });
             const data = await response.json().catch(() => ({}));
@@ -540,7 +572,56 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
                 </label>
                 <label className="text-sm">
                     <span className="mb-1 block text-xs font-semibold text-slate-600">Patrols Needed</span>
-                    <input type="number" min="1" max="50" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.patrols_needed} onChange={(e) => setField('patrols_needed', Number(e.target.value) || 1)} disabled={!configured || busy || disabled} />
+                    <div className="relative" ref={patrolsFieldRef}>
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="Type or pick…"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-9 text-sm placeholder:text-slate-400"
+                            value={form.patrols_needed}
+                            onChange={(e) => {
+                                const raw = e.target.value.replace(/[^\d]/g, '');
+                                setField('patrols_needed', raw === '' ? '' : raw);
+                            }}
+                            onFocus={() => setPatrolsMenuOpen(true)}
+                            disabled={!configured || busy || disabled}
+                        />
+                        <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-slate-400 hover:text-slate-600 disabled:opacity-50"
+                            onClick={() => setPatrolsMenuOpen((open) => !open)}
+                            disabled={!configured || busy || disabled}
+                            aria-label="Show patrol count suggestions"
+                            tabIndex={-1}
+                        >
+                            <ChevronDown className={`h-4 w-4 transition-transform ${patrolsMenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {patrolsMenuOpen && !disabled && configured ? (
+                            <ul className="absolute z-20 mt-1 max-h-40 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                                {patrolsSuggestions.map((n) => (
+                                    <li key={n}>
+                                        <button
+                                            type="button"
+                                            className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-sky-50 ${
+                                                String(form.patrols_needed) === String(n) ? 'bg-sky-50 font-medium text-sky-800' : 'text-slate-700'
+                                            }`}
+                                            onClick={() => {
+                                                setField('patrols_needed', String(n));
+                                                setPatrolsMenuOpen(false);
+                                            }}
+                                        >
+                                            <span>{n}</span>
+                                            {Number(defaults.patrols_needed) === n ? (
+                                                <span className="text-[10px] uppercase tracking-wide text-slate-400">plan</span>
+                                            ) : null}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                    </div>
                 </label>
                 <label className="text-sm">
                     <span className="mb-1 block text-xs font-semibold text-slate-600">Event Date</span>
@@ -603,10 +684,10 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
 
             <div className="space-y-2 border-t border-sky-200 pt-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Approved marshals ({available.length})
+                    CPSQC marshals ({available.length})
                 </p>
                 {available.length === 0 ? (
-                    <p className="text-sm text-slate-500">No approved CPSQC personnel for this event yet.</p>
+                    <p className="text-sm text-slate-500">No CPSQC personnel assigned to this event yet (Approved / Scheduled).</p>
                 ) : (
                     <ul className="space-y-2">
                         {available.map((member) => {
@@ -653,11 +734,9 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
             lessons_learned: '',
         }
     );
-    const [selectedParticipant, setSelectedParticipant] = React.useState(null);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
-        setSelectedParticipant(null);
         const url = new URL(window.location.href);
         if (tabId === 'planning') {
             url.searchParams.delete('tab');
@@ -935,7 +1014,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                 </AdminPrimaryButton>
                             </form>
                         )}
-                        {!isOngoing && !isCompleted && ['LGU_ADMIN', 'LGU_TRAINER'].includes(role) && (
+                        {!isOngoing && ['LGU_ADMIN', 'LGU_TRAINER'].includes(role) && event.status !== 'archived' && event.status !== 'cancelled' && (
                             <form
                                 method="POST"
                                 action={`/admin/simulation-events/${event.id}/test-start`}
@@ -944,7 +1023,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                     const form = e.currentTarget;
                                     const result = await Swal.fire({
                                         title: 'Test Start (Demo)?',
-                                        text: 'Forces this event to Ongoing now (updates schedule to today) so you can demo Execution, Attendance, and Scoring. Use for presentation/testing only.',
+                                        text: 'Forces this event to Ongoing now (ignores schedule time) so you can demo Execution, Attendance, and Scoring. Use Mark Completed when finished.',
                                         icon: 'question',
                                         showCancelButton: true,
                                         confirmButtonText: 'Start for demo',
@@ -1203,63 +1282,23 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                            {selectedParticipant ? (
-                                <div className="space-y-4">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <h3 className="text-sm font-semibold text-slate-900">Participant Info</h3>
-                                        <AdminSecondaryButton type="button" onClick={() => setSelectedParticipant(null)}>
-                                            <ChevronLeft className="w-4 h-4" /> Back
-                                        </AdminSecondaryButton>
-                                    </div>
-                                    <dl className="grid grid-cols-1 gap-3 text-sm">
-                                        <div>
-                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</dt>
-                                            <dd className="mt-0.5 font-medium text-slate-900">{selectedParticipant.name || '—'}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt>
-                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.email || '—'}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
-                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.phone || '—'}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Barangay</dt>
-                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.barangay || '—'}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Organization</dt>
-                                            <dd className="mt-0.5 text-slate-700">{selectedParticipant.organization || '—'}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Registration Status</dt>
-                                            <dd className="mt-0.5 text-slate-700 capitalize">{selectedParticipant.status || '—'}</dd>
-                                        </div>
-                                    </dl>
-                                </div>
+                            <h3 className="mb-3 text-sm font-semibold text-slate-900">Assigned Participants</h3>
+                            {participants.length === 0 ? (
+                                <p className="text-sm text-slate-500">No approved participants yet.</p>
                             ) : (
-                                <>
-                                    <h3 className="mb-3 text-sm font-semibold text-slate-900">Assigned Participants</h3>
-                                    {participants.length === 0 ? (
-                                        <p className="text-sm text-slate-500">No approved participants yet.</p>
-                                    ) : (
-                                        <ul className="space-y-2 max-h-48 overflow-y-auto">
-                                            {participants.map((p) => (
-                                                <li key={p.id}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSelectedParticipant(p)}
-                                                        className="w-full rounded-lg border border-transparent px-2 py-1.5 text-left text-sm text-slate-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50"
-                                                    >
-                                                        <span className="font-medium text-emerald-800 underline-offset-2 hover:underline">{p.name || '—'}</span>
-                                                        <span className="mt-0.5 block text-xs text-slate-400">{p.email}</span>
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </>
+                                <ul className="space-y-2 max-h-48 overflow-y-auto">
+                                    {participants.map((p) => (
+                                        <li key={p.id}>
+                                            <a
+                                                href={`/admin/participants/${p.id}?from=simulation-monitoring&event_id=${event?.id || ''}`}
+                                                className="block w-full rounded-lg border border-transparent px-2 py-1.5 text-left text-sm text-slate-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50"
+                                            >
+                                                <span className="font-medium text-emerald-800 underline-offset-2 hover:underline">{p.name || '—'}</span>
+                                                <span className="mt-0.5 block text-xs text-slate-400">{p.email}</span>
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </div>
 

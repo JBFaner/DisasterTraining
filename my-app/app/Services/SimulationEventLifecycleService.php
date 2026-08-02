@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Cpsqc\CpsqcPatrolApiClient;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class SimulationEventLifecycleService
@@ -28,6 +29,20 @@ class SimulationEventLifecycleService
 
     public function buildPayload(SimulationEvent $event): array
     {
+        $event->loadMissing([
+            'assignedTrainer',
+            'scenario.trainingModule',
+            'registrations.user.barangayProfile',
+            'resources',
+            'assignedResources.resource',
+            'attendances.user',
+            'simulationExerciseTemplate.personnel.qualifiedTrainer',
+            'simulationExerciseTemplate.personnelAssignments.qualifiedTrainer',
+        ]);
+
+        // CPSQC may auto-sync marshals onto the event when Patrol assigns personnel.
+        $cpsqc = $this->buildCpsqcPayload($event);
+        $event = $event->fresh() ?? $event;
         $event->loadMissing([
             'assignedTrainer',
             'scenario.trainingModule',
@@ -63,7 +78,7 @@ class SimulationEventLifecycleService
                 : 'Team / overall',
             'personnel_roster' => $personnelRoster,
             'assignment_pools' => $this->buildAssignmentPools($event),
-            'cpsqc' => $this->buildCpsqcPayload($event),
+            'cpsqc' => $cpsqc,
             'exercise_plan' => $template ? [
                 'id' => $template->id,
                 'title' => $template->title,
@@ -290,20 +305,46 @@ class SimulationEventLifecycleService
                 $requests = $list['data'];
             }
 
-            $approved = $this->cpsqcClient->listPatrolRequests([
-                'status' => 'Approved',
-                'source_reference_id' => $sourceRef,
-                'source_group' => (string) config('cpsqc.defaults.source_group', 'disaster-preparedness'),
-            ]);
-            if ($approved['success']) {
-                $availableMarshals = $this->cpsqcClient->marshalPoolMembers($approved['data']);
-            }
+            // Patrol may use Approved or Scheduled once personnel are assigned — use any request with people.
+            $withPersonnel = collect($requests)
+                ->filter(function ($req) {
+                    if (! is_array($req)) {
+                        return false;
+                    }
+                    $personnel = $req['assigned_personnel'] ?? null;
+
+                    return is_array($personnel) && count($personnel) > 0;
+                })
+                ->values()
+                ->all();
+
+            $availableMarshals = $this->cpsqcClient->marshalPoolMembers($withPersonnel);
         }
 
         $assignedMarshals = collect($event->event_personnel_assignments ?? [])
             ->filter(fn ($row) => is_array($row) && trim((string) ($row['role'] ?? '')) === 'Marshal')
             ->values()
             ->all();
+
+        // Auto-apply CPSQC personnel onto the event so roster shows Assigned (no manual save required).
+        if ($configured && $assignedMarshals === [] && $availableMarshals !== []) {
+            $toAssign = array_map(static function (array $member): array {
+                return [
+                    'role' => 'Marshal',
+                    'source_group' => 'cpsqc_patrol',
+                    'person_name' => (string) ($member['name'] ?? ''),
+                    'person_external_id' => isset($member['id']) ? (string) $member['id'] : null,
+                    'bpso_personnel_id' => $member['bpso_personnel_id'] ?? null,
+                    'patrol_request_id' => $member['patrol_request_id'] ?? null,
+                ];
+            }, $availableMarshals);
+
+            $event = $this->syncEventPersonnelAssignments($event, $toAssign, ['Marshal']);
+            $assignedMarshals = collect($event->event_personnel_assignments ?? [])
+                ->filter(fn ($row) => is_array($row) && trim((string) ($row['role'] ?? '')) === 'Marshal')
+                ->values()
+                ->all();
+        }
 
         $eventDate = $event->event_date
             ? Carbon::parse($event->event_date)->format('Y-m-d')
@@ -335,6 +376,42 @@ class SimulationEventLifecycleService
     public function cpsqcSourceReference(SimulationEvent $event): string
     {
         return 'simulation-event:'.$event->id;
+    }
+
+    /**
+     * Tell Patrol assigned marshals are On Patrol (simulation started).
+     */
+    public function notifyCpsqcSimulationStarted(SimulationEvent $event): void
+    {
+        if (! $this->cpsqcClient->isConfigured()) {
+            return;
+        }
+
+        $result = $this->cpsqcClient->markSimulationStarted($this->cpsqcSourceReference($event));
+        if (! $result['success']) {
+            Log::warning('CPSQC start_simulation notify failed', [
+                'event_id' => $event->id,
+                'error' => $result['error'] ?? null,
+            ]);
+        }
+    }
+
+    /**
+     * Tell Patrol assigned marshals are Available again (simulation completed/cancelled).
+     */
+    public function notifyCpsqcSimulationCompleted(SimulationEvent $event): void
+    {
+        if (! $this->cpsqcClient->isConfigured()) {
+            return;
+        }
+
+        $result = $this->cpsqcClient->markSimulationCompleted($this->cpsqcSourceReference($event));
+        if (! $result['success']) {
+            Log::warning('CPSQC complete_simulation notify failed', [
+                'event_id' => $event->id,
+                'error' => $result['error'] ?? null,
+            ]);
+        }
     }
 
     /**

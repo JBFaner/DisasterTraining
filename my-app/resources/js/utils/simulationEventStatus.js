@@ -65,11 +65,14 @@ export function deriveSimulationEventStatus(event, now = new Date()) {
     }
 
     const startAt = getEventDateTime(event?.event_date, event?.start_time);
-    const endAt = getEventDateTime(event?.event_date, event?.end_time);
+    let endAt = getEventDateTime(event?.event_date, event?.end_time);
     if (!startAt || !endAt || Number.isNaN(now?.getTime?.() ?? NaN)) return stored;
 
-    // Invalid schedule (end before start): keep stored status.
-    if (endAt.getTime() < startAt.getTime()) return stored;
+    // Overnight window: end clock time is on/before start → roll end to next day
+    if (endAt.getTime() <= startAt.getTime()) {
+        endAt = new Date(endAt.getTime());
+        endAt.setDate(endAt.getDate() + 1);
+    }
 
     if (stored === 'published') {
         if (now.getTime() > endAt.getTime()) return 'ended';
@@ -85,9 +88,12 @@ export function deriveSimulationEventStatus(event, now = new Date()) {
 }
 
 export function getSimulationEventWindow(event) {
-    return {
-        startAt: getEventDateTime(event?.event_date, event?.start_time),
-        endAt: getEventDateTime(event?.event_date, event?.end_time),
-    };
+    const startAt = getEventDateTime(event?.event_date, event?.start_time);
+    let endAt = getEventDateTime(event?.event_date, event?.end_time);
+    if (startAt && endAt && endAt.getTime() <= startAt.getTime()) {
+        endAt = new Date(endAt.getTime());
+        endAt.setDate(endAt.getDate() + 1);
+    }
+    return { startAt, endAt };
 }
 

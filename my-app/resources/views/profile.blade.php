@@ -80,9 +80,6 @@
                     <a href="#email-phone" class="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
                         Email &amp; Phone
                     </a>
-                    <a href="#activity-logs" class="block px-3 py-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
-                        Activity Logs <span class="ml-1 text-[10px] uppercase tracking-wide text-amber-600">Soon</span>
-                    </a>
                 </nav>
             </aside>
 
@@ -372,26 +369,6 @@
                             </div>
                         </form>
                     </div>
-                </section>
-
-                {{-- Activity Logs (future-ready placeholder) --}}
-                <section id="activity-logs" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-3">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <h2 class="text-sm font-semibold text-slate-900">
-                                Activity Logs
-                            </h2>
-                            <p class="mt-1 text-xs text-slate-500">
-                                In a future update, this section will show your recent sign-ins and important security events.
-                            </p>
-                        </div>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                            Coming soon
-                        </span>
-                    </div>
-                    <p class="text-xs text-slate-500">
-                        For now, administrators can review detailed account activity from the Audit Logs module.
-                    </p>
                 </section>
             </div>
         </section>

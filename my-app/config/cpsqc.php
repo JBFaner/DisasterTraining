@@ -24,6 +24,7 @@ return [
         'endpoints' => [
             'receive' => env('CPSQC_ENDPOINT_RECEIVE', '/api/patrol_requests_receive.php'),
             'list' => env('CPSQC_ENDPOINT_LIST', '/api/patrol_requests.php'),
+            'lifecycle' => env('CPSQC_ENDPOINT_LIFECYCLE', '/api/patrol_requests_lifecycle.php'),
         ],
     ],
 

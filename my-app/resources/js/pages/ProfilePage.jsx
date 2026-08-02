@@ -41,6 +41,9 @@ export function ProfilePage({
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const initials = userInitials(user?.name);
     const backHref = dashboardIndex(role);
+    const fileInputRef = React.useRef(null);
+    const [viewerOpen, setViewerOpen] = React.useState(false);
+    const [pictureBusy, setPictureBusy] = React.useState(false);
 
     const fieldError = (field) => validationErrors[field]?.[0] ?? null;
 
@@ -55,24 +58,176 @@ export function ProfilePage({
             : `/storage/${user.profile_picture}`)
         : null;
 
+    const openFilePicker = () => {
+        fileInputRef.current?.click();
+    };
+
+    const submitPictureFile = async (file) => {
+        if (!file) return;
+        setPictureBusy(true);
+        try {
+            const body = new FormData();
+            body.append('_token', csrf);
+            body.append('profile_picture', file);
+            const res = await fetch('/profile/picture', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body,
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                const message = data?.errors?.profile_picture?.[0]
+                    || data?.message
+                    || 'Could not upload photo.';
+                window.alert(message);
+                return;
+            }
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            window.alert('Could not upload photo.');
+        } finally {
+            setPictureBusy(false);
+        }
+    };
+
+    const handleDeletePicture = async () => {
+        if (!profilePictureUrl) return;
+        const ok = window.confirm('Remove your profile photo?');
+        if (!ok) return;
+        setPictureBusy(true);
+        try {
+            const res = await fetch('/profile/picture', {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+            if (!res.ok && res.status !== 302) {
+                const data = await res.json().catch(() => ({}));
+                window.alert(data?.errors?.profile_picture?.[0] || data?.message || 'Could not remove photo.');
+                return;
+            }
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            window.alert('Could not remove photo.');
+        } finally {
+            setPictureBusy(false);
+        }
+    };
+
+    React.useEffect(() => {
+        if (!viewerOpen) return undefined;
+        const onKey = (e) => {
+            if (e.key === 'Escape') setViewerOpen(false);
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [viewerOpen]);
+
     return (
         <div className="space-y-6">
-            <section className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 border border-slate-200/80 shadow-xl p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    submitPictureFile(file);
+                }}
+            />
+
+            {viewerOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Profile photo"
+                    onClick={() => setViewerOpen(false)}
+                >
+                    <div
+                        className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                            <p className="text-sm font-semibold text-slate-900">Profile photo</p>
+                            <button
+                                type="button"
+                                className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                onClick={() => setViewerOpen(false)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="bg-slate-100 flex items-center justify-center min-h-[280px] p-6">
                             {profilePictureUrl ? (
                                 <img
                                     src={profilePictureUrl}
                                     alt={user?.name || 'Profile'}
-                                    className="h-8 w-8 rounded-xl object-cover"
+                                    className="max-h-[70vh] max-w-full rounded-xl object-contain shadow-md"
                                 />
                             ) : (
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg font-semibold">
+                                <div className="h-40 w-40 rounded-full bg-emerald-600 text-white flex items-center justify-center text-4xl font-semibold">
+                                    {initials}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3">
+                            {profilePictureUrl ? (
+                                <button
+                                    type="button"
+                                    disabled={pictureBusy}
+                                    onClick={handleDeletePicture}
+                                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                                >
+                                    Delete photo
+                                </button>
+                            ) : null}
+                            <button
+                                type="button"
+                                disabled={pictureBusy}
+                                onClick={openFilePicker}
+                                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                            >
+                                {profilePictureUrl ? 'Change photo' : 'Upload photo'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <section className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 border border-slate-200/80 shadow-xl p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div className="flex items-start gap-4">
+                        <button
+                            type="button"
+                            onClick={() => setViewerOpen(true)}
+                            className="p-1 bg-emerald-100 rounded-2xl shadow-sm hover:ring-2 hover:ring-emerald-300 transition"
+                            title="View profile photo"
+                        >
+                            {profilePictureUrl ? (
+                                <img
+                                    src={profilePictureUrl}
+                                    alt={user?.name || 'Profile'}
+                                    className="h-10 w-10 rounded-xl object-cover"
+                                />
+                            ) : (
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg font-semibold">
                                     {initials}
                                 </span>
                             )}
-                        </div>
+                        </button>
                         <div>
                             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">My Profile</h1>
                             <p className="mt-1 text-sm text-slate-600 max-w-xl">
@@ -138,71 +293,65 @@ export function ProfilePage({
                         <a href="/settings#notifications" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
                             Notifications <span className="ml-1 text-[10px] uppercase tracking-wide text-slate-400">Settings</span>
                         </a>
-                        <a href="#activity-logs" className="block px-3 py-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
-                            Activity Logs <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-600">Soon</span>
-                        </a>
                     </nav>
                 </aside>
 
                 <div className="space-y-6">
                     <section id="profile-information" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setViewerOpen(true)}
+                                className="relative group shrink-0"
+                                title="View or change photo"
+                            >
                                 {profilePictureUrl ? (
                                     <img
                                         src={profilePictureUrl}
                                         alt={user?.name || 'Profile'}
-                                        className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover border-2 border-emerald-100 shadow-md"
+                                        className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-2 border-emerald-100 shadow-md group-hover:ring-2 group-hover:ring-emerald-400 transition"
                                     />
                                 ) : (
-                                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl sm:text-2xl font-semibold shadow-md">
+                                    <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-emerald-600 text-white flex items-center justify-center text-2xl font-semibold shadow-md group-hover:ring-2 group-hover:ring-emerald-400 transition">
                                         {initials}
                                     </div>
                                 )}
-                            </div>
-                            <div className="space-y-1 flex-1">
+                                <span className="absolute inset-0 rounded-full bg-slate-900/0 group-hover:bg-slate-900/35 flex items-center justify-center text-[11px] font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                                    View
+                                </span>
+                            </button>
+                            <div className="space-y-2 flex-1">
                                 <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
                                 <p className="text-xs text-slate-500">
-                                    Update your photo, name, and address. Photos are stored on Cloudinary.
+                                    Click your photo to view it full-size. You can change or delete it from there.
                                 </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={pictureBusy}
+                                        onClick={openFilePicker}
+                                        className="inline-flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 disabled:opacity-50"
+                                    >
+                                        {profilePictureUrl ? 'Change photo' : 'Upload photo'}
+                                    </button>
+                                    {profilePictureUrl ? (
+                                        <button
+                                            type="button"
+                                            disabled={pictureBusy}
+                                            onClick={handleDeletePicture}
+                                            className="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold px-4 py-2 disabled:opacity-50"
+                                        >
+                                            Delete photo
+                                        </button>
+                                    ) : null}
+                                </div>
+                                <p className="text-[0.7rem] text-slate-500">JPG, PNG, or WebP. Max 2MB. Stored on Cloudinary.</p>
+                                <FieldError message={fieldError('profile_picture')} />
                             </div>
                         </div>
 
-                        <form
-                            method="POST"
-                            action="/profile/picture"
-                            encType="multipart/form-data"
-                            className="space-y-3 max-w-xl rounded-xl border border-slate-200 bg-slate-50/70 p-4"
-                        >
-                            <input type="hidden" name="_token" value={csrf} />
-                            <label htmlFor="profile_picture" className="block text-xs font-semibold text-slate-600 mb-1">
-                                Profile photo
-                            </label>
-                            <input
-                                id="profile_picture"
-                                name="profile_picture"
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                required
-                                className={`w-full rounded-lg border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
-                                    fieldError('profile_picture') ? 'border-rose-300' : 'border-slate-300'
-                                }`}
-                            />
-                            <p className="text-[0.7rem] text-slate-500">JPG, PNG, or WebP. Max 2MB.</p>
-                            <FieldError message={fieldError('profile_picture')} />
-                            <div className="flex justify-end">
-                                <button
-                                    type="submit"
-                                    className="inline-flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2"
-                                >
-                                    Upload photo
-                                </button>
-                            </div>
-                        </form>
-
                         <form method="POST" action="/profile" className="space-y-4 max-w-xl">
                             <input type="hidden" name="_token" value={csrf} />
-                            <input type="hidden" name="_method" value="PUT" />
                             <input type="hidden" name="_method" value="PUT" />
 
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -445,23 +594,6 @@ export function ProfilePage({
                         >
                             Open notification settings
                         </a>
-                    </section>
-
-                    <section id="activity-logs" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-3">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <h2 className="text-sm font-semibold text-slate-900">Activity Logs</h2>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    In a future update, this section will show your recent sign-ins and important security events.
-                                </p>
-                            </div>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                Coming soon
-                            </span>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                            For now, administrators can review detailed account activity from the Audit Logs module.
-                        </p>
                     </section>
                 </div>
             </section>

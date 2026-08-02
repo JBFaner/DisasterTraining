@@ -564,6 +564,7 @@ class SimulationEventController extends Controller
         ]);
 
         $this->lifecycle->releaseEventPersonnelAssignments($simulationEvent);
+        $this->lifecycle->notifyCpsqcSimulationCompleted($simulationEvent);
 
         AuditLogger::log([
             'action' => 'Cancelled simulation event',
@@ -641,13 +642,11 @@ class SimulationEventController extends Controller
         }
 
         // Prevent starting events that are already past their end time (should be "ended")
-        $endTime = $simulationEvent->end_time; // format: HH:MM
         try {
-            [$endHour, $endMinute] = explode(':', (string) $endTime);
-            $endDateTime = $eventDate->copy()->setTime((int) $endHour, (int) $endMinute, 0);
+            $endDateTime = $this->resolveEventEndDateTime($simulationEvent);
 
             // Rule: published events become ended only when current time is strictly greater than end time.
-            if ($now->gt($endDateTime)) {
+            if ($endDateTime && $now->gt($endDateTime)) {
                 $simulationEvent->update([
                     'status' => 'ended',
                     'updated_by' => portal_id(),
@@ -679,6 +678,7 @@ class SimulationEventController extends Controller
 
         $this->lifecycle->initializeExecutionProgress($simulationEvent->fresh());
         $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Started');
+        $this->lifecycle->notifyCpsqcSimulationStarted($simulationEvent->fresh());
 
         AuditLogger::log([
             'action' => 'Started simulation event',
@@ -706,8 +706,9 @@ class SimulationEventController extends Controller
             abort(403, 'Only admins or trainers can use Test Start.');
         }
 
-        if (in_array($simulationEvent->status, ['completed', 'ended', 'archived', 'cancelled'], true)) {
-            $message = 'Cannot test-start a finished or cancelled event.';
+        // Demo may re-open completed/ended events; block only archived/cancelled.
+        if (in_array($simulationEvent->status, ['archived', 'cancelled'], true)) {
+            $message = 'Cannot test-start an archived or cancelled event.';
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => $message], 422);
             }
@@ -725,10 +726,9 @@ class SimulationEventController extends Controller
         }
 
         $now = now();
-        $endAt = $now->copy()->setTime(21, 0, 0);
-        if ($endAt->lte($now)) {
-            $endAt = $now->copy()->addHours(3);
-        }
+        // Always end several hours ahead so overnight demos are not auto-completed
+        // (end_time earlier than start_time on the same event_date).
+        $endAt = $now->copy()->addHours(4);
 
         $old = $simulationEvent->getOriginal();
 
@@ -739,6 +739,7 @@ class SimulationEventController extends Controller
             'end_time' => $endAt->format('H:i'),
             'published_at' => $simulationEvent->published_at ?? $now,
             'actual_start_time' => $now,
+            'completed_at' => null,
             'started_by' => portal_id(),
             'updated_by' => portal_id(),
             'readiness_confirmations' => array_merge($simulationEvent->readiness_confirmations ?? [], [
@@ -750,6 +751,7 @@ class SimulationEventController extends Controller
         $this->autoAssignResources($simulationEvent);
         $this->lifecycle->initializeExecutionProgress($simulationEvent->fresh());
         $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Started (Test / Demo)');
+        $this->lifecycle->notifyCpsqcSimulationStarted($simulationEvent->fresh());
 
         AuditLogger::log([
             'action' => 'Test-started simulation event',
@@ -761,7 +763,7 @@ class SimulationEventController extends Controller
         ]);
 
         $redirect = '/admin/simulation-events/'.$simulationEvent->id.'?tab=execution';
-        $message = 'Test start OK — event is Ongoing until '.$endAt->format('g:i A').'.';
+        $message = 'Test start OK — event is Ongoing until '.$endAt->format('M j, g:i A').'. Use Mark Completed when done.';
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -794,6 +796,7 @@ class SimulationEventController extends Controller
         ]);
 
         $this->lifecycle->releaseEventPersonnelAssignments($simulationEvent);
+        $this->lifecycle->notifyCpsqcSimulationCompleted($simulationEvent);
 
         $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Completed');
 
@@ -841,39 +844,67 @@ class SimulationEventController extends Controller
     }
 
     /**
-     * Automatically complete ongoing events that have passed their end time
+     * Automatically complete ongoing events that have passed their end time.
+     * Overnight windows (end_time earlier than start_time) end on the next calendar day.
      */
     protected function autoCompleteExpiredEvents()
     {
         $now = now();
-        
+
         SimulationEvent::where('status', 'ongoing')
             ->whereDate('event_date', '<=', $now->toDateString())
             ->get()
             ->each(function ($event) use ($now) {
-                // Parse end time
-                $endTime = $event->end_time; // Format: HH:MM
-                if (!$endTime) return;
-                
+                $endTime = $event->end_time;
+                if (! $endTime) {
+                    return;
+                }
+
                 try {
-                    [$endHour, $endMinute] = explode(':', $endTime);
-                    $eventEndDateTime = $event->event_date->copy()->setTime((int)$endHour, (int)$endMinute, 0);
-                    
-                    // Check if current time is past the end time on the same date
+                    $eventEndDateTime = $this->resolveEventEndDateTime($event);
+                    if (! $eventEndDateTime) {
+                        return;
+                    }
+
                     if ($now->greaterThanOrEqualTo($eventEndDateTime)) {
                         $event->update([
                             'status' => 'completed',
                             'completed_at' => $now,
                             'updated_by' => portal_id(),
                         ]);
-                        $this->lifecycle->releaseEventPersonnelAssignments($event->fresh());
-                        $this->lockAttendanceOnCompletion($event->fresh());
+                        $fresh = $event->fresh();
+                        $this->lifecycle->releaseEventPersonnelAssignments($fresh);
+                        $this->lifecycle->notifyCpsqcSimulationCompleted($fresh);
+                        $this->lockAttendanceOnCompletion($fresh);
                     }
                 } catch (\Exception $e) {
-                    // Skip events with invalid time format
                     return;
                 }
             });
+    }
+
+    /**
+     * Build the absolute end datetime for an event, rolling to the next day when
+     * end_time is earlier than (or equal to) start_time on the same event_date.
+     */
+    protected function resolveEventEndDateTime(SimulationEvent $event): ?\Carbon\Carbon
+    {
+        if (! $event->event_date || ! $event->end_time) {
+            return null;
+        }
+
+        [$endHour, $endMinute] = array_pad(explode(':', (string) $event->end_time), 2, '0');
+        $end = $event->event_date->copy()->setTime((int) $endHour, (int) $endMinute, 0);
+
+        if ($event->start_time) {
+            [$startHour, $startMinute] = array_pad(explode(':', (string) $event->start_time), 2, '0');
+            $start = $event->event_date->copy()->setTime((int) $startHour, (int) $startMinute, 0);
+            if ($end->lte($start)) {
+                $end->addDay();
+            }
+        }
+
+        return $end;
     }
 
     /**

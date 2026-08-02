@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\AuditLogger;
 use App\Services\DatabaseBackupService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class BackupRecoveryController extends Controller
@@ -23,6 +24,20 @@ class BackupRecoveryController extends Controller
         }
     }
 
+    private function validateAccountPassword(Request $request): ?string
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = portal_user() ?? $request->user();
+        if (! $user || ! Hash::check((string) $request->input('password'), (string) $user->password)) {
+            return 'Incorrect account password.';
+        }
+
+        return null;
+    }
+
     public function index()
     {
         $this->authorizeBackupAccess();
@@ -37,6 +52,20 @@ class BackupRecoveryController extends Controller
     public function create(Request $request)
     {
         $this->authorizeBackupAccess();
+
+        if ($passwordError = $this->validateAccountPassword($request)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $passwordError,
+                    'status' => $this->backupService->status(),
+                ], 422);
+            }
+
+            return redirect()
+                ->route('admin.backup-recovery.index')
+                ->with('error', $passwordError);
+        }
 
         $path = $this->backupService->backup('manual');
 
@@ -147,7 +176,16 @@ class BackupRecoveryController extends Controller
 
         $data = $request->validate([
             'confirmation' => ['required', 'string'],
+            'password' => ['required', 'string'],
         ]);
+
+        if ($passwordError = $this->validateAccountPassword($request)) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $passwordError], 422);
+            }
+
+            return redirect()->route('admin.backup-recovery.index')->with('error', $passwordError);
+        }
 
         if (strtoupper(trim($data['confirmation'])) !== 'RESTORE') {
             $message = 'Type RESTORE exactly to confirm. Restore was cancelled.';

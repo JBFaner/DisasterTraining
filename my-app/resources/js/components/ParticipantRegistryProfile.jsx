@@ -102,6 +102,17 @@ export function ParticipantRegistryProfile({ participant }) {
     const profile = record.registry_profile || {};
     const statuses = profile.statuses || {};
 
+    const monitoringBackHref = React.useMemo(() => {
+        if (typeof window === 'undefined') return null;
+        const params = new URLSearchParams(window.location.search);
+        const from = params.get('from');
+        const eventId = params.get('event_id');
+        if (from === 'simulation-monitoring' && eventId) {
+            return `/admin/simulation-events/${eventId}?tab=monitoring`;
+        }
+        return null;
+    }, []);
+
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         const url = new URL(window.location.href);
@@ -208,7 +219,12 @@ export function ParticipantRegistryProfile({ participant }) {
 
     return (
         <AdminPageShell>
-            <div className="mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+                {monitoringBackHref ? (
+                    <a href={monitoringBackHref} className="inline-flex items-center text-sm font-medium text-emerald-700 hover:text-emerald-900">
+                        ← Back to simulation monitoring
+                    </a>
+                ) : null}
                 <a href="/admin/participants" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
                     ← Back to Participant Registry
                 </a>
