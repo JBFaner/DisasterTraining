@@ -8,8 +8,10 @@ use App\Models\CertificationSetting;
 use App\Models\Evaluation;
 use App\Models\ParticipantEvaluation;
 use App\Models\SimulationEvent;
+use App\Models\TrainingModule;
 use App\Services\CertificateDesignRenderer;
 use App\Services\DatabaseBackupService;
+use App\Services\AuditLogger;
 use App\Services\ParticipantCertificateEligibilityService;
 use App\Services\PortalNotificationFactory;
 use Illuminate\Http\Request;
@@ -63,6 +65,7 @@ class CertificationController extends Controller
         $this->authorizeCertificationAccess();
 
         $eventFilter = $request->get('event_id');
+        $moduleFilter = $request->get('training_module_id');
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
         $statusFilter = $request->get('status'); // eligible, not_eligible, pending
@@ -71,7 +74,7 @@ class CertificationController extends Controller
 
         // Summary cards
         $totalCertified = Certificate::whereNull('revoked_at')->count();
-        $eligibleList = $this->buildEligibleParticipantsList($eventFilter, 'eligible');
+        $eligibleList = $this->buildEligibleParticipantsList($eventFilter, 'eligible', null, null, $moduleFilter);
         $pendingCount = collect($eligibleList)->where('cert_status', 'eligible')->where('certificate_issued', false)->count();
         $issuedToday = Certificate::whereNull('revoked_at')
             ->whereDate('issued_at', today())
@@ -82,7 +85,7 @@ class CertificationController extends Controller
         $trendPct = $lastWeek > 0 ? (int) round((($thisWeek - $lastWeek) / $lastWeek) * 100) : ($thisWeek > 0 ? 100 : 0);
 
         // Eligible participants (for tab, paginated)
-        $eligibleList = $this->buildEligibleParticipantsList($eventFilter, $statusFilter, $dateFrom, $dateTo);
+        $eligibleList = $this->buildEligibleParticipantsList($eventFilter, $statusFilter, $dateFrom, $dateTo, $moduleFilter);
         $eligiblePerPage = 10;
         $eligiblePage = max(1, (int) $request->query('eligible_page', 1));
         $eligiblePaginator = new LengthAwarePaginator(
@@ -100,6 +103,22 @@ class CertificationController extends Controller
         // Templates
         $templates = CertificateTemplate::orderBy('name')->get();
 
+        $trainingModules = TrainingModule::query()
+            ->orderBy('title')
+            ->get(['id', 'title', 'category', 'related_hazard'])
+            ->map(function (TrainingModule $module) {
+                return [
+                    'id' => $module->id,
+                    'title' => $module->title,
+                    'category' => $module->category,
+                    'related_hazard' => $module->related_hazard,
+                    'hazard_category' => CertificateTemplate::normalizeHazardCategory(
+                        $module->category ?: $module->related_hazard
+                    ),
+                ];
+            })
+            ->values();
+
         // Issued certificates history (with filters)
         $issuedQuery = Certificate::with(['user', 'simulationEvent', 'issuer']);
         if ($issuedStatusFilter === 'revoked') {
@@ -109,6 +128,9 @@ class CertificationController extends Controller
         }
         if ($eventFilter) {
             $issuedQuery->where('simulation_event_id', $eventFilter);
+        }
+        if ($moduleFilter) {
+            $issuedQuery->where('training_module_id', $moduleFilter);
         }
         if ($dateFrom) {
             $issuedQuery->whereDate('issued_at', '>=', $dateFrom);
@@ -149,6 +171,7 @@ class CertificationController extends Controller
                 'to' => $eligiblePaginator->lastItem(),
             ],
             'templates' => $templates,
+            'trainingModules' => $trainingModules,
             'issuedCertificates' => $issuedPaginator->items(),
             'issuedCertificatesPagination' => [
                 'current_page' => $issuedPaginator->currentPage(),
@@ -161,6 +184,7 @@ class CertificationController extends Controller
             'eventsForFilter' => $eventsForFilter,
             'filters' => [
                 'event_id' => $eventFilter,
+                'training_module_id' => $moduleFilter,
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
                 'status' => $statusFilter,
@@ -185,13 +209,18 @@ class CertificationController extends Controller
         ?string $statusFilter,
         ?string $dateFrom = null,
         ?string $dateTo = null,
+        ?string $moduleIdFilter = null,
     ): array {
         $events = SimulationEvent::whereIn('status', ['published', 'ongoing', 'completed'])
             ->whereHas('evaluation')
-            ->with(['evaluation.participantEvaluations' => function ($q) {
-                $q->whereHas('scores')->with(['user', 'attendance']);
-            }])
+            ->with([
+                'trainingModule:id,title,category',
+                'evaluation.participantEvaluations' => function ($q) {
+                    $q->whereHas('scores')->with(['user', 'attendance']);
+                },
+            ])
             ->when($eventIdFilter, fn ($q) => $q->where('id', $eventIdFilter))
+            ->when($moduleIdFilter, fn ($q) => $q->where('training_module_id', $moduleIdFilter))
             ->when($dateFrom, fn ($q) => $q->whereDate('event_date', '>=', $dateFrom))
             ->when($dateTo, fn ($q) => $q->whereDate('event_date', '<=', $dateTo))
             ->orderByDesc('event_date')
@@ -207,8 +236,6 @@ class CertificationController extends Controller
                 ->where('status', 'approved')
                 ->with(['user', 'attendance'])
                 ->get();
-
-            $evaluatedUserIds = $evaluation->participantEvaluations->pluck('user_id')->unique();
 
             foreach ($approvedRegistrations as $reg) {
                 $pe = $evaluation->participantEvaluations->firstWhere('user_id', $reg->user_id);
@@ -241,6 +268,8 @@ class CertificationController extends Controller
                     'event_id' => $event->id,
                     'event_title' => $event->title,
                     'event_date' => $event->event_date,
+                    'training_module_id' => $event->training_module_id,
+                    'training_module_title' => $event->trainingModule?->title,
                     'score' => $pe ? round((float) $pe->average_score, 2) : null,
                     'attendance_status' => $attendanceStatus,
                     'cert_status' => $certStatus,
@@ -264,6 +293,7 @@ class CertificationController extends Controller
             'user_id' => ['required', 'exists:users,id'],
             'simulation_event_id' => ['required', 'exists:simulation_events,id'],
             'participant_evaluation_id' => ['nullable', 'exists:participant_evaluations,id'],
+            'training_module_id' => ['nullable', 'exists:training_modules,id'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
             'type' => ['required', 'string', 'in:completion,participation'],
             'training_type' => ['nullable', 'string', 'max:255'],
@@ -271,10 +301,13 @@ class CertificationController extends Controller
         ]);
 
         $user = \App\Models\User::findOrFail($data['user_id']);
-        $event = SimulationEvent::findOrFail($data['simulation_event_id']);
+        $event = SimulationEvent::with(['scenario', 'trainingModule'])->findOrFail($data['simulation_event_id']);
         $pe = $data['participant_evaluation_id']
             ? ParticipantEvaluation::find($data['participant_evaluation_id'])
             : null;
+
+        $moduleId = $data['training_module_id'] ?? $event->training_module_id;
+        $module = $moduleId ? TrainingModule::find($moduleId) : $event->trainingModule;
 
         $existing = Certificate::where('user_id', $user->id)
             ->where('simulation_event_id', $event->id)
@@ -290,11 +323,15 @@ class CertificationController extends Controller
         $templateId = $data['certificate_template_id'] ?? null;
         $template = $templateId
             ? CertificateTemplate::find($templateId)
-            : CertificateTemplate::where('status', 'active')->first();
+            : CertificateTemplate::resolveForModule($module, $data['type']);
 
         $certNumber = $this->generateCertificateNumber();
         $completionDate = $data['completion_date'] ?? $event->event_date ?? now();
         $finalScore = $pe ? $pe->average_score : null;
+        $trainingType = $data['training_type']
+            ?: ($module?->title
+                ?? $event->scenario?->title
+                ?? 'Disaster Preparedness Training');
 
         // Snapshot template assets so certificate history never changes
         $snapshotBackgroundPath = null;
@@ -311,6 +348,7 @@ class CertificationController extends Controller
         $cert = Certificate::create([
             'user_id' => $user->id,
             'simulation_event_id' => $event->id,
+            'training_module_id' => $module?->id,
             'participant_evaluation_id' => $pe?->id,
             'certificate_template_id' => $template?->id,
             'template_background_path' => $snapshotBackgroundPath ?? $template?->background_path,
@@ -320,7 +358,7 @@ class CertificationController extends Controller
             'certificate_number' => $certNumber,
             'qr_verification_token' => bin2hex(random_bytes(32)),
             'type' => $data['type'],
-            'training_type' => $data['training_type'] ?? $event->scenario?->title ?? 'Disaster Preparedness Training',
+            'training_type' => $trainingType,
             'completion_date' => $completionDate,
             'final_score' => $finalScore,
             'issued_at' => now(),
@@ -332,6 +370,27 @@ class CertificationController extends Controller
         }
 
         app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
+
+        AuditLogger::log([
+            'action' => 'Certificate issued',
+            'module' => 'Certification',
+            'status' => 'success',
+            'description' => sprintf(
+                'Issued %s certificate %s to %s for %s',
+                $cert->type,
+                $cert->certificate_number,
+                $user->name,
+                $event->title
+            ),
+            'new_values' => [
+                'certificate_id' => $cert->id,
+                'certificate_number' => $cert->certificate_number,
+                'user_id' => $user->id,
+                'simulation_event_id' => $event->id,
+                'training_module_id' => $module?->id,
+                'type' => $cert->type,
+            ],
+        ]);
 
         $this->notificationFactory->certificateIssued($user, $cert);
 
@@ -394,6 +453,7 @@ class CertificationController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:completion,participation'],
+            'hazard_category' => ['nullable', 'string', 'max:50'],
             'title_text' => ['nullable', 'string', 'max:500'],
             'template_content' => ['nullable', 'string'],
             'design_json' => ['nullable'],
@@ -404,6 +464,9 @@ class CertificationController extends Controller
             'background' => ['nullable', 'file', 'mimes:jpeg,png,gif,webp,pdf', 'max:10240'], // 10MB
             'paper_size' => ['nullable', 'string', 'in:a4,letter'],
         ]);
+        if (array_key_exists('hazard_category', $data)) {
+            $data['hazard_category'] = CertificateTemplate::normalizeHazardCategory($data['hazard_category'] ?: null);
+        }
         $data['status'] = $data['status'] ?? 'active';
         $data['paper_size'] = $data['paper_size'] ?? 'a4';
         $data['background_opacity'] = isset($data['background_opacity']) ? (float) $data['background_opacity'] : 0.35;
@@ -429,6 +492,7 @@ class CertificationController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'type' => ['sometimes', 'string', 'in:completion,participation'],
+            'hazard_category' => ['nullable', 'string', 'max:50'],
             'title_text' => ['nullable', 'string', 'max:500'],
             'template_content' => ['nullable', 'string'],
             'design_json' => ['nullable'],
@@ -439,6 +503,9 @@ class CertificationController extends Controller
             'background' => ['nullable', 'file', 'mimes:jpeg,png,gif,webp,pdf', 'max:10240'],
             'paper_size' => ['nullable', 'string', 'in:a4,letter'],
         ]);
+        if (array_key_exists('hazard_category', $data)) {
+            $data['hazard_category'] = CertificateTemplate::normalizeHazardCategory($data['hazard_category'] ?: null);
+        }
         if (array_key_exists('paper_size', $data)) {
             $data['paper_size'] = in_array($data['paper_size'], ['a4', 'letter'], true) ? $data['paper_size'] : 'a4';
         }
@@ -572,12 +639,13 @@ class CertificationController extends Controller
             'event_id' => ['required', 'exists:simulation_events,id'],
         ]);
         $user = \App\Models\User::findOrFail($request->user_id);
-        $event = SimulationEvent::findOrFail($request->event_id);
+        $event = SimulationEvent::with('trainingModule')->findOrFail($request->event_id);
         $pe = ParticipantEvaluation::where('user_id', $user->id)
             ->whereHas('evaluation', fn ($q) => $q->where('simulation_event_id', $event->id))
             ->with('evaluation')
             ->first();
-        $template = CertificateTemplate::where('status', 'active')->first();
+        $template = CertificateTemplate::resolveForModule($event->trainingModule, 'completion')
+            ?? CertificateTemplate::where('status', 'active')->first();
         if (!$template) {
             $template = new CertificateTemplate();
         }
@@ -587,7 +655,9 @@ class CertificationController extends Controller
             'event' => $event->title,
             'certificate_number' => 'PREVIEW',
             'score' => $pe && $pe->average_score !== null ? (string) round((float) $pe->average_score, 1) : '',
-            'training_type' => $event->scenario?->title ?? 'Disaster Preparedness Training',
+            'training_type' => $event->trainingModule?->title
+                ?? $event->scenario?->title
+                ?? 'Disaster Preparedness Training',
         ];
         $html = $template->mergeContent($data);
         $html = $this->wrapContentWithBackground($html, $template->id ? $template : null);
@@ -814,6 +884,9 @@ class CertificationController extends Controller
             ->whereNull('revoked_at');
         if ($request->get('event_id')) {
             $query->where('simulation_event_id', $request->get('event_id'));
+        }
+        if ($request->get('training_module_id')) {
+            $query->where('training_module_id', $request->get('training_module_id'));
         }
         if ($request->get('date_from')) {
             $query->whereDate('issued_at', '>=', $request->get('date_from'));

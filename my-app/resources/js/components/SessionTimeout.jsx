@@ -1,135 +1,118 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { getCsrfToken, pingSessionActivity } from '../utils/csrf';
-import { getLogoutUrl } from '../utils/portalAuth';
+import React, { useEffect, useRef } from 'react';
+import { Timer } from 'lucide-react';
+import { formatSessionCountdown, useSessionIdle } from '../contexts/SessionIdleContext';
 
-const ACTIVITY_THROTTLE_MS = 30000; // ping backend at most every 30s
+export function SessionTimeout() {
+    const session = useSessionIdle();
+    const primaryBtnRef = useRef(null);
 
-export function SessionTimeout({ timeoutMinutes = 10, warningSeconds = 60 }) {
-    const [showWarning, setShowWarning] = useState(false);
-    const [warningCountdown, setWarningCountdown] = useState(warningSeconds);
-    const timeoutMs = (timeoutMinutes * 60 - warningSeconds) * 1000;
-    const warningDurationMs = warningSeconds * 1000;
-    const idleTimerRef = useRef(null);
-    const warningTimerRef = useRef(null);
-    const lastPingRef = useRef(0);
-    const countdownIntervalRef = useRef(null);
-
-    const clearTimers = useCallback(() => {
-        if (idleTimerRef.current) {
-            clearTimeout(idleTimerRef.current);
-            idleTimerRef.current = null;
-        }
-        if (warningTimerRef.current) {
-            clearTimeout(warningTimerRef.current);
-            warningTimerRef.current = null;
-        }
-        if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-        }
-    }, []);
-
-    const pingActivity = useCallback(() => {
-        const now = Date.now();
-        if (now - lastPingRef.current < ACTIVITY_THROTTLE_MS) return;
-        lastPingRef.current = now;
-        pingSessionActivity().catch(() => {});
-    }, []);
-
-    const startIdleTimer = useCallback(() => {
-        clearTimers();
-        setShowWarning(false);
-        setWarningCountdown(warningSeconds);
-        idleTimerRef.current = setTimeout(() => {
-            idleTimerRef.current = null;
-            setShowWarning(true);
-            setWarningCountdown(warningSeconds);
-            const start = Date.now();
-            countdownIntervalRef.current = setInterval(() => {
-                const left = Math.max(0, warningSeconds - Math.floor((Date.now() - start) / 1000));
-                setWarningCountdown(left);
-            }, 500);
-            warningTimerRef.current = setTimeout(() => {
-                warningTimerRef.current = null;
-                if (countdownIntervalRef.current) {
-                    clearInterval(countdownIntervalRef.current);
-                    countdownIntervalRef.current = null;
-                }
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = getLogoutUrl('inactivity');
-                const csrf = document.createElement('input');
-                csrf.type = 'hidden';
-                csrf.name = '_token';
-                csrf.value = getCsrfToken();
-                form.appendChild(csrf);
-                document.body.appendChild(form);
-                form.submit();
-            }, warningDurationMs);
-        }, timeoutMs);
-    }, [timeoutMs, warningSeconds, warningDurationMs, clearTimers]);
-
-    const handleStayLoggedIn = useCallback(() => {
-        pingActivity();
-        startIdleTimer();
-    }, [pingActivity, startIdleTimer]);
-
-    const handleLogoutNow = useCallback(() => {
-        clearTimers();
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = getLogoutUrl();
-        const csrf = document.createElement('input');
-        csrf.type = 'hidden';
-        csrf.name = '_token';
-        csrf.value = getCsrfToken();
-        form.appendChild(csrf);
-        document.body.appendChild(form);
-        form.submit();
-    }, [clearTimers]);
+    const show = Boolean(session?.enabled && session.showWarning);
+    const remainingSeconds = session?.remainingSeconds ?? 0;
+    const warningSeconds = session?.warningSeconds ?? 60;
+    const progress = Math.max(0, Math.min(1, remainingSeconds / Math.max(1, warningSeconds)));
+    const urgent = remainingSeconds <= 15;
+    const circumference = 2 * Math.PI * 54;
+    const strokeDashoffset = circumference * (1 - progress);
 
     useEffect(() => {
-        const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
-        const onActivity = () => {
-            if (showWarning) return;
-            startIdleTimer();
-            pingActivity();
-        };
-        events.forEach((ev) => window.addEventListener(ev, onActivity));
-        startIdleTimer();
+        if (!show) return undefined;
+        primaryBtnRef.current?.focus();
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
         return () => {
-            events.forEach((ev) => window.removeEventListener(ev, onActivity));
-            clearTimers();
+            document.body.style.overflow = previousOverflow;
         };
-    }, [startIdleTimer, pingActivity, showWarning, clearTimers]);
+    }, [show]);
 
-    if (!showWarning) return null;
+    if (!show) {
+        return null;
+    }
+
+    const { stayLoggedIn, logoutNow } = session;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-                <h3 className="text-lg font-semibold text-slate-800">Session timeout</h3>
-                <p className="text-slate-600">
-                    You will be logged out due to inactivity.
-                </p>
-                <p className="text-sm text-slate-500">
-                    Logging out in <strong>{warningCountdown}</strong> seconds.
-                </p>
-                <div className="flex gap-3 justify-end pt-2">
-                    <button
-                        type="button"
-                        onClick={handleLogoutNow}
-                        className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-medium"
-                    >
-                        Logout now
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleStayLoggedIn}
-                        className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-medium"
-                    >
-                        Stay logged in
-                    </button>
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="session-timeout-title"
+            aria-describedby="session-timeout-desc"
+        >
+            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px]" />
+
+            <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+                <div className={`px-6 pt-6 pb-4 text-center ${urgent ? 'bg-rose-50' : 'bg-amber-50'}`}>
+                    <div className={`mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full ${urgent ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                        <Timer className="h-5 w-5" />
+                    </div>
+                    <h2 id="session-timeout-title" className="text-xl font-bold text-slate-900 tracking-tight">
+                        Session timeout
+                    </h2>
+                    <p id="session-timeout-desc" className="mt-1 text-sm text-slate-600">
+                        You have been inactive. You will be logged out automatically when the timer reaches zero.
+                    </p>
+                </div>
+
+                <div className="px-6 py-8 flex flex-col items-center gap-5">
+                    <div className="relative h-40 w-40" aria-live="polite" aria-atomic="true">
+                        <svg className="h-40 w-40 -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
+                            <circle
+                                cx="60"
+                                cy="60"
+                                r="54"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="8"
+                                className="text-slate-200"
+                            />
+                            <circle
+                                cx="60"
+                                cy="60"
+                                r="54"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="8"
+                                strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={strokeDashoffset}
+                                className={`transition-[stroke-dashoffset] duration-200 ${urgent ? 'text-rose-500' : 'text-amber-500'}`}
+                            />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className={`font-mono text-4xl font-bold tracking-tight tabular-nums ${urgent ? 'text-rose-700' : 'text-slate-900'}`}>
+                                {formatSessionCountdown(remainingSeconds)}
+                            </span>
+                            <span className="mt-1 text-[0.7rem] uppercase tracking-wider text-slate-500 font-semibold">
+                                remaining
+                            </span>
+                        </div>
+                    </div>
+
+                    <p className="text-center text-sm text-slate-600 max-w-xs">
+                        Click <strong>Stay logged in</strong> to continue working, or log out now.
+                    </p>
+
+                    <div className="flex w-full flex-col-reverse sm:flex-row gap-3 sm:justify-center pt-1">
+                        <button
+                            type="button"
+                            onClick={logoutNow}
+                            className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-semibold"
+                        >
+                            Logout now
+                        </button>
+                        <button
+                            ref={primaryBtnRef}
+                            type="button"
+                            onClick={stayLoggedIn}
+                            className={`px-5 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm ${
+                                urgent
+                                    ? 'bg-rose-600 hover:bg-rose-700'
+                                    : 'bg-emerald-600 hover:bg-emerald-700'
+                            }`}
+                        >
+                            Stay logged in
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

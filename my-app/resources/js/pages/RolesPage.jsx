@@ -11,6 +11,9 @@ import {
     adminCompactInputClass,
     AdminContentCard,
 } from '../components/admin/AdminLayout';
+import { AdminTablePagination } from '../components/admin/AdminDataTable';
+
+const ITEMS_PER_PAGE = 10;
 
 export function RolesPage({ roles = [] }) {
     const [search, setSearch] = React.useState('');
@@ -19,6 +22,7 @@ export function RolesPage({ roles = [] }) {
     const [roleName, setRoleName] = React.useState('');
     const [guardName, setGuardName] = React.useState('web');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [currentPage, setCurrentPage] = React.useState(1);
 
     React.useEffect(() => {
         setRolesState(roles);
@@ -28,8 +32,11 @@ export function RolesPage({ roles = [] }) {
         const roleMap = {
             'LGU_ADMIN': 'Admin',
             'LGU_TRAINER': 'Trainer',
+            'LEAD_TRAINER': 'Lead Trainer',
+            'EVALUATOR': 'Evaluator',
             'STAFF': 'Staff',
-            'PARTICIPANT': 'Viewer',
+            'VIEWER': 'Viewer',
+            'PARTICIPANT': 'Participant',
         };
         return roleMap[roleNameVal] || roleNameVal;
     };
@@ -40,6 +47,25 @@ export function RolesPage({ roles = [] }) {
         const name = (role.name || '').toLowerCase();
         return !query || displayName.includes(query) || name.includes(query);
     });
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [search]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredRoles.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+    const pageRoles = filteredRoles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const rolesPagination = filteredRoles.length > 0
+        ? {
+            current_page: safePage,
+            last_page: totalPages,
+            per_page: ITEMS_PER_PAGE,
+            total: filteredRoles.length,
+            from: startIndex + 1,
+            to: Math.min(startIndex + ITEMS_PER_PAGE, filteredRoles.length),
+        }
+        : null;
 
     const handleCloseModal = () => {
         setShowAddModal(false);
@@ -168,7 +194,7 @@ export function RolesPage({ roles = [] }) {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredRoles.map((role) => (
+                                pageRoles.map((role) => (
                                     <tr key={role.id} className="bg-white hover:bg-slate-50/80 transition-colors duration-150">
                                         <td className="px-5 py-4 whitespace-nowrap text-sm text-slate-500">#{role.id}</td>
                                         <td className="px-5 py-4 whitespace-nowrap">
@@ -205,6 +231,12 @@ export function RolesPage({ roles = [] }) {
                         </tbody>
                     </table>
                 </div>
+                {rolesPagination && (
+                    <AdminTablePagination
+                        pagination={rolesPagination}
+                        onPageChange={setCurrentPage}
+                    />
+                )}
             </AdminContentCard>
 
             {/* Add Role Modal */}

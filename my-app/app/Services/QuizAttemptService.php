@@ -70,6 +70,27 @@ class QuizAttemptService
 
         $latestCompleted = $attempts->sortByDesc('id')->first();
 
+        $cooldown = $this->trainingResetService->applyAiAttemptCooldownIfDue(
+            $user,
+            $module,
+            $maxAttempts,
+            $passedAttempt !== null,
+            $attemptsUsed,
+            $latestCompleted,
+        );
+
+        if ($cooldown['reset']) {
+            $trainingCycle = $this->trainingResetService->currentCycleNumber($user->id, $module->id);
+            $attempts = $this->getCompletedAttempts($user->id, $module->id, $trainingCycle);
+            $inProgress = $this->getInProgressAttempt($user->id, $module->id, $trainingCycle);
+            $passedAttempt = $attempts->firstWhere('passed', true);
+            $attemptsUsed = $attempts->count();
+            $attemptsRemaining = max(0, $maxAttempts - $attemptsUsed);
+            $isLocked = $passedAttempt !== null || ($attemptsUsed >= $maxAttempts && ! $inProgress);
+            $latestCompleted = $attempts->sortByDesc('id')->first();
+            $adminRetrainingApproved = $this->trainingResetService->hasAdminRetrainingApproved($user, $module);
+        }
+
         $metaBeforeStatus = array_merge($base, [
             'quiz_settings' => $this->configQuizSettings($config),
             'attempts_used' => $attemptsUsed,
@@ -82,6 +103,9 @@ class QuizAttemptService
             'in_progress_attempt' => $inProgress ? $this->attemptSummary($inProgress) : null,
             'latest_completed_attempt' => $latestCompleted ? $this->attemptSummary($latestCompleted) : null,
             'latest_attempt' => $latestCompleted ? $this->attemptSummary($latestCompleted) : null,
+            'cooldown_resets_at' => $cooldown['cooldown_resets_at'],
+            'cooldown_seconds_remaining' => $cooldown['cooldown_seconds_remaining'],
+            'attempt_cooldown_hours' => $this->trainingResetService->attemptCooldownHours(),
         ]);
 
         $lessonReviewRequired = ! $adminRetrainingApproved

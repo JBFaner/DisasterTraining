@@ -1001,7 +1001,7 @@ export function ResourceInventory() {
                 >
                     <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Reserved</p>
                     <p className="text-[32px] font-bold text-violet-800 mt-1">{stats.reserved}</p>
-                    <p className="text-xs text-slate-500 mt-1">{stats.reserved === 0 ? 'No reservations' : 'Pending allocation'}</p>
+                    <p className="text-xs text-slate-500 mt-1">{stats.reserved === 0 ? 'No reservations' : 'Held for events'}</p>
                 </div>
                 <div
                     className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'in_use_all' ? 'border-blue-300 ring-2 ring-emerald-500/30' : 'border-slate-200'}`}

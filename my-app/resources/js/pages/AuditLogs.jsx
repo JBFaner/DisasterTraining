@@ -57,23 +57,28 @@ const statusConfig = {
     },
 };
 
-const MODULE_OPTIONS = [
+const MODULE_OPTIONS_FALLBACK = [
     { value: '', label: 'All Modules' },
     { value: 'Auth', label: 'Authentication & Security' },
-    { value: 'Users & Roles', label: 'Users & Roles' },
-    { value: 'Participants', label: 'Participants' },
+    { value: 'AI Scenario Training', label: 'AI Scenario Training' },
+    { value: 'Final AI Scenario Assessment', label: 'Final AI Scenario Assessment' },
+    { value: 'Lesson Quiz Generator', label: 'Lesson Quiz Generator' },
+    { value: 'Participant Registry', label: 'Participant Registry' },
     { value: 'Training Modules', label: 'Training Modules' },
     { value: 'Scenarios', label: 'Scenarios' },
     { value: 'Simulation Events', label: 'Simulation Events' },
     { value: 'Resources', label: 'Resources & Inventory' },
     { value: 'Settings', label: 'Settings' },
+    { value: 'Certification', label: 'Certification' },
 ];
 
 export function AuditLogs() {
     const [logs, setLogs] = React.useState([]);
     const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState('');
     const [page, setPage] = React.useState(1);
     const [meta, setMeta] = React.useState({ current_page: 1, last_page: 1, total: 0 });
+    const [moduleOptions, setModuleOptions] = React.useState(MODULE_OPTIONS_FALLBACK);
     const [search, setSearch] = React.useState('');
     const [filters, setFilters] = React.useState({
         user: '',
@@ -88,6 +93,7 @@ export function AuditLogs() {
 
     const fetchLogs = React.useCallback(async () => {
         setLoading(true);
+        setError('');
         try {
             const params = new URLSearchParams({
                 page: String(page),
@@ -101,12 +107,37 @@ export function AuditLogs() {
                 if (value) params.append(key, value);
             });
 
-            const response = await fetch(`/admin/api/audit-logs?${params.toString()}`);
+            const response = await fetch(`/admin/api/audit-logs?${params.toString()}`, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                if (response.status === 403) {
+                    setError('Access denied. Sign in as LGU Admin to view audit logs.');
+                } else {
+                    setError(`Failed to load audit logs (HTTP ${response.status}).`);
+                }
+                setLogs([]);
+                setMeta({ current_page: 1, last_page: 1, total: 0 });
+                return;
+            }
+
             const data = await response.json();
             setLogs(data.data || []);
             setMeta(data.meta || { current_page: 1, last_page: 1, total: 0 });
-        } catch (error) {
-            console.error('Failed to load audit logs', error);
+
+            const apiModules = data.filters?.modules;
+            if (Array.isArray(apiModules) && apiModules.length > 0) {
+                setModuleOptions([
+                    { value: '', label: 'All Modules' },
+                    ...apiModules.map((m) => ({ value: m, label: m })),
+                ]);
+            }
+        } catch (err) {
+            console.error('Failed to load audit logs', err);
+            setError('Could not load audit logs. Check your connection and try again.');
+            setLogs([]);
         } finally {
             setLoading(false);
         }
@@ -254,7 +285,7 @@ export function AuditLogs() {
                     <option value="warning">Warning</option>
                 </AdminFilterSelect>
                 <AdminFilterSelect label="Module" value={filters.module} onChange={(e) => handleFilterChange('module', e.target.value)}>
-                    {MODULE_OPTIONS.map((opt) => (
+                    {moduleOptions.map((opt) => (
                         <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
                     ))}
                 </AdminFilterSelect>
@@ -273,6 +304,11 @@ export function AuditLogs() {
             </AdminCollapsibleFilterBar>
 
             <AdminContentCard>
+                    {error && (
+                        <div className="mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            {error}
+                        </div>
+                    )}
                     <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr] gap-4 px-5 py-4 text-xs font-semibold text-slate-600 bg-slate-50 border-b border-slate-200">
                     <button className="flex items-center gap-1 text-left" onClick={() => handleSort('performed_at')}>
                         <Clock className="w-3 h-3" />
@@ -305,8 +341,10 @@ export function AuditLogs() {
                 {!loading && logs.length === 0 && (
                     <div className="py-12 text-center">
                         <ClipboardCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                        <p className="text-sm font-medium text-slate-600">No audit logs found</p>
-                        <p className="text-xs text-slate-500 mt-1">Try adjusting your filters or search terms</p>
+                        <p className="text-sm font-medium text-slate-600">{error || 'No audit logs found'}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                            {error ? 'Ask an LGU Admin if you need access.' : 'Try adjusting your filters or search terms'}
+                        </p>
                     </div>
                 )}
 

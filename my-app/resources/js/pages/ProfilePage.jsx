@@ -30,34 +30,6 @@ function VerifiedBadge({ verified, verifiedLabel = 'Verified', unverifiedLabel =
     );
 }
 
-const DEFAULT_NOTIFICATION_PREFERENCES = {
-    in_app_enabled: true,
-    registrations: true,
-    events: true,
-    attendance: true,
-    evaluations: true,
-    certificates: true,
-};
-
-function PreferenceCheckbox({ name, label, description, defaultChecked }) {
-    return (
-        <label className="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50 cursor-pointer">
-            <input type="hidden" name={name} value="0" />
-            <input
-                type="checkbox"
-                name={name}
-                value="1"
-                defaultChecked={defaultChecked}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            <span className="min-w-0">
-                <span className="block text-sm font-medium text-slate-900">{label}</span>
-                {description && <span className="block text-xs text-slate-500 mt-0.5">{description}</span>}
-            </span>
-        </label>
-    );
-}
-
 export function ProfilePage({
     user,
     role = 'PARTICIPANT',
@@ -76,10 +48,12 @@ export function ProfilePage({
     const streetValue = oldInput.street ?? user?.street ?? '';
     const newEmailValue = oldInput.new_email ?? '';
     const newPhoneValue = oldInput.new_phone ?? '';
-    const notificationPreferences = {
-        ...DEFAULT_NOTIFICATION_PREFERENCES,
-        ...(user?.notification_preferences || {}),
-    };
+
+    const profilePictureUrl = user?.profile_picture
+        ? (String(user.profile_picture).startsWith('http')
+            ? user.profile_picture
+            : `/storage/${user.profile_picture}`)
+        : null;
 
     return (
         <div className="space-y-6">
@@ -87,9 +61,17 @@ export function ProfilePage({
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                     <div className="flex items-start gap-4">
                         <div className="p-3 bg-emerald-100 rounded-2xl shadow-sm">
-                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg font-semibold">
-                                {initials}
-                            </span>
+                            {profilePictureUrl ? (
+                                <img
+                                    src={profilePictureUrl}
+                                    alt={user?.name || 'Profile'}
+                                    className="h-8 w-8 rounded-xl object-cover"
+                                />
+                            ) : (
+                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg font-semibold">
+                                    {initials}
+                                </span>
+                            )}
                         </div>
                         <div>
                             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">My Profile</h1>
@@ -153,8 +135,8 @@ export function ProfilePage({
                         <a href="#email-phone" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
                             Email &amp; Phone
                         </a>
-                        <a href="#notification-preferences" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
-                            Notifications
+                        <a href="/settings#notifications" className="block px-3 py-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
+                            Notifications <span className="ml-1 text-[10px] uppercase tracking-wide text-slate-400">Settings</span>
                         </a>
                         <a href="#activity-logs" className="block px-3 py-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
                             Activity Logs <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-600">Soon</span>
@@ -165,19 +147,62 @@ export function ProfilePage({
                 <div className="space-y-6">
                     <section id="profile-information" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl sm:text-2xl font-semibold shadow-md">
-                                {initials}
+                            <div className="relative">
+                                {profilePictureUrl ? (
+                                    <img
+                                        src={profilePictureUrl}
+                                        alt={user?.name || 'Profile'}
+                                        className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover border-2 border-emerald-100 shadow-md"
+                                    />
+                                ) : (
+                                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl sm:text-2xl font-semibold shadow-md">
+                                        {initials}
+                                    </div>
+                                )}
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 flex-1">
                                 <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
                                 <p className="text-xs text-slate-500">
-                                    Update your name and address details. Your contact information is shown to administrators for coordination.
+                                    Update your photo, name, and address. Photos are stored on Cloudinary.
                                 </p>
                             </div>
                         </div>
 
+                        <form
+                            method="POST"
+                            action="/profile/picture"
+                            encType="multipart/form-data"
+                            className="space-y-3 max-w-xl rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+                        >
+                            <input type="hidden" name="_token" value={csrf} />
+                            <label htmlFor="profile_picture" className="block text-xs font-semibold text-slate-600 mb-1">
+                                Profile photo
+                            </label>
+                            <input
+                                id="profile_picture"
+                                name="profile_picture"
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                required
+                                className={`w-full rounded-lg border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+                                    fieldError('profile_picture') ? 'border-rose-300' : 'border-slate-300'
+                                }`}
+                            />
+                            <p className="text-[0.7rem] text-slate-500">JPG, PNG, or WebP. Max 2MB.</p>
+                            <FieldError message={fieldError('profile_picture')} />
+                            <div className="flex justify-end">
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2"
+                                >
+                                    Upload photo
+                                </button>
+                            </div>
+                        </form>
+
                         <form method="POST" action="/profile" className="space-y-4 max-w-xl">
                             <input type="hidden" name="_token" value={csrf} />
+                            <input type="hidden" name="_method" value="PUT" />
                             <input type="hidden" name="_method" value="PUT" />
 
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -407,64 +432,19 @@ export function ProfilePage({
                         </div>
                     </section>
 
-                    <section id="notification-preferences" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-4">
+                    <section id="notification-preferences" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-3">
                         <div>
                             <h2 className="text-sm font-semibold text-slate-900">Notification Preferences</h2>
                             <p className="mt-1 text-xs text-slate-500">
-                                Choose which in-app notifications you receive in the bell menu. Admin training alerts are always delivered.
+                                Notification controls now live under Settings so profile stays focused on identity and security.
                             </p>
                         </div>
-
-                        <form method="POST" action="/profile/notifications" className="space-y-3 max-w-xl">
-                            <input type="hidden" name="_token" value={csrf} />
-                            <input type="hidden" name="_method" value="PUT" />
-
-                            <PreferenceCheckbox
-                                name="in_app_enabled"
-                                label="Enable in-app notifications"
-                                description="Master switch for all notification categories below."
-                                defaultChecked={notificationPreferences.in_app_enabled}
-                            />
-                            <PreferenceCheckbox
-                                name="registrations"
-                                label="Registration updates"
-                                description="Approvals, rejections, and registration confirmations."
-                                defaultChecked={notificationPreferences.registrations}
-                            />
-                            <PreferenceCheckbox
-                                name="events"
-                                label="Event updates"
-                                description="Event cancellations and schedule changes."
-                                defaultChecked={notificationPreferences.events}
-                            />
-                            <PreferenceCheckbox
-                                name="attendance"
-                                label="Attendance"
-                                description="When you are marked present or late for an event."
-                                defaultChecked={notificationPreferences.attendance}
-                            />
-                            <PreferenceCheckbox
-                                name="evaluations"
-                                label="Evaluations & assessments"
-                                description="Drill results and AI scenario assessment outcomes."
-                                defaultChecked={notificationPreferences.evaluations}
-                            />
-                            <PreferenceCheckbox
-                                name="certificates"
-                                label="Certificates"
-                                description="Certificate issued or revoked notices."
-                                defaultChecked={notificationPreferences.certificates}
-                            />
-
-                            <div className="pt-2 flex justify-end">
-                                <button
-                                    type="submit"
-                                    className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
-                                >
-                                    Save notification preferences
-                                </button>
-                            </div>
-                        </form>
+                        <a
+                            href="/settings#notifications"
+                            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
+                        >
+                            Open notification settings
+                        </a>
                     </section>
 
                     <section id="activity-logs" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-3">

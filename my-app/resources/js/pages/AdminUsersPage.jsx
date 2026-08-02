@@ -8,6 +8,9 @@ import {
     AdminPrimaryButton,
     AdminContentCard,
 } from '../components/admin/AdminLayout';
+import { AdminTablePagination } from '../components/admin/AdminDataTable';
+
+const ITEMS_PER_PAGE = 10;
 
 function getInitialRoleFilter() {
     if (typeof window === 'undefined') return 'all';
@@ -28,6 +31,7 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [usersState, setUsersState] = React.useState(users);
     const [loadingUserId, setLoadingUserId] = React.useState(null);
+    const [currentPage, setCurrentPage] = React.useState(1);
 
     const canManageUser = (targetUser) => {
         if (!currentUser) return false;
@@ -78,6 +82,25 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
 
         return matchesSearch && matchesRole && matchesPosition && matchesStatus;
     });
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [search, roleFilter, positionFilter, statusFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+    const pageUsers = filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const usersPagination = filteredUsers.length > 0
+        ? {
+            current_page: safePage,
+            last_page: totalPages,
+            per_page: ITEMS_PER_PAGE,
+            total: filteredUsers.length,
+            from: startIndex + 1,
+            to: Math.min(startIndex + ITEMS_PER_PAGE, filteredUsers.length),
+        }
+        : null;
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -279,7 +302,7 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
                                     </td>
                                 </tr>
                             )}
-                            {filteredUsers.map((user) => (
+                            {pageUsers.map((user) => (
                                 <tr key={user.id} className="bg-white hover:bg-slate-50/80 transition-colors duration-150">
                                     <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">#{user.id}</td>
                                     <td className="px-5 py-4 whitespace-nowrap">
@@ -346,6 +369,12 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
                         </tbody>
                     </table>
                 </div>
+                {usersPagination && (
+                    <AdminTablePagination
+                        pagination={usersPagination}
+                        onPageChange={setCurrentPage}
+                    />
+                )}
             </AdminContentCard>
         </AdminPageShell>
     );

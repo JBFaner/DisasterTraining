@@ -19,6 +19,7 @@ use App\Http\Controllers\EventRegistrationController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\BackupRecoveryController;
 use App\Http\Controllers\LessonCompletionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingController;
@@ -417,6 +418,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::get('/participants/{user}', [ParticipantController::class, 'show'])
             ->whereNumber('user')
             ->name('admin.participants.show');
+        Route::post('/participants/{user}/training-modules/{trainingModule}/reset-attempts', [ParticipantController::class, 'resetTrainingAttempts'])
+            ->whereNumber('user')
+            ->whereNumber('trainingModule')
+            ->name('admin.participants.reset-attempts');
 
         // Qualified trainers (read-only directory synced from Community Engagement System)
         Route::get('/api/qualified-trainers', [QualifiedTrainerController::class, 'apiIndex'])->name('admin.api.qualified-trainers.index');
@@ -563,6 +568,20 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::get('/api/audit-logs', [AuditLogController::class, 'history'])->name('admin.audit-logs.history');
         Route::get('/api/audit-logs/export', [AuditLogController::class, 'export'])->name('admin.audit-logs.export');
 
+        // Backup & Recovery
+        Route::get('/backup-recovery', [BackupRecoveryController::class, 'index'])->name('admin.backup-recovery.index');
+        Route::post('/backup-recovery', [BackupRecoveryController::class, 'create'])->name('admin.backup-recovery.create');
+        Route::post('/backup-recovery/settings', [BackupRecoveryController::class, 'updateSettings'])->name('admin.backup-recovery.settings');
+        Route::get('/backup-recovery/download/{filename}', [BackupRecoveryController::class, 'download'])
+            ->where('filename', '[A-Za-z0-9._\-]+')
+            ->name('admin.backup-recovery.download');
+        Route::post('/backup-recovery/{filename}/restore', [BackupRecoveryController::class, 'restore'])
+            ->where('filename', '[A-Za-z0-9._\-]+')
+            ->name('admin.backup-recovery.restore');
+        Route::delete('/backup-recovery/{filename}', [BackupRecoveryController::class, 'destroy'])
+            ->where('filename', '[A-Za-z0-9._\-]+')
+            ->name('admin.backup-recovery.destroy');
+
         // Roles & Permissions
         Route::get('/roles', [App\Http\Controllers\RoleController::class, 'index'])->name('admin.roles.index');
         Route::post('/roles', [App\Http\Controllers\RoleController::class, 'store'])->name('admin.roles.store');
@@ -658,6 +677,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     // Profile (shared across portals)
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [ProfileController::class, 'updateBasic'])->name('profile.update');
+    Route::post('/profile/picture', [ProfileController::class, 'updatePicture'])->name('profile.picture.update');
     Route::post('/profile/email', [ProfileController::class, 'requestEmailChange'])->name('profile.email.request');
     Route::get('/profile/email/confirm/{token}', [ProfileController::class, 'confirmEmailChange'])->name('profile.email.confirm');
     Route::post('/profile/email/resend', [ProfileController::class, 'resendEmailChange'])->name('profile.email.resend');
@@ -665,6 +685,7 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
     Route::get('/profile/phone/confirm/{token}', [ProfileController::class, 'confirmPhoneChange'])->name('profile.phone.confirm');
     Route::post('/profile/password', [ProfileController::class, 'changePassword'])->name('profile.password.change');
     Route::put('/profile/notifications', [ProfileController::class, 'updateNotificationPreferences'])->name('profile.notifications.update');
+    Route::get('/settings', [ProfileController::class, 'settings'])->name('settings.show');
 
     // Legacy shared URLs → correct portal prefix (backward compatibility)
     Route::get('/training-modules', [LegacyTrainingModuleRedirectController::class, 'redirectIndex'])

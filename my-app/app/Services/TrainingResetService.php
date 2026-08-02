@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\AiScenarioAttempt;
 use App\Models\EvaluationResult;
+use App\Models\LessonQuizAttempt;
+use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Models\TrainingProgressReset;
 use App\Models\User;
@@ -15,9 +17,18 @@ class TrainingResetService
 {
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const REASON_COOLDOWN_AUTO = '24h_attempt_cooldown_auto';
+
+    public const REASON_ADMIN_ATTEMPTS = 'admin_reset_attempts';
+
     public function __construct(
         private readonly LessonProgressionService $lessonProgressionService,
     ) {}
+
+    public function attemptCooldownHours(): int
+    {
+        return max(1, (int) config('training.attempt_cooldown_hours', 24));
+    }
 
     public function currentCycleNumber(int $participantId, int $moduleId): int
     {
@@ -248,5 +259,219 @@ class TrainingResetService
             ])
             ->orderBy('attempt_number')
             ->get();
+    }
+
+    /**
+     * Soft-reset quiz attempts for a module: bump AI training cycle and clear failed lesson quizzes.
+     * Does not wipe lesson completions (participant keeps reviewed lessons).
+     */
+    public function resetQuizAttempts(
+        User $participant,
+        TrainingModule $module,
+        ?User $admin = null,
+        ?string $reason = null,
+        bool $logIndividually = true,
+    ): TrainingProgressReset {
+        if ($participant->role !== 'PARTICIPANT') {
+            throw ValidationException::withMessages([
+                'participant' => 'Training attempts can only be reset for participants.',
+            ]);
+        }
+
+        $reason ??= ($admin ? self::REASON_ADMIN_ATTEMPTS : self::REASON_COOLDOWN_AUTO);
+
+        return DB::transaction(function () use ($participant, $module, $admin, $reason, $logIndividually) {
+            $currentCycle = $this->currentCycleNumber($participant->id, $module->id);
+            $newCycle = $currentCycle + 1;
+
+            TrainingProgressReset::query()
+                ->where('participant_id', $participant->id)
+                ->where('training_module_id', $module->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+
+            $this->cancelInProgressAttempts($participant->id, $module->id);
+            $lessonQuizzesCleared = $this->clearFailedLessonQuizAttempts($participant->id, $module->id);
+
+            $reset = TrainingProgressReset::create([
+                'participant_id' => $participant->id,
+                'training_module_id' => $module->id,
+                'reset_by_user_id' => $admin?->id,
+                'evaluation_result_id' => null,
+                'cycle_number' => $newCycle,
+                'reason' => $reason,
+                'reset_at' => now(),
+                'is_active' => true,
+            ]);
+
+            if ($logIndividually) {
+                AuditLogger::log([
+                    'user' => $admin,
+                    'action' => $admin ? 'Reset quiz attempts' : 'Auto-reset quiz attempts after cooldown',
+                    'module' => 'Training Modules',
+                    'status' => 'success',
+                    'description' => sprintf(
+                        '%s quiz attempts for %s on module "%s".',
+                        $admin ? 'Administrator reset' : 'System auto-reset',
+                        $participant->name,
+                        $module->title,
+                    ),
+                    'metadata' => [
+                        'participant_id' => $participant->id,
+                        'training_module_id' => $module->id,
+                        'cycle_number' => $newCycle,
+                        'lesson_quizzes_cleared' => $lessonQuizzesCleared,
+                        'reason' => $reason,
+                        'reset_by_user_id' => $admin?->id,
+                    ],
+                ]);
+            }
+
+            return $reset;
+        });
+    }
+
+    /**
+     * If the participant exhausted AI attempts and the cooldown elapsed, auto-reset.
+     *
+     * @return array{reset: bool, cooldown_resets_at: string|null, cooldown_seconds_remaining: int|null}
+     */
+    public function applyAiAttemptCooldownIfDue(
+        User $participant,
+        TrainingModule $module,
+        int $maxAttempts,
+        bool $passed,
+        int $attemptsUsed,
+        $latestCompletedAttempt,
+    ): array {
+        $empty = [
+            'reset' => false,
+            'cooldown_resets_at' => null,
+            'cooldown_seconds_remaining' => null,
+        ];
+
+        if ($passed || $attemptsUsed < $maxAttempts || ! $latestCompletedAttempt) {
+            return $empty;
+        }
+
+        $exhaustedAt = $latestCompletedAttempt->completed_at
+            ?? $latestCompletedAttempt->submitted_at
+            ?? $latestCompletedAttempt->updated_at;
+
+        if (! $exhaustedAt) {
+            return $empty;
+        }
+
+        $resetsAt = $exhaustedAt->copy()->addHours($this->attemptCooldownHours());
+        $secondsRemaining = (int) now()->diffInSeconds($resetsAt, false);
+
+        if ($secondsRemaining <= 0) {
+            $this->resetQuizAttempts($participant, $module, null, self::REASON_COOLDOWN_AUTO);
+
+            return [
+                'reset' => true,
+                'cooldown_resets_at' => null,
+                'cooldown_seconds_remaining' => null,
+            ];
+        }
+
+        return [
+            'reset' => false,
+            'cooldown_resets_at' => $resetsAt->toIso8601String(),
+            'cooldown_seconds_remaining' => $secondsRemaining,
+        ];
+    }
+
+    /**
+     * Soft-clear failed lesson quiz attempts for one lesson when cooldown elapsed.
+     *
+     * @return array{reset: bool, cooldown_resets_at: string|null, cooldown_seconds_remaining: int|null}
+     */
+    public function applyLessonQuizCooldownIfDue(
+        User $participant,
+        TrainingContent $content,
+        int $maxAttempts,
+        bool $passed,
+        int $attemptsUsed,
+        $latestCompletedAttempt,
+    ): array {
+        $empty = [
+            'reset' => false,
+            'cooldown_resets_at' => null,
+            'cooldown_seconds_remaining' => null,
+        ];
+
+        if ($passed || $attemptsUsed < $maxAttempts || ! $latestCompletedAttempt) {
+            return $empty;
+        }
+
+        $exhaustedAt = $latestCompletedAttempt->completed_at
+            ?? $latestCompletedAttempt->submitted_at
+            ?? $latestCompletedAttempt->updated_at;
+
+        if (! $exhaustedAt) {
+            return $empty;
+        }
+
+        $resetsAt = $exhaustedAt->copy()->addHours($this->attemptCooldownHours());
+        $secondsRemaining = (int) now()->diffInSeconds($resetsAt, false);
+
+        if ($secondsRemaining <= 0) {
+            LessonQuizAttempt::query()
+                ->where('user_id', $participant->id)
+                ->where('training_content_id', $content->id)
+                ->where(function ($q) {
+                    $q->where('passed', false)->orWhereNull('passed');
+                })
+                ->delete();
+
+            AuditLogger::log([
+                'user' => null,
+                'action' => 'Auto-reset lesson quiz attempts after cooldown',
+                'module' => 'Training Modules',
+                'status' => 'success',
+                'description' => sprintf(
+                    'System auto-reset lesson quiz attempts for user #%d on content #%d.',
+                    $participant->id,
+                    $content->id,
+                ),
+                'metadata' => [
+                    'participant_id' => $participant->id,
+                    'training_content_id' => $content->id,
+                    'reason' => self::REASON_COOLDOWN_AUTO,
+                ],
+            ]);
+
+            return [
+                'reset' => true,
+                'cooldown_resets_at' => null,
+                'cooldown_seconds_remaining' => null,
+            ];
+        }
+
+        return [
+            'reset' => false,
+            'cooldown_resets_at' => $resetsAt->toIso8601String(),
+            'cooldown_seconds_remaining' => $secondsRemaining,
+        ];
+    }
+
+    public function clearFailedLessonQuizAttempts(int $participantId, int $moduleId): int
+    {
+        $contentIds = TrainingContent::query()
+            ->where('training_module_id', $moduleId)
+            ->pluck('id');
+
+        if ($contentIds->isEmpty()) {
+            return 0;
+        }
+
+        return LessonQuizAttempt::query()
+            ->where('user_id', $participantId)
+            ->whereIn('training_content_id', $contentIds)
+            ->where(function ($q) {
+                $q->where('passed', false)->orWhereNull('passed');
+            })
+            ->delete();
     }
 }

@@ -18,6 +18,43 @@ function formatTime(seconds) {
     return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function LessonQuizCooldownCountdown({ secondsRemaining = 0, resetsAt }) {
+    const [left, setLeft] = React.useState(() => {
+        if (typeof secondsRemaining === 'number' && secondsRemaining > 0) return secondsRemaining;
+        if (!resetsAt) return 0;
+        return Math.max(0, Math.ceil((new Date(resetsAt).getTime() - Date.now()) / 1000));
+    });
+
+    React.useEffect(() => {
+        if (left <= 0) return undefined;
+        const id = setInterval(() => {
+            setLeft(() => {
+                if (resetsAt) {
+                    return Math.max(0, Math.ceil((new Date(resetsAt).getTime() - Date.now()) / 1000));
+                }
+                return Math.max(0, left - 1);
+            });
+        }, 1000);
+        return () => clearInterval(id);
+    }, [left, resetsAt]);
+
+    React.useEffect(() => {
+        if (left === 0 && resetsAt) {
+            window.location.reload();
+        }
+    }, [left, resetsAt]);
+
+    if (left <= 0) return <span className="font-mono font-semibold">00:00:00</span>;
+    const h = Math.floor(left / 3600);
+    const m = Math.floor((left % 3600) / 60);
+    const s = left % 60;
+    return (
+        <span className="font-mono font-semibold">
+            {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
+        </span>
+    );
+}
+
 function computeRemainingSeconds(attempt) {
     if (attempt?.expires_at) {
         const expiresMs = new Date(attempt.expires_at).getTime();
@@ -461,6 +498,21 @@ export function LessonQuizUnlock({ module, lesson, lessonQuiz }) {
                     {meta.attempts_remaining > 0
                         ? ` ${meta.attempts_remaining} attempt(s) remaining.`
                         : ' No attempts remaining.'}
+                    {meta.attempts_remaining <= 0 && meta.cooldown_resets_at && (
+                        <p className="mt-1 text-amber-900">
+                            Auto-reset in{' '}
+                            <LessonQuizCooldownCountdown
+                                secondsRemaining={meta.cooldown_seconds_remaining}
+                                resetsAt={meta.cooldown_resets_at}
+                            />
+                            {' '}(or ask an admin to reset sooner).
+                        </p>
+                    )}
+                    {meta.attempts_remaining <= 0 && !meta.cooldown_resets_at && (
+                        <p className="mt-1 text-slate-600">
+                            Wait {meta.attempt_cooldown_hours ?? 24} hours for an automatic reset, or contact an administrator.
+                        </p>
+                    )}
                 </div>
             )}
 

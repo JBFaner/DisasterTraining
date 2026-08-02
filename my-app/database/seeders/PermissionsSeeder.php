@@ -156,20 +156,32 @@ class PermissionsSeeder extends Seeder
             );
         }
 
-        // Trainer (LGU_TRAINER) - Training and event management
-        $trainerPermissions = [
+        // Trainer (LGU_TRAINER / Assistant) — day-to-day training ops (no revoke / template / lock / hazard edit)
+        $assistantTrainerPermissions = [
             'dashboard.view',
             'training-modules.view', 'training-modules.create', 'training-modules.edit', 'training-modules.publish', 'training-modules.archive', 'training-modules.lessons.manage', 'training-modules.materials.manage',
             'scenarios.view', 'scenarios.create', 'scenarios.edit', 'scenarios.publish', 'scenarios.archive',
             'simulation-events.view', 'simulation-events.create', 'simulation-events.edit', 'simulation-events.publish', 'simulation-events.unpublish', 'simulation-events.start', 'simulation-events.complete', 'simulation-events.cancel', 'simulation-events.archive', 'simulation-events.registrations.manage', 'simulation-events.attendance.manage',
             'participants.view', 'participants.manage-attendance', 'participants.export',
             'resources.view', 'resources.assign', 'resources.maintenance',
-            'evaluations.view', 'evaluations.create', 'evaluations.edit', 'evaluations.score', 'evaluations.lock', 'evaluations.export',
-            'certifications.view', 'certifications.issue', 'certifications.revoke', 'certifications.templates.manage',
-            'hazard-assessment-profile.view', 'hazard-assessment-profile.edit',
+            'evaluations.view', 'evaluations.create', 'evaluations.edit', 'evaluations.score', 'evaluations.export',
+            'certifications.view', 'certifications.issue',
+            'hazard-assessment-profile.view',
         ];
 
-        foreach ($trainerPermissions as $permName) {
+        // Lead Trainer — assistant set + higher-trust actions
+        $leadTrainerExtraPermissions = [
+            'evaluations.lock',
+            'certifications.revoke',
+            'certifications.templates.manage',
+            'hazard-assessment-profile.edit',
+            'participants.create',
+            'participants.edit',
+            'resources.create',
+            'resources.edit',
+        ];
+
+        foreach ($assistantTrainerPermissions as $permName) {
             $permission = DB::table('permissions')->where('name', $permName)->first();
             if ($permission) {
                 DB::table('role_has_permissions')->updateOrInsert(
@@ -182,6 +194,69 @@ class PermissionsSeeder extends Seeder
                         'permission_id' => $permission->id,
                     ]
                 );
+            }
+        }
+
+        // Remove lead-only perms from assistant if they were previously mirrored
+        foreach ($leadTrainerExtraPermissions as $permName) {
+            $permission = DB::table('permissions')->where('name', $permName)->first();
+            if ($permission) {
+                DB::table('role_has_permissions')
+                    ->where('role_id', $trainer->id)
+                    ->where('permission_id', $permission->id)
+                    ->delete();
+            }
+        }
+
+        $leadTrainer = DB::table('roles')->where('name', 'LEAD_TRAINER')->first();
+        if ($leadTrainer) {
+            $leadPermissions = array_values(array_unique(array_merge(
+                $assistantTrainerPermissions,
+                $leadTrainerExtraPermissions
+            )));
+            foreach ($leadPermissions as $permName) {
+                $permission = DB::table('permissions')->where('name', $permName)->first();
+                if ($permission) {
+                    DB::table('role_has_permissions')->updateOrInsert(
+                        [
+                            'role_id' => $leadTrainer->id,
+                            'permission_id' => $permission->id,
+                        ],
+                        [
+                            'role_id' => $leadTrainer->id,
+                            'permission_id' => $permission->id,
+                        ]
+                    );
+                }
+            }
+        }
+
+        // Evaluator — scoring-focused access
+        $evaluator = DB::table('roles')->where('name', 'EVALUATOR')->first();
+        if ($evaluator) {
+            $evaluatorPermissions = [
+                'dashboard.view',
+                'training-modules.view',
+                'scenarios.view',
+                'simulation-events.view',
+                'participants.view',
+                'evaluations.view', 'evaluations.create', 'evaluations.edit', 'evaluations.score', 'evaluations.lock', 'evaluations.export',
+                'certifications.view',
+            ];
+            foreach ($evaluatorPermissions as $permName) {
+                $permission = DB::table('permissions')->where('name', $permName)->first();
+                if ($permission) {
+                    DB::table('role_has_permissions')->updateOrInsert(
+                        [
+                            'role_id' => $evaluator->id,
+                            'permission_id' => $permission->id,
+                        ],
+                        [
+                            'role_id' => $evaluator->id,
+                            'permission_id' => $permission->id,
+                        ]
+                    );
+                }
             }
         }
 

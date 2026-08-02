@@ -1,7 +1,7 @@
 # Terms and Conditions
 
 **Disaster Preparedness Training and Simulation System**  
-**Last Updated:** [Date to be set at publication]
+**Last Updated:** August 2, 2026
 
 ---
 
@@ -24,9 +24,10 @@ The Disaster Preparedness Training and Simulation System is a web-based platform
 - Managing resources, equipment, and barangay profiles;
 - Administering user accounts, roles, and permissions for administrators and trainers;
 - Facilitating evaluation and reporting of training outcomes;
+- Creating and managing application database backups for operational continuity;
 - Integrating with the AlerTara Centralized Login System (https://login.alertaraqc.com) for single sign-on where applicable.
 
-The Service is intended for use by LGU administrators, trainers, and registered participants in disaster preparedness programs. Access to certain features is restricted based on user role and permissions.
+The Service is intended for use by LGU administrators, lead trainers, trainers, evaluators, staff, viewers, and registered participants in disaster preparedness programs. Access to certain features is restricted based on user role and permissions.
 
 ---
 
@@ -97,6 +98,18 @@ You represent that you have the right to submit such content and that it does no
 ## 7. Fees and Billing
 
 The Service is currently provided without charge to authorized users for disaster preparedness training purposes. The Service Provider reserves the right to introduce fees for certain features or usage in the future. Any such change will be communicated in advance and will not apply retrospectively without your consent where required by law.
+
+---
+
+## 8A. Data Backup, Retention, and Recovery
+
+The Service may create application database backups (SQL dumps) automatically after important operational events and on a configured schedule. Authorized administrators may create, download, delete, or restore backups through the Backup & Recovery module.
+
+In-app backups cover the application database (training records, participants, events, evaluations, certifications, and related operational data). They do not replace full hosting or VPS backups of application files, SSL certificates, or server configuration. Full site or server disaster recovery remains the responsibility of the hosting environment (for example CyberPanel / Hostinger). Administrators should maintain off-server copies of critical backups where required by LGU policy.
+
+Restoring a database backup overwrites current application data. Only authorized LGU administrators should perform restores, and only after confirming the correct backup file. When possible, the Service creates a safety backup before an in-app restore.
+
+The Service may keep a limited number of recent backup files (configurable by administrators). Older files may be pruned automatically. Retention settings do not guarantee indefinite storage; follow LGU records management and the Data Privacy Act of 2012 for official archives.
 
 ---
 

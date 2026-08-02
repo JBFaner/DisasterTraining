@@ -13,6 +13,13 @@ class VerifyResourceAllocationApiKey
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (! config('resource_allocation.enabled')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Resource Allocation integration is disabled. Inventory is standalone.',
+            ], 503);
+        }
+
         $expectedKey = config('resource_allocation.inbound.api_key');
 
         if (empty($expectedKey)) {

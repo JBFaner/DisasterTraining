@@ -27,7 +27,33 @@ class PortalAuth
 
     public static function isAdminRole(string $role): bool
     {
-        return in_array($role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'SUPER_ADMIN'], true);
+        return in_array($role, [
+            'LGU_ADMIN',
+            'LGU_TRAINER',
+            'LEAD_TRAINER',
+            'EVALUATOR',
+            'STAFF',
+            'SUPER_ADMIN',
+            'VIEWER',
+        ], true);
+    }
+
+    /** Trainers who can manage modules/events (assistant + lead). */
+    public static function isTrainerRole(string $role): bool
+    {
+        return in_array($role, ['LGU_TRAINER', 'LEAD_TRAINER'], true);
+    }
+
+    /** Roles that may score / manage evaluations. */
+    public static function canEvaluate(string $role): bool
+    {
+        return in_array($role, ['LGU_ADMIN', 'LGU_TRAINER', 'LEAD_TRAINER', 'EVALUATOR'], true);
+    }
+
+    /** Admin or any trainer-level account. */
+    public static function isAdminOrTrainer(string $role): bool
+    {
+        return $role === 'LGU_ADMIN' || self::isTrainerRole($role);
     }
 
     public static function adminUser(): ?User

@@ -21,6 +21,7 @@ import {
     Settings,
     Sparkles,
     AlertTriangle,
+    DatabaseBackup,
 } from 'lucide-react';
 import { TopBar } from './TopBar';
 import { dashboardIndex } from '../utils/portalRoutes';
@@ -47,8 +48,12 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     const leftDrawerRef = React.useRef(null);
     const rightDrawerRef = React.useRef(null);
 
-    const isAdmin = role === 'LGU_ADMIN';
+    const isAdmin = role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
+    const isLeadTrainer = role === 'LEAD_TRAINER';
+    const isEvaluator = role === 'EVALUATOR';
+    // Treat lead trainer like trainer for nav access.
+    const hasTrainerAccess = isTrainer || isLeadTrainer;
     const isParticipant = role === 'PARTICIPANT';
 
     // Close drawer when clicking outside or on overlay
@@ -201,9 +206,12 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         <div className="leading-tight">
                             <div className="text-sm font-semibold">
                                 {role === 'LGU_ADMIN' && 'LGU Admin'}
+                                {role === 'LEAD_TRAINER' && 'Lead Trainer'}
                                 {role === 'LGU_TRAINER' && 'Trainer'}
+                                {role === 'EVALUATOR' && 'Evaluator'}
                                 {role === 'STAFF' && 'Staff'}
-                                {role === 'PARTICIPANT' && 'Viewer'}
+                                {role === 'VIEWER' && 'Viewer'}
+                                {role === 'PARTICIPANT' && 'Participant'}
                             </div>
                             <div className="text-xs text-slate-400">
                                 Account
@@ -230,7 +238,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                         <span className="text-sm font-medium">Profile</span>
                     </a>
                     <a
-                        href="#"
+                        href="/settings"
                         onClick={() => setIsRightDrawerOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 rounded-md text-slate-100 hover:bg-slate-800/80 hover:text-emerald-200 transition-colors"
                     >
@@ -337,8 +345,12 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
 
 // Reusable navigation items renderer
 function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
-    const isAdmin = role === 'LGU_ADMIN';
+    const isAdmin = role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
     const isTrainer = role === 'LGU_TRAINER';
+    const isLeadTrainer = role === 'LEAD_TRAINER';
+    const isEvaluator = role === 'EVALUATOR';
+    // Treat lead trainer like trainer for nav access.
+    const hasTrainerAccess = isTrainer || isLeadTrainer;
     const isParticipant = role === 'PARTICIPANT';
 
     if (isParticipant) {
@@ -434,7 +446,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     isCollapsed={isCollapsed}
                 />
             </div>
-            {(isAdmin || isTrainer) && (
+            {(isAdmin || hasTrainerAccess) && (
                 <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Operations</NavSectionTitle>}
                     <NavItem
@@ -507,6 +519,35 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     />
                 </div>
             )}
+            {isEvaluator && !isAdmin && !hasTrainerAccess && (
+                <div className={isCollapsed ? 'w-full' : ''}>
+                    {!isCollapsed && <NavSectionTitle>Evaluation</NavSectionTitle>}
+                    <NavItem
+                        icon={ClipboardList}
+                        label="Evaluation & Scoring System"
+                        href="/admin/evaluations"
+                        active={currentSection === 'evaluation'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={CalendarClock}
+                        label="Simulation Events"
+                        href="/admin/simulation-events"
+                        active={currentSection === 'simulation'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={Users}
+                        label="Participants"
+                        href="/admin/participants"
+                        active={currentSection === 'participants'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                </div>
+            )}
             {isAdmin && (
                 <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Administration</NavSectionTitle>}
@@ -557,6 +598,14 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                         label="Audit Logs"
                         href="/admin/audit-logs"
                         active={currentSection === 'audit_logs'}
+                        isCollapsed={isCollapsed}
+                        onNavigate={onNavigate}
+                    />
+                    <NavItem
+                        icon={DatabaseBackup}
+                        label="Backup & Recovery"
+                        href="/admin/backup-recovery"
+                        active={currentSection === 'backup_recovery'}
                         isCollapsed={isCollapsed}
                         onNavigate={onNavigate}
                     />

@@ -6,6 +6,8 @@ import '../css/app.css';
 import { SidebarLayout } from './components/SidebarLayout';
 import { AppDialogHost } from './components/AppDialogHost';
 import { SessionTimeout } from './components/SessionTimeout';
+import { SessionIdleProvider } from './contexts/SessionIdleContext';
+import { SettingsPage } from './pages/SettingsPage';
 import { ParticipantSimulationEventsList, ParticipantSimulationEventDetail } from './components/ParticipantSimulationEvents';
 import { SimulationEventLifecyclePage } from './components/SimulationEventLifecyclePage';
 import { SimulationEventPlanningModule } from './components/SimulationEventPlanningModule';
@@ -13,6 +15,7 @@ import { SimulationExerciseTemplateForm } from './pages/SimulationExerciseTempla
 import { SimulationEventCreateForm } from './components/SimulationEventCreateForm';
 import { ResourceInventory } from './pages/ResourceInventory';
 import { AuditLogs } from './pages/AuditLogs';
+import { BackupRecoveryPage } from './pages/BackupRecoveryPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { UserDetailsPage } from './pages/UserDetailsPage';
 import { AccountRoleAndPositionFields } from './components/admin/PositionSelectField';
@@ -397,6 +400,8 @@ if (rootElement) {
     const trainingsJson = rootElement.getAttribute('data-trainings');
     const registrationsJson = rootElement.getAttribute('data-registrations');
     const usersJson = rootElement.getAttribute('data-users');
+    const backupsJson = rootElement.getAttribute('data-backups');
+    const backupStatusJson = rootElement.getAttribute('data-backup-status');
     const rolesJson = rootElement.getAttribute('data-roles');
     const positionOptionsJson = rootElement.getAttribute('data-position-options');
     const permissionsJson = rootElement.getAttribute('data-permissions');
@@ -718,6 +723,24 @@ if (rootElement) {
         }
     }
 
+    let backups = [];
+    if (backupsJson) {
+        try {
+            backups = JSON.parse(backupsJson);
+        } catch (e) {
+            console.error('Failed to parse backups JSON', e);
+        }
+    }
+
+    let backupStatus = null;
+    if (backupStatusJson) {
+        try {
+            backupStatus = JSON.parse(backupStatusJson);
+        } catch (e) {
+            console.error('Failed to parse backupStatus JSON', e);
+        }
+    }
+
     let roles = [];
     if (rolesJson) {
         try {
@@ -1025,6 +1048,8 @@ if (rootElement) {
 
     const sessionTimeoutMinutes = parseInt(rootElement.getAttribute('data-session-timeout-minutes') || '10', 10);
     const warningBeforeLogoutSeconds = parseInt(rootElement.getAttribute('data-warning-before-logout-seconds') || '60', 10);
+    const authGuard = rootElement.getAttribute('data-auth-guard') || '';
+    const sessionIdleEnabled = Boolean(authGuard);
 
     let barangayProfile = null;
     let barangayProfiles = [];
@@ -1363,7 +1388,7 @@ if (rootElement) {
 
 
     const role =
-        roleAttr === 'LGU_ADMIN' || roleAttr === 'LGU_TRAINER' || roleAttr === 'PARTICIPANT'
+        roleAttr === 'LGU_ADMIN' || roleAttr === 'LEAD_TRAINER' || roleAttr === 'LGU_TRAINER' || roleAttr === 'EVALUATOR' || roleAttr === 'PARTICIPANT' || roleAttr === 'STAFF' || roleAttr === 'VIEWER'
             ? roleAttr
             : 'PARTICIPANT';
 
@@ -1408,6 +1433,10 @@ if (rootElement) {
             title: 'Audit Logs',
             description: 'Review system activity, security events, and administrative actions across the platform.',
         },
+        backup_recovery: {
+            title: 'Backup & Recovery',
+            description: 'Create and download application database backups. Use CyberPanel for full server recovery.',
+        },
         hazard_assessment_profile: {
             title: 'Hazard Assessment Profile',
             description: 'Official hazard assessment data powering training recommendations, AI scenarios, and simulation planning.',
@@ -1445,6 +1474,7 @@ if (rootElement) {
                                                     sectionAttr.startsWith('hazard_assessment_profile') ? 'hazard_assessment_profile' :
                                                     sectionAttr.startsWith('barangay_profile') ? 'hazard_assessment_profile' :
                                                                 sectionAttr === 'audit_logs' ? 'audit_logs' :
+                                                                sectionAttr === 'backup_recovery' ? 'backup_recovery' :
                                                                     sectionAttr;
 
     // Breadcrumb configuration
@@ -1457,8 +1487,16 @@ if (rootElement) {
             return [];
         }
 
+        if (sectionAttr === 'backup_recovery') {
+            return [];
+        }
+
         if (sectionAttr === 'profile') {
             return [{ label: 'Profile', href: '/profile' }];
+        }
+
+        if (sectionAttr === 'settings') {
+            return [{ label: 'Settings', href: '/settings' }];
         }
 
         if (sectionAttr === 'training') {
@@ -1792,6 +1830,7 @@ if (rootElement) {
             'resource_budget_proposal',
             'admin_users_index',
             'audit_logs',
+            'backup_recovery',
             'ai_scenario_training',
             'ai_scenario_config',
             'ai_scenario_final_assessment',
@@ -1844,6 +1883,10 @@ if (rootElement) {
 
         if (sectionAttr === 'profile') {
             return 'My Profile';
+        }
+
+        if (sectionAttr === 'settings') {
+            return 'Settings';
         }
 
         if (sectionAttr === 'training_create') {
@@ -1908,7 +1951,12 @@ if (rootElement) {
     ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
             <Toast.Provider swipeDirection="right">
-                <SessionTimeout timeoutMinutes={sessionTimeoutMinutes} warningSeconds={warningBeforeLogoutSeconds} />
+                <SessionIdleProvider
+                    enabled={sessionIdleEnabled}
+                    timeoutMinutes={sessionTimeoutMinutes}
+                    warningSeconds={warningBeforeLogoutSeconds}
+                >
+                <SessionTimeout />
                 <AppDialogHost />
                 <SidebarLayout
                     role={role}
@@ -2095,6 +2143,7 @@ if (rootElement) {
                                 eligibleParticipants={certificationEligibleParticipants}
                                 eligibleParticipantsPagination={certificationEligibleParticipantsPagination}
                                 templates={certificationTemplates}
+                                trainingModules={trainingModules}
                                 issuedCertificates={certificationIssuedCertificates}
                                 issuedCertificatesPagination={certificationIssuedCertificatesPagination}
                                 eventsForFilter={certificationEventsForFilter}
@@ -2122,6 +2171,18 @@ if (rootElement) {
                                 flashErrors={flashErrors}
                                 validationErrors={validationErrors}
                                 oldInput={oldInput}
+                            />
+                        )}
+
+                        {sectionAttr === 'settings' && (
+                            <SettingsPage
+                                user={currentUser}
+                                role={role}
+                                flashStatus={flashStatus || ''}
+                                flashErrors={flashErrors}
+                                validationErrors={validationErrors}
+                                sessionTimeoutMinutes={sessionTimeoutMinutes}
+                                warningBeforeLogoutSeconds={warningBeforeLogoutSeconds}
                             />
                         )}
 
@@ -2203,7 +2264,7 @@ if (rootElement) {
                                                     defaultRole={
                                                         (() => {
                                                             const roleFromQuery = new URLSearchParams(window.location.search).get('role');
-                                                            const allowed = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
+                                                            const allowed = ['LGU_ADMIN', 'LEAD_TRAINER', 'LGU_TRAINER', 'EVALUATOR', 'STAFF', 'VIEWER'];
                                                             if (roleFromQuery && allowed.includes(roleFromQuery)) {
                                                                 return roleFromQuery;
                                                             }
@@ -2367,6 +2428,10 @@ if (rootElement) {
 
                         {sectionAttr === 'audit_logs' && (
                             <AuditLogs />
+                        )}
+
+                        {sectionAttr === 'backup_recovery' && (
+                            <BackupRecoveryPage backups={backups} backupStatus={backupStatus} />
                         )}
 
                         {sectionAttr === 'resources' && (
@@ -2544,6 +2609,7 @@ if (rootElement) {
                 <PortalToastListener />
 
                 <Toast.Viewport className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 outline-none" />
+                </SessionIdleProvider>
             </Toast.Provider>
         </React.StrictMode>,
     );
@@ -3159,7 +3225,7 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
     const [isPageLoading, setIsPageLoading] = React.useState(false);
     const [viewMode, setViewMode] = React.useState('grid'); // 'grid' | 'list'
     const [openManageId, setOpenManageId] = React.useState(null);
-    const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
+    const itemsPerPage = 10;
     const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles: manageFloatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique disaster types for filter
@@ -5115,7 +5181,7 @@ function ScenariosTable({ scenarios = [], role }) {
     const [currentPage, setCurrentPage] = React.useState(1);
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
-    const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
+    const itemsPerPage = 10;
     const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     // Get unique values for filters
@@ -6760,7 +6826,7 @@ function SimulationEventsTable({ events, role, embedded = false, activeOnly = fa
     const [currentPage, setCurrentPage] = React.useState(1);
     const [viewMode, setViewMode] = React.useState('grid');
     const [openManageId, setOpenManageId] = React.useState(null);
-    const itemsPerPage = viewMode === 'list' ? 5 : 10; // List: 5 per page, Grid: 10
+    const itemsPerPage = 10;
     const { referenceRef: manageMenuRef, floatingRef: managePortalRef, floatingStyles } = useFloatingDropdown(openManageId != null, viewMode === 'list' ? 'bottom-start' : 'bottom');
 
     const scopedEvents = React.useMemo(() => {
@@ -8726,6 +8792,7 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
         const payload = {
             name: form.name?.value,
             type: form.type?.value || 'completion',
+            hazard_category: form.hazard_category?.value || null,
             title_text: form.title_text?.value || null,
             design_json: design,
             certificate_number_format: form.certificate_number_format?.value || null,
@@ -8773,6 +8840,16 @@ function TemplateEditorModal({ template, csrf, onClose, onSaved }) {
                                     <option value="participation">Participation</option>
                                 </select>
                             </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">Hazard / Module category</label>
+                            <select name="hazard_category" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm md:w-64" defaultValue={template?.hazard_category || ''}>
+                                <option value="">General (any module)</option>
+                                <option value="Fire">Fire</option>
+                                <option value="Flood">Flood</option>
+                                <option value="Earthquake">Earthquake</option>
+                            </select>
+                            <p className="mt-1 text-xs text-slate-500">Used to auto-pick this template when issuing for matching training modules.</p>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Print size</label>
@@ -8837,6 +8914,7 @@ function CertificationModule({
     eligibleParticipants = [],
     eligibleParticipantsPagination = null,
     templates = [],
+    trainingModules = [],
     issuedCertificates = [],
     issuedCertificatesPagination = null,
     eventsForFilter = [],
@@ -8858,6 +8936,7 @@ function CertificationModule({
     const [searchTerm, setSearchTerm] = React.useState('');
     const [certIdSearch, setCertIdSearch] = React.useState('');
     const [eventFilter, setEventFilter] = React.useState(filters.event_id || '');
+    const [moduleFilter, setModuleFilter] = React.useState(filters.training_module_id || '');
     const [statusFilter, setStatusFilter] = React.useState(filters.status || '');
     const [dateFrom, setDateFrom] = React.useState(filters.date_from || '');
     const [dateTo, setDateTo] = React.useState(filters.date_to || '');
@@ -8865,11 +8944,31 @@ function CertificationModule({
     const [issueModalOpen, setIssueModalOpen] = React.useState(false);
     const [issueRow, setIssueRow] = React.useState(null);
     const [certType, setCertType] = React.useState('completion');
+    const [selectedModuleId, setSelectedModuleId] = React.useState('');
     const [autoIssue, setAutoIssue] = React.useState(!!automationSettings.auto_issue_when_passed);
     const [requireAttendance, setRequireAttendance] = React.useState(!!automationSettings.require_attendance);
     const [requireApproval, setRequireApproval] = React.useState(!!automationSettings.require_supervisor_approval);
     const [templateEditorOpen, setTemplateEditorOpen] = React.useState(false);
     const [editingTemplate, setEditingTemplate] = React.useState(null);
+
+    const selectedModule = (trainingModules || []).find((m) => String(m.id) === String(selectedModuleId)) || null;
+    const matchedTemplate = (() => {
+        if (!selectedModule) return null;
+        const hazard = selectedModule.hazard_category
+            || selectedModule.category
+            || selectedModule.related_hazard
+            || '';
+        const hazardKey = String(hazard).toLowerCase();
+        const byHazard = (templates || []).find((t) => {
+            if (t.status && t.status !== 'active') return false;
+            const th = String(t.hazard_category || '').toLowerCase();
+            return th && (th === hazardKey || hazardKey.includes(th) || th.includes(hazardKey));
+        });
+        if (byHazard) return byHazard;
+        return (templates || []).find((t) => t.status === 'active' && t.type === certType)
+            || (templates || []).find((t) => t.status === 'active')
+            || null;
+    })();
 
     const stats = summaryStats || { total_certified: 0, pending_certifications: 0, issued_today: 0, trend_this_week: 0 };
 
@@ -8888,6 +8987,7 @@ function CertificationModule({
     const buildFilterUrl = (extra = {}) => {
         const params = new URLSearchParams();
         if (eventFilter) params.set('event_id', eventFilter);
+        if (moduleFilter) params.set('training_module_id', moduleFilter);
         if (statusFilter) params.set('status', statusFilter);
         if (dateFrom) params.set('date_from', dateFrom);
         if (dateTo) params.set('date_to', dateTo);
@@ -8907,6 +9007,7 @@ function CertificationModule({
     const buildExportCsvUrl = () => {
         const params = new URLSearchParams();
         if (eventFilter) params.set('event_id', eventFilter);
+        if (moduleFilter) params.set('training_module_id', moduleFilter);
         if (dateFrom) params.set('date_from', dateFrom);
         if (dateTo) params.set('date_to', dateTo);
         const q = params.toString();
@@ -8933,18 +9034,24 @@ function CertificationModule({
 
     const handleIssueCertificate = (row) => {
         setIssueRow(row);
+        setCertType('completion');
+        setSelectedModuleId(row?.training_module_id ? String(row.training_module_id) : '');
         setIssueModalOpen(true);
     };
 
     const handleSubmitIssue = async (e) => {
         e.preventDefault();
         const form = e.target;
+        const moduleId = form.training_module_id?.value || selectedModuleId || null;
+        const module = (trainingModules || []).find((m) => String(m.id) === String(moduleId));
         const payload = {
             user_id: form.user_id?.value || issueRow?.user_id,
             simulation_event_id: form.simulation_event_id?.value || issueRow?.event_id,
             participant_evaluation_id: issueRow?.participant_evaluation_id || null,
+            training_module_id: moduleId || null,
+            certificate_template_id: matchedTemplate?.id || null,
             type: form.type?.value || certType,
-            training_type: form.training_type?.value || '',
+            training_type: module?.title || form.training_type?.value || '',
             completion_date: form.completion_date?.value || null,
             _token: csrf,
         };
@@ -9030,9 +9137,9 @@ function CertificationModule({
     };
 
     const historyFiltersActive = Boolean(
-        eventFilter || certIdSearch || dateFrom || dateTo || issuedStatusFilter !== 'active'
+        eventFilter || moduleFilter || certIdSearch || dateFrom || dateTo || issuedStatusFilter !== 'active'
     );
-    const eligibleFiltersActive = Boolean(eventFilter || statusFilter || dateFrom || dateTo);
+    const eligibleFiltersActive = Boolean(eventFilter || moduleFilter || statusFilter || dateFrom || dateTo);
 
     return (
         <AdminPageShell className="space-y-4">
@@ -9215,6 +9322,7 @@ function CertificationModule({
                         return;
                     }
                     setEventFilter('');
+                    setModuleFilter('');
                     setStatusFilter('');
                     setCertIdSearch('');
                     setDateFrom('');
@@ -9246,12 +9354,22 @@ function CertificationModule({
                 )}
             >
                 {(activeTab === 'eligible' || activeTab === 'history') && (
-                    <AdminFilterSelect label="Event" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
-                        <option value="">All Events</option>
-                        {eventsForFilter?.map((ev) => (
-                            <option key={ev.id} value={ev.id}>{ev.title}</option>
-                        ))}
-                    </AdminFilterSelect>
+                    <>
+                        <AdminFilterSelect label="Event" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
+                            <option value="">All Events</option>
+                            {eventsForFilter?.map((ev) => (
+                                <option key={ev.id} value={ev.id}>{ev.title}</option>
+                            ))}
+                        </AdminFilterSelect>
+                        <AdminFilterSelect label="Module" value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)}>
+                            <option value="">All Modules</option>
+                            {(trainingModules || []).map((m) => (
+                                <option key={m.id} value={m.id}>
+                                    {m.title}{m.hazard_category ? ` (${m.hazard_category})` : ''}
+                                </option>
+                            ))}
+                        </AdminFilterSelect>
+                    </>
                 )}
                 {activeTab === 'eligible' && (
                     <>
@@ -9290,6 +9408,9 @@ function CertificationModule({
                                 <div className="min-w-[140px]">
                                     <span className="text-sm font-medium text-slate-900">{row.user_name || '—'}</span>
                                     <span className="mt-0.5 block text-xs text-slate-500">{row.event_title || '—'}</span>
+                                    {row.training_module_title && (
+                                        <span className="mt-0.5 block text-xs text-emerald-700">Module: {row.training_module_title}</span>
+                                    )}
                                 </div>
                             ),
                         },
@@ -9345,16 +9466,16 @@ function CertificationModule({
                                     <AdminTableActionButton
                                         href={`/certificates/${row.certificate_id}/view`}
                                         icon={Eye}
-                                        title="Preview Certificate"
+                                        title={`View certificate — ${row.user_name || 'participant'}`}
                                         variant="view"
                                     />
                                 ) : null
                             ) : (
                                 <>
                                     <AdminTableActionButton
-                                        href={`/admin/simulation-events/${row.event_id}/evaluation/summary`}
+                                        href={`/admin/participants/${row.user_id}`}
                                         icon={Eye}
-                                        title="View Details"
+                                        title={`View participant — ${row.user_name || 'details'}`}
                                         variant="view"
                                     />
                                     {row.cert_status === 'eligible' && (
@@ -9368,7 +9489,7 @@ function CertificationModule({
                                     <AdminTableActionButton
                                         href={`/admin/certification/preview-participant?user_id=${row.user_id}&event_id=${row.event_id}`}
                                         icon={FileText}
-                                        title="Preview Template"
+                                        title={`Preview certificate — ${row.user_name || 'participant'}`}
                                         variant="default"
                                     />
                                 </>
@@ -9394,6 +9515,7 @@ function CertificationModule({
                                     <h4 className="text-lg font-semibold text-slate-900 mb-2">{t.name}</h4>
                                     <div className="text-sm text-slate-600 space-y-1 mb-4">
                                         <p><span className="font-medium text-slate-500">Type:</span> {t.type || 'Completion'}</p>
+                                        <p><span className="font-medium text-slate-500">Hazard:</span> {t.hazard_category || 'General'}</p>
                                         <p><span className="font-medium text-slate-500">Last Used:</span> {t.last_used_at ? formatDate(t.last_used_at) : '—'}</p>
                                     </div>
                                     <div className="flex items-center justify-between">
@@ -9557,9 +9679,34 @@ function CertificationModule({
                                     <p className="text-sm text-slate-800">{issueRow.event_title}</p>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Training Type</label>
-                                    <input type="text" name="training_type" defaultValue="Disaster Preparedness Training" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Training Module</label>
+                                    <select
+                                        name="training_module_id"
+                                        value={selectedModuleId}
+                                        onChange={(e) => setSelectedModuleId(e.target.value)}
+                                        required
+                                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                                    >
+                                        <option value="">Select module taken…</option>
+                                        {(trainingModules || []).map((m) => (
+                                            <option key={m.id} value={m.id}>
+                                                {m.title}{m.hazard_category ? ` (${m.hazard_category})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
+                                {selectedModule && (
+                                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                        <p>
+                                            <span className="font-semibold text-slate-700">Certificate type:</span>{' '}
+                                            {selectedModule.hazard_category || selectedModule.category || 'General'}
+                                        </p>
+                                        <p className="mt-1">
+                                            <span className="font-semibold text-slate-700">Template:</span>{' '}
+                                            {matchedTemplate?.name || 'Default active template'}
+                                        </p>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Completion Date</label>
                                     <input type="date" name="completion_date" defaultValue={issueRow.event_date ? issueRow.event_date.slice(0, 10) : ''} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />

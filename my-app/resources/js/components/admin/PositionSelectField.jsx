@@ -5,7 +5,7 @@ export const TRAINER_ONLY_POSITIONS = ['Lead Trainer', 'Assistant Trainer'];
 
 export function positionsForAccountRole(options = [], accountRole = '') {
     const list = [...(options || [])];
-    if (accountRole === 'STAFF' || accountRole === 'VIEWER') {
+    if (accountRole === 'STAFF' || accountRole === 'VIEWER' || accountRole === 'EVALUATOR') {
         return list.filter((opt) => !TRAINER_ONLY_POSITIONS.includes(opt));
     }
     return list;
@@ -32,7 +32,7 @@ export function PositionSelectField({
     const [extraChoices, setExtraChoices] = React.useState([]);
     const [value, setValue] = React.useState(() => {
         if (!defaultValue) return '';
-        if (accountRole === 'STAFF' || accountRole === 'VIEWER') {
+        if (accountRole === 'STAFF' || accountRole === 'VIEWER' || accountRole === 'EVALUATOR') {
             if (TRAINER_ONLY_POSITIONS.includes(defaultValue)) return '';
         }
         return defaultValue;
@@ -41,7 +41,7 @@ export function PositionSelectField({
     const choices = React.useMemo(() => {
         const merged = [...new Set([...allowed, ...extraChoices].filter(Boolean))];
         const blocked =
-            (accountRole === 'STAFF' || accountRole === 'VIEWER') &&
+            (accountRole === 'STAFF' || accountRole === 'VIEWER' || accountRole === 'EVALUATOR') &&
             TRAINER_ONLY_POSITIONS.includes(value);
         if (value && !merged.includes(value) && !blocked) {
             merged.push(value);
@@ -51,7 +51,7 @@ export function PositionSelectField({
 
     React.useEffect(() => {
         if (!value) return;
-        if ((accountRole === 'STAFF' || accountRole === 'VIEWER') && TRAINER_ONLY_POSITIONS.includes(value)) {
+        if ((accountRole === 'STAFF' || accountRole === 'VIEWER' || accountRole === 'EVALUATOR') && TRAINER_ONLY_POSITIONS.includes(value)) {
             setValue('');
         }
     }, [accountRole, value]);
@@ -63,7 +63,7 @@ export function PositionSelectField({
             const trimmed = (custom || '').trim();
             if (!trimmed) return;
             if (
-                (accountRole === 'STAFF' || accountRole === 'VIEWER') &&
+                (accountRole === 'STAFF' || accountRole === 'VIEWER' || accountRole === 'EVALUATOR') &&
                 TRAINER_ONLY_POSITIONS.includes(trimmed)
             ) {
                 window.alert('That position is only available for Trainer accounts.');
@@ -115,7 +115,9 @@ export function AccountRoleAndPositionFields({
         ? roles.filter((r) => r.name !== 'PARTICIPANT')
         : [
             { name: 'LGU_ADMIN', display_name: 'LGU Admin' },
+            { name: 'LEAD_TRAINER', display_name: 'Lead Trainer' },
             { name: 'LGU_TRAINER', display_name: 'LGU Trainer' },
+            { name: 'EVALUATOR', display_name: 'Evaluator' },
             { name: 'STAFF', display_name: 'Staff' },
             { name: 'VIEWER', display_name: 'Viewer' },
         ]);

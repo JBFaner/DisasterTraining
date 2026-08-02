@@ -28,7 +28,7 @@
                 <span class="hidden sm:inline text-xs font-semibold text-emerald-700">Terms of Service</span>
             </div>
             <span class="hidden sm:inline text-xs text-slate-500">
-                Last updated: {{ now()->format('F j, Y') }}
+                Last updated: August 2, 2026
             </span>
         </div>
     </div>
@@ -55,7 +55,7 @@
                         <span>Operational use only</span>
                     </div>
                     <p class="text-emerald-100">
-                        Last updated <span class="font-medium">{{ now()->format('F j, Y') }}</span>
+                        Last updated <span class="font-medium">August 2, 2026</span>
                     </p>
                 </div>
             </div>
@@ -85,6 +85,13 @@
                     class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 border border-transparent hover:border-emerald-200 hover:text-emerald-700"
                 >
                     <span>Acceptable Use</span>
+                </button>
+                <button
+                    type="button"
+                    data-section-target="data-backup"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 border border-transparent hover:border-emerald-200 hover:text-emerald-700"
+                >
+                    <span>Data &amp; Backups</span>
                 </button>
                 <button
                     type="button"
@@ -136,8 +143,8 @@
                             <li>Design and deliver disaster preparedness and response training modules;</li>
                             <li>Plan and manage simulation events and scenario‑based exercises;</li>
                             <li>Register participants and track attendance, lesson completion, and certifications;</li>
-                            <li>Manage resources, equipment, and barangay‑level profiles for training purposes;</li>
-                            <li>Support evaluation, reporting, and continuous improvement of preparedness programs.</li>
+                            <li>Manage resources, equipment, hazard assessment profiles, and exercise planning;</li>
+                            <li>Support evaluation, reporting, database backup for operational continuity, and continuous improvement of preparedness programs.</li>
                         </ul>
                     </div>
                 </div>
@@ -148,7 +155,7 @@
                         User Accounts &amp; Responsibilities
                     </h2>
                     <p class="text-sm text-slate-600">
-                        The System supports different roles such as LGU administrators, trainers, and participants.
+                        The System supports roles such as LGU Admin, Lead Trainer, Trainer, Evaluator, Staff, Viewer, and Participants.
                         Each role has specific permissions, but all users share responsibilities for accuracy and security.
                     </p>
                     <div class="grid sm:grid-cols-2 gap-4">
@@ -219,6 +226,52 @@
                                 <li>Using exported data for purposes outside approved government or LGU use;</li>
                                 <li>Impersonating other users or falsifying attendance or evaluation data.</li>
                             </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data backup & retention -->
+                <div id="terms-section-data-backup" data-section-id="data-backup" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+                    <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-1">
+                        Data Backup, Retention &amp; Recovery
+                    </h2>
+                    <p class="text-sm text-slate-600">
+                        The System may create application database backups (.sql dumps) automatically after important
+                        operational events and on a configured schedule, and authorized administrators may create,
+                        download, delete, or restore backups from the Backup &amp; Recovery module.
+                    </p>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <h3 class="text-sm font-semibold text-slate-900">What in-app backups cover</h3>
+                            <p class="text-sm text-slate-600">
+                                In-app backups cover the application database used for training records, participants,
+                                events, evaluations, certifications, and related operational data. They do not replace
+                                full hosting or VPS backups (application files, SSL certificates, server configuration).
+                            </p>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="text-sm font-semibold text-slate-900">Hosting / CyberPanel recovery</h3>
+                            <p class="text-sm text-slate-600">
+                                Full site or server disaster recovery remains the responsibility of the hosting
+                                environment (for example CyberPanel / Hostinger). Administrators should maintain
+                                off-server copies of critical backups where required by LGU policy.
+                            </p>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="text-sm font-semibold text-slate-900">Restore caution</h3>
+                            <p class="text-sm text-slate-600">
+                                Restoring a database backup overwrites current application data. Only authorized
+                                LGU administrators should perform restores, and only after confirming the correct
+                                backup file. A safety backup is created before in-app restore when possible.
+                            </p>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="text-sm font-semibold text-slate-900">Retention</h3>
+                            <p class="text-sm text-slate-600">
+                                The System may keep a limited number of recent backup files (configurable by
+                                administrators). Older files may be pruned automatically. Retention does not guarantee
+                                indefinite storage; follow LGU records and data privacy requirements for official archives.
+                            </p>
                         </div>
                     </div>
                 </div>

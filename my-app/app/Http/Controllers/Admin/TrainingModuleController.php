@@ -33,7 +33,7 @@ class TrainingModuleController extends Controller
 
     public function index(Request $request)
     {
-        $perPage = 9;
+        $perPage = 10;
 
         $query = TrainingModule::with('owner')
             ->withCount('contents as lesson_count')

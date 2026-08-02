@@ -110,6 +110,12 @@
             @isset($users)
                 data-users='@json($users)'
             @endisset
+            @isset($backups)
+                data-backups='@json($backups)'
+            @endisset
+            @isset($backupStatus)
+                data-backup-status='@json($backupStatus)'
+            @endisset
             @isset($roles)
                 data-roles='@json($roles)'
             @endisset

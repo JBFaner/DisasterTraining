@@ -51,6 +51,14 @@ class AdminUserController extends Controller
     /**
      * @return list<string>
      */
+    public static function staffAccountRoles(): array
+    {
+        return ['LGU_ADMIN', 'LGU_TRAINER', 'LEAD_TRAINER', 'EVALUATOR', 'STAFF', 'VIEWER'];
+    }
+
+    /**
+     * @return list<string>
+     */
     public static function trainerOnlyPositions(): array
     {
         return ['Lead Trainer', 'Assistant Trainer'];
@@ -63,7 +71,16 @@ class AdminUserController extends Controller
             return null;
         }
 
-        if (in_array($accountType, ['STAFF', 'VIEWER'], true)
+        // Lead Trainer role defaults to Lead Trainer position if empty.
+        if ($accountType === 'LEAD_TRAINER' && ($position === null || $position === '')) {
+            return 'Lead Trainer';
+        }
+
+        if ($accountType === 'EVALUATOR' && ($position === null || $position === '')) {
+            return 'Evaluator';
+        }
+
+        if (in_array($accountType, ['STAFF', 'VIEWER', 'EVALUATOR'], true)
             && in_array($position, self::trainerOnlyPositions(), true)) {
             return null;
         }
@@ -81,7 +98,7 @@ class AdminUserController extends Controller
         $defaults = SimulationExerciseTemplate::PERSONNEL_ROLES;
 
         $custom = User::query()
-            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'])
+            ->whereIn('role', self::staffAccountRoles())
             ->whereNotNull('position')
             ->where('position', '!=', '')
             ->distinct()
@@ -105,8 +122,8 @@ class AdminUserController extends Controller
 
         $query = User::query()
             ->with('barangayProfile')
-            // Fetch only staff-type users (Super Admin, LGU Admin, Trainer, Staff), never participants
-            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'])
+            // Fetch only staff-type users (never participants)
+            ->whereIn('role', self::staffAccountRoles())
             ->orderByDesc('created_at');
 
         // Search by name or email
@@ -170,7 +187,7 @@ class AdminUserController extends Controller
         if (! $this->canManageUser($currentUser, $user)) {
             abort(403, 'You do not have permission to edit this user.');
         }
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'], true) === false) {
+        if (in_array($user->role, self::staffAccountRoles(), true) === false) {
             abort(404);
         }
 
@@ -211,7 +228,7 @@ class AdminUserController extends Controller
         }
 
         // Only show staff users (not participants)
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'], true)) {
+        if (! in_array($user->role, self::staffAccountRoles(), true)) {
             abort(404);
         }
 
@@ -501,7 +518,7 @@ class AdminUserController extends Controller
         }
 
         // Admin can create staff/viewer accounts from this screen (participants use a separate registration flow)
-        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
+        $allowedRoles = self::staffAccountRoles();
 
         $data = $request->validate([
             'last_name' => ['required', 'string', 'max:255'],
@@ -587,11 +604,11 @@ class AdminUserController extends Controller
         if (! $this->canManageUser($currentUser, $user)) {
             abort(403, 'You do not have permission to edit this user.');
         }
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'], true) === false) {
+        if (in_array($user->role, self::staffAccountRoles(), true) === false) {
             abort(404);
         }
 
-        $allowedRoles = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'];
+        $allowedRoles = self::staffAccountRoles();
         $managedBySimulation = $user->assignment_status === User::ASSIGNMENT_ASSIGNED_TO_SIMULATION;
 
         $rules = [

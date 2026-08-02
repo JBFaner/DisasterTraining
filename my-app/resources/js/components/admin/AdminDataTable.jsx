@@ -48,6 +48,16 @@ export function AdminDataTable({
         }
     };
 
+    const resolveRowKey = (row, index) => {
+        if (typeof rowKey === 'function') {
+            return rowKey(row, index);
+        }
+        if (typeof rowKey === 'string' && row?.[rowKey] != null && row[rowKey] !== '') {
+            return row[rowKey];
+        }
+        return row?.id ?? `row-${index}`;
+    };
+
     return (
         <AdminContentCard className="w-full">
             <div className="overflow-x-auto w-full relative">
@@ -120,9 +130,9 @@ export function AdminDataTable({
                             </tr>
                         )}
 
-                        {!isLoading && data.map((row) => (
+                        {!isLoading && data.map((row, index) => (
                             <tr
-                                key={row[rowKey] ?? row.id}
+                                key={resolveRowKey(row, index)}
                                 className="bg-white hover:bg-slate-50/80 transition-colors duration-150"
                             >
                                 {columns.map((column) => (
@@ -140,7 +150,7 @@ export function AdminDataTable({
                                 {renderActions && (
                                     <td className={`${cellPadding} whitespace-nowrap`}>
                                         <div className="flex items-center justify-end gap-2">
-                                            {renderActions(row)}
+                                            {renderActions(row, index)}
                                         </div>
                                     </td>
                                 )}

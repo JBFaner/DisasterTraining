@@ -14,6 +14,7 @@ import {
     AdminSecondaryButton,
 } from './admin/AdminLayout';
 import { AdminStatusBadge } from './admin/AdminDataTable';
+import { csrfFetch } from '../utils/csrf';
 
 function formatDate(value) {
     if (!value) return '—';
@@ -158,6 +159,53 @@ export function ParticipantRegistryProfile({ participant }) {
     const certificates = profile.certificates || record.certificates || [];
     const attendanceSummary = profile.attendance_summary || {};
 
+    const attemptModules = React.useMemo(() => {
+        const map = new Map();
+        aiAttempts.forEach((attempt) => {
+            const moduleId = attempt.training_module_id || attempt.training_module?.id;
+            if (!moduleId) return;
+            if (!map.has(moduleId)) {
+                map.set(moduleId, {
+                    id: moduleId,
+                    title: attempt.training_module?.title || attempt.scenario_title || `Module #${moduleId}`,
+                    attempts: 0,
+                });
+            }
+            map.get(moduleId).attempts += 1;
+        });
+        return Array.from(map.values());
+    }, [aiAttempts]);
+
+    const [resettingModuleId, setResettingModuleId] = React.useState(null);
+
+    const handleResetAttempts = async (moduleId, moduleTitle) => {
+        const confirm = await Swal.fire({
+            title: 'Reset quiz attempts?',
+            text: `This clears failed quiz / AI attempts for "${moduleTitle}" so the participant can try again immediately (without waiting 24 hours).`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, reset attempts',
+            confirmButtonColor: '#059669',
+        });
+        if (!confirm.isConfirmed) return;
+
+        setResettingModuleId(moduleId);
+        try {
+            const res = await csrfFetch(`/admin/participants/${record.id}/training-modules/${moduleId}/reset-attempts`, {
+                method: 'POST',
+                body: JSON.stringify({ reason: 'admin_reset_attempts' }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Failed to reset attempts.');
+            await refreshRecord();
+            Swal.fire('Attempts reset', data.message || 'The participant can try again now.', 'success');
+        } catch (err) {
+            Swal.fire('Error', err.message || 'Failed to reset attempts.', 'error');
+        } finally {
+            setResettingModuleId(null);
+        }
+    };
+
     return (
         <AdminPageShell>
             <div className="mb-4">
@@ -286,6 +334,36 @@ export function ParticipantRegistryProfile({ participant }) {
                             </ul>
                         ) : (
                             <p className="text-sm text-slate-500 mb-6">No AI scenario attempts recorded.</p>
+                        )}
+
+                        {attemptModules.length > 0 && (
+                            <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                                <div>
+                                    <h4 className="text-xs font-semibold uppercase text-slate-500">Reset quiz attempts</h4>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Use this when a participant has no attempts left and should not wait for the 24-hour auto-reset.
+                                    </p>
+                                </div>
+                                <ul className="space-y-2">
+                                    {attemptModules.map((mod) => (
+                                        <li key={mod.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                                            <div className="text-sm">
+                                                <span className="font-medium text-slate-900">{mod.title}</span>
+                                                <span className="block text-xs text-slate-500">{mod.attempts} recorded attempt(s)</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleResetAttempts(mod.id, mod.title)}
+                                                disabled={resettingModuleId === mod.id}
+                                                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 px-3 py-1.5 text-xs font-semibold text-white"
+                                            >
+                                                <RefreshCw className={`w-3.5 h-3.5 ${resettingModuleId === mod.id ? 'animate-spin' : ''}`} />
+                                                {resettingModuleId === mod.id ? 'Resetting…' : 'Reset attempts'}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         )}
 
                         <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Evaluation Results</h4>

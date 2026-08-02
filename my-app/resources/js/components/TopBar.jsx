@@ -1,10 +1,12 @@
 import React from 'react';
 import Swal from 'sweetalert2';
 import { getLogoutUrl } from '../utils/portalAuth';
-import { ChevronDown, User, Settings, LogOut, Clock, PanelLeft } from 'lucide-react';
+import { ChevronDown, User, Settings, LogOut, Clock, PanelLeft, Timer } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
+import { formatSessionCountdown, useSessionIdle } from '../contexts/SessionIdleContext';
 
 export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSidebarCollapsed }) {
+    const sessionIdle = useSessionIdle();
     const [currentTime, setCurrentTime] = React.useState(new Date());
     const [showProfileMenu, setShowProfileMenu] = React.useState(false);
     const profileButtonRef = React.useRef(null);
@@ -51,12 +53,15 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         return `${day}, ${month} ${dayNum}, ${year}`;
     };
 
-    // Get role display name
     const getRoleName = (role) => {
         switch (role) {
             case 'LGU_ADMIN': return 'LGU Admin';
+            case 'LEAD_TRAINER': return 'Lead Trainer';
             case 'LGU_TRAINER': return 'Trainer';
+            case 'EVALUATOR': return 'Evaluator';
             case 'PARTICIPANT': return 'Participant';
+            case 'STAFF': return 'Staff';
+            case 'VIEWER': return 'Viewer';
             default: return role;
         }
     };
@@ -178,6 +183,32 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                                 {formatDate(currentTime)}
                             </div>
                         </div>
+
+                        {sessionIdle?.enabled && (
+                            <button
+                                type="button"
+                                title={
+                                    sessionIdle.showWarning
+                                        ? 'Session about to expire — click to stay logged in'
+                                        : 'Time until logout due to inactivity'
+                                }
+                                onClick={() => {
+                                    if (sessionIdle.showWarning) {
+                                        sessionIdle.stayLoggedIn();
+                                    }
+                                }}
+                                className={`hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold font-mono transition-colors ${
+                                    sessionIdle.remainingSeconds <= 15
+                                        ? 'border-rose-300 bg-rose-50 text-rose-700'
+                                        : sessionIdle.remainingSeconds <= sessionIdle.warningSeconds
+                                          ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                <Timer className="w-3.5 h-3.5" />
+                                <span>Session {formatSessionCountdown(sessionIdle.remainingSeconds)}</span>
+                            </button>
+                        )}
 
                         <NotificationCenter user={user} />
 

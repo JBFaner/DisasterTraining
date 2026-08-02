@@ -44,7 +44,7 @@ class TrainingCertificateService
             return $existing;
         }
 
-        $template = CertificateTemplate::where('status', 'active')->first();
+        $template = CertificateTemplate::resolveForModule($attempt->trainingModule, 'completion');
 
         if (! $template) {
             Log::warning('No active certificate template available for AI scenario pass.', [

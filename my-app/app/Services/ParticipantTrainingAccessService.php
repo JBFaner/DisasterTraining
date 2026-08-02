@@ -118,7 +118,7 @@ class ParticipantTrainingAccessService
                 secondaryActionLabel: 'My Trainings',
                 secondaryActionHref: route('participant.my-trainings.index'),
                 module: $module,
-                open_campaign: $openCampaign,
+                openCampaign: $openCampaign,
             );
         }
 

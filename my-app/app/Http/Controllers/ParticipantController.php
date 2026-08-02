@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\SimulationEvent;
+use App\Models\TrainingModule;
 use App\Mail\ParticipantVerificationEmail;
 use App\Services\AuditLogger;
 use App\Services\Group6\ParticipantSyncService;
 use App\Services\ParticipantUpsertService;
 use App\Services\ParticipantRegistryService;
+use App\Services\TrainingResetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
@@ -19,6 +21,7 @@ class ParticipantController extends Controller
         private readonly ParticipantRegistryService $registry,
         private readonly ParticipantSyncService $syncService,
         private readonly ParticipantUpsertService $participantUpsertService,
+        private readonly TrainingResetService $trainingResetService,
     ) {}
 
     /**
@@ -368,6 +371,41 @@ class ParticipantController extends Controller
             'section' => 'participant_detail',
             'participant' => $user,
         ]);
+    }
+
+    /**
+     * Admin: reset quiz / AI scenario attempts for a participant on one module
+     * without waiting for the 24h cooldown.
+     */
+    public function resetTrainingAttempts(Request $request, User $user, TrainingModule $trainingModule, TrainingResetService $trainingResetService)
+    {
+        $this->authorizeParticipantAccess();
+
+        if ($user->role !== 'PARTICIPANT') {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $admin = portal_user();
+        $reset = $trainingResetService->resetQuizAttempts(
+            $user,
+            $trainingModule,
+            $admin,
+            $data['reason'] ?? TrainingResetService::REASON_ADMIN_ATTEMPTS,
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Quiz attempts reset. The participant can try again now.',
+                'cycle_number' => $reset->cycle_number,
+            ]);
+        }
+
+        return back()->with('status', 'Quiz attempts reset. The participant can try again now.');
     }
 
     /**

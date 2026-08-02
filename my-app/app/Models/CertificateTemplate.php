@@ -10,6 +10,7 @@ class CertificateTemplate extends Model
     protected $fillable = [
         'name',
         'type',
+        'hazard_category',
         'title_text',
         'template_content',
         'design_json',
@@ -23,6 +24,51 @@ class CertificateTemplate extends Model
         'status',
         'paper_size', // 'a4' | 'letter' for print layout
     ];
+
+    public static function normalizeHazardCategory(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return match (true) {
+            str_contains($normalized, 'fire') => 'Fire',
+            str_contains($normalized, 'flood') => 'Flood',
+            str_contains($normalized, 'earth') || str_contains($normalized, 'quake') => 'Earthquake',
+            default => ucfirst($value),
+        };
+    }
+
+    /**
+     * Prefer an active template matching the module hazard/category.
+     */
+    public static function resolveForModule(?TrainingModule $module, string $fallbackType = 'completion'): ?self
+    {
+        $category = self::normalizeHazardCategory(
+            $module?->category ?: $module?->related_hazard
+        );
+
+        if ($category) {
+            $matched = self::query()
+                ->where('status', 'active')
+                ->where('hazard_category', $category)
+                ->orderByDesc('updated_at')
+                ->first();
+
+            if ($matched) {
+                return $matched;
+            }
+        }
+
+        return self::query()
+            ->where('status', 'active')
+            ->where('type', $fallbackType)
+            ->orderBy('id')
+            ->first()
+            ?? self::query()->where('status', 'active')->orderBy('id')->first();
+    }
 
     /** Placeholders the system will replace when generating a certificate. */
     public static function placeholders(): array

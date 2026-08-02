@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\CloudinaryUploadService;
 use App\Services\UserNotificationPreferenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ProfileController extends Controller
 {
@@ -21,6 +23,19 @@ class ProfileController extends Controller
 
         return view('app', [
             'section' => 'profile',
+            'user' => $userPayload,
+        ]);
+    }
+
+    public function settings(Request $request, UserNotificationPreferenceService $preferenceService)
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $userPayload = $user->toArray();
+        $userPayload['notification_preferences'] = $preferenceService->resolve($user);
+
+        return view('app', [
+            'section' => 'settings',
             'user' => $userPayload,
         ]);
     }
@@ -54,6 +69,42 @@ class ProfileController extends Controller
         ]);
 
         return back()->with('status', 'Profile updated successfully.');
+    }
+
+    public function updatePicture(Request $request, CloudinaryUploadService $cloudinary)
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $request->validate([
+            'profile_picture' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        try {
+            $url = $cloudinary->uploadImage($request->file('profile_picture'), 'profile-pictures');
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->withErrors([
+                'profile_picture' => $e->getMessage() ?: 'Failed to upload profile picture.',
+            ]);
+        }
+
+        $oldPicture = $user->profile_picture;
+        $user->profile_picture = $url;
+        $user->save();
+
+        AuditLogger::log([
+            'user' => $user,
+            'action' => 'Updated profile picture',
+            'module' => 'Profile',
+            'status' => 'success',
+            'description' => 'User uploaded a new profile picture to Cloudinary.',
+            'old_values' => ['profile_picture' => $oldPicture],
+            'new_values' => ['profile_picture' => $url],
+        ]);
+
+        return back()->with('status', 'Profile picture updated successfully.');
     }
 
     public function requestEmailChange(Request $request)
@@ -312,7 +363,9 @@ class ProfileController extends Controller
             'new_values' => $preferences,
         ]);
 
-        return back()->with('status', 'Notification preferences updated.');
+        return redirect()
+            ->route('settings.show')
+            ->with('status', 'Notification preferences updated.');
     }
 }
 

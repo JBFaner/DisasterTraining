@@ -17,6 +17,7 @@ class LessonQuizAttemptService
         private readonly LessonQuizProgressionService $progressionService,
         private readonly LessonQuizWorkflowService $workflowService,
         private readonly AiScenarioLocaleService $localeService,
+        private readonly TrainingResetService $trainingResetService,
     ) {}
 
     /**
@@ -58,6 +59,30 @@ class LessonQuizAttemptService
 
         $latest = $completed->first();
 
+        $cooldown = $this->trainingResetService->applyLessonQuizCooldownIfDue(
+            $user,
+            $content,
+            $maxAttempts,
+            $passedAttempt !== null,
+            $attemptsUsed,
+            $latest,
+        );
+
+        if ($cooldown['reset']) {
+            $inProgress = $this->getInProgressAttempt($user->id, $content->id);
+            $completed = LessonQuizAttempt::query()
+                ->where('user_id', $user->id)
+                ->where('training_content_id', $content->id)
+                ->whereIn('status', [LessonQuizAttempt::STATUS_COMPLETED, LessonQuizAttempt::STATUS_EXPIRED])
+                ->orderByDesc('id')
+                ->get();
+            $passedAttempt = $completed->firstWhere('passed', true);
+            $attemptsUsed = $completed->count();
+            $attemptsRemaining = max(0, $maxAttempts - $attemptsUsed);
+            $isLocked = $passedAttempt !== null || ($attemptsUsed >= $maxAttempts && ! $inProgress);
+            $latest = $completed->first();
+        }
+
         return array_merge($base, [
             'config_id' => $config->id,
             'quiz_question_count' => $config->quiz_question_count,
@@ -82,6 +107,9 @@ class LessonQuizAttemptService
                 ? 'passed'
                 : ($inProgress ? 'in_progress' : ($isLocked ? 'locked' : 'available')),
             'can_start' => $base['is_unlocked'] && ! $isLocked && ! $inProgress && $attemptsRemaining > 0,
+            'cooldown_resets_at' => $cooldown['cooldown_resets_at'],
+            'cooldown_seconds_remaining' => $cooldown['cooldown_seconds_remaining'],
+            'attempt_cooldown_hours' => $this->trainingResetService->attemptCooldownHours(),
         ]);
     }
 
