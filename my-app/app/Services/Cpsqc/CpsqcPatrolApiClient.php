@@ -257,7 +257,8 @@ class CpsqcPatrolApiClient
     }
 
     /**
-     * Notify Patrol that the simulation completed — assigned personnel → Available.
+     * Notify Patrol that the simulation completed — assigned personnel → On Reporting
+     * (Available again only after each officer submits their patrol report).
      *
      * @return array{success: bool, error: ?string, response: ?array<string, mixed>}
      */

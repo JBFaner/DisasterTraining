@@ -2435,7 +2435,7 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'resources' && (
-                            <ResourceInventory />
+                            <ResourceInventory role={role} />
                         )}
 
                         {sectionAttr === 'resource_budget_proposal' && (

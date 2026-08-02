@@ -155,6 +155,11 @@ class SimulationEvent extends Model
         return $this->hasMany(ResourceEventAssignment::class, 'event_id');
     }
 
+    public function equipmentRequests()
+    {
+        return $this->hasMany(EventEquipmentRequest::class, 'simulation_event_id');
+    }
+
     public function approvedRegistrations()
     {
         return $this->registrations()->where('status', 'approved');

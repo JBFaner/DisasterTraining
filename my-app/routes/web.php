@@ -378,6 +378,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         Route::post('/simulation-events/{simulationEvent}/complete', [SimulationEventController::class, 'complete'])->name('admin.simulation-events.complete');
         Route::get('/simulation-events/{simulationEvent}/lifecycle', [SimulationEventLifecycleController::class, 'show'])->name('admin.simulation-events.lifecycle');
         Route::patch('/simulation-events/{simulationEvent}/readiness', [SimulationEventLifecycleController::class, 'updateReadiness'])->name('admin.simulation-events.readiness');
+        Route::get('/simulation-events/{simulationEvent}/equipment-requests', [\App\Http\Controllers\EventEquipmentRequestController::class, 'index'])->name('admin.simulation-events.equipment-requests.index');
+        Route::post('/simulation-events/{simulationEvent}/equipment-requests', [\App\Http\Controllers\EventEquipmentRequestController::class, 'store'])->name('admin.simulation-events.equipment-requests.store');
+        Route::post('/simulation-events/{simulationEvent}/equipment-requests/{equipmentRequest}/approve', [\App\Http\Controllers\EventEquipmentRequestController::class, 'approve'])->name('admin.simulation-events.equipment-requests.approve');
+        Route::post('/simulation-events/{simulationEvent}/equipment-requests/{equipmentRequest}/reject', [\App\Http\Controllers\EventEquipmentRequestController::class, 'reject'])->name('admin.simulation-events.equipment-requests.reject');
         Route::post('/simulation-events/{simulationEvent}/cpsqc-patrol/request', [SimulationEventLifecycleController::class, 'requestCpsqcPatrol'])->name('admin.simulation-events.cpsqc-patrol.request');
         Route::get('/simulation-events/{simulationEvent}/cpsqc-patrol/requests', [SimulationEventLifecycleController::class, 'listCpsqcPatrolRequests'])->name('admin.simulation-events.cpsqc-patrol.list');
         Route::get('/simulation-events/{simulationEvent}/cpsqc-patrol/marshals', [SimulationEventLifecycleController::class, 'refreshCpsqcMarshals'])->name('admin.simulation-events.cpsqc-patrol.marshals');
@@ -466,6 +470,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.resource-budget-proposals.create');
         Route::post('/resource-budget-proposals', [ResourceBudgetProposalController::class, 'store'])
             ->name('admin.resource-budget-proposals.store');
+        Route::post('/resource-budget-proposals/inventory-request', [ResourceBudgetProposalController::class, 'storeInventoryRequest'])
+            ->name('admin.resource-budget-proposals.inventory-request');
         Route::get('/resource-budget-proposals/{resourceBudgetProposal}', [ResourceBudgetProposalController::class, 'show'])
             ->name('admin.resource-budget-proposals.show');
         Route::get('/resource-budget-proposals/{resourceBudgetProposal}/edit', [ResourceBudgetProposalController::class, 'edit'])

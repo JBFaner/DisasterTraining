@@ -166,9 +166,9 @@ export function EvaluationResultDetail({ result, passingScore = 75, role = 'LGU_
                         </AdminSecondaryButton>
                     )}
                     <AiScenarioLanguageSwitcher value={displayLanguage} onChange={setDisplayLanguage} />
-                    <AdminSecondaryButton type="button" onClick={() => window.print()}>
+                    <AdminPrimaryButton type="button" onClick={() => window.print()}>
                         <Printer className="w-4 h-4" /> Print Evaluation
-                    </AdminSecondaryButton>
+                    </AdminPrimaryButton>
                 </div>
             </div>
 

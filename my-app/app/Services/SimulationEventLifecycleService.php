@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CampaignRequest;
+use App\Models\EventEquipmentRequest;
 use App\Models\QualifiedTrainer;
 use App\Models\SimulationEvent;
 use App\Models\User;
@@ -62,6 +63,9 @@ class SimulationEventLifecycleService
         $template = $event->simulationExerciseTemplate;
         $evaluationMode = $this->resolveEvaluationMode($event);
         $personnelRoster = $this->buildPersonnelRoster($event);
+        $equipmentRequestService = app(EventEquipmentRequestService::class);
+        $equipmentRequests = $equipmentRequestService->serializeForEvent($event);
+        $pendingEquipmentRequests = collect($equipmentRequests)->where('status', 'pending')->count();
 
         return [
             'monitoring_status' => $this->resolveMonitoringStatus($event, $readiness),
@@ -78,6 +82,9 @@ class SimulationEventLifecycleService
                 : 'Team / overall',
             'personnel_roster' => $personnelRoster,
             'assignment_pools' => $this->buildAssignmentPools($event),
+            'equipment_requests' => $equipmentRequests,
+            'equipment_request_inventory' => $equipmentRequestService->inventoryOptions(),
+            'pending_equipment_requests' => $pendingEquipmentRequests,
             'cpsqc' => $cpsqc,
             'exercise_plan' => $template ? [
                 'id' => $template->id,
@@ -397,7 +404,7 @@ class SimulationEventLifecycleService
     }
 
     /**
-     * Tell Patrol assigned marshals are Available again (simulation completed/cancelled).
+     * Tell Patrol assigned marshals are On Reporting (simulation completed; await report).
      */
     public function notifyCpsqcSimulationCompleted(SimulationEvent $event): void
     {
@@ -885,6 +892,20 @@ class SimulationEventLifecycleService
 
             return $needed === 0 || $assigned >= $needed;
         });
+        $pendingEquipmentRequestCount = EventEquipmentRequest::query()
+            ->where('simulation_event_id', $event->id)
+            ->where('status', 'pending')
+            ->count();
+        $equipmentDetail = null;
+        if ($pendingEquipmentRequestCount > 0) {
+            $equipmentDetail = sprintf(
+                '%d equipment request%s pending admin approval (does not block publish)',
+                $pendingEquipmentRequestCount,
+                $pendingEquipmentRequestCount === 1 ? '' : 's',
+            );
+        } elseif ($hasPlannedEquipment && $equipmentReady) {
+            $equipmentDetail = 'Needed quantities are reserved or assigned from inventory';
+        }
         $items = [
             [
                 'key' => 'trainer_assigned',
@@ -911,6 +932,7 @@ class SimulationEventLifecycleService
                 'label' => 'Equipment Assigned',
                 'completed' => $equipmentReady,
                 'required' => $hasPlannedEquipment,
+                'detail' => $equipmentDetail,
             ],
             [
                 'key' => 'venue_confirmed',
@@ -1170,8 +1192,10 @@ class SimulationEventLifecycleService
             ? $event->assignedResources
             : $event->assignedResources()->with('resource')->get();
 
-        $assignedCount = $assignments->sum('quantity_assigned');
-        $usedCount = $assignments->where('status', 'Active')->sum('quantity_assigned');
+        $assignedCount = $assignments
+            ->whereIn('status', ['Reserved', 'Active', 'In Use'])
+            ->sum('quantity_assigned');
+        $usedCount = $assignments->whereIn('status', ['Active', 'In Use'])->sum('quantity_assigned');
         $returnedCount = $assignments->where('status', 'Returned')->sum('quantity_assigned');
         $damagedCount = $assignments->filter(function ($assignment) {
             return $assignment->resource && $assignment->resource->status === 'Damaged';

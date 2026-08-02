@@ -371,10 +371,10 @@ export function BackupRecoveryPage({ backups: initialBackups = [], backupStatus:
                                 <p>{RECOVERY_HELP}</p>
                             </div>
                         </div>
-                        <AdminSecondaryButton type="button" onClick={handlePrintList} disabled={backups.length === 0}>
+                        <AdminPrimaryButton type="button" onClick={handlePrintList} disabled={backups.length === 0}>
                             <Printer className="w-4 h-4" />
                             Print list
-                        </AdminSecondaryButton>
+                        </AdminPrimaryButton>
                         <AdminPrimaryButton type="button" onClick={handleCreateBackup} disabled={creating}>
                             {creating ? (
                                 <RefreshCw className="w-4 h-4 animate-spin" />

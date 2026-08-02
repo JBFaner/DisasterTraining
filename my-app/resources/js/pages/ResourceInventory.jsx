@@ -17,6 +17,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Box,
+    Wallet,
+    Printer,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import {
@@ -28,6 +30,8 @@ import {
     AdminSecondaryButton,
     adminInputClass,
 } from '../components/admin/AdminLayout';
+import { AdminDataTable, AdminTableActionButton } from '../components/admin/AdminDataTable';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 // Pagination Component
 function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems }) {
@@ -109,13 +113,20 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
     );
 }
 
-export function ResourceInventory() {
+export function ResourceInventory({ role = null }) {
+    const currentRole = role
+        || document.getElementById('app')?.getAttribute('data-role')
+        || document.body?.getAttribute('data-role')
+        || '';
+    const canRequestPurchase = ['LGU_ADMIN', 'LGU_TRAINER', 'STAFF'].includes(currentRole);
+    const canAddDirect = currentRole === 'LGU_ADMIN';
     const [activeTab, setActiveTab] = useState('resources');
     const [searchQuery, setSearchQuery] = useState('');
     const [resourceTypeFilter, setResourceTypeFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [conditionFilter, setConditionFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
+    const [movementPage, setMovementPage] = useState(1);
     const itemsPerPage = 10; // Fixed to 10 items per page
     const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -333,10 +344,61 @@ export function ResourceInventory() {
     });
 
     // Pagination
-    const totalPages = Math.ceil(filteredResources.length / itemsPerPage);
+    const totalPages = Math.max(1, Math.ceil(filteredResources.length / itemsPerPage) || 1);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedResources = filteredResources.slice(startIndex, endIndex);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, resourceTypeFilter, statusFilter, conditionFilter]);
+
+    useEffect(() => {
+        setMovementPage(1);
+    }, [movementHistory]);
+
+    const movementTotalPages = Math.max(1, Math.ceil(movementHistory.length / itemsPerPage) || 1);
+    const paginatedMovements = movementHistory.slice(
+        (movementPage - 1) * itemsPerPage,
+        movementPage * itemsPerPage,
+    );
+
+    const handlePrintResources = () => {
+        const rows = filteredResources.map((resource) => {
+            const qty = resource.status === 'Pending Approval'
+                ? `0/${resource.quantity}`
+                : `${resource.available ?? resource.quantity}/${resource.quantity}`;
+            const statusLabel = resource.status === 'Pending Approval'
+                ? resource.status
+                : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Restock' : resource.status);
+            return [
+                resource.name || '—',
+                resource.serialNumber || resource.serial_number || '—',
+                resource.category || '—',
+                qty,
+                statusLabel || '—',
+                resource.condition || '—',
+                resource.location || '—',
+                resource.lastUpdated || '—',
+            ];
+        });
+        const filterBits = [
+            searchQuery ? `search="${searchQuery}"` : null,
+            resourceTypeFilter !== 'all' ? `type=${resourceTypeFilter}` : null,
+            statusFilter !== 'all' ? `status=${statusFilter}` : null,
+            conditionFilter !== 'all' ? `condition=${conditionFilter}` : null,
+        ].filter(Boolean);
+        const html = buildPrintTableDocument({
+            title: 'Resource & Equipment Inventory',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${rows.length} item(s)${filterBits.length ? ` · Filters: ${filterBits.join(', ')}` : ' · All items'}`,
+            headers: ['Resource', 'ID / Serial', 'Category', 'Qty', 'Status', 'Condition', 'Location', 'Updated'],
+            rows,
+            emptyMessage: 'No resources match the current filters.',
+        });
+        if (!printHtmlDocument(html, 'Resource Inventory')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    };
 
     // Reset to page 1 when filters change
     useEffect(() => {
@@ -539,33 +601,51 @@ export function ResourceInventory() {
             title: 'Edit Resource',
             html: `
                 <form id="editResourceForm" class="text-left space-y-4">
-                    <input type="text" id="resourceName" placeholder="Resource Name" value="${resource.name}" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
-                    <select id="resourceCategory" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
-                        ${resourceTypes.map((type) => `<option value="${type}" ${type === resource.category ? 'selected' : ''}>${type}</option>`).join('')}
-                    </select>
-                    <input type="number" id="resourceQuantity" placeholder="Quantity" value="${resource.quantity}" class="w-full px-3 py-2 border border-slate-300 rounded-md" required min="1">
-                    <select id="resourceStatus" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
-                        ${statusOptions.map((status) => `<option value="${status}" ${status === resource.status ? 'selected' : ''}>${status}</option>`).join('')}
-                    </select>
-                    <select id="resourceCondition" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
-                        ${conditionOptions.map((cond) => `<option value="${cond}" ${cond === resource.condition ? 'selected' : ''}>${cond}</option>`).join('')}
-                    </select>
-                    <input type="text" id="location" placeholder="Storage Location" value="${resource.location}" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Resource Name</label>
+                        <input type="text" id="resourceName" placeholder="Resource Name" value="${resource.name}" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+                        <select id="resourceCategory" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                            ${resourceTypes.map((type) => `<option value="${type}" ${type === resource.category ? 'selected' : ''}>${type}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Quantity</label>
+                        <input type="number" id="resourceQuantity" value="${resource.quantity}" class="w-full px-3 py-2 border border-slate-200 rounded-md bg-slate-100 text-slate-600 cursor-not-allowed" readonly disabled>
+                        <p class="mt-1 text-xs text-slate-500">Stock quantity is locked. Use <strong>Request purchase / restock</strong> to change inventory levels.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+                        <select id="resourceStatus" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                            ${statusOptions.map((status) => `<option value="${status}" ${status === resource.status ? 'selected' : ''}>${status}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Condition</label>
+                        <select id="resourceCondition" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                            ${conditionOptions.map((cond) => `<option value="${cond}" ${cond === resource.condition ? 'selected' : ''}>${cond}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Location</label>
+                        <input type="text" id="location" placeholder="Storage Location" value="${resource.location}" class="w-full px-3 py-2 border border-slate-300 rounded-md" required>
+                    </div>
                 </form>
             `,
             showCancelButton: true,
             confirmButtonText: 'Update Resource',
             cancelButtonText: 'Cancel',
-            confirmButtonColor: '#3b82f6',
+            confirmButtonColor: '#059669',
             preConfirm: async () => {
                 const name = document.getElementById('resourceName').value;
                 const category = document.getElementById('resourceCategory').value;
-                const quantity = document.getElementById('resourceQuantity').value;
                 const status = document.getElementById('resourceStatus').value;
                 const condition = document.getElementById('resourceCondition').value;
                 const location = document.getElementById('location').value;
 
-                if (!name || !category || !quantity || !status || !condition || !location) {
+                if (!name || !category || !status || !condition || !location) {
                     Swal.showValidationMessage('Please fill in all required fields');
                     return false;
                 }
@@ -582,7 +662,6 @@ export function ResourceInventory() {
                             _method: 'PUT',
                             name,
                             category,
-                            quantity: parseInt(quantity),
                             status,
                             condition,
                             location,
@@ -776,6 +855,149 @@ export function ResourceInventory() {
         });
     };
 
+    const submitInventoryRequest = async (payload) => {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+        const response = await fetch('/admin/resource-budget-proposals/inventory-request', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': csrf || '',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const msg = data.message
+                || (data.errors ? Object.values(data.errors).flat().join(' ') : null)
+                || 'Failed to submit request.';
+            throw new Error(msg);
+        }
+        return data;
+    };
+
+    const handleRequestPurchase = (presetResource = null) => {
+        const isRestock = Boolean(presetResource?.id);
+        const categoryOptions = resourceTypes.map((type) => `<option value="${type}">${type}</option>`).join('');
+        Swal.fire({
+            title: isRestock ? 'Request restock' : 'Request purchase / restock',
+            html: `
+                <div class="text-left space-y-3">
+                    <p class="text-xs text-slate-500">Creates a Resource Budget Proposal (submitted) for admin approval. Does not add Available stock until approved.</p>
+                    ${!isRestock ? `
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Request type</label>
+                        <select id="reqType" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            <option value="new_purchase">New purchase</option>
+                            <option value="restock">Restock existing item</option>
+                        </select>
+                    </div>
+                    <div id="reqNewFields">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Item name</label>
+                        <input id="reqItemName" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="e.g. Whistle" />
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 mt-2">Category</label>
+                        <select id="reqCategory" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            <option value="">Select…</option>
+                            ${categoryOptions}
+                        </select>
+                    </div>
+                    <div id="reqRestockFields" style="display:none">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Existing resource</label>
+                        <select id="reqResourceId" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            <option value="">Select…</option>
+                            ${resources.map((r) => `<option value="${r.id}">${r.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    ` : `
+                    <input type="hidden" id="reqType" value="restock" />
+                    <input type="hidden" id="reqResourceId" value="${presetResource.id}" />
+                    <p class="text-sm font-medium text-slate-800">${presetResource.name}</p>
+                    `}
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Quantity</label>
+                            <input id="reqQty" type="number" min="1" value="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Est. unit cost (₱)</label>
+                            <input id="reqUnitCost" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Justification (optional)</label>
+                        <textarea id="reqJustification" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Why is this needed?"></textarea>
+                    </div>
+                </div>
+            `,
+            width: 520,
+            showCancelButton: true,
+            confirmButtonText: 'Submit for budget review',
+            confirmButtonColor: '#059669',
+            didOpen: () => {
+                const typeEl = document.getElementById('reqType');
+                const newFields = document.getElementById('reqNewFields');
+                const restockFields = document.getElementById('reqRestockFields');
+                if (typeEl && newFields && restockFields) {
+                    const sync = () => {
+                        const restock = typeEl.value === 'restock';
+                        newFields.style.display = restock ? 'none' : 'block';
+                        restockFields.style.display = restock ? 'block' : 'none';
+                    };
+                    typeEl.addEventListener('change', sync);
+                    sync();
+                }
+            },
+            preConfirm: async () => {
+                const type = document.getElementById('reqType')?.value || 'new_purchase';
+                const quantity = Number(document.getElementById('reqQty')?.value || 0);
+                const unit_cost = Number(document.getElementById('reqUnitCost')?.value || 0);
+                const justification = document.getElementById('reqJustification')?.value || null;
+                const payload = {
+                    request_type: type,
+                    quantity,
+                    unit_cost,
+                    justification,
+                    fund_source: 'mdrrm',
+                    priority: 'medium',
+                };
+                if (type === 'restock') {
+                    payload.resource_id = Number(document.getElementById('reqResourceId')?.value || presetResource?.id || 0);
+                    if (!payload.resource_id) {
+                        Swal.showValidationMessage('Select an existing resource to restock.');
+                        return false;
+                    }
+                } else {
+                    payload.item_name = document.getElementById('reqItemName')?.value?.trim() || '';
+                    payload.category = document.getElementById('reqCategory')?.value || null;
+                    if (!payload.item_name) {
+                        Swal.showValidationMessage('Enter the item name.');
+                        return false;
+                    }
+                }
+                if (!quantity || quantity < 1) {
+                    Swal.showValidationMessage('Enter a valid quantity.');
+                    return false;
+                }
+                try {
+                    return await submitInventoryRequest(payload);
+                } catch (err) {
+                    Swal.showValidationMessage(err.message || 'Request failed.');
+                    return false;
+                }
+            },
+        }).then((result) => {
+            if (!result.isConfirmed || !result.value) return;
+            fetchResources();
+            Swal.fire({
+                icon: 'success',
+                title: 'Request submitted',
+                text: result.value.message || 'Pending admin review in Resource Budget Proposals.',
+            });
+        });
+    };
+
     const handleExportReport = () => {
         const csvContent = [
             ['ID', 'Name', 'Category', 'Quantity', 'Available', 'Status', 'Condition', 'Location', 'Last Updated'],
@@ -945,14 +1167,36 @@ export function ResourceInventory() {
                 description="Manage materials, equipment, and tools for disaster training."
                 actions={
                     <>
+                        <AdminPrimaryButton
+                            onClick={handlePrintResources}
+                            disabled={filteredResources.length === 0}
+                            title="Print filtered resources"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </AdminPrimaryButton>
                         <AdminSecondaryButton onClick={handleExportReport}>
                             <Download className="w-4 h-4" />
                             Export
                         </AdminSecondaryButton>
-                        <AdminPrimaryButton onClick={handleAddResource}>
-                            <Plus className="w-4 h-4" />
-                            Add New Resource
-                        </AdminPrimaryButton>
+                        {canAddDirect && (
+                            <>
+                                <AdminPrimaryButton onClick={() => handleRequestPurchase()}>
+                                    <Wallet className="w-4 h-4" />
+                                    Request purchase / restock
+                                </AdminPrimaryButton>
+                                <AdminPrimaryButton onClick={handleAddResource}>
+                                    <Plus className="w-4 h-4" />
+                                    Add New Resource
+                                </AdminPrimaryButton>
+                            </>
+                        )}
+                        {!canAddDirect && canRequestPurchase && (
+                            <AdminPrimaryButton onClick={() => handleRequestPurchase()}>
+                                <Wallet className="w-4 h-4" />
+                                Request purchase / restock
+                            </AdminPrimaryButton>
+                        )}
                     </>
                 }
             />
@@ -1104,127 +1348,178 @@ export function ResourceInventory() {
                         </AdminFilterSelect>
                     </AdminCollapsibleFilterBar>
 
-                    {/* Resources Table - Soft rows (card list) */}
-                    <div className="space-y-3">
-                        {filteredResources.length > 0 ? (
-                            <>
-                                {paginatedResources.map((resource) => (
-                                    <div
-                                        key={resource.id}
-                                        className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-250 ease-out overflow-hidden"
-                                    >
-                                        <div className="flex flex-wrap items-center gap-4 px-6 py-4 text-sm">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="font-medium text-slate-900">{resource.name}</div>
-                                                <div className="text-xs text-slate-500">{resource.serialNumber || resource.serial_number || '—'}</div>
-                                            </div>
-                                            <div>
-                                                <span className="inline-block px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-full">
-                                                    {resource.category}
-                                                </span>
-                                            </div>
-                                            <div className="text-slate-900 font-medium">
-                                                {resource.status === 'Pending Approval'
-                                                    ? `0/${resource.quantity}`
-                                                    : `${resource.available ?? resource.quantity}/${resource.quantity}`}
-                                                {Number(resource.pending_quantity || 0) > 0 && (
-                                                    <span className="block text-[11px] font-normal text-amber-700">
-                                                        +{resource.pending_quantity} pending restock
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(resource.status === 'Pending Approval' ? resource.status : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Approval' : resource.status))}`}>
-                                                    {getStatusIcon(resource.status === 'Pending Approval' ? resource.status : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Approval' : resource.status))}
-                                                    {resource.status === 'Pending Approval' ? resource.status : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Restock' : resource.status)}
-                                                </span>
-                                                {resource.budget_proposal?.reference_number && (
-                                                    <a
-                                                        href={`/admin/resource-budget-proposals/${resource.resource_budget_proposal_id}`}
-                                                        className="block text-[11px] text-emerald-700 hover:underline mt-1"
-                                                    >
-                                                        {resource.budget_proposal.reference_number}
-                                                    </a>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${getConditionColor(resource.condition)}`}>
-                                                    {resource.condition}
-                                                </span>
-                                            </div>
-                                            <div className="text-slate-700 truncate max-w-[120px]">{resource.location}</div>
-                                            <div className="text-slate-600 text-xs">{resource.lastUpdated || '—'}</div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                {(resource.status === 'Available' || resource.status === 'Partially Assigned') && (resource.available ?? resource.quantity) > 0 && (
-                                                    <button
-                                                        onClick={() => handleAssignToEvent(resource)}
-                                                        className="inline-flex items-center justify-center p-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-[0_0_0_3px_rgba(16,185,129,0.2)] transition-all duration-250"
-                                                        title="Assign to Event"
-                                                    >
-                                                        <Link2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => {
-                                                        fetchResourceHistory(resource.id);
-                                                        Swal.fire({
-                                                            title: `${resource.name} - Usage History`,
-                                                            html: `<div id="historyContent" class="text-left max-h-96 overflow-y-auto"></div>`,
-                                                            width: 600,
-                                                            didOpen: () => {
-                                                                if (selectedResourceHistory?.history) {
-                                                                    const historyHtml = selectedResourceHistory.history.map(log => `
-                                                                        <div class="p-2 border-l-4 border-slate-300 mb-2">
-                                                                            <p class="text-sm font-medium text-slate-900">${log.action}</p>
-                                                                            <p class="text-xs text-slate-600">${log.notes || 'No notes'}</p>
-                                                                            <p class="text-xs text-slate-500">${new Date(log.created_at).toLocaleString()}</p>
-                                                                        </div>
-                                                                    `).join('');
-                                                                    document.getElementById('historyContent').innerHTML = historyHtml;
-                                                                }
-                                                            },
-                                                            showConfirmButton: false,
-                                                            showCancelButton: true,
-                                                            cancelButtonText: 'Close',
-                                                        });
-                                                    }}
-                                                    className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:shadow-sm transition-all duration-250"
-                                                    title="View History"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleEditResource(resource)}
-                                                    className="inline-flex items-center justify-center p-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-[0_0_0_3px_rgba(59,130,246,0.2)] transition-all duration-250"
-                                                    title="Edit"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteResource(resource)}
-                                                    className="inline-flex items-center justify-center p-2 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all duration-250"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                    {/* Resources Table */}
+                    <AdminDataTable
+                        minWidth="1100px"
+                        data={paginatedResources}
+                        emptyTitle="No resources found"
+                        emptyDescription="Try adjusting your search or filter criteria."
+                        columns={[
+                            {
+                                key: 'name',
+                                label: 'Resource',
+                                render: (resource) => (
+                                    <div className="min-w-0">
+                                        <div className="font-medium text-slate-900 truncate max-w-[220px]" title={resource.name}>
+                                            {resource.name}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            {resource.serialNumber || resource.serial_number || '—'}
                                         </div>
                                     </div>
-                                ))}
-                                <Pagination
-                                    currentPage={currentPage}
-                                    totalPages={totalPages}
-                                    onPageChange={setCurrentPage}
-                                    itemsPerPage={itemsPerPage}
-                                    totalItems={filteredResources.length}
+                                ),
+                            },
+                            {
+                                key: 'category',
+                                label: 'Category',
+                                render: (resource) => (
+                                    <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                                        {resource.category || '—'}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'quantity',
+                                label: 'Qty',
+                                render: (resource) => (
+                                    <div>
+                                        <span className="font-medium text-slate-900">
+                                            {resource.status === 'Pending Approval'
+                                                ? `0/${resource.quantity}`
+                                                : `${resource.available ?? resource.quantity}/${resource.quantity}`}
+                                        </span>
+                                        {Number(resource.pending_quantity || 0) > 0 && (
+                                            <span className="block text-[11px] font-normal text-amber-700">
+                                                +{resource.pending_quantity} pending restock
+                                            </span>
+                                        )}
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: 'status',
+                                label: 'Status',
+                                render: (resource) => {
+                                    const displayStatus = resource.status === 'Pending Approval'
+                                        ? resource.status
+                                        : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Approval' : resource.status);
+                                    const label = resource.status === 'Pending Approval'
+                                        ? resource.status
+                                        : (Number(resource.pending_quantity || 0) > 0 ? 'Pending Restock' : resource.status);
+                                    return (
+                                        <div>
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(displayStatus)}`}>
+                                                {getStatusIcon(displayStatus)}
+                                                {label}
+                                            </span>
+                                            {resource.budget_proposal?.reference_number && (
+                                                <a
+                                                    href={`/admin/resource-budget-proposals/${resource.resource_budget_proposal_id}`}
+                                                    className="block text-[11px] text-emerald-700 hover:underline mt-1"
+                                                >
+                                                    {resource.budget_proposal.reference_number}
+                                                </a>
+                                            )}
+                                        </div>
+                                    );
+                                },
+                            },
+                            {
+                                key: 'condition',
+                                label: 'Condition',
+                                render: (resource) => (
+                                    <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${getConditionColor(resource.condition)}`}>
+                                        {resource.condition || '—'}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'location',
+                                label: 'Location',
+                                render: (resource) => (
+                                    <span className="text-slate-700 truncate max-w-[140px] block" title={resource.location || ''}>
+                                        {resource.location || '—'}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'updated',
+                                label: 'Updated',
+                                render: (resource) => (
+                                    <span className="text-slate-600 text-xs">{resource.lastUpdated || '—'}</span>
+                                ),
+                            },
+                        ]}
+                        renderActions={(resource) => (
+                            <>
+                                {canRequestPurchase && (
+                                    <AdminTableActionButton
+                                        title="Request restock"
+                                        icon={Wallet}
+                                        variant="warning"
+                                        onClick={() => handleRequestPurchase(resource)}
+                                    />
+                                )}
+                                {(resource.status === 'Available' || resource.status === 'Partially Assigned') && (resource.available ?? resource.quantity) > 0 && (
+                                    <AdminTableActionButton
+                                        title="Assign to Event"
+                                        icon={Link2}
+                                        variant="edit"
+                                        onClick={() => handleAssignToEvent(resource)}
+                                    />
+                                )}
+                                <AdminTableActionButton
+                                    title="View History"
+                                    icon={Eye}
+                                    variant="view"
+                                    onClick={() => {
+                                        fetchResourceHistory(resource.id);
+                                        Swal.fire({
+                                            title: `${resource.name} - Usage History`,
+                                            html: `<div id="historyContent" class="text-left max-h-96 overflow-y-auto"></div>`,
+                                            width: 600,
+                                            didOpen: () => {
+                                                if (selectedResourceHistory?.history) {
+                                                    const historyHtml = selectedResourceHistory.history.map((log) => `
+                                                        <div class="p-2 border-l-4 border-slate-300 mb-2">
+                                                            <p class="text-sm font-medium text-slate-900">${log.action}</p>
+                                                            <p class="text-xs text-slate-600">${log.notes || 'No notes'}</p>
+                                                            <p class="text-xs text-slate-500">${new Date(log.created_at).toLocaleString()}</p>
+                                                        </div>
+                                                    `).join('');
+                                                    document.getElementById('historyContent').innerHTML = historyHtml;
+                                                }
+                                            },
+                                            showConfirmButton: false,
+                                            showCancelButton: true,
+                                            cancelButtonText: 'Close',
+                                        });
+                                    }}
+                                />
+                                <AdminTableActionButton
+                                    title="Edit"
+                                    icon={Edit2}
+                                    variant="edit"
+                                    onClick={() => handleEditResource(resource)}
+                                />
+                                <AdminTableActionButton
+                                    title="Delete"
+                                    icon={Trash2}
+                                    variant="danger"
+                                    onClick={() => handleDeleteResource(resource)}
                                 />
                             </>
-                        ) : (
-                            <div className="bg-white rounded-xl border border-slate-200 px-6 py-12 text-center text-slate-500">
-                                No resources found matching your filters.
-                            </div>
                         )}
-                    </div>
+                        pagination={{
+                            current_page: currentPage,
+                            last_page: Math.max(1, totalPages),
+                            per_page: itemsPerPage,
+                            total: filteredResources.length,
+                            from: filteredResources.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1,
+                            to: Math.min(currentPage * itemsPerPage, filteredResources.length),
+                        }}
+                        onPageChange={setCurrentPage}
+                    />
                 </div>
             )}
 
@@ -1242,41 +1537,72 @@ export function ResourceInventory() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                            <div className="grid grid-cols-6 gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                <div>Date</div>
-                                <div>Equipment</div>
-                                <div>Simulation Event</div>
-                                <div>Requested By</div>
-                                <div className="text-right">Allocated Quantity</div>
-                                <div>Current Status</div>
-                            </div>
-                        </div>
-                        <div className="divide-y divide-slate-100">
-                            {movementHistory.length > 0 ? movementHistory.map((row) => (
-                                <div key={row.id} className="px-6 py-4">
-                                    <div className="grid grid-cols-6 gap-3 items-center text-sm">
-                                        <div className="text-slate-700">{row.date || '—'}</div>
-                                        <div className="text-slate-900 font-medium truncate">{row.equipment || '—'}</div>
-                                        <div className="text-slate-700 truncate">{row.simulation_event || '—'}</div>
-                                        <div className="text-slate-700 truncate">{row.requested_by || row.source_module || '—'}</div>
-                                        <div className="text-slate-900 font-semibold text-right">{row.quantity ?? 0}</div>
-                                        <div>
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.status)}`}>
-                                                {getStatusIcon(row.status)}
-                                                {row.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="px-6 py-10 text-center text-sm text-slate-500">
-                                    No movement records yet.
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <AdminDataTable
+                        columns={[
+                            {
+                                key: 'date',
+                                label: 'Date',
+                                render: (row) => <span className="text-slate-700">{row.date || '—'}</span>,
+                            },
+                            {
+                                key: 'equipment',
+                                label: 'Equipment',
+                                render: (row) => (
+                                    <span className="text-slate-900 font-medium truncate max-w-[180px] block" title={row.equipment || ''}>
+                                        {row.equipment || '—'}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'simulation_event',
+                                label: 'Simulation Event',
+                                render: (row) => (
+                                    <span className="text-slate-700 truncate max-w-[180px] block" title={row.simulation_event || ''}>
+                                        {row.simulation_event || '—'}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'requested_by',
+                                label: 'Requested By',
+                                render: (row) => (
+                                    <span className="text-slate-700 truncate max-w-[140px] block">
+                                        {row.requested_by || row.source_module || '—'}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'quantity',
+                                label: 'Allocated Qty',
+                                align: 'right',
+                                render: (row) => (
+                                    <span className="text-slate-900 font-semibold">{row.quantity ?? 0}</span>
+                                ),
+                            },
+                            {
+                                key: 'status',
+                                label: 'Current Status',
+                                render: (row) => (
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.status)}`}>
+                                        {getStatusIcon(row.status)}
+                                        {row.status}
+                                    </span>
+                                ),
+                            },
+                        ]}
+                        data={paginatedMovements}
+                        emptyTitle="No movement records yet"
+                        emptyDescription="Equipment movement will appear here after allocations."
+                        pagination={{
+                            current_page: movementPage,
+                            last_page: Math.max(1, movementTotalPages),
+                            per_page: itemsPerPage,
+                            total: movementHistory.length,
+                            from: movementHistory.length === 0 ? 0 : (movementPage - 1) * itemsPerPage + 1,
+                            to: Math.min(movementPage * itemsPerPage, movementHistory.length),
+                        }}
+                        onPageChange={setMovementPage}
+                    />
                 </div>
             )}
 

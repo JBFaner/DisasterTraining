@@ -5,9 +5,9 @@ import {
     AdminPageShell,
     AdminPageHeader,
     AdminContentCard,
+    AdminPrimaryButton,
     AdminSecondaryButton,
 } from '../components/admin/AdminLayout';
-
 function formatDate(value) {
     if (!value) return '—';
     const date = new Date(value);
@@ -73,10 +73,10 @@ export function ParticipantEvaluationPortfolio({ portfolio = {}, passingScore = 
                             <Download className="w-4 h-4" />
                             Download Summary
                         </AdminSecondaryButton>
-                        <AdminSecondaryButton onClick={handlePrint}>
+                        <AdminPrimaryButton onClick={handlePrint}>
                             <Printer className="w-4 h-4" />
                             Print / Save PDF
-                        </AdminSecondaryButton>
+                        </AdminPrimaryButton>
                     </div>
                 }
             />

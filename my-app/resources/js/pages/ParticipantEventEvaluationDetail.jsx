@@ -11,6 +11,7 @@ import {
     AdminPageShell,
     AdminPageHeader,
     AdminContentCard,
+    AdminPrimaryButton,
     AdminSecondaryButton,
     AdminStatCard,
 } from '../components/admin/AdminLayout';
@@ -110,10 +111,10 @@ export function ParticipantEventEvaluationDetail({ report = {} }) {
                             <ArrowLeft className="w-4 h-4" />
                             Back to Evaluations
                         </AdminSecondaryButton>
-                        <AdminSecondaryButton onClick={handlePrint}>
+                        <AdminPrimaryButton onClick={handlePrint}>
                             <Printer className="w-4 h-4" />
                             Print Report
-                        </AdminSecondaryButton>
+                        </AdminPrimaryButton>
                     </div>
                 }
             />

@@ -10,6 +10,7 @@ import {
     XCircle,
     FileText,
     Package,
+    Printer,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import {
@@ -17,6 +18,7 @@ import {
     AdminPageHeader,
     AdminCollapsibleFilterBar,
     AdminFilterSelect,
+    AdminFilterInput,
     AdminPrimaryButton,
     AdminSecondaryButton,
     AdminContentCard,
@@ -27,6 +29,7 @@ import {
     AdminDataTable,
     AdminTableActionButton,
 } from './admin/AdminDataTable';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 const STATUS_STYLES = {
     draft: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -113,6 +116,8 @@ export function ResourceBudgetProposalList({ proposals = [], summary = null, opt
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [fundFilter, setFundFilter] = React.useState('all');
     const [priorityFilter, setPriorityFilter] = React.useState('all');
+    const [dateFrom, setDateFrom] = React.useState('');
+    const [dateTo, setDateTo] = React.useState('');
     const [sortKey, setSortKey] = React.useState('created_at');
     const [sortDir, setSortDir] = React.useState('desc');
     const [proposalsData, setProposalsData] = React.useState(proposals || []);
@@ -129,6 +134,8 @@ export function ResourceBudgetProposalList({ proposals = [], summary = null, opt
             if (statusFilter !== 'all') url.searchParams.set('status', statusFilter);
             if (fundFilter !== 'all') url.searchParams.set('fund_source', fundFilter);
             if (priorityFilter !== 'all') url.searchParams.set('priority', priorityFilter);
+            if (dateFrom) url.searchParams.set('date_from', dateFrom);
+            if (dateTo) url.searchParams.set('date_to', dateTo);
             url.searchParams.set('sort_by', sortKey);
             url.searchParams.set('sort_dir', sortDir);
 
@@ -146,12 +153,66 @@ export function ResourceBudgetProposalList({ proposals = [], summary = null, opt
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm, statusFilter, fundFilter, priorityFilter, sortKey, sortDir, summary]);
+    }, [searchTerm, statusFilter, fundFilter, priorityFilter, dateFrom, dateTo, sortKey, sortDir, summary]);
 
     React.useEffect(() => {
         const timer = setTimeout(() => fetchProposals(1), 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, statusFilter, fundFilter, priorityFilter, sortKey, sortDir, fetchProposals]);
+    }, [searchTerm, statusFilter, fundFilter, priorityFilter, dateFrom, dateTo, sortKey, sortDir, fetchProposals]);
+
+    const handlePrintList = async () => {
+        try {
+            const url = new URL('/admin/api/resource-budget-proposals', window.location.origin);
+            url.searchParams.set('page', '1');
+            url.searchParams.set('export_all', '1');
+            if (searchTerm.trim()) url.searchParams.set('search', searchTerm.trim());
+            if (statusFilter !== 'all') url.searchParams.set('status', statusFilter);
+            if (fundFilter !== 'all') url.searchParams.set('fund_source', fundFilter);
+            if (priorityFilter !== 'all') url.searchParams.set('priority', priorityFilter);
+            if (dateFrom) url.searchParams.set('date_from', dateFrom);
+            if (dateTo) url.searchParams.set('date_to', dateTo);
+            url.searchParams.set('sort_by', sortKey);
+            url.searchParams.set('sort_dir', sortDir);
+
+            const res = await fetch(url.toString(), {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) throw new Error('Failed to load filtered proposals for print');
+            const data = await res.json();
+            const list = data.proposals || [];
+
+            const rows = list.map((row) => [
+                row.reference_number || '—',
+                row.title || '—',
+                fundLabels[row.fund_source] || row.fund_source || '—',
+                formatCurrency(row.total_estimated_cost),
+                priorityLabels[row.priority] || row.priority || '—',
+                statusLabels[row.status] || row.status || '—',
+                formatDate(row.created_at),
+            ]);
+            const filterBits = [
+                searchTerm.trim() ? `search="${searchTerm.trim()}"` : null,
+                statusFilter !== 'all' ? `status=${statusFilter}` : null,
+                fundFilter !== 'all' ? `fund=${fundFilter}` : null,
+                priorityFilter !== 'all' ? `priority=${priorityFilter}` : null,
+                dateFrom || dateTo ? `dates=${[dateFrom, dateTo].filter(Boolean).join(' → ')}` : null,
+            ].filter(Boolean);
+            const html = buildPrintTableDocument({
+                title: 'Resource Budget Proposals',
+                subtitle: `Printed ${formatDate(new Date().toISOString())} · ${rows.length} row(s)${filterBits.length ? ` · Filters: ${filterBits.join(', ')}` : ' · All proposals'}`,
+                headers: ['Reference', 'Title', 'Fund Source', 'Estimated Cost', 'Priority', 'Status', 'Created'],
+                rows,
+                emptyMessage: 'No proposals match the current filters.',
+            });
+            if (!printHtmlDocument(html, 'Resource Budget Proposals')) {
+                Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Unable to print', 'Failed to load the filtered proposal list for printing.', 'error');
+        }
+    };
 
     const handleDelete = async (proposal) => {
         const result = await Swal.fire({
@@ -233,10 +294,16 @@ export function ResourceBudgetProposalList({ proposals = [], summary = null, opt
                 title="Resource Budget Proposals"
                 description="Document and justify funding requests for disaster preparedness equipment and supplies."
                 actions={
-                    <AdminPrimaryButton href="/admin/resource-budget-proposals/create">
-                        <Plus className="w-4 h-4" />
-                        New Proposal
-                    </AdminPrimaryButton>
+                    <>
+                        <AdminPrimaryButton type="button" onClick={handlePrintList} disabled={!proposalsData?.length && !(pagination?.total > 0)}>
+                            <Printer className="w-4 h-4" />
+                            Print list
+                        </AdminPrimaryButton>
+                        <AdminPrimaryButton href="/admin/resource-budget-proposals/create">
+                            <Plus className="w-4 h-4" />
+                            New Proposal
+                        </AdminPrimaryButton>
+                    </>
                 }
             />
 
@@ -246,11 +313,13 @@ export function ResourceBudgetProposalList({ proposals = [], summary = null, opt
                 searchValue={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search by title or reference number..."
-                hasActiveFilters={statusFilter !== 'all' || fundFilter !== 'all' || priorityFilter !== 'all'}
+                hasActiveFilters={statusFilter !== 'all' || fundFilter !== 'all' || priorityFilter !== 'all' || Boolean(dateFrom || dateTo)}
                 onClearFilters={() => {
                     setStatusFilter('all');
                     setFundFilter('all');
                     setPriorityFilter('all');
+                    setDateFrom('');
+                    setDateTo('');
                 }}
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -271,6 +340,18 @@ export function ResourceBudgetProposalList({ proposals = [], summary = null, opt
                         <option key={key} value={key}>{label}</option>
                     ))}
                 </AdminFilterSelect>
+                <AdminFilterInput
+                    label="Date from"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                />
+                <AdminFilterInput
+                    label="Date to"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                />
             </AdminCollapsibleFilterBar>
 
             <AdminDataTable

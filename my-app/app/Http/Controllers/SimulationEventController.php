@@ -12,6 +12,7 @@ use App\Models\TrainingModule;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\DatabaseBackupService;
+use App\Services\EventEquipmentRequestService;
 use App\Services\PortalNotificationFactory;
 use App\Services\SimulationEventLifecycleService;
 use App\Services\SimulationEventPlanningService;
@@ -25,6 +26,7 @@ class SimulationEventController extends Controller
         protected SimulationEventLifecycleService $lifecycle,
         protected SimulationEventPlanningService $planningService,
         protected PortalNotificationFactory $notificationFactory,
+        protected EventEquipmentRequestService $equipmentRequests,
     ) {}
 
     public function index()
@@ -662,6 +664,7 @@ class SimulationEventController extends Controller
 
         // Ensure resources are assigned before starting (in case they weren't assigned on publish)
         $this->autoAssignResources($simulationEvent);
+        $this->equipmentRequests->activateOnEventStart($simulationEvent);
         
         // Reload resources to get updated pivot data
         $simulationEvent->load('resources');
@@ -749,6 +752,7 @@ class SimulationEventController extends Controller
         ]);
 
         $this->autoAssignResources($simulationEvent);
+        $this->equipmentRequests->activateOnEventStart($simulationEvent);
         $this->lifecycle->initializeExecutionProgress($simulationEvent->fresh());
         $this->lifecycle->appendTimelineEntry($simulationEvent->fresh(), 'Simulation Started (Test / Demo)');
         $this->lifecycle->notifyCpsqcSimulationStarted($simulationEvent->fresh());
@@ -802,33 +806,8 @@ class SimulationEventController extends Controller
 
         $this->lockAttendanceOnCompletion($simulationEvent);
 
-        // Auto-return all resources assigned to this event: mark assignments Returned and refresh resource available/status
-        $assignments = ResourceEventAssignment::where('event_id', $simulationEvent->id)
-            ->where('status', 'Active')
-            ->get();
-
-        $resourceIds = [];
-        foreach ($assignments as $assignment) {
-            $assignment->update([
-                'status' => 'Returned',
-                'returned_by' => portal_id(),
-                'returned_at' => now(),
-            ]);
-            $resourceIds[$assignment->resource_id] = true;
-        }
-
-        foreach (array_keys($resourceIds) as $resourceId) {
-            $resource = Resource::find($resourceId);
-            if ($resource) {
-                $resource->refreshAvailabilityFromAssignments();
-            }
-        }
-
-        // Update event_resource pivot status to Returned for this event
-        $simulationEvent->load('resources');
-        foreach ($simulationEvent->resources as $resource) {
-            $simulationEvent->resources()->updateExistingPivot($resource->id, ['status' => 'Returned']);
-        }
+        // Return reserved / in-use equipment (including approved equipment requests)
+        $this->equipmentRequests->releaseOnEventComplete($simulationEvent, portal_id());
 
         AuditLogger::log([
             'action' => 'Completed simulation event',
@@ -876,6 +855,7 @@ class SimulationEventController extends Controller
                         $this->lifecycle->releaseEventPersonnelAssignments($fresh);
                         $this->lifecycle->notifyCpsqcSimulationCompleted($fresh);
                         $this->lockAttendanceOnCompletion($fresh);
+                        $this->equipmentRequests->releaseOnEventComplete($fresh, portal_id());
                     }
                 } catch (\Exception $e) {
                     return;

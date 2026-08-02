@@ -306,6 +306,14 @@ class ResourceBudgetProposalController extends Controller
             $query->where('priority', $request->priority);
         }
 
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDir = $request->input('sort_dir', 'desc') === 'asc' ? 'asc' : 'desc';
         $allowedSort = ['reference_number', 'title', 'total_estimated_cost', 'status', 'priority', 'created_at'];
@@ -315,7 +323,14 @@ class ResourceBudgetProposalController extends Controller
 
         $query->orderBy($sortBy, $sortDir);
 
-        $proposals = $query->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        if ($request->boolean('export_all')) {
+            $perPage = min(max((int) $query->count(), 1), 1000);
+        } else {
+            $perPage = min(max($perPage, 1), 100);
+        }
+
+        $proposals = $query->paginate($perPage)->withQueryString();
 
         return [
             'proposals' => $proposals->items(),
@@ -335,6 +350,98 @@ class ResourceBudgetProposalController extends Controller
                 'pending_amount' => (float) ResourceBudgetProposal::where('status', 'submitted')->sum('total_estimated_cost'),
             ],
         ];
+    }
+
+    /**
+     * Trainer/admin quick purchase or restock request from Resource Inventory.
+     * Creates a submitted proposal so it appears in Pending Review for LGU_ADMIN.
+     */
+    public function storeInventoryRequest(Request $request)
+    {
+        $this->authorizeAccess();
+
+        $categories = config('budget_proposal.resource_categories', []);
+        $fundSources = array_keys(config('budget_proposal.fund_sources', []));
+        $priorities = array_keys(config('budget_proposal.priorities', []));
+
+        $data = $request->validate([
+            'request_type' => ['required', Rule::in(['new_purchase', 'restock'])],
+            'resource_id' => ['nullable', 'required_if:request_type,restock', 'exists:resources,id'],
+            'item_name' => ['nullable', 'required_if:request_type,new_purchase', 'string', 'max:255'],
+            'category' => ['nullable', Rule::in($categories)],
+            'quantity' => ['required', 'integer', 'min:1', 'max:9999'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'fund_source' => ['nullable', Rule::in($fundSources)],
+            'priority' => ['nullable', Rule::in($priorities)],
+            'justification' => ['nullable', 'string', 'max:5000'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $resource = null;
+        if (($data['request_type'] ?? '') === 'restock') {
+            $resource = Resource::findOrFail($data['resource_id']);
+        }
+
+        $itemName = $resource
+            ? $resource->name
+            : trim((string) ($data['item_name'] ?? ''));
+        $category = $resource
+            ? ($resource->category ?: ($data['category'] ?? 'Other'))
+            : ($data['category'] ?? 'Other');
+        $qty = (int) $data['quantity'];
+        $unitCost = round((float) ($data['unit_cost'] ?? 0), 2);
+        $fundSource = $data['fund_source'] ?? 'mdrrm';
+        $priority = $data['priority'] ?? 'medium';
+        $title = ($data['request_type'] === 'restock' ? 'Restock request: ' : 'Purchase request: ').$itemName;
+
+        $proposal = DB::transaction(function () use ($data, $resource, $itemName, $category, $qty, $unitCost, $fundSource, $priority, $title) {
+            $proposal = ResourceBudgetProposal::create([
+                'reference_number' => $this->generateReferenceNumber(),
+                'title' => $title,
+                'justification' => $data['justification']
+                    ?? ($data['request_type'] === 'restock'
+                        ? 'Inventory restock request from Resource & Equipment.'
+                        : 'New equipment purchase request from Resource & Equipment.'),
+                'justification_source' => 'inventory_gap',
+                'fund_source' => $fundSource,
+                'priority' => $priority,
+                'resource_id' => $resource?->id,
+                'status' => 'submitted',
+                'submitted_at' => now(),
+                'created_by' => portal_id(),
+            ]);
+
+            $this->syncItems($proposal, [[
+                'item_name' => $itemName,
+                'category' => $category,
+                'quantity' => $qty,
+                'unit_cost' => $unitCost,
+                'notes' => $data['notes'] ?? null,
+            ]]);
+            $proposal->recalculateTotal();
+
+            $this->inventoryService->syncOnSubmit($proposal->fresh('items'));
+
+            return $proposal->fresh(['items', 'creator', 'resource']);
+        });
+
+        AuditLogger::log([
+            'action' => 'Submitted inventory purchase/restock request',
+            'module' => 'Resource Budget Proposal',
+            'status' => 'success',
+            'description' => $proposal->reference_number.' — '.$proposal->title,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Request submitted for budget review ('.$proposal->reference_number.').',
+            'proposal' => [
+                'id' => $proposal->id,
+                'reference_number' => $proposal->reference_number,
+                'title' => $proposal->title,
+                'status' => $proposal->status,
+            ],
+        ], 201);
     }
 
     /**

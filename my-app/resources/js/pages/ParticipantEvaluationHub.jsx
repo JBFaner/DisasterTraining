@@ -437,10 +437,10 @@ export function ParticipantEvaluationHub({ hub = {} }) {
                 actions={
                     hasAnyResults ? (
                         <div className="flex flex-wrap gap-2">
-                            <AdminSecondaryButton href={exportUrls.portfolio_print || '/participant/evaluations/portfolio?print=1'}>
+                            <AdminPrimaryButton href={exportUrls.portfolio_print || '/participant/evaluations/portfolio?print=1'}>
                                 <Printer className="w-4 h-4" />
                                 Export Portfolio (PDF)
-                            </AdminSecondaryButton>
+                            </AdminPrimaryButton>
                             <AdminSecondaryButton href={exportUrls.portfolio_download || '/participant/evaluations/portfolio/download'}>
                                 <Download className="w-4 h-4" />
                                 Download Summary

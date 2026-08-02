@@ -178,7 +178,7 @@ class ResourceController extends Controller
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:100',
             'description' => 'nullable|string',
-            'quantity' => 'required|integer|min:1',
+            // Quantity is managed via purchase/restock (budget proposals), not direct edit.
             'condition' => 'required|in:New,Good,Needs Repair,Damaged',
             'status' => 'required|in:Available,In Use,Under Maintenance,Damaged,Missing,Reserved,Partially Assigned,Fully Assigned',
             'location' => 'required|string|max:255',

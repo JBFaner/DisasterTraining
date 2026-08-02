@@ -26,6 +26,7 @@ import {
 } from './admin/AdminLayout';
 import { deriveSimulationEventStatus, getEventDateTime } from '../utils/simulationEventStatus';
 import { isExercisePlanEvent } from '../utils/simulationEventNavigation';
+import { EventEquipmentRequestPanel } from './EventEquipmentRequestPanel';
 
 const EMPTY_ASSIGNMENT_POOLS = [];
 
@@ -760,6 +761,8 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
     const personnelRoster = lifecycleData?.personnel_roster || [];
     const assignmentPools = lifecycleData?.assignment_pools || EMPTY_ASSIGNMENT_POOLS;
     const cpsqc = lifecycleData?.cpsqc || null;
+    const equipmentRequests = lifecycleData?.equipment_requests || [];
+    const equipmentRequestInventory = lifecycleData?.equipment_request_inventory || [];
     const evaluationMode = lifecycleData?.evaluation_mode || 'team';
     const evaluationModeLabel = lifecycleData?.evaluation_mode_label
         || (evaluationMode === 'individual' ? 'Individual (per participant)' : 'Team / overall');
@@ -1268,6 +1271,16 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                             onLifecycleUpdate={setLifecycle}
                         />
                     )}
+
+                    <EventEquipmentRequestPanel
+                        eventId={event.id}
+                        role={role}
+                        csrf={csrf}
+                        requests={equipmentRequests}
+                        inventory={equipmentRequestInventory}
+                        disabled={isSaving || isCompleted}
+                        onLifecycleUpdate={setLifecycle}
+                    />
                 </div>
             )}
 
