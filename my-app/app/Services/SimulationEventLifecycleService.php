@@ -284,7 +284,7 @@ class SimulationEventLifecycleService
         if ($configured) {
             $list = $this->cpsqcClient->listPatrolRequests([
                 'source_reference_id' => $sourceRef,
-                'source_group' => (string) config('cpsqc.defaults.source_group', 'group_6'),
+                'source_group' => (string) config('cpsqc.defaults.source_group', 'disaster-preparedness'),
             ]);
             if ($list['success']) {
                 $requests = $list['data'];
@@ -293,7 +293,7 @@ class SimulationEventLifecycleService
             $approved = $this->cpsqcClient->listPatrolRequests([
                 'status' => 'Approved',
                 'source_reference_id' => $sourceRef,
-                'source_group' => (string) config('cpsqc.defaults.source_group', 'group_6'),
+                'source_group' => (string) config('cpsqc.defaults.source_group', 'disaster-preparedness'),
             ]);
             if ($approved['success']) {
                 $availableMarshals = $this->cpsqcClient->marshalPoolMembers($approved['data']);

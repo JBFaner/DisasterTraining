@@ -7,8 +7,8 @@
  * and pull approved assigned_personnel via GET /api/patrol_requests.php
  * for Exercise Plan Marshal assignments.
  *
- * Note: CPSQC historically allowed group_6 | group_8; ask them to whitelist
- *       CPSQC_SOURCE_GROUP (e.g. marshall) before switching away from group_6.
+ * Patrol source_group whitelist: campaign | disaster-preparedness
+ * Legacy aliases still accepted by Patrol: group_6 → campaign, group_8 → disaster-preparedness
  */
 return [
 
@@ -17,6 +17,7 @@ return [
     'api' => [
         // Production: https://surveillance.alertaraqc.com
         'base_url' => rtrim((string) env('CPSQC_API_BASE_URL', 'https://surveillance.alertaraqc.com'), '/'),
+        // Must match Patrol PATROL_REQUEST_API_KEY when that env is set (list endpoint).
         'key' => env('CPSQC_API_KEY', env('PATROL_REQUEST_API_KEY')),
         'timeout' => (int) env('CPSQC_API_TIMEOUT', 30),
 
@@ -33,8 +34,8 @@ return [
     */
     'defaults' => [
         'source' => env('CPSQC_SOURCE', 'partner_api'),
-        // CPSQC whitelist currently: group_6 | group_8 (Disaster Training = group_8)
-        'source_group' => env('CPSQC_SOURCE_GROUP', 'group_8'),
+        // Canonical value for Disaster Training on current Patrol deploy
+        'source_group' => env('CPSQC_SOURCE_GROUP', 'disaster-preparedness'),
         'requesting_unit' => env('CPSQC_REQUESTING_UNIT', 'Disaster Preparedness Training and Simulation'),
         'contact_person' => env('CPSQC_CONTACT_PERSON', 'LGU Training Admin'),
         'contact_position' => env('CPSQC_CONTACT_POSITION', 'Training Coordinator'),

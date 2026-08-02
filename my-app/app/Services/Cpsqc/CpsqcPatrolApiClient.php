@@ -145,7 +145,7 @@ class CpsqcPatrolApiClient
         if ($requests === null) {
             $result = $this->listPatrolRequests([
                 'status' => 'Approved',
-                'source_group' => (string) config('cpsqc.defaults.source_group', 'group_6'),
+                'source_group' => (string) config('cpsqc.defaults.source_group', 'disaster-preparedness'),
             ]);
 
             if (! $result['success']) {
@@ -223,7 +223,7 @@ class CpsqcPatrolApiClient
 
         return array_filter([
             'source' => $input['source'] ?? ($defaults['source'] ?? 'partner_api'),
-            'source_group' => $input['source_group'] ?? ($defaults['source_group'] ?? 'group_6'),
+            'source_group' => $input['source_group'] ?? ($defaults['source_group'] ?? 'disaster-preparedness'),
             'source_reference_id' => $input['source_reference_id'] ?? null,
             'requesting_unit' => $input['requesting_unit'] ?? ($defaults['requesting_unit'] ?? 'Disaster Preparedness Training'),
             'contact_person' => $input['contact_person'] ?? ($defaults['contact_person'] ?? 'LGU Training Admin'),
