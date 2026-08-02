@@ -1,0 +1,62 @@
+﻿# Cursor indexing only — does NOT delete or change project/runtime files.
+# Keeps Agent/@codebase from loading huge noisy paths into every prompt.
+
+# Dependencies & builds
+**/node_modules/
+**/vendor/
+**/dist/
+**/build/
+**/public/build/
+**/public/hot
+**/.vite/
+**/.cache/
+**/bootstrap/cache/
+**/storage/framework/
+**/storage/logs/
+**/storage/app/public/
+**/.phpunit.result.cache
+**/coverage/
+
+# Lockfiles & package noise (large, rarely needed in chat)
+**/package-lock.json
+**/composer.lock
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Secrets & local env (never needed in prompts)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Large dumps / exports
+**/*.sql
+**/*.sqlite
+**/*.sqlite3
+**/*.dump
+**/*.bak
+Disaster2.0.sql
+
+# Nested git / foreign trees that bloat search
+cpsqc/.git/
+**/.git/
+
+# Docs media & binary noise
+**/docs/**/*.png
+**/docs/**/*.jpg
+**/docs/**/*.jpeg
+**/docs/**/*.gif
+**/docs/**/*.webp
+**/docs/**/*.pdf
+**/*.pdf
+**/*.docx
+**/*.zip
+**/*.7z
+**/*.rar
+**/temp_docx/
+
+# Agent / local tooling chatter
+**/agent-transcripts/
+**/.cursor/projects/
+**/terminals/
+**/*.log
+npm-debug.log*

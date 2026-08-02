@@ -1,0 +1,23 @@
+---
+description: Keep Cursor prompts cheap — concise context, no junk in replies
+alwaysApply: true
+---
+
+# Prompt budget (token thrift)
+
+These habits save usage. They do **not** change app code or the OS.
+
+## Context
+- Prefer Grep/Glob + small file slices over reading whole files.
+- Do not pull `@codebase` / wide folders unless the user asked for a repo-wide search.
+- Skip lockfiles, `vendor/`, `node_modules/`, SQL dumps, logs, PDFs, and `.env` unless explicitly required.
+- Summarize tool/terminal output; never paste large logs into the reply.
+
+## Edits & replies
+- Smallest diff that ships the ask. No drive-by refactors or unrelated files.
+- Concise answers (a few sentences per point). No essay unless the user asks.
+- Do not create markdown docs the user did not request.
+- Prefer Ask / targeted edits over multi-tool Agent loops when the task is a single known file.
+
+## Chat hygiene (tell user if relevant)
+- One feature/bug per chat; suggest a new chat when the topic changes.
