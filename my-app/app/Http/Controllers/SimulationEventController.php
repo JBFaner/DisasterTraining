@@ -102,6 +102,9 @@ class SimulationEventController extends Controller
         $templateService = app(SimulationExerciseTemplateService::class);
         $exerciseTemplates = $templateService->listForDashboard()->values()->all();
 
+        $user = portal_user();
+        $canManageDemoTools = $user && in_array($user->role, ['LGU_ADMIN', 'SUPER_ADMIN'], true);
+
         return view('app', [
             'section' => 'simulation',
             'events' => $events,
@@ -114,6 +117,8 @@ class SimulationEventController extends Controller
                 'archived' => collect($exerciseTemplates)->where('status', 'archived')->count(),
             ],
             'scenarios' => Scenario::where('status', 'published')->orderBy('title')->get(),
+            'demo_tools_enabled' => (bool) \App\Models\Setting::get('demo_tools_enabled', true),
+            'can_manage_demo_tools' => $canManageDemoTools,
         ]);
     }
 
@@ -705,8 +710,17 @@ class SimulationEventController extends Controller
         $this->authorizeEventAccess();
 
         $user = portal_user();
-        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'SUPER_ADMIN'], true)) {
             abort(403, 'Only admins or trainers can use Test Start.');
+        }
+
+        if (! \App\Models\Setting::get('demo_tools_enabled', true)) {
+            $message = 'Demo tools are currently disabled by an administrator.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 403);
+            }
+
+            return redirect()->back()->with('status', $message);
         }
 
         // Demo may re-open completed/ended events; block only archived/cancelled.
@@ -1011,11 +1025,14 @@ class SimulationEventController extends Controller
         ]);
 
         $lifecycle = $this->lifecycle->buildPayload($simulationEvent);
+        $user = portal_user();
 
         return view('app', [
             'section' => 'simulation_detail',
             'event' => $simulationEvent,
             'event_lifecycle' => $lifecycle,
+            'demo_tools_enabled' => (bool) \App\Models\Setting::get('demo_tools_enabled', true),
+            'can_manage_demo_tools' => $user && in_array($user->role, ['LGU_ADMIN', 'SUPER_ADMIN'], true),
         ]);
     }
 

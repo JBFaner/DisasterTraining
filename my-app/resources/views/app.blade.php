@@ -86,6 +86,12 @@
             @isset($event_lifecycle)
                 data-event-lifecycle='@json($event_lifecycle)'
             @endisset
+            @isset($demo_tools_enabled)
+                data-demo-tools-enabled='@json($demo_tools_enabled)'
+            @endisset
+            @isset($can_manage_demo_tools)
+                data-can-manage-demo-tools='@json($can_manage_demo_tools)'
+            @endisset
             @isset($participants)
                 data-participants='@json($participants)'
             @endisset

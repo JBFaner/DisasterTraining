@@ -907,8 +907,12 @@ export function TrainingModuleDetail({ module }) {
     const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false);
     const [campaignRequests, setCampaignRequests] = React.useState([]);
     const [isLoadingCampaignRequests, setIsLoadingCampaignRequests] = React.useState(false);
+    const [thumbnailUrl, setThumbnailUrl] = React.useState(
+        module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null),
+    );
+    const [isUploadingThumbnail, setIsUploadingThumbnail] = React.useState(false);
+    const thumbnailInputRef = React.useRef(null);
 
-    const thumbnailUrl = module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null);
     const recommendations = module.recommended_communities || null;
     const recommendedCommunityEntries = React.useMemo(
         () => getRecommendedCommunityEntries(recommendations),
@@ -1410,6 +1414,100 @@ export function TrainingModuleDetail({ module }) {
         }
     };
 
+    const handleThumbnailFileChange = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        if (!String(file.type || '').startsWith('image/')) {
+            await showAppAlert({
+                title: 'Invalid file',
+                description: 'Please choose an image file (JPG, PNG, GIF, or WebP).',
+                icon: 'warning',
+            });
+            return;
+        }
+
+        setIsUploadingThumbnail(true);
+        try {
+            const formData = new FormData();
+            formData.append('thumbnail', file);
+            formData.append('_token', getCsrfToken());
+
+            const response = await fetch(`/admin/training-modules/${module.id}/thumbnail`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                throw new Error(
+                    data.message
+                    || Object.values(data.errors || {}).flat()[0]
+                    || 'Failed to upload thumbnail to Cloudinary.',
+                );
+            }
+
+            setThumbnailUrl(data.thumbnail_url || data.thumbnail_path || null);
+            await showAppAlert({
+                title: 'Thumbnail uploaded',
+                description: 'Image saved to Cloudinary and will show on module cards.',
+                icon: 'success',
+            });
+        } catch (error) {
+            await showAppAlert({
+                title: 'Upload failed',
+                description: error?.message || 'Could not upload thumbnail.',
+                icon: 'error',
+            });
+        } finally {
+            setIsUploadingThumbnail(false);
+        }
+    };
+
+    const handleRemoveThumbnail = async () => {
+        const confirmed = await showAppConfirm({
+            title: 'Remove thumbnail?',
+            description: 'This clears the module card background image.',
+            confirmLabel: 'Remove',
+            cancelLabel: 'Cancel',
+            confirmVariant: 'danger',
+        });
+        if (!confirmed) return;
+
+        setIsUploadingThumbnail(true);
+        try {
+            const response = await fetch(`/admin/training-modules/${module.id}/thumbnail`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Could not remove thumbnail.');
+            }
+            setThumbnailUrl(null);
+        } catch (error) {
+            await showAppAlert({
+                title: 'Remove failed',
+                description: error?.message || 'Could not remove thumbnail.',
+                icon: 'error',
+            });
+        } finally {
+            setIsUploadingThumbnail(false);
+        }
+    };
+
     const handlePublishModule = async () => {
         const confirm = await Swal.fire({
             icon: 'question',
@@ -1474,11 +1572,68 @@ export function TrainingModuleDetail({ module }) {
             <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-md">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-1">
-                        {thumbnailUrl ? (
-                            <img src={thumbnailUrl} alt={module.title} className="w-full h-40 object-cover rounded-xl border border-slate-200" />
-                        ) : (
-                            <div className="w-full h-40 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-sm">No thumbnail</div>
-                        )}
+                        <input
+                            ref={thumbnailInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            className="hidden"
+                            onChange={handleThumbnailFileChange}
+                        />
+                        <div className="relative group w-full h-40 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                            {thumbnailUrl ? (
+                                <img
+                                    src={thumbnailUrl}
+                                    alt={module.title}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-sm gap-1 px-3 text-center">
+                                    <ImageIcon className="w-6 h-6" />
+                                    <span>No thumbnail</span>
+                                </div>
+                            )}
+                            <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/45 transition flex items-center justify-center">
+                                <button
+                                    type="button"
+                                    disabled={isUploadingThumbnail}
+                                    onClick={() => thumbnailInputRef.current?.click()}
+                                    className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow disabled:opacity-60"
+                                >
+                                    {isUploadingThumbnail ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            Uploading…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ImageIcon className="w-3.5 h-3.5" />
+                                            {thumbnailUrl ? 'Change photo' : 'Upload photo'}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                disabled={isUploadingThumbnail}
+                                onClick={() => thumbnailInputRef.current?.click()}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                            >
+                                {isUploadingThumbnail ? 'Uploading…' : (thumbnailUrl ? 'Replace thumbnail' : 'Add thumbnail')}
+                            </button>
+                            {thumbnailUrl ? (
+                                <button
+                                    type="button"
+                                    disabled={isUploadingThumbnail}
+                                    onClick={handleRemoveThumbnail}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    Remove
+                                </button>
+                            ) : null}
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-slate-500">JPG, PNG, GIF, or WebP. Max 5MB. Stored on Cloudinary.</p>
                     </div>
                     <div className="md:col-span-2">
                         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Training module</div>
@@ -1508,9 +1663,6 @@ export function TrainingModuleDetail({ module }) {
                                     Estimated: {formatDuration(module.estimated_duration_minutes)}
                                 </span>
                             )}
-                            <span className="rounded-lg bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1 font-medium capitalize">
-                                Visibility: {module.visibility || 'All'}
-                            </span>
                         </div>
                     </div>
                 </div>

@@ -416,6 +416,8 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
     const available = cpsqc?.available_marshals || [];
     const requests = cpsqc?.requests || [];
     const configured = !!cpsqc?.configured;
+    const canRequestPatrol = configured && (cpsqc?.can_request_patrol !== false) && !cpsqc?.has_open_request;
+    const openRequest = (cpsqc?.open_requests || [])[0] || null;
     const patrolsSuggestions = React.useMemo(() => {
         const recommended = Number(defaults.patrols_needed) || 0;
         const base = [1, 2, 3, 4, 5, 6, 8, 10];
@@ -661,10 +663,15 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
             </div>
 
             <div className="flex flex-wrap gap-2">
-                <AdminPrimaryButton onClick={requestPatrol} disabled={!configured || busy || disabled}>
+                <AdminPrimaryButton onClick={requestPatrol} disabled={!canRequestPatrol || busy || disabled}>
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
                     Request Patrol from CPSQC
                 </AdminPrimaryButton>
+                {configured && !canRequestPatrol && openRequest ? (
+                    <p className="w-full text-xs text-amber-800">
+                        Open request {openRequest.request_id || '—'} ({openRequest.status || 'open'}) — finish or reject it in CPSQC before requesting again. Unavailable / On Patrol officers are excluded from selection.
+                    </p>
+                ) : null}
             </div>
 
             {requests.length > 0 && (
@@ -688,12 +695,13 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
                     CPSQC marshals ({available.length})
                 </p>
                 {available.length === 0 ? (
-                    <p className="text-sm text-slate-500">No CPSQC personnel assigned to this event yet (Approved / Scheduled).</p>
+                    <p className="text-sm text-slate-500">No Available CPSQC personnel assigned to this event yet. On Patrol / Unavailable officers stay hidden until free.</p>
                 ) : (
                     <ul className="space-y-2">
                         {available.map((member) => {
                             const id = String(member.id);
                             const checked = selectedIds.has(id);
+                            const status = member.availability_status || member.position || 'Available';
                             return (
                                 <li key={id}>
                                     <label className="flex items-center gap-3 rounded-lg border border-white bg-white px-3 py-2 text-sm text-slate-700 cursor-pointer">
@@ -706,6 +714,7 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
                                         <span>
                                             <span className="font-medium">{member.name}</span>
                                             {member.specialization ? ` — ${member.specialization}` : ''}
+                                            <span className="ml-2 text-xs text-slate-500">({status})</span>
                                         </span>
                                     </label>
                                 </li>
@@ -721,7 +730,7 @@ function CpsqcMarshalPanel({ eventId, cpsqc, csrf, onLifecycleUpdate, disabled =
     );
 }
 
-export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycle, role }) {
+export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycle, role, demoToolsEnabled = true }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [lifecycle, setLifecycle] = React.useState(initialLifecycle || null);
     const [activeTab, setActiveTab] = React.useState(() => getInitialTab(event));
@@ -1017,7 +1026,7 @@ export function SimulationEventLifecyclePage({ event, lifecycle: initialLifecycl
                                 </AdminPrimaryButton>
                             </form>
                         )}
-                        {!isOngoing && ['LGU_ADMIN', 'LGU_TRAINER'].includes(role) && event.status !== 'archived' && event.status !== 'cancelled' && (
+                        {demoToolsEnabled && !isOngoing && ['LGU_ADMIN', 'LGU_TRAINER', 'SUPER_ADMIN'].includes(role) && event.status !== 'archived' && event.status !== 'cancelled' && (
                             <form
                                 method="POST"
                                 action={`/admin/simulation-events/${event.id}/test-start`}

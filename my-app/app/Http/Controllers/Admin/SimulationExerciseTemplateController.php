@@ -215,12 +215,12 @@ class SimulationExerciseTemplateController extends Controller
         $this->authorizeAccess();
 
         $data = $request->validate([
-            'campaign_request_id' => ['nullable', 'integer', 'exists:campaign_requests,id'],
+            'campaign_request_id' => ['required', 'integer', 'exists:campaign_requests,id'],
             'title' => ['nullable', 'string', 'max:255'],
-            'event_date' => ['nullable', 'date'],
+            'event_date' => ['required', 'date'],
             'start_time' => ['nullable', 'string', 'max:20'],
             'end_time' => ['nullable', 'string', 'max:20'],
-            'venue' => ['nullable', 'string', 'max:255'],
+            'venue' => ['required', 'string', 'max:255'],
         ]);
 
         $event = $this->templateService->reuseTemplate(

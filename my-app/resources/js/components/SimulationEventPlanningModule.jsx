@@ -4,6 +4,7 @@ import {
     History,
     Download,
     Eye,
+    FlaskConical,
     Layers,
     Printer,
     ShieldCheck,
@@ -29,6 +30,8 @@ import { ApprovedCampaignSchedulesTable } from './ApprovedCampaignSchedulesTable
 import { SimulationExerciseTemplateModule } from './SimulationExerciseTemplateModule';
 import { SimulationPlanningEventsTab } from './SimulationPlanningEventsTab';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
+import { getCsrfHeaders } from '../utils/csrf';
+import { showAppAlert } from '../utils/appAlert';
 
 function formatDate(dateString) {
     if (!dateString) return '—';
@@ -355,8 +358,12 @@ export function SimulationEventPlanningModule({
     approvedSchedules = [],
     exerciseTemplates = [],
     exerciseTemplateSummary = {},
+    demoToolsEnabled: initialDemoToolsEnabled = true,
+    canManageDemoTools = false,
 }) {
     const [activeTab, setActiveTab] = React.useState(getInitialTab);
+    const [demoToolsEnabled, setDemoToolsEnabled] = React.useState(Boolean(initialDemoToolsEnabled));
+    const [isTogglingDemoTools, setIsTogglingDemoTools] = React.useState(false);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
@@ -367,6 +374,35 @@ export function SimulationEventPlanningModule({
             url.searchParams.set('tab', tabId);
         }
         window.history.replaceState({}, '', url);
+    };
+
+    const handleDemoToolsToggle = async (enabled) => {
+        if (isTogglingDemoTools) return;
+        setIsTogglingDemoTools(true);
+        try {
+            const response = await fetch('/admin/settings/demo-tools', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    ...getCsrfHeaders(),
+                },
+                body: JSON.stringify({ enabled }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update demo tools setting.');
+            }
+            setDemoToolsEnabled(Boolean(data.enabled));
+        } catch (error) {
+            showAppAlert({
+                title: 'Could not update demo tools',
+                description: error.message || 'Please try again.',
+                icon: 'error',
+            });
+        } finally {
+            setIsTogglingDemoTools(false);
+        }
     };
 
     return (
@@ -397,6 +433,42 @@ export function SimulationEventPlanningModule({
                 }
             />
 
+            {canManageDemoTools ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                        <FlaskConical className="w-4.5 h-4.5 text-amber-700 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-amber-950">Demo tools</p>
+                            <p className="text-xs text-amber-800/90">
+                                When on, Meet Quota and Test Start are available to admins and trainers for presentations.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs font-semibold ${demoToolsEnabled ? 'text-emerald-700' : 'text-slate-500'}`}>
+                            {demoToolsEnabled ? 'On' : 'Off'}
+                        </span>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={demoToolsEnabled}
+                            disabled={isTogglingDemoTools}
+                            onClick={() => handleDemoToolsToggle(!demoToolsEnabled)}
+                            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${
+                                demoToolsEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                            }`}
+                            title={demoToolsEnabled ? 'Disable demo tools' : 'Enable demo tools'}
+                        >
+                            <span
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                                    demoToolsEnabled ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                            />
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 w-full overflow-x-auto">
                 <div className="flex gap-1 flex-wrap min-w-max">
                     {PLANNING_TABS.map((tab) => {
@@ -421,7 +493,10 @@ export function SimulationEventPlanningModule({
             </div>
 
             {activeTab === 'schedules' && (
-                <ApprovedCampaignSchedulesTable schedules={approvedSchedules} />
+                <ApprovedCampaignSchedulesTable
+                    schedules={approvedSchedules}
+                    demoToolsEnabled={demoToolsEnabled}
+                />
             )}
             {activeTab === 'templates' && (
                 <SimulationExerciseTemplateModule
