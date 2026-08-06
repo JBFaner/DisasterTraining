@@ -55,7 +55,29 @@ class SimulationEventLifecycleController extends Controller
     {
         $this->authorizeEventAccess();
 
-        $defaults = $this->lifecycle->buildCpsqcPayload($simulationEvent)['request_defaults'] ?? [];
+        $cpsqc = $this->lifecycle->buildCpsqcPayload($simulationEvent);
+        $defaults = $cpsqc['request_defaults'] ?? [];
+
+        if (! ($cpsqc['configured'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'CPSQC integration is not configured.',
+            ], 422);
+        }
+
+        if ($cpsqc['has_open_request'] ?? false) {
+            $open = collect($cpsqc['open_requests'] ?? [])->first();
+            $openId = is_array($open) ? ($open['request_id'] ?? null) : null;
+            $openStatus = is_array($open) ? ($open['status'] ?? 'open') : 'open';
+
+            return response()->json([
+                'success' => false,
+                'message' => $openId
+                    ? "This event already has an open CPSQC patrol request ({$openId}, status: {$openStatus}). Wait for it to be completed/rejected before requesting again."
+                    : 'This event already has an open CPSQC patrol request. Wait for it to be completed/rejected before requesting again.',
+                'lifecycle' => $this->lifecycle->buildPayload($simulationEvent->fresh()),
+            ], 422);
+        }
 
         $data = $request->validate([
             'event_name' => ['nullable', 'string', 'max:255'],

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CampaignRequest;
+use App\Models\Setting;
 use App\Services\SimulationEventPlanningService;
 use Illuminate\Http\Request;
 
@@ -165,6 +166,14 @@ class SimulationEventPlanningController extends Controller
     public function demoMeetQuota(Request $request, CampaignRequest $campaignRequest)
     {
         $this->authorizeAccess();
+
+        if (! Setting::get('demo_tools_enabled', true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Demo tools are currently disabled by an administrator.',
+            ], 403);
+        }
+
         abort_unless($campaignRequest->status === 'approved', 422, 'Only approved campaigns can use Meet Quota (Demo).');
 
         if ($campaignRequest->simulation_event_id) {

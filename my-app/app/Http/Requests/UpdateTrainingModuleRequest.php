@@ -57,7 +57,7 @@ class UpdateTrainingModuleRequest extends FormRequest
             'campaign_expected_participants' => ['nullable', 'integer', 'min:1', 'max:40', 'lt:campaign_maximum_participants'],
             'campaign_maximum_participants' => ['nullable', 'integer', 'min:2', 'max:40'],
             'status' => ['required', 'string', 'in:draft,published,archived,unpublished,deprecated'],
-            'visibility' => ['required', 'string', 'in:all,group,staff_only'],
+            'visibility' => ['nullable', 'string', 'in:all,group,staff_only'],
             'thumbnail' => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
             'remove_thumbnail' => ['nullable', 'boolean'],
         ];
@@ -72,6 +72,13 @@ class UpdateTrainingModuleRequest extends FormRequest
             'learning_objectives.required' => 'At least one learning objective is required.',
             'target_audience.*.in' => 'Please select a valid target audience from the list.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('visibility')) {
+            $this->merge(['visibility' => 'all']);
+        }
     }
 
     public function withValidator(Validator $validator): void

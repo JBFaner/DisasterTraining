@@ -18,6 +18,7 @@ use App\Models\TrainingContent;
 use App\Models\TrainingModule;
 use App\Models\QualifiedTrainer;
 use App\Services\AuditLogger;
+use App\Services\CloudinaryUploadService;
 use App\Services\DatabaseBackupService;
 use App\Services\GeminiService;
 use App\Services\HazardAssessment\HazardTrainingRecommendationService;
@@ -25,7 +26,9 @@ use App\Services\LessonResourceProcessingService;
 use App\Services\StaffTrainerBridgeService;
 use App\Services\TrainingModuleCardStatsService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Throwable;
 
 class TrainingModuleController extends Controller
 {
@@ -108,6 +111,7 @@ class TrainingModuleController extends Controller
         return view('app', [
             'section' => 'training_create',
             'barangay_profile' => $barangayProfile,
+            'available_categories' => $this->availableHazardCategories(),
         ]);
     }
 
@@ -132,7 +136,15 @@ class TrainingModuleController extends Controller
         }
 
         if ($request->hasFile('thumbnail')) {
-            $data['thumbnail_path'] = $request->file('thumbnail')->store('training-module-thumbnails', 'public');
+            try {
+                $data['thumbnail_path'] = $this->storeModuleThumbnailOnCloudinary($request->file('thumbnail'));
+            } catch (Throwable $e) {
+                report($e);
+
+                return redirect()->back()
+                    ->withErrors(['thumbnail' => $e->getMessage() ?: 'Failed to upload thumbnail to Cloudinary.'])
+                    ->withInput();
+            }
         }
 
         unset($data['thumbnail']);
@@ -200,9 +212,22 @@ class TrainingModuleController extends Controller
     {
         $this->authorizeOwner($trainingModule);
 
+        $user = portal_user();
+        $barangayProfile = null;
+
+        if ($user && $user->barangay_id) {
+            $barangayProfile = \App\Models\BarangayProfile::with('hazardRecords')->find($user->barangay_id);
+        }
+
+        if (! $barangayProfile) {
+            $barangayProfile = \App\Models\BarangayProfile::with('hazardRecords')->first();
+        }
+
         return view('app', [
             'section' => 'training_edit',
             'module' => $trainingModule,
+            'barangay_profile' => $barangayProfile,
+            'available_categories' => $this->availableHazardCategories(),
         ]);
     }
 
@@ -238,10 +263,26 @@ class TrainingModuleController extends Controller
         }
 
         if ($request->hasFile('thumbnail')) {
-            if ($trainingModule->thumbnail_path) {
-                $this->deleteLocalFile($trainingModule->thumbnail_path);
+            try {
+                if ($trainingModule->thumbnail_path) {
+                    $this->deleteLocalFile($trainingModule->thumbnail_path);
+                }
+                $data['thumbnail_path'] = $this->storeModuleThumbnailOnCloudinary($request->file('thumbnail'));
+            } catch (Throwable $e) {
+                report($e);
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $e->getMessage() ?: 'Failed to upload thumbnail to Cloudinary.',
+                        'errors' => ['thumbnail' => [$e->getMessage() ?: 'Failed to upload thumbnail to Cloudinary.']],
+                    ], 422);
+                }
+
+                return redirect()->back()
+                    ->withErrors(['thumbnail' => $e->getMessage() ?: 'Failed to upload thumbnail to Cloudinary.'])
+                    ->withInput();
             }
-            $data['thumbnail_path'] = $request->file('thumbnail')->store('training-module-thumbnails', 'public');
         }
 
         unset($data['thumbnail'], $data['remove_thumbnail']);
@@ -935,6 +976,108 @@ class TrainingModuleController extends Controller
                     || ($entry['delivery_method'] === 'online' && $entry['online_platform'] !== '' && $entry['meeting_link'] !== '')
                 )
             ))
+            ->values()
+            ->all();
+    }
+
+    public function updateThumbnail(Request $request, TrainingModule $trainingModule, CloudinaryUploadService $cloudinary)
+    {
+        $this->authorizeOwner($trainingModule);
+
+        $request->validate([
+            'thumbnail' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+        ]);
+
+        try {
+            $url = $cloudinary->uploadImage($request->file('thumbnail'), 'training-module-thumbnails');
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() ?: 'Failed to upload thumbnail to Cloudinary.',
+                'errors' => ['thumbnail' => [$e->getMessage() ?: 'Failed to upload thumbnail to Cloudinary.']],
+            ], 422);
+        }
+
+        $oldPath = $trainingModule->thumbnail_path;
+        if ($oldPath) {
+            $this->deleteLocalFile($oldPath);
+        }
+
+        $trainingModule->update(['thumbnail_path' => $url]);
+
+        AuditLogger::log([
+            'action' => 'Updated training module thumbnail',
+            'module' => 'Training Modules',
+            'status' => 'success',
+            'description' => "Title: {$trainingModule->title}",
+            'old_values' => ['thumbnail_path' => $oldPath],
+            'new_values' => ['thumbnail_path' => $url],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thumbnail uploaded to Cloudinary.',
+            'thumbnail_path' => $url,
+            'thumbnail_url' => $trainingModule->fresh()->thumbnail_url,
+        ]);
+    }
+
+    public function destroyThumbnail(Request $request, TrainingModule $trainingModule)
+    {
+        $this->authorizeOwner($trainingModule);
+
+        if (! $trainingModule->thumbnail_path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No thumbnail to remove.',
+            ], 422);
+        }
+
+        $oldPath = $trainingModule->thumbnail_path;
+        $this->deleteLocalFile($oldPath);
+        $trainingModule->update(['thumbnail_path' => null]);
+
+        AuditLogger::log([
+            'action' => 'Removed training module thumbnail',
+            'module' => 'Training Modules',
+            'status' => 'success',
+            'description' => "Title: {$trainingModule->title}",
+            'old_values' => ['thumbnail_path' => $oldPath],
+            'new_values' => ['thumbnail_path' => null],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thumbnail removed.',
+            'thumbnail_path' => null,
+            'thumbnail_url' => null,
+        ]);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    private function storeModuleThumbnailOnCloudinary(UploadedFile $file): string
+    {
+        return app(CloudinaryUploadService::class)->uploadImage($file, 'training-module-thumbnails');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function availableHazardCategories(): array
+    {
+        return TrainingModule::query()
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category')
+            ->filter(fn ($category) => is_string($category) && trim($category) !== '')
+            ->map(fn ($category) => trim($category))
+            ->unique()
             ->values()
             ->all();
     }

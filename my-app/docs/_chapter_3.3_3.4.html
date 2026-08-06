@@ -1,0 +1,1258 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Chapter 3.3 to 3.4.7 Scrum Artifacts</title>
+<style>
+body{font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.35;color:#111;}
+h1{font-size:18pt;color:#0f766e;margin-top:18pt;}
+h2{font-size:14pt;color:#134e4a;margin-top:14pt;}
+h3{font-size:12pt;color:#115e59;margin-top:12pt;}
+table{margin:8pt 0 12pt 0;}
+th{background:#f1f5f9;text-align:left;}
+td,th{border:1px solid #94a3b8;vertical-align:top;}
+code{font-family:Consolas,monospace;font-size:9pt;}
+</style></head><body>
+<h1 style="text-align:center;">Disaster Preparedness Training and Simulation System</h1>
+<p style="text-align:center;"><strong>Chapter 3.3 Sprint Cycles and 3.4 Scrum Artifacts</strong></p>
+<p style="text-align:center;">Includes Product Backlogs (EIS Security, Standards, Integration, Analytics), Sprint Backlog, and Increment</p>
+<hr/>
+<h1>3.3 Sprint Cycles</h1>
+<h2>Overview</h2>
+<p>The Disaster Preparedness Training and Simulation System follows Agile Scrum methodology with structured sprint cycles to ensure iterative development and continuous improvement. Each sprint produces a usable product Increment that can be demonstrated to LGU stakeholders.</p>
+<h2>Sprint Structure</h2>
+<p>Each sprint cycle follows a standard Scrum workflow:</p>
+<ol>
+<li><strong>Sprint Planning</strong> — select Product Backlog items and create the Sprint Backlog</li>
+<li><strong>Daily Stand-ups</strong> — short coordination on progress, blockers, and next steps</li>
+<li><strong>Development &amp; Testing</strong> — implement stories against the Definition of Done</li>
+<li><strong>Sprint Review</strong> — demo the Increment to stakeholders</li>
+<li><strong>Sprint Retrospective</strong> — identify process improvements for the next sprint</li>
+</ol>
+<h3>Table 2: Scrum Board (Workflow Columns)</h3>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>To Do</th><th>In Progress</th><th>Review / Testing</th><th>Done</th></tr>
+<tr><td>Backlog tasks accepted for the sprint</td><td>Actively coded / designed</td><td>QA, peer review, staging check</td><td>Meets Definition of Done and accepted</td></tr>
+</table>
+<br/>
+<h2>Sprint Duration</h2>
+<ul>
+<li><strong>Sprint Length</strong>: 2 weeks per sprint (extendable to 3 weeks for heavy integration work)</li>
+<li><strong>Sprint Planning</strong>: First day of each sprint</li>
+<li><strong>Daily Standups</strong>: Daily 15-minute meetings</li>
+<li><strong>Sprint Review</strong>: End of sprint demonstration</li>
+<li><strong>Sprint Retrospective</strong>: Post-sprint improvement session</li>
+</ul>
+<h2>Sprint Goals</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Sprint</th><th>Primary Goal</th><th>Focus Areas</th></tr>
+<tr><td>Sprint 1</td><td>Core authentication and user management</td><td>Login portals, OTP, RBAC, sessions</td></tr>
+<tr><td>Sprint 2</td><td>Training modules and scenario management</td><td>Modules, lessons, scenarios, UI foundations</td></tr>
+<tr><td>Sprint 3</td><td>Event planning and participant registration</td><td>Campaigns, registration, attendance</td></tr>
+<tr><td>Sprint 4</td><td>Evaluation and scoring system</td><td>Lesson quizzes, final scenario, analytics</td></tr>
+<tr><td>Sprint 5</td><td>Simulation lifecycle and partner integrations</td><td>Exercise plans, Campaign API, CPSQC Patrol, certification foundations</td></tr>
+<tr><td>Sprint 6</td><td>Reporting and analytics</td><td>Engagement metrics, trends, report builder</td></tr>
+<tr><td>Sprint 7</td><td>Integration and API development</td><td>SMS, SSO exploration, API docs, security reporting</td></tr>
+<tr><td>Sprint 8</td><td>UI/UX enhancements and optimization</td><td>Accessibility, performance, final QA</td></tr>
+</table>
+<br/>
+<h2>Ceremonies and Roles</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Role</th><th>Responsibility</th></tr>
+<tr><td>Product Owner</td><td>Prioritizes Product Backlog; accepts Increments</td></tr>
+<tr><td>Scrum Master / Project Lead</td><td>Facilitates ceremonies; removes blockers</td></tr>
+<tr><td>Development Team</td><td>Designs, builds, tests, and documents features</td></tr>
+<tr><td>Stakeholders (LGU)</td><td>Provide feedback during Sprint Reviews</td></tr>
+</table>
+<br/>
+<h2>Definition of Done</h2>
+<p>A task is considered Done when:</p>
+<ol>
+<li>Code is written and reviewed</li>
+<li>Unit / feature checks pass for the sprint scope</li>
+<li>Integration checks pass where partner APIs are involved</li>
+<li>Documentation and backlog status are updated</li>
+<li>Feature is verified on staging or production-like environment</li>
+<li>Product Owner approval is received in the Sprint Review</li>
+</ol>
+<div style="page-break-after:always;"></div>
+<h1>3.4 Scrum Artifacts</h1>
+<h2>Overview</h2>
+<p>Scrum Artifacts provide transparency and opportunities for inspection and adaptation in the development of the <strong>Disaster Preparedness Training and Simulation System</strong>. This chapter presents the Product Backlog, Sprint Backlog, and Increment as maintained by the development team.</p>
+<h2>Scrum Artifacts Used</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Artifact</th><th>Purpose in This Project</th></tr>
+<tr><td>&lt;strong&gt;Product Backlog&lt;/strong&gt;</td><td>Ordered list of all features, security controls, standards, integrations, and analytics work needed for the system</td></tr>
+<tr><td>&lt;strong&gt;Sprint Backlog&lt;/strong&gt;</td><td>Selected Product Backlog items plus detailed tasks for each sprint cycle</td></tr>
+<tr><td>&lt;strong&gt;Increment&lt;/strong&gt;</td><td>Working, usable product version produced at the end of each sprint that meets the Definition of Done</td></tr>
+</table>
+<br/>
+<h2>Product Backlog Structure</h2>
+<p>The Product Backlog is organized into the following sub-sections:</p>
+<ol>
+<li><strong>3.4.1</strong> Product Backlog (Functional User Stories)</li>
+<li><strong>3.4.2</strong> Product Backlog for EIS Information Security</li>
+<li><strong>3.4.3</strong> Product Backlog for EIS Standards (UI/UX)</li>
+<li><strong>3.4.4</strong> Product Backlog for EIS Integration</li>
+<li><strong>3.4.5</strong> Product Backlog for Analytics</li>
+</ol>
+<p>   - <strong>3.4.5.1</strong> Application System Analytics</p>
+<p>   - <strong>3.4.5.2</strong> EIS Analytics</p>
+<ol>
+<li><strong>3.4.6</strong> Sprint Backlog (User Stories)</li>
+<li><strong>3.4.7</strong> Increment</li>
+</ol>
+<h2>Ordering and Refinement</h2>
+<p>Product Backlog items are ordered by:</p>
+<ol>
+<li>Business value to LGU training operations</li>
+<li>Regulatory / information security criticality</li>
+<li>Technical dependency (foundation before advanced features)</li>
+<li>Partner integration readiness (Campaign Planning, CPSQC Patrol, and related systems)</li>
+</ol>
+<p>Backlog refinement is performed before each sprint planning session to clarify acceptance criteria, estimate effort, and update status (Completed / In Progress / Planned).</p>
+<h2>Status Legend</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Symbol</th><th>Meaning</th></tr>
+<tr><td>Completed</td><td>Implemented, tested, and available in the deployed system</td></tr>
+<tr><td>In Progress</td><td>Actively being developed in the current or recent sprint</td></tr>
+<tr><td>Planned</td><td>Accepted for future sprints; not yet started</td></tr>
+</table>
+<br/>
+<div style="page-break-after:always;"></div>
+<h1>3.4.1 Product Backlog (User Stories)</h1>
+<h2>Overview</h2>
+<p>The Product Backlog contains all user stories organized by functional modules. Each story represents a feature or functionality that delivers value to end users.</p>
+<h2>Table 3: Product Backlog</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>User No.</th><th>Story</th><th>Features/Task</th><th>User Stories</th><th>Priority</th><th>Status</th></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+<br/>
+<h2>Module Breakdown</h2>
+<h3>MODULE 1: Authentication &amp; User Management</h3>
+<ul>
+<li><strong>F1</strong>: User Registration System</li>
+</ul>
+<p>  - Participant self-registration</p>
+<p>  - Admin account creation</p>
+<p>  - Email verification</p>
+<p>  - Status: ✅ Completed</p>
+<ul>
+<li><strong>F2</strong>: Multi-Role Authentication</li>
+</ul>
+<p>  - Participant login</p>
+<p>  - Admin login (OTP/USB Key)</p>
+<p>  - Super Admin access</p>
+<p>  - Role-based access control</p>
+<p>  - Status: ✅ Completed</p>
+<ul>
+<li><strong>F10</strong>: User Profile Management</li>
+</ul>
+<p>  - Profile viewing and editing</p>
+<p>  - Security settings</p>
+<p>  - USB key management</p>
+<p>  - Status: ✅ Completed</p>
+<h3>MODULE 2: Training &amp; Content Management</h3>
+<ul>
+<li><strong>F11</strong>: Training Module Management</li>
+</ul>
+<p>  - Create, edit, delete modules</p>
+<p>  - Lesson content management</p>
+<p>  - Resource attachments</p>
+<p>  - Status: ✅ Completed</p>
+<ul>
+<li><strong>F20</strong>: Scenario-Based Exercise Design</li>
+</ul>
+<p>  - Scenario creation</p>
+<p>  - AI-powered scenario generation</p>
+<p>  - Inject management</p>
+<p>  - Expected actions tracking</p>
+<p>  - Status: ✅ Completed</p>
+<h3>MODULE 3: Event Management</h3>
+<ul>
+<li><strong>F21</strong>: Simulation Event Planning</li>
+</ul>
+<p>  - Event creation and scheduling</p>
+<p>  - Event registration</p>
+<p>  - Event status management</p>
+<p>  - Status: ✅ Completed</p>
+<ul>
+<li><strong>F30</strong>: Participant Registration &amp; Attendance</li>
+</ul>
+<p>  - Event registration</p>
+<p>  - Check-in/check-out system</p>
+<p>  - Attendance tracking</p>
+<p>  - Status: ✅ Completed</p>
+<h3>MODULE 4: Evaluation &amp; Certification</h3>
+<ul>
+<li><strong>F31</strong>: Evaluation &amp; Scoring System</li>
+</ul>
+<p>  - Evaluation criteria setup</p>
+<p>  - Participant scoring</p>
+<p>  - Automated pass/fail determination</p>
+<p>  - Certification eligibility tracking</p>
+<p>  - Status: ✅ Completed</p>
+<ul>
+<li><strong>F40</strong>: Certification Issuance</li>
+</ul>
+<p>  - Certificate generation</p>
+<p>  - Certificate tracking</p>
+<p>  - Certificate verification</p>
+<p>  - Status: 🚧 In Progress</p>
+<h2>Priority Levels</h2>
+<ul>
+<li><strong>P1</strong>: Critical - Must have for MVP</li>
+<li><strong>P2</strong>: High - Important for core functionality</li>
+<li><strong>P3</strong>: Medium - Enhances user experience</li>
+<li><strong>P4</strong>: Low - Nice to have features</li>
+</ul>
+<h2>Status Definitions</h2>
+<ul>
+<li><strong>Not Started</strong>: Story not yet begun</li>
+<li><strong>In Progress</strong>: Active development</li>
+<li><strong>Testing</strong>: Under QA review</li>
+<li><strong>Done</strong>: Completed and deployed</li>
+<li><strong>Blocked</strong>: Waiting on dependencies</li>
+</ul>
+<div style="page-break-after:always;"></div>
+<h1>3.4.2 Product Backlog for EIS Information Security</h1>
+<h2>Overview</h2>
+<p>This backlog focuses on Enterprise Information Security (EIS) requirements to ensure the system meets security standards and compliance requirements.</p>
+<h2>Table 4: Product Backlog for EIS Information Security</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>EIS No.</th><th>EIS Stories</th><th>User</th><th>EIS Priority</th><th>IS</th><th>Revision Priority</th><th>Status</th></tr>
+<tr><td>IS-1</td><td>Implement secure authentication mechanisms (OTP, USB Key)</td><td>System Admin, LGU Admin</td><td>1</td><td>Authentication</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-2</td><td>Role-based access control (RBAC) implementation</td><td>All Users</td><td>1</td><td>Authorization</td><td>2</td><td>✅ Completed</td></tr>
+<tr><td>IS-3</td><td>Audit logging for all system actions</td><td>System Admin</td><td>1</td><td>Audit Trail</td><td>2</td><td>✅ Completed</td></tr>
+<tr><td>IS-4</td><td>Session management and timeout</td><td>All Users</td><td>1</td><td>Session Security</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-5</td><td>Password policy enforcement</td><td>All Users</td><td>1</td><td>Authentication</td><td>2</td><td>🚧 In Progress</td></tr>
+<tr><td>IS-6</td><td>Data encryption at rest</td><td>System Admin</td><td>2</td><td>Data Protection</td><td>3</td><td>📋 Planned</td></tr>
+<tr><td>IS-7</td><td>Data encryption in transit (HTTPS)</td><td>All Users</td><td>1</td><td>Data Protection</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-8</td><td>SQL injection prevention</td><td>Developers</td><td>1</td><td>Application Security</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-9</td><td>XSS (Cross-Site Scripting) protection</td><td>Developers</td><td>1</td><td>Application Security</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-10</td><td>CSRF (Cross-Site Request Forgery) protection</td><td>Developers</td><td>1</td><td>Application Security</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-11</td><td>Rate limiting and brute force protection</td><td>All Users</td><td>1</td><td>Authentication</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-12</td><td>Secure file upload validation</td><td>System Admin, LGU Admin</td><td>2</td><td>Application Security</td><td>2</td><td>✅ Completed</td></tr>
+<tr><td>IS-13</td><td>Input validation and sanitization</td><td>Developers</td><td>1</td><td>Application Security</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>IS-14</td><td>Security headers implementation</td><td>System Admin</td><td>2</td><td>Application Security</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>IS-15</td><td>Regular security audits and penetration testing</td><td>System Admin</td><td>3</td><td>Security Operations</td><td>3</td><td>📋 Planned</td></tr>
+</table>
+<br/>
+<h2>EIS Priority Levels</h2>
+<ul>
+<li><strong>1</strong>: Critical security requirement</li>
+<li><strong>2</strong>: Important security enhancement</li>
+<li><strong>3</strong>: Recommended security practice</li>
+</ul>
+<h2>Revision Priority</h2>
+<ul>
+<li><strong>1</strong>: High priority for revision/update</li>
+<li><strong>2</strong>: Medium priority for revision/update</li>
+<li><strong>3</strong>: Low priority for revision/update</li>
+</ul>
+<h2>Implementation Status</h2>
+<h3>Completed Security Features</h3>
+<ol>
+<li><strong>Multi-Factor Authentication</strong></li>
+</ol>
+<p>   - OTP via email</p>
+<p>   - USB key authentication</p>
+<p>   - Login attempt tracking and lockout</p>
+<ol>
+<li><strong>Access Control</strong></li>
+</ol>
+<p>   - Role-based permissions (Super Admin, LGU Admin, Trainer, Staff, Participant)</p>
+<p>   - Permission-based feature access</p>
+<p>   - User management restrictions</p>
+<ol>
+<li><strong>Audit Trail</strong></li>
+</ol>
+<p>   - Comprehensive logging of all user actions</p>
+<p>   - Login attempt logging</p>
+<p>   - Security event tracking</p>
+<p>   - Exportable audit logs</p>
+<ol>
+<li><strong>Session Security</strong></li>
+</ol>
+<p>   - Configurable session timeout</p>
+<p>   - Activity-based session management</p>
+<p>   - Secure session storage</p>
+<ol>
+<li><strong>Application Security</strong></li>
+</ol>
+<p>   - Laravel&#039;s built-in CSRF protection</p>
+<p>   - Parameterized queries (SQL injection prevention)</p>
+<p>   - XSS protection via Blade templating</p>
+<p>   - File upload validation</p>
+<h3>In Progress</h3>
+<ul>
+<li>Password policy enforcement (minimum length, complexity requirements)</li>
+</ul>
+<h3>Planned</h3>
+<ul>
+<li>Data encryption at rest</li>
+<li>Security headers (CSP, HSTS, etc.)</li>
+<li>Regular security audits</li>
+</ul>
+<div style="page-break-after:always;"></div>
+<h1>3.4.3 Product Backlog for EIS Standards</h1>
+<h2>3.4.3.1 UI/UX (Icons, Color, etc...)</h2>
+<h2>Overview</h2>
+<p>This backlog defines UI/UX standards and design system requirements to ensure consistency, accessibility, and professional appearance across the application.</p>
+<h2>Table 5: Product Backlog for EIS Standards</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>EIS Standard No.</th><th>EIS Standard User Stories</th><th>EIS Standard Priority</th><th>Revision Priority</th><th>Status</th></tr>
+<tr><td>UI-1</td><td>Implement consistent color palette (Primary: Teal, Secondary: Slate)</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-2</td><td>Establish icon system using Lucide React icons</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-3</td><td>Create responsive design standards (Mobile-first approach)</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-4</td><td>Implement consistent typography system</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-5</td><td>Design reusable component library</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-6</td><td>Create consistent spacing and layout system</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-7</td><td>Implement loading states and skeleton screens</td><td>2</td><td>2</td><td>✅ Completed</td></tr>
+<tr><td>UI-8</td><td>Design error and success message components</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-9</td><td>Create consistent form input styling</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-10</td><td>Implement consistent button styles and states</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-11</td><td>Design modal and dialog components</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-12</td><td>Create consistent table and data display components</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>UI-13</td><td>Implement dark mode support</td><td>3</td><td>3</td><td>📋 Planned</td></tr>
+<tr><td>UI-14</td><td>Accessibility compliance (WCAG 2.1 AA)</td><td>2</td><td>2</td><td>🚧 In Progress</td></tr>
+<tr><td>UI-15</td><td>Create design system documentation</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+</table>
+<br/>
+<h2>Design System Standards</h2>
+<h3>Color Palette</h3>
+<p><strong>Primary Colors:</strong></p>
+<ul>
+<li><strong>Teal-600</strong>: `#0d9488` - Primary actions, links, highlights</li>
+<li><strong>Teal-700</strong>: `#0f766e` - Hover states</li>
+<li><strong>Teal-500</strong>: `#14b8a6` - Focus states</li>
+</ul>
+<p><strong>Secondary Colors:</strong></p>
+<ul>
+<li><strong>Slate-900</strong>: `#0f172a` - Text, headers</li>
+<li><strong>Slate-600</strong>: `#475569` - Secondary text</li>
+<li><strong>Slate-100</strong>: `#f1f5f9` - Backgrounds</li>
+</ul>
+<p><strong>Status Colors:</strong></p>
+<ul>
+<li><strong>Success</strong>: Emerald-600 `#059669`</li>
+<li><strong>Warning</strong>: Amber-600 `#d97706`</li>
+<li><strong>Error</strong>: Rose-600 `#dc2626`</li>
+<li><strong>Info</strong>: Blue-600 `#2563eb`</li>
+</ul>
+<h3>Typography</h3>
+<ul>
+<li><strong>Font Family</strong>: Instrument Sans (Primary), System fonts (Fallback)</li>
+<li><strong>Headings</strong>:</li>
+</ul>
+<p>  - H1: <code>text-2xl font-bold</code></p>
+<p>  - H2: <code>text-xl font-semibold</code></p>
+<p>  - H3: <code>text-lg font-semibold</code></p>
+<ul>
+<li><strong>Body</strong>: `text-sm` or `text-base`</li>
+<li><strong>Small Text</strong>: `text-xs`</li>
+</ul>
+<h3>Spacing System</h3>
+<p>Based on Tailwind CSS spacing scale:</p>
+<ul>
+<li><strong>xs</strong>: `0.5rem` (8px)</li>
+<li><strong>sm</strong>: `0.75rem` (12px)</li>
+<li><strong>md</strong>: `1rem` (16px)</li>
+<li><strong>lg</strong>: `1.5rem` (24px)</li>
+<li><strong>xl</strong>: `2rem` (32px)</li>
+</ul>
+<h3>Icon System</h3>
+<ul>
+<li><strong>Library</strong>: Lucide React</li>
+<li><strong>Size Standards</strong>:</li>
+</ul>
+<p>  - Small: <code>w-4 h-4</code> (16px)</p>
+<p>  - Medium: <code>w-5 h-5</code> (20px)</p>
+<p>  - Large: <code>w-6 h-6</code> (24px)</p>
+<h3>Component Standards</h3>
+<ol>
+<li><strong>Buttons</strong></li>
+</ol>
+<p>   - Primary: <code>bg-teal-600 text-white hover:bg-teal-700</code></p>
+<p>   - Secondary: <code>bg-slate-200 text-slate-900 hover:bg-slate-300</code></p>
+<p>   - Danger: <code>bg-rose-600 text-white hover:bg-rose-700</code></p>
+<ol>
+<li><strong>Forms</strong></li>
+</ol>
+<p>   - Input: <code>border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500</code></p>
+<p>   - Label: <code>text-sm font-medium text-slate-700</code></p>
+<ol>
+<li><strong>Cards</strong></li>
+</ol>
+<p>   - Container: <code>bg-white rounded-lg border border-slate-200 shadow-sm</code></p>
+<p>   - Padding: <code>p-5</code> or <code>p-6</code></p>
+<ol>
+<li><strong>Tables</strong></li>
+</ol>
+<p>   - Header: <code>bg-slate-50 text-slate-900 font-semibold</code></p>
+<p>   - Row: <code>hover:bg-slate-50 transition-colors</code></p>
+<h2>Implementation Status</h2>
+<h3>✅ Completed</h3>
+<ul>
+<li>Consistent color palette implementation</li>
+<li>Icon system using Lucide React</li>
+<li>Responsive design (mobile-first)</li>
+<li>Typography system</li>
+<li>Reusable component library</li>
+<li>Spacing and layout system</li>
+<li>Loading states</li>
+<li>Error/success messages</li>
+<li>Form styling</li>
+<li>Button components</li>
+<li>Modal/dialog components</li>
+<li>Table components</li>
+</ul>
+<h3>🚧 In Progress</h3>
+<ul>
+<li>Accessibility compliance (WCAG 2.1 AA)</li>
+</ul>
+<h3>📋 Planned</h3>
+<ul>
+<li>Dark mode support</li>
+<li>Design system documentation</li>
+</ul>
+<div style="page-break-after:always;"></div>
+<h1>3.4.4 Product Backlog for EIS Integration</h1>
+<h2>Overview</h2>
+<p>This backlog focuses on system integrations, with primary emphasis on <strong>Certification Tracking Integration</strong>. The system needs to integrate with external systems and APIs to enhance functionality and data exchange.</p>
+<h2>Table 6: Product Backlog for EIS Integration</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>EIS Integration No.</th><th>EIS Integration User Stories</th><th>EIS Integration Priority</th><th>Revision Priority</th><th>Status</th></tr>
+<tr><td>INT-1</td><td>Certification Tracking System Integration</td><td>1</td><td>1</td><td>🚧 In Progress</td></tr>
+<tr><td>INT-2</td><td>External Certification Authority API Integration</td><td>1</td><td>1</td><td>📋 Planned</td></tr>
+<tr><td>INT-3</td><td>Certificate Verification Service Integration</td><td>1</td><td>1</td><td>📋 Planned</td></tr>
+<tr><td>INT-4</td><td>Email Service Integration (SMTP/SendGrid)</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>INT-5</td><td>SMS Notification Integration (Twilio/Vonage)</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>INT-6</td><td>File Storage Integration (AWS S3/Local)</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>INT-7</td><td>Payment Gateway Integration (for future use)</td><td>3</td><td>3</td><td>📋 Planned</td></tr>
+<tr><td>INT-8</td><td>Reporting System Integration</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>INT-9</td><td>Analytics Platform Integration</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>INT-10</td><td>Single Sign-On (SSO) Integration</td><td>3</td><td>3</td><td>📋 Planned</td></tr>
+</table>
+<br/>
+<h2>INT-1: Certification Tracking System Integration</h2>
+<h3>Description</h3>
+<p>Implement a comprehensive certification tracking system that integrates with the existing evaluation and attendance system to automatically track, issue, and manage participant certifications.</p>
+<h3>User Stories</h3>
+<p><strong>As a System Administrator,</strong></p>
+<ul>
+<li>I want to view all issued certifications in a centralized dashboard</li>
+<li>I want to track certification expiration dates</li>
+<li>I want to generate certification reports</li>
+<li>I want to revoke or invalidate certifications when needed</li>
+</ul>
+<p><strong>As an LGU Admin,</strong></p>
+<ul>
+<li>I want to see which participants are eligible for certification</li>
+<li>I want to issue certificates to eligible participants</li>
+<li>I want to track certification status for my organization&#039;s participants</li>
+<li>I want to export certification data</li>
+</ul>
+<p><strong>As a Participant,</strong></p>
+<ul>
+<li>I want to view my earned certifications</li>
+<li>I want to download my certificates</li>
+<li>I want to verify my certification status</li>
+<li>I want to see my certification history</li>
+</ul>
+<h3>Features/Tasks</h3>
+<ol>
+<li><strong>Certification Database Schema</strong></li>
+</ol>
+<p>   - Create <code>certifications</code> table</p>
+<p>   - Link to <code>participant_evaluations</code> table</p>
+<p>   - Track certification metadata (issue date, expiry date, certificate number)</p>
+<p>   - Status: ✅ Completed (via <code>is_eligible_for_certification</code> field)</p>
+<ol>
+<li><strong>Certification Eligibility Engine</strong></li>
+</ol>
+<p>   - Automatically determine eligibility based on:</p>
+<p>     - Evaluation score (pass threshold)</p>
+<p>     - Attendance status (completed)</p>
+<p>     - Event completion</p>
+<p>   - Status: ✅ Completed</p>
+<ol>
+<li><strong>Certificate Generation</strong></li>
+</ol>
+<p>   - PDF certificate template</p>
+<p>   - Dynamic content (name, date, event, score)</p>
+<p>   - Digital signature support</p>
+<p>   - Status: 🚧 In Progress</p>
+<ol>
+<li><strong>Certification Dashboard</strong></li>
+</ol>
+<p>   - View all certifications</p>
+<p>   - Filter by participant, event, date range</p>
+<p>   - Search functionality</p>
+<p>   - Status: 📋 Planned</p>
+<ol>
+<li><strong>Certification API Endpoints</strong></li>
+</ol>
+<p>   - GET <code>/api/certifications</code> - List certifications</p>
+<p>   - GET <code>/api/certifications/{id}</code> - Get specific certification</p>
+<p>   - POST <code>/api/certifications/verify</code> - Verify certificate</p>
+<p>   - Status: 📋 Planned</p>
+<ol>
+<li><strong>Certificate Verification System</strong></li>
+</ol>
+<p>   - Public verification page</p>
+<p>   - Certificate number lookup</p>
+<p>   - QR code generation for certificates</p>
+<p>   - Status: 📋 Planned</p>
+<ol>
+<li><strong>Certification Export</strong></li>
+</ol>
+<p>   - CSV export</p>
+<p>   - PDF report generation</p>
+<p>   - Bulk certificate download</p>
+<p>   - Status: 📋 Planned</p>
+<h3>Technical Requirements</h3>
+<ul>
+<li><strong>Database</strong>: Extend `participant_evaluations` table or create new `certifications` table</li>
+<li><strong>Storage</strong>: Store certificate PDFs in `storage/app/certificates/`</li>
+<li><strong>API</strong>: RESTful API for certification management</li>
+<li><strong>Security</strong>: Role-based access control for certification operations</li>
+</ul>
+<h3>Integration Points</h3>
+<ol>
+<li><strong>Evaluation System</strong></li>
+</ol>
+<p>   - Read evaluation results</p>
+<p>   - Check pass/fail status</p>
+<p>   - Verify attendance completion</p>
+<ol>
+<li><strong>User Management</strong></li>
+</ol>
+<p>   - Link certifications to users</p>
+<p>   - Track user certification history</p>
+<ol>
+<li><strong>Event Management</strong></li>
+</ol>
+<p>   - Associate certifications with simulation events</p>
+<p>   - Track event-specific certifications</p>
+<h3>Priority: 1 (Critical)</h3>
+<h3>Status: 🚧 In Progress</h3>
+<hr/>
+<h2>INT-2: External Certification Authority API Integration</h2>
+<h3>Description</h3>
+<p>Integrate with external certification authorities or credentialing bodies to validate and register certifications.</p>
+<h3>Features</h3>
+<ul>
+<li>API integration with certification bodies</li>
+<li>Automated certification registration</li>
+<li>External validation</li>
+<li>Status: 📋 Planned</li>
+</ul>
+<hr/>
+<h2>INT-3: Certificate Verification Service Integration</h2>
+<h3>Description</h3>
+<p>Create a public-facing certificate verification service that allows third parties to verify certificate authenticity.</p>
+<h3>Features</h3>
+<ul>
+<li>Public verification endpoint</li>
+<li>Certificate number lookup</li>
+<li>QR code scanning</li>
+<li>Verification API</li>
+<li>Status: 📋 Planned</li>
+</ul>
+<hr/>
+<h2>Other Integration Items</h2>
+<h3>Completed Integrations</h3>
+<ul>
+<li><strong>INT-4</strong>: Email Service (Laravel Mail with SMTP support)</li>
+<li><strong>INT-6</strong>: File Storage (Laravel Filesystem with local/S3 support)</li>
+</ul>
+<h3>Planned Integrations</h3>
+<ul>
+<li><strong>INT-5</strong>: SMS Notifications (Twilio/Vonage)</li>
+<li><strong>INT-7</strong>: Payment Gateway (for future monetization)</li>
+<li><strong>INT-8</strong>: Reporting System</li>
+<li><strong>INT-9</strong>: Analytics Platform</li>
+<li><strong>INT-10</strong>: SSO Integration</li>
+</ul>
+<h2>Integration Priority Matrix</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Priority</th><th>Description</th><th>Timeline</th></tr>
+<tr><td>1</td><td>Critical for core functionality</td><td>Sprint 5-6</td></tr>
+<tr><td>2</td><td>Important for enhanced features</td><td>Sprint 7-8</td></tr>
+<tr><td>3</td><td>Nice to have, future enhancement</td><td>Post-MVP</td></tr>
+</table>
+<br/>
+<hr/>
+<h2>Additional Integration Items (Implemented in Project)</h2>
+<p>The following partner integrations were delivered as part of the EIS Integration backlog and Sprint 5 Increment:</p>
+<h3>INT-11: Public Safety Campaign Management System (Training Intelligence Outbound)</h3>
+<ul>
+<li><strong>Priority</strong>: 1</li>
+<li><strong>Status</strong>: Completed</li>
+<li><strong>Description</strong>: Push Training Intelligence campaign requests from Disaster Training to the Campaign System via JWT-authenticated API (`POST /api/v1/campaigns`).</li>
+<li><strong>Notes</strong>: Location and geographic fields are mapped to short Quezon City barangay values to match Campaign VARCHAR limits; staff/zones sent as arrays.</li>
+</ul>
+<h3>INT-12: Campaign Planning Partner API (Inbound Approve/Reject)</h3>
+<ul>
+<li><strong>Priority</strong>: 1</li>
+<li><strong>Status</strong>: Completed</li>
+<li><strong>Description</strong>: Partner API under `/api/integrations/campaign-planning` (and legacy `/api/integrations/group6`) for listing and approving/rejecting campaign requests using shared API key authentication.</li>
+</ul>
+<h3>INT-13: CPSQC Patrol Marshal Integration</h3>
+<ul>
+<li><strong>Priority</strong>: 1</li>
+<li><strong>Status</strong>: Completed</li>
+<li><strong>Description</strong>: Request patrols for simulation events, refresh assigned marshals, notify lifecycle (start/complete simulation), and prevent selection/request of unavailable officers (On Patrol / On Reporting / Unavailable).</li>
+</ul>
+<h3>INT-14: Centralized Login / Portal Session Alignment</h3>
+<ul>
+<li><strong>Priority</strong>: 2</li>
+<li><strong>Status</strong>: Completed</li>
+<li><strong>Description</strong>: Separate admin and participant portal sessions with secure cookie handling for multi-subdomain LGU deployments.</li>
+</ul>
+<div style="page-break-after:always;"></div>
+<h1>3.4.5 Product Backlog for Analytics</h1>
+<h2>Overview</h2>
+<p>This backlog covers analytics and reporting features to provide insights into system usage, participant performance, and training effectiveness.</p>
+<h2>3.4.5.1 Application System Analytics</h2>
+<h2>Table 7: Product Backlog for Analytics</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>EIS Integration No.</th><th>EIS Integration User Stories</th><th>EIS Integration Priority</th><th>Revision Priority</th><th>Status</th></tr>
+<tr><td>ASA-1</td><td>User Activity Analytics Dashboard</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>ASA-2</td><td>Training Module Completion Analytics</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>ASA-3</td><td>Event Participation Analytics</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>ASA-4</td><td>Evaluation Performance Analytics</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>ASA-5</td><td>Certification Issuance Analytics</td><td>1</td><td>1</td><td>🚧 In Progress</td></tr>
+<tr><td>ASA-6</td><td>User Engagement Metrics</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>ASA-7</td><td>System Usage Statistics</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>ASA-8</td><td>Performance Trend Analysis</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>ASA-9</td><td>Custom Report Builder</td><td>3</td><td>3</td><td>📋 Planned</td></tr>
+<tr><td>ASA-10</td><td>Real-time Dashboard Updates</td><td>2</td><td>2</td><td>✅ Completed</td></tr>
+</table>
+<br/>
+<h2>3.4.5.2 EIS Analytics</h2>
+<h2>Table 8: EIS Analytics</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>EIS Analytics No.</th><th>EIS Analytics Stories</th><th>EIS Analytics Priority</th><th>Revision Priority</th><th>Status</th></tr>
+<tr><td>EA-1</td><td>Security Event Analytics</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>EA-2</td><td>Login Attempt Analytics</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>EA-3</td><td>User Access Pattern Analysis</td><td>2</td><td>2</td><td>✅ Completed</td></tr>
+<tr><td>EA-4</td><td>Audit Log Analytics</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>EA-5</td><td>Failed Authentication Tracking</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>EA-6</td><td>Session Duration Analytics</td><td>2</td><td>2</td><td>✅ Completed</td></tr>
+<tr><td>EA-7</td><td>User Activity Monitoring</td><td>1</td><td>1</td><td>✅ Completed</td></tr>
+<tr><td>EA-8</td><td>Security Incident Reporting</td><td>2</td><td>2</td><td>📋 Planned</td></tr>
+<tr><td>EA-9</td><td>Compliance Reporting</td><td>3</td><td>3</td><td>📋 Planned</td></tr>
+<tr><td>EA-10</td><td>Risk Assessment Analytics</td><td>3</td><td>3</td><td>📋 Planned</td></tr>
+</table>
+<br/>
+<h2>Application System Analytics Details</h2>
+<h3>ASA-1: User Activity Analytics Dashboard</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Real-time user monitoring</li>
+<li>Online/offline status tracking</li>
+<li>Inactive time tracking</li>
+<li>User activity logs</li>
+<li>Role-based activity views</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>User Monitoring page (`/admin/user-monitoring`)</li>
+<li>Real-time status updates (30-second refresh)</li>
+<li>Activity tracking via `last_activity` column</li>
+</ul>
+<hr/>
+<h3>ASA-2: Training Module Completion Analytics</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Module completion rates</li>
+<li>Participant progress tracking</li>
+<li>Time spent per module</li>
+<li>Completion trends</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Training module completion tracking</li>
+<li>Progress indicators</li>
+<li>Completion statistics</li>
+</ul>
+<hr/>
+<h3>ASA-3: Event Participation Analytics</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Event registration statistics</li>
+<li>Attendance rates</li>
+<li>Participation trends</li>
+<li>Event completion rates</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Event registration tracking</li>
+<li>Attendance analytics</li>
+<li>Participation reports</li>
+</ul>
+<hr/>
+<h3>ASA-4: Evaluation Performance Analytics</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Average scores per event</li>
+<li>Pass/fail rates</li>
+<li>Score distribution</li>
+<li>Performance trends</li>
+<li>Criterion-level analytics</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Evaluation summary page</li>
+<li>Score analytics</li>
+<li>Performance metrics</li>
+<li>Export functionality</li>
+</ul>
+<hr/>
+<h3>ASA-5: Certification Issuance Analytics</h3>
+<p><strong>Status</strong>: 🚧 In Progress</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Certification issuance rates</li>
+<li>Certification by event</li>
+<li>Certification by participant</li>
+<li>Certification validity tracking</li>
+<li>Certification expiration alerts</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Certification tracking system</li>
+<li>Analytics dashboard</li>
+<li>Reporting features</li>
+</ul>
+<hr/>
+<h3>ASA-6: User Engagement Metrics</h3>
+<p><strong>Status</strong>: 📋 Planned</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Daily active users (DAU)</li>
+<li>Monthly active users (MAU)</li>
+<li>Session duration</li>
+<li>Feature usage statistics</li>
+<li>Engagement trends</li>
+</ul>
+<hr/>
+<h3>ASA-7: System Usage Statistics</h3>
+<p><strong>Status</strong>: 📋 Planned</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>System load metrics</li>
+<li>API usage statistics</li>
+<li>Storage usage</li>
+<li>Database performance</li>
+<li>Response time analytics</li>
+</ul>
+<hr/>
+<h3>ASA-8: Performance Trend Analysis</h3>
+<p><strong>Status</strong>: 📋 Planned</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Historical performance data</li>
+<li>Trend visualization</li>
+<li>Comparative analysis</li>
+<li>Predictive analytics</li>
+</ul>
+<hr/>
+<h3>ASA-9: Custom Report Builder</h3>
+<p><strong>Status</strong>: 📋 Planned</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Drag-and-drop report builder</li>
+<li>Custom data fields</li>
+<li>Scheduled reports</li>
+<li>Report templates</li>
+<li>Export options</li>
+</ul>
+<hr/>
+<h3>ASA-10: Real-time Dashboard Updates</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Live data updates</li>
+<li>Auto-refresh functionality</li>
+<li>Real-time notifications</li>
+<li>WebSocket integration (future)</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Polling-based updates</li>
+<li>Real-time status indicators</li>
+<li>Auto-refresh components</li>
+</ul>
+<hr/>
+<h2>EIS Analytics Details</h2>
+<h3>EA-1: Security Event Analytics</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Security event tracking</li>
+<li>Event categorization</li>
+<li>Severity levels</li>
+<li>Alert generation</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Audit log system</li>
+<li>Security event logging</li>
+<li>Event filtering and search</li>
+</ul>
+<hr/>
+<h3>EA-2: Login Attempt Analytics</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Successful login tracking</li>
+<li>Failed login attempts</li>
+<li>Login patterns</li>
+<li>Suspicious activity detection</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Login attempt logging</li>
+<li>Lockout tracking</li>
+<li>IP address tracking</li>
+</ul>
+<hr/>
+<h3>EA-3: User Access Pattern Analysis</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Access time patterns</li>
+<li>Feature usage patterns</li>
+<li>Role-based access analytics</li>
+<li>Access frequency</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>User activity monitoring</li>
+<li>Access log analysis</li>
+<li>Pattern recognition</li>
+</ul>
+<hr/>
+<h3>EA-4: Audit Log Analytics</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Comprehensive audit trail</li>
+<li>Action tracking</li>
+<li>User activity history</li>
+<li>Exportable logs</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Audit log system</li>
+<li>Log filtering</li>
+<li>Export functionality</li>
+</ul>
+<hr/>
+<h3>EA-5: Failed Authentication Tracking</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Failed login tracking</li>
+<li>Brute force detection</li>
+<li>Account lockout monitoring</li>
+<li>Security alerts</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Login attempt service</li>
+<li>Lockout mechanism</li>
+<li>Security notifications</li>
+</ul>
+<hr/>
+<h3>EA-6: Session Duration Analytics</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Average session duration</li>
+<li>Session timeout tracking</li>
+<li>Inactivity monitoring</li>
+<li>Session patterns</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>Session management</li>
+<li>Activity tracking</li>
+<li>Timeout configuration</li>
+</ul>
+<hr/>
+<h3>EA-7: User Activity Monitoring</h3>
+<p><strong>Status</strong>: ✅ Completed</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Real-time user status</li>
+<li>Activity tracking</li>
+<li>Inactive time calculation</li>
+<li>Activity history</li>
+</ul>
+<p><strong>Implementation</strong>:</p>
+<ul>
+<li>User monitoring page</li>
+<li>Activity tracking system</li>
+<li>Status indicators</li>
+</ul>
+<hr/>
+<h3>EA-8: Security Incident Reporting</h3>
+<p><strong>Status</strong>: 📋 Planned</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Incident categorization</li>
+<li>Incident severity levels</li>
+<li>Incident response tracking</li>
+<li>Incident reports</li>
+</ul>
+<hr/>
+<h3>EA-9: Compliance Reporting</h3>
+<p><strong>Status</strong>: 📋 Planned</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Compliance status tracking</li>
+<li>Compliance reports</li>
+<li>Regulatory requirements</li>
+<li>Audit trail for compliance</li>
+</ul>
+<hr/>
+<h3>EA-10: Risk Assessment Analytics</h3>
+<p><strong>Status</strong>: 📋 Planned</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Risk scoring</li>
+<li>Risk categorization</li>
+<li>Risk trends</li>
+<li>Risk mitigation tracking</li>
+</ul>
+<hr/>
+<h2>Analytics Priority Matrix</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Priority</th><th>Description</th><th>Implementation Status</th></tr>
+<tr><td>1</td><td>Critical analytics for operations</td><td>Mostly Completed</td></tr>
+<tr><td>2</td><td>Important for insights</td><td>Partially Completed</td></tr>
+<tr><td>3</td><td>Enhanced analytics</td><td>Planned</td></tr>
+</table>
+<br/>
+<h2>Analytics Tools &amp; Technologies</h2>
+<ul>
+<li><strong>Backend</strong>: Laravel Eloquent queries, aggregations</li>
+<li><strong>Frontend</strong>: React components, charts (future: Chart.js/Recharts)</li>
+<li><strong>Storage</strong>: Database tables for analytics data</li>
+<li><strong>Real-time</strong>: Polling mechanism (future: WebSockets)</li>
+</ul>
+<div style="page-break-after:always;"></div>
+<h1>3.4.6 Sprint Backlog (User Stories)</h1>
+<h2>Overview</h2>
+<p>The Sprint Backlog breaks down Product Backlog items into specific tasks that can be completed within a sprint. Each task is assigned to team members with clear timelines and responsibilities.</p>
+<h2>Table 9: Sprint Backlog (User Stories)</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+<br/>
+<h2>SPRINT 1: Foundation &amp; Authentication</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S1_1</td><td>IS-1</td><td>Implement secure authentication mechanisms</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;DOCUMENTATION</td><td>Week 1-2</td><td>Backend Developer, Frontend Developer</td></tr>
+<tr><td>S1_2</td><td>IS-2</td><td>Role-based access control implementation</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 1-2</td><td>Backend Developer, Security Specialist</td></tr>
+<tr><td>S1_3</td><td>F1</td><td>User registration system</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 1-2</td><td>Full-stack Developer</td></tr>
+<tr><td>S1_4</td><td>F2</td><td>Multi-role authentication</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 1-2</td><td>Backend Developer</td></tr>
+<tr><td>S1_5</td><td>IS-4</td><td>Session management and timeout</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 2</td><td>Backend Developer</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 1 Goals:</strong></p>
+<ul>
+<li>✅ Secure authentication system</li>
+<li>✅ User registration and login</li>
+<li>✅ Role-based access control</li>
+<li>✅ Session management</li>
+</ul>
+<p><strong>Sprint 1 Status</strong>: ✅ Completed</p>
+<hr/>
+<h2>SPRINT 2: Core Modules &amp; Content Management</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S2_1</td><td>IS-3</td><td>Audit logging for all system actions</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;DOCUMENTATION</td><td>Week 3-4</td><td>Backend Developer</td></tr>
+<tr><td>S2_2</td><td>F11</td><td>Training module management</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 3-4</td><td>Full-stack Developer</td></tr>
+<tr><td>S2_3</td><td>F20</td><td>Scenario-based exercise design</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 3-4</td><td>Full-stack Developer, AI Integration Specialist</td></tr>
+<tr><td>S2_4</td><td>UI-1 to UI-6</td><td>UI/UX standards implementation</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 3-4</td><td>Frontend Developer, UI/UX Designer</td></tr>
+<tr><td>S2_5</td><td>F21</td><td>Simulation event planning</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 4</td><td>Full-stack Developer</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 2 Goals:</strong></p>
+<ul>
+<li>✅ Training module system</li>
+<li>✅ Scenario management</li>
+<li>✅ Event planning</li>
+<li>✅ UI/UX standards</li>
+</ul>
+<p><strong>Sprint 2 Status</strong>: ✅ Completed</p>
+<hr/>
+<h2>SPRINT 3: Participant Management &amp; Attendance</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S3_1</td><td>F30</td><td>Participant registration &amp;amp; attendance</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 5-6</td><td>Full-stack Developer</td></tr>
+<tr><td>S3_2</td><td>ASA-1</td><td>User activity analytics</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 5-6</td><td>Backend Developer, Frontend Developer</td></tr>
+<tr><td>S3_3</td><td>EA-7</td><td>User activity monitoring</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 5-6</td><td>Backend Developer</td></tr>
+<tr><td>S3_4</td><td>UI-7 to UI-12</td><td>Additional UI components</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 6</td><td>Frontend Developer</td></tr>
+<tr><td>S3_5</td><td>INT-6</td><td>File storage integration</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 6</td><td>Backend Developer</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 3 Goals:</strong></p>
+<ul>
+<li>✅ Participant management</li>
+<li>✅ Attendance tracking</li>
+<li>✅ User monitoring</li>
+<li>✅ File storage</li>
+</ul>
+<p><strong>Sprint 3 Status</strong>: ✅ Completed</p>
+<hr/>
+<h2>SPRINT 4: Evaluation &amp; Scoring</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S4_1</td><td>F31</td><td>Evaluation &amp;amp; scoring system</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 7-8</td><td>Full-stack Developer</td></tr>
+<tr><td>S4_2</td><td>ASA-4</td><td>Evaluation performance analytics</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 7-8</td><td>Backend Developer, Frontend Developer</td></tr>
+<tr><td>S4_3</td><td>EA-4</td><td>Audit log analytics</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 8</td><td>Backend Developer</td></tr>
+<tr><td>S4_4</td><td>ASA-3</td><td>Event participation analytics</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 8</td><td>Backend Developer</td></tr>
+<tr><td>S4_5</td><td>UI-14</td><td>Accessibility compliance</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 8</td><td>Frontend Developer, QA Specialist</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 4 Goals:</strong></p>
+<ul>
+<li>✅ Evaluation system</li>
+<li>✅ Scoring mechanism</li>
+<li>✅ Performance analytics</li>
+<li>✅ Accessibility improvements</li>
+</ul>
+<p><strong>Sprint 4 Status</strong>: ✅ Completed</p>
+<hr/>
+<h2>SPRINT 5: Certification Tracking (Current Sprint)</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S5_1</td><td>INT-1</td><td>Certification tracking system integration</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 9-10</td><td>Full-stack Developer, Backend Developer</td></tr>
+<tr><td>S5_2</td><td>F40</td><td>Certification issuance</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 9-10</td><td>Full-stack Developer</td></tr>
+<tr><td>S5_3</td><td>ASA-5</td><td>Certification issuance analytics</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 10</td><td>Backend Developer</td></tr>
+<tr><td>S5_4</td><td>INT-3</td><td>Certificate verification service</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 10</td><td>Backend Developer, Frontend Developer</td></tr>
+<tr><td>S5_5</td><td>INT-2</td><td>External certification authority API</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 10</td><td>Backend Developer, Integration Specialist</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 5 Goals:</strong></p>
+<ul>
+<li>🚧 Certification tracking system</li>
+<li>🚧 Certificate generation</li>
+<li>🚧 Certificate verification</li>
+<li>📋 External API integration</li>
+</ul>
+<p><strong>Sprint 5 Status</strong>: 🚧 In Progress</p>
+<hr/>
+<h2>SPRINT 6: Reporting &amp; Advanced Analytics</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S6_1</td><td>ASA-6</td><td>User engagement metrics</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 11-12</td><td>Backend Developer, Data Analyst</td></tr>
+<tr><td>S6_2</td><td>ASA-7</td><td>System usage statistics</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 11-12</td><td>Backend Developer</td></tr>
+<tr><td>S6_3</td><td>ASA-8</td><td>Performance trend analysis</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 12</td><td>Data Analyst, Frontend Developer</td></tr>
+<tr><td>S6_4</td><td>ASA-9</td><td>Custom report builder</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 12</td><td>Full-stack Developer</td></tr>
+<tr><td>S6_5</td><td>INT-8</td><td>Reporting system integration</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 12</td><td>Backend Developer</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 6 Goals:</strong></p>
+<ul>
+<li>📋 Advanced analytics</li>
+<li>📋 Custom reporting</li>
+<li>📋 Performance trends</li>
+<li>📋 System statistics</li>
+</ul>
+<p><strong>Sprint 6 Status</strong>: 📋 Planned</p>
+<hr/>
+<h2>SPRINT 7: Integration &amp; API Development</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S7_1</td><td>INT-5</td><td>SMS notification integration</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 13-14</td><td>Backend Developer</td></tr>
+<tr><td>S7_2</td><td>INT-9</td><td>Analytics platform integration</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 13-14</td><td>Backend Developer, Data Analyst</td></tr>
+<tr><td>S7_3</td><td>INT-10</td><td>SSO integration</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 14</td><td>Backend Developer, Security Specialist</td></tr>
+<tr><td>S7_4</td><td>EA-8</td><td>Security incident reporting</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 14</td><td>Backend Developer</td></tr>
+<tr><td>S7_5</td><td>API Documentation</td><td>RESTful API documentation</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;DOCUMENTATION</td><td>Week 14</td><td>Backend Developer, Technical Writer</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 7 Goals:</strong></p>
+<ul>
+<li>📋 External integrations</li>
+<li>📋 API development</li>
+<li>📋 Security enhancements</li>
+<li>📋 Documentation</li>
+</ul>
+<p><strong>Sprint 7 Status</strong>: 📋 Planned</p>
+<hr/>
+<h2>SPRINT 8: UI/UX Enhancements &amp; Optimization</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Task No.</th><th>User Story No.</th><th>User Stories</th><th>Tasks</th><th>Timeline</th><th>Responsible Team Member/s</th></tr>
+<tr><td>S8_1</td><td>UI-13</td><td>Dark mode support</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 15-16</td><td>Frontend Developer, UI/UX Designer</td></tr>
+<tr><td>S8_2</td><td>UI-15</td><td>Design system documentation</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;DOCUMENTATION</td><td>Week 15-16</td><td>UI/UX Designer, Technical Writer</td></tr>
+<tr><td>S8_3</td><td>Performance Optimization</td><td>System performance optimization</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 16</td><td>Full-stack Developer, DevOps Engineer</td></tr>
+<tr><td>S8_4</td><td>EA-9</td><td>Compliance reporting</td><td>PLANNING&amp;lt;br&amp;gt;DESIGN&amp;lt;br&amp;gt;CODE&amp;lt;br&amp;gt;TESTING</td><td>Week 16</td><td>Backend Developer, Compliance Specialist</td></tr>
+<tr><td>S8_5</td><td>Final Testing &amp;amp; QA</td><td>Comprehensive system testing</td><td>PLANNING&amp;lt;br&amp;gt;TESTING&amp;lt;br&amp;gt;BUG FIXES&amp;lt;br&amp;gt;DOCUMENTATION</td><td>Week 16</td><td>QA Team, All Developers</td></tr>
+</table>
+<br/>
+<p><strong>Sprint 8 Goals:</strong></p>
+<ul>
+<li>📋 UI/UX polish</li>
+<li>📋 Performance optimization</li>
+<li>📋 Final testing</li>
+<li>📋 Production readiness</li>
+</ul>
+<p><strong>Sprint 8 Status</strong>: 📋 Planned</p>
+<hr/>
+<h2>Task Status Legend</h2>
+<ul>
+<li><strong>PLANNING</strong>: Requirements gathering and design</li>
+<li><strong>DESIGN</strong>: UI/UX design and architecture</li>
+<li><strong>CODE</strong>: Development and implementation</li>
+<li><strong>TESTING</strong>: Quality assurance and testing</li>
+<li><strong>DOCUMENTATION</strong>: Documentation writing</li>
+</ul>
+<h2>Sprint Status Legend</h2>
+<ul>
+<li>✅ <strong>Completed</strong>: All tasks finished and deployed</li>
+<li>🚧 <strong>In Progress</strong>: Currently active sprint</li>
+<li>📋 <strong>Planned</strong>: Scheduled for future sprints</li>
+</ul>
+<div style="page-break-after:always;"></div>
+<h1>3.4.7 Increment</h1>
+<h2>Overview</h2>
+<p>An <strong>Increment</strong> is a concrete stepping stone toward the Product Goal. Each sprint produces a usable Increment that is additive to all prior Increments and thoroughly verified to ensure that all Increments work together.</p>
+<p>For the Disaster Preparedness Training and Simulation System, each Increment must satisfy the Definition of Done and be demonstrable to LGU stakeholders.</p>
+<h2>Definition of Done (Project-wide)</h2>
+<p>An Increment is considered Done when:</p>
+<ol>
+<li>Code is implemented and peer-reviewed</li>
+<li>Feature works in the staging / production-like environment</li>
+<li>Role-based access is enforced where required</li>
+<li>Basic automated or manual tests pass for the sprint scope</li>
+<li>Documentation / backlog status is updated</li>
+<li>Product Owner (or project adviser / LGU counterpart) accepts the demo</li>
+</ol>
+<h2>Increment History</h2>
+<h3>Increment 1 — Authentication and User Management (Sprint 1)</h3>
+<p><strong>Goal:</strong> Secure multi-portal access for admin and participants.</p>
+<p><strong>Delivered:</strong></p>
+<ul>
+<li>Participant and admin login portals</li>
+<li>OTP-based admin verification</li>
+<li>Role-based access control (LGU Admin, Trainer, Staff, Participant, Super Admin)</li>
+<li>Session management and timeout</li>
+<li>User registration with email verification</li>
+</ul>
+<p><strong>Value:</strong> LGU can securely onboard users and separate admin vs participant workflows.</p>
+<hr/>
+<h3>Increment 2 — Training Content and Scenario Foundation (Sprint 2)</h3>
+<p><strong>Goal:</strong> Publish training modules and prepare simulation content.</p>
+<p><strong>Delivered:</strong></p>
+<ul>
+<li>Training module CRUD and lesson content management</li>
+<li>Scenario / AI-assisted training content support</li>
+<li>Audit logging for administrative actions</li>
+<li>Initial UI/UX design system (colors, icons, components)</li>
+</ul>
+<p><strong>Value:</strong> Trainers can publish preparedness modules that participants will later consume.</p>
+<hr/>
+<h3>Increment 3 — Campaign, Participants, and Attendance (Sprint 3)</h3>
+<p><strong>Goal:</strong> Connect training intelligence to participant registration and attendance.</p>
+<p><strong>Delivered:</strong></p>
+<ul>
+<li>Campaign request / Training Intelligence submission flow</li>
+<li>Participant registration and attendance tracking</li>
+<li>File storage for training assets</li>
+<li>User activity monitoring foundations</li>
+</ul>
+<p><strong>Value:</strong> Approved campaigns can open registration; LGU can track who joined training.</p>
+<hr/>
+<h3>Increment 4 — Evaluation and Scoring (Sprint 4)</h3>
+<p><strong>Goal:</strong> Measure learning outcomes after modules and simulations.</p>
+<p><strong>Delivered:</strong></p>
+<ul>
+<li>Lesson quiz evaluation hub (participant-centric views)</li>
+<li>Final AI scenario evaluation results</li>
+<li>Evaluation analytics (pass/fail, scores, review of answers)</li>
+<li>Printable evaluation summaries</li>
+</ul>
+<p><strong>Value:</strong> Admins can prove training effectiveness and identify participants ready for simulation.</p>
+<hr/>
+<h3>Increment 5 — Simulation Planning, Lifecycle, and Partner Integrations (Sprint 5)</h3>
+<p><strong>Goal:</strong> Run simulation events end-to-end with external partners.</p>
+<p><strong>Delivered:</strong></p>
+<ul>
+<li>Exercise Plan / template reuse path</li>
+<li>Simulation event readiness checklist and lifecycle (publish, monitor, complete)</li>
+<li>Campaign System outbound integration (Training Intelligence push)</li>
+<li>CPSQC Patrol marshal request / availability-aware assignment flow</li>
+<li>Certification eligibility tracking foundations</li>
+</ul>
+<p><strong>Value:</strong> LGU can move from Approved Campaign to Exercise Plan to Publish to Monitoring with partner systems connected.</p>
+<hr/>
+<h3>Increment 6 — Reporting and Analytics Expansion (Sprint 6 — Planned / Partial)</h3>
+<p><strong>Goal:</strong> Deeper operational and security analytics.</p>
+<p><strong>Planned / Partial Deliverables:</strong></p>
+<ul>
+<li>User engagement metrics (DAU/MAU)</li>
+<li>System usage statistics</li>
+<li>Performance trend analysis</li>
+<li>Custom report builder</li>
+<li>Certification issuance analytics completion</li>
+</ul>
+<p><strong>Value:</strong> Decision-makers get dashboards beyond operational day-to-day screens.</p>
+<hr/>
+<h3>Increment 7 — Extended Integrations and API Hardening (Sprint 7 — Planned)</h3>
+<p><strong>Goal:</strong> Broader partner connectivity and API maturity.</p>
+<p><strong>Planned Deliverables:</strong></p>
+<ul>
+<li>SMS notification integration</li>
+<li>Analytics platform hooks</li>
+<li>SSO exploration</li>
+<li>Security incident reporting</li>
+<li>Partner API documentation package</li>
+</ul>
+<hr/>
+<h3>Increment 8 — Polish, Accessibility, and Production Hardening (Sprint 8 — Planned)</h3>
+<p><strong>Goal:</strong> Production-ready UX and compliance polish.</p>
+<p><strong>Planned Deliverables:</strong></p>
+<ul>
+<li>Accessibility (WCAG) improvements</li>
+<li>Design system documentation</li>
+<li>Performance optimization</li>
+<li>Final QA and release checklist</li>
+<li>Compliance reporting support</li>
+</ul>
+<hr/>
+<h2>Current Product Increment (as of latest release)</h2>
+<p>The system currently delivers a coherent Increment covering:</p>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Area</th><th>Capability</th></tr>
+<tr><td>Auth &amp;amp; Security</td><td>OTP admin login, RBAC, audit logs, CSRF/XSS/SQL protections, HTTPS</td></tr>
+<tr><td>Training</td><td>Modules, lessons, quizzes, bilingual answer review</td></tr>
+<tr><td>Campaigns</td><td>Training Intelligence submit to Campaign System</td></tr>
+<tr><td>Simulation</td><td>Template → readiness → publish → monitoring</td></tr>
+<tr><td>Patrol</td><td>CPSQC request/assign with unavailable officer filtering</td></tr>
+<tr><td>Evaluation</td><td>Lesson quizzes + final scenario scoring for admins</td></tr>
+<tr><td>Analytics</td><td>Dashboards, evaluation stats, security/audit analytics</td></tr>
+</table>
+<br/>
+<p>This Increment is deployed on the Hostinger VPS production environment and is usable by LGU administrators and participants.</p>
+<h2>Traceability to Product Goal</h2>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:10pt;">
+<tr><th>Product Goal Theme</th><th>Supporting Increments</th></tr>
+<tr><td>Safe, role-aware LGU training platform</td><td>1, 2</td></tr>
+<tr><td>End-to-end campaign → training → simulation flow</td><td>3, 5</td></tr>
+<tr><td>Measurable learning outcomes</td><td>4, 6</td></tr>
+<tr><td>Interoperable enterprise systems</td><td>5, 7</td></tr>
+<tr><td>Secure and standards-aligned UX</td><td>1, 2, 8</td></tr>
+</table>
+<br/>
+<div style="page-break-after:always;"></div>
+
+</body></html>

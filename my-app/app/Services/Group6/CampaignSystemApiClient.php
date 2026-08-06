@@ -134,16 +134,19 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
         $payload = is_array($campaignRequest->payload) ? $campaignRequest->payload : [];
         $module = $campaignRequest->trainingModule;
 
-        $title = (string) ($payload['training_title'] ?? $module?->title ?? 'Training Campaign');
-        $description = (string) ($payload['short_description'] ?? $module?->short_description ?? $module?->description ?? '');
-        $category = $this->mapCategory(
+        // Match Campaign DB: title/location/geographic_scope are short VARCHAR fields.
+        $title = $this->truncate((string) ($payload['training_title'] ?? $module?->title ?? 'Training Campaign'), 150);
+        $description = $this->truncate((string) ($payload['short_description'] ?? $module?->short_description ?? $module?->description ?? ''), 1000);
+        $category = $this->truncate($this->mapCategory(
             (string) ($payload['related_hazards'] ?? $module?->related_hazard ?? $module?->category ?? 'general')
-        );
+        ), 100);
 
         $communities = $payload['recommended_communities']['communities'] ?? [];
         $communityRows = collect(is_array($communities) ? $communities : []);
         $barangayNames = $communityRows
             ->map(fn ($row) => is_array($row) ? ($row['barangay_name'] ?? null) : null)
+            ->filter()
+            ->map(fn ($name) => trim((string) $name))
             ->filter()
             ->values()
             ->all();
@@ -152,23 +155,29 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
         $focusArea = is_array($primary) ? trim((string) ($primary['focus_area'] ?? '')) : '';
         $exposureScope = is_array($primary) ? (string) ($primary['exposure_scope'] ?? '') : '';
 
-        $geographicScope = $barangayNames[0] ?? 'Quezon City';
-        if (! str_starts_with(strtolower((string) $geographicScope), 'barangay') && $geographicScope !== 'Quezon City') {
-            $geographicScope = 'Barangay '.$geographicScope;
+        $barangayLabel = $barangayNames[0] ?? 'Quezon City';
+        if (
+            $barangayLabel !== 'Quezon City'
+            && ! str_starts_with(strtolower($barangayLabel), 'barangay')
+        ) {
+            $barangayLabel = 'Barangay '.$barangayLabel;
         }
 
-        $locationDetail = $geographicScope;
-        if ($focusArea !== '') {
-            $locationDetail = $geographicScope.' — '.$focusArea;
-        }
+        // Campaign expects short location/scope values (barangay/QC), not long focus narratives.
+        $geographicScope = $this->truncate($barangayLabel.', Quezon City', 150);
+        $location = $this->truncate($barangayLabel.', Quezon City', 150);
 
         $targetZones = $barangayNames !== [] ? $barangayNames : ['Quezon City'];
-        if ($focusArea !== '' && $barangayNames !== []) {
-            $targetZones[] = $focusArea;
+        if ($focusArea !== '') {
+            $targetZones[] = $this->truncate($focusArea, 180);
         }
         if ($exposureScope === 'pattern_based') {
             $targetZones[] = 'Dense residential clusters (pattern-based fire exposure)';
         }
+        $targetZones = array_values(array_unique(array_filter(array_map(
+            static fn ($zone) => is_string($zone) ? trim($zone) : '',
+            $targetZones,
+        ))));
 
         $startDate = $this->toDateString($payload['registration_opens'] ?? null)
             ?? now()->toDateString();
@@ -176,9 +185,27 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
             ?? $this->toDateString($payload['registration_deadline'] ?? null)
             ?? now()->addDays(14)->toDateString();
 
+        if ($startDate > $endDate) {
+            $endDate = $startDate;
+        }
+
         $expected = (int) ($payload['expected_participants']
             ?? $campaignRequest->expected_participants
             ?? 0);
+
+        $audience = array_values(array_filter(array_map(
+            static fn ($item) => is_scalar($item) ? trim((string) $item) : '',
+            (array) ($payload['target_audience'] ?? []),
+        )));
+
+        $objectives = $description !== ''
+            ? $description
+            : 'Submitted from Disaster Training Intelligence.';
+        if ($focusArea !== '') {
+            $objectives = $this->truncate($objectives.' Focus: '.$focusArea, 1000);
+        } else {
+            $objectives = $this->truncate($objectives, 1000);
+        }
 
         return [
             'title' => $title,
@@ -188,22 +215,32 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
             'status' => 'draft',
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'objectives' => $description !== '' ? $description : 'Submitted from Disaster Training Intelligence.',
-            'location' => $locationDetail,
-            'assigned_staff' => json_encode(
-                array_values(array_filter((array) ($payload['target_audience'] ?? [])))
-            ),
-            'barangay_target_zones' => json_encode(array_values(array_unique($targetZones))),
-            'budget' => '0',
+            'objectives' => $objectives,
+            'location' => $location,
+            // Send arrays — Campaign API json_encodes these itself.
+            'assigned_staff' => $audience,
+            'barangay_target_zones' => $targetZones,
+            'budget' => 0,
             'staff_count' => max(1, $expected),
             // Traceability fields (ignored if their API strips unknown keys)
             'source_system' => 'disaster-training',
             'source_campaign_request_id' => $campaignRequest->id,
             'source_training_module_id' => $campaignRequest->training_module_id,
             'registration_link' => $payload['registration_link'] ?? null,
-            'focus_area' => $focusArea !== '' ? $focusArea : null,
+            'focus_area' => $focusArea !== '' ? $this->truncate($focusArea, 255) : null,
             'exposure_scope' => $exposureScope !== '' ? $exposureScope : null,
         ];
+    }
+
+    protected function truncate(string $value, int $max): string
+    {
+        if ($max <= 0) {
+            return '';
+        }
+
+        return mb_strlen($value) > $max
+            ? mb_substr($value, 0, $max)
+            : $value;
     }
 
     protected function resolveBearerToken(): ?string

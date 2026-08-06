@@ -188,6 +188,10 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.training-modules.edit');
         Route::put('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'update'])
             ->name('admin.training-modules.update');
+        Route::post('/training-modules/{trainingModule}/thumbnail', [AdminTrainingModuleController::class, 'updateThumbnail'])
+            ->name('admin.training-modules.thumbnail.update');
+        Route::delete('/training-modules/{trainingModule}/thumbnail', [AdminTrainingModuleController::class, 'destroyThumbnail'])
+            ->name('admin.training-modules.thumbnail.destroy');
         Route::post('/training-modules/{trainingModule}/archive', [AdminTrainingModuleController::class, 'archive'])
             ->name('admin.training-modules.archive');
         Route::post('/training-modules/{trainingModule}/publish', [AdminTrainingModuleController::class, 'publish'])
@@ -443,6 +447,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
         // Settings
         Route::get('/settings/auto-approval', [SettingController::class, 'getAutoApproval'])->name('admin.settings.auto-approval.get');
         Route::post('/settings/auto-approval', [SettingController::class, 'toggleAutoApproval'])->name('admin.settings.auto-approval.toggle');
+        Route::get('/settings/demo-tools', [SettingController::class, 'getDemoTools'])->name('admin.settings.demo-tools.get');
+        Route::post('/settings/demo-tools', [SettingController::class, 'toggleDemoTools'])->name('admin.settings.demo-tools.toggle');
 
         // Resources & Equipment Inventory
         Route::get('/resources', [ResourceController::class, 'index'])->name('admin.resources.index');

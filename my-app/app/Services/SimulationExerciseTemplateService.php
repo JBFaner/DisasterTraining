@@ -331,12 +331,13 @@ class SimulationExerciseTemplateService
                 ->findOrFail((int) $data['campaign_request_id']);
         }
 
-        $eventDate = $data['event_date'] ?? now()->addDays(7)->toDateString();
+        $eventDate = $data['event_date'];
         [$planStart, $planEnd] = $this->resolvePlanScheduleWindow($template);
         // Event clock always follows the exercise plan timeline — ignore client overrides.
         $startTime = $planStart;
         $endTime = $planEnd;
-        $venue = trim((string) ($data['venue'] ?? 'TBD'));
+        $venue = trim((string) $data['venue']);
+        abort_if($venue === '', 422, 'Venue is required.');
 
         $assignmentSummary = $template->personnelAssignments
             ->map(fn ($item) => "{$item->role}: {$item->person_name}")

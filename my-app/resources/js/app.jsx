@@ -394,6 +394,8 @@ if (rootElement) {
     const eventJson = rootElement.getAttribute('data-event');
     const eventParticipantContextJson = rootElement.getAttribute('data-event-participant-context');
     const eventLifecycleJson = rootElement.getAttribute('data-event-lifecycle');
+    const demoToolsEnabledJson = rootElement.getAttribute('data-demo-tools-enabled');
+    const canManageDemoToolsJson = rootElement.getAttribute('data-can-manage-demo-tools');
     const participantsJson = rootElement.getAttribute('data-participants');
     const participantsPaginationJson = rootElement.getAttribute('data-participants-pagination');
     const participantsSummaryJson = rootElement.getAttribute('data-participants-summary');
@@ -433,6 +435,8 @@ if (rootElement) {
     let currentEvent = null;
     let eventParticipantContext = null;
     let currentEventLifecycle = null;
+    let demoToolsEnabled = true;
+    let canManageDemoTools = false;
     let participants = [];
     let participantsPagination = null;
     let participantsSummary = null;
@@ -587,6 +591,20 @@ if (rootElement) {
             currentEventLifecycle = JSON.parse(eventLifecycleJson);
         } catch (e) {
             console.error('Failed to parse event lifecycle JSON', e);
+        }
+    }
+    if (demoToolsEnabledJson !== null) {
+        try {
+            demoToolsEnabled = JSON.parse(demoToolsEnabledJson);
+        } catch (e) {
+            console.error('Failed to parse demo tools enabled JSON', e);
+        }
+    }
+    if (canManageDemoToolsJson !== null) {
+        try {
+            canManageDemoTools = JSON.parse(canManageDemoToolsJson);
+        } catch (e) {
+            console.error('Failed to parse can manage demo tools JSON', e);
         }
     }
     if (participantsJson) {
@@ -2070,11 +2088,18 @@ if (rootElement) {
                         )}
 
                         {sectionAttr === 'training_create' && (
-                            <TrainingModuleCreateForm barangayProfile={barangayProfile} />
+                            <TrainingModuleCreateForm
+                                barangayProfile={barangayProfile}
+                                availableCategories={availableCategories}
+                            />
                         )}
 
                         {sectionAttr === 'training_edit' && currentModule && (
-                            <TrainingModuleEditForm module={currentModule} />
+                            <TrainingModuleEditForm
+                                module={currentModule}
+                                barangayProfile={barangayProfile}
+                                availableCategories={availableCategories}
+                            />
                         )}
 
                         {sectionAttr === 'training_module_locked' && trainingModuleLock && (
@@ -2142,6 +2167,8 @@ if (rootElement) {
                                     approvedSchedules={approvedSchedules}
                                     exerciseTemplates={exerciseTemplates}
                                     exerciseTemplateSummary={exerciseTemplateSummary}
+                                    demoToolsEnabled={demoToolsEnabled}
+                                    canManageDemoTools={canManageDemoTools}
                                 />
                             )
                         )}
@@ -2172,6 +2199,7 @@ if (rootElement) {
                                     event={currentEvent}
                                     lifecycle={currentEventLifecycle}
                                     role={role}
+                                    demoToolsEnabled={demoToolsEnabled}
                                 />
                             )
                         )}
@@ -3832,6 +3860,107 @@ function PortalToastListener() {
     );
 }
 
+const DEFAULT_HAZARD_CATEGORIES = ['Earthquake', 'Fire', 'Flood', 'Typhoon', 'Landslide'];
+const ADD_HAZARD_CATEGORY_VALUE = '__add_category__';
+
+function collectHazardCategoryOptions({ barangayProfile = null, availableCategories = [], extras = [], current = '' } = {}) {
+    const fromBarangay = (barangayProfile?.hazard_records || barangayProfile?.hazardRecords || [])
+        .map((h) => h.hazard_type)
+        .filter(Boolean);
+    const legacyHazards = Array.isArray(barangayProfile?.hazards) ? barangayProfile.hazards : [];
+    const merged = [
+        ...DEFAULT_HAZARD_CATEGORIES,
+        ...fromBarangay,
+        ...legacyHazards,
+        ...(availableCategories || []),
+        ...extras,
+        current,
+    ]
+        .map((item) => String(item || '').trim())
+        .filter(Boolean);
+
+    return [...new Set(merged)].sort((a, b) => a.localeCompare(b));
+}
+
+function HazardCategoryField({
+    id = 'category',
+    name = 'category',
+    value = '',
+    onChange,
+    options = [],
+    inputClass,
+    labelClass,
+}) {
+    const [extraOptions, setExtraOptions] = React.useState([]);
+    const allOptions = React.useMemo(() => {
+        const merged = [...options, ...extraOptions, value]
+            .map((item) => String(item || '').trim())
+            .filter(Boolean);
+        return [...new Set(merged)].sort((a, b) => a.localeCompare(b));
+    }, [options, extraOptions, value]);
+
+    const handleChange = async (event) => {
+        const next = event.target.value;
+        if (next !== ADD_HAZARD_CATEGORY_VALUE) {
+            onChange(next);
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'Add hazard category',
+            input: 'text',
+            inputLabel: 'New category name',
+            inputPlaceholder: 'e.g. Tsunami, Storm Surge',
+            showCancelButton: true,
+            confirmButtonText: 'Add category',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#059669',
+            inputValidator: (inputValue) => {
+                if (!String(inputValue || '').trim()) {
+                    return 'Category name is required.';
+                }
+                return null;
+            },
+        });
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        const trimmed = String(result.value || '').trim();
+        if (!trimmed) {
+            return;
+        }
+
+        setExtraOptions((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+        onChange(trimmed);
+    };
+
+    return (
+        <div>
+            <label className={labelClass} htmlFor={id}>
+                Hazard category <span className="text-red-500">*</span>
+            </label>
+            <select
+                id={id}
+                name={name}
+                required
+                value={value}
+                onChange={handleChange}
+                className={inputClass}
+            >
+                <option value="">Select disaster category</option>
+                {allOptions.map((hazard) => (
+                    <option key={hazard} value={hazard}>
+                        {hazard}
+                    </option>
+                ))}
+                <option value={ADD_HAZARD_CATEGORY_VALUE}>+ Add category…</option>
+            </select>
+        </div>
+    );
+}
+
 const QUICK_TEMPLATES = [
     {
         name: 'Basic Earthquake Drill',
@@ -3859,7 +3988,7 @@ const QUICK_TEMPLATES = [
     },
 ];
 
-function TrainingModuleCreateForm({ barangayProfile }) {
+function TrainingModuleCreateForm({ barangayProfile, availableCategories = [] }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
@@ -3870,6 +3999,11 @@ function TrainingModuleCreateForm({ barangayProfile }) {
     const [objectives, setObjectives] = React.useState(['']);
     const [isAiGenerating, setIsAiGenerating] = React.useState(false);
     const [aiError, setAiError] = React.useState(null);
+
+    const categoryOptions = React.useMemo(
+        () => collectHazardCategoryOptions({ barangayProfile, availableCategories }),
+        [barangayProfile, availableCategories],
+    );
 
     const addObjective = () => {
         setObjectives([...objectives, '']);
@@ -3971,17 +4105,6 @@ function TrainingModuleCreateForm({ barangayProfile }) {
     const inputClass = 'w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow duration-200';
     const labelClass = 'block text-xs font-semibold text-slate-600 mb-1.5';
 
-    const hazards = (barangayProfile?.hazard_records || barangayProfile?.hazardRecords || [])
-        .map((h) => h.hazard_type)
-        .filter(Boolean);
-    const legacyHazards = barangayProfile?.hazards && Array.isArray(barangayProfile.hazards) ? barangayProfile.hazards : [];
-    const hazardTypes = hazards.length > 0 ? hazards : legacyHazards;
-    const templateCategories = ['Earthquake', 'Fire', 'Flood'];
-    const categoryOptions = hazardTypes.length > 0
-        ? [...new Set([...hazardTypes, ...templateCategories])].sort()
-        : [];
-    const useCategorySelect = categoryOptions.length > 0;
-
     return (
         <div className="w-full max-w-full py-2">
             <a
@@ -4018,6 +4141,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                         <input type="hidden" name="_token" value={csrf} />
                         <input type="hidden" name="status" value="draft" />
                         <input type="hidden" name="difficulty" value="Beginner" />
+                        <input type="hidden" name="visibility" value="all" />
 
                         <div>
                             <div className="flex items-center justify-between mb-1">
@@ -4029,6 +4153,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                                     onClick={handleGenerateWithAi}
                                     disabled={isAiGenerating || !title.trim()}
                                     className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                    title="Uses the title to draft description and learning objectives"
                                 >
                                     {isAiGenerating ? 'Generating…' : 'Generate with AI'}
                                 </button>
@@ -4116,37 +4241,13 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass} htmlFor="category">
-                                    Hazard category <span className="text-red-500">*</span>
-                                </label>
-                                {useCategorySelect ? (
-                                    <select
-                                        id="category"
-                                        name="category"
-                                        required
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                        className={inputClass}
-                                    >
-                                        <option value="">Select disaster category</option>
-                                        {categoryOptions.map((hazard, index) => (
-                                            <option key={index} value={hazard}>{hazard}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <input
-                                        id="category"
-                                        name="category"
-                                        type="text"
-                                        required
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                        placeholder="e.g. Earthquake, Fire"
-                                        className={inputClass}
-                                    />
-                                )}
-                            </div>
+                            <HazardCategoryField
+                                value={category}
+                                onChange={setCategory}
+                                options={categoryOptions}
+                                inputClass={inputClass}
+                                labelClass={labelClass}
+                            />
                             <div>
                                 <label className={labelClass} htmlFor="estimated_duration_minutes">
                                     Estimated duration (minutes)
@@ -4173,22 +4274,12 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                                 accept="image/jpeg,image/png,image/gif,image/webp"
                                 className="w-full rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-white"
                             />
-                        </div>
-
-                        <div>
-                            <label className={labelClass} htmlFor="visibility">
-                                Visibility
-                            </label>
-                            <select id="visibility" name="visibility" className={inputClass}>
-                                <option value="all">All participants</option>
-                                <option value="group">Specific groups (later)</option>
-                                <option value="staff_only">Staff only</option>
-                            </select>
+                            <p className="mt-1 text-[11px] text-slate-500">Stored on Cloudinary. You can also upload later from the module page.</p>
                         </div>
 
                         <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200">
                             <a
-                                href="/participant/training-modules"
+                                href="/admin/training-modules"
                                 className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
                             >
                                 Cancel
@@ -4214,6 +4305,10 @@ function TrainingModuleCreateForm({ barangayProfile }) {
                             <h3 className="font-semibold text-slate-800">Module Writing Tips</h3>
                         </div>
                         <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                <span>Use Generate with AI after typing a title to draft description and objectives</span>
+                            </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
                                 <span>Keep title clear and scenario-based</span>
@@ -4262,7 +4357,7 @@ function TrainingModuleCreateForm({ barangayProfile }) {
     );
 }
 
-function TrainingModuleEditForm({ module }) {
+function TrainingModuleEditForm({ module, barangayProfile = null, availableCategories = [] }) {
     const csrf =
         document.head.querySelector('meta[name="csrf-token"]')?.content || '';
 
@@ -4272,11 +4367,19 @@ function TrainingModuleEditForm({ module }) {
         module.description || '',
     );
     const [category, setCategory] = React.useState(module.category || '');
-    const [visibility, setVisibility] = React.useState(
-        module.visibility || 'all',
-    );
     const [estimatedDuration, setEstimatedDuration] = React.useState(
         module.estimated_duration_minutes || '',
+    );
+    const [isAiGenerating, setIsAiGenerating] = React.useState(false);
+    const [aiError, setAiError] = React.useState(null);
+
+    const categoryOptions = React.useMemo(
+        () => collectHazardCategoryOptions({
+            barangayProfile,
+            availableCategories,
+            current: module.category || '',
+        }),
+        [barangayProfile, availableCategories, module.category],
     );
 
     // Parse existing learning_objectives from module (already cast to array by model)
@@ -4326,6 +4429,81 @@ function TrainingModuleEditForm({ module }) {
         setShowObjectives(true);
     };
 
+    const handleGenerateWithAi = async () => {
+        const trimmedTitle = title.trim();
+        if (!trimmedTitle || trimmedTitle.length < 5) {
+            setAiError('Please enter a more descriptive title (at least 5 characters).');
+            return;
+        }
+
+        setIsAiGenerating(true);
+        setAiError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('title', trimmedTitle);
+            formData.append('difficulty', module.difficulty || 'Beginner');
+            formData.append('category', category || '');
+            formData.append('_token', csrf);
+
+            const response = await fetch('/admin/training-modules/generate-ai', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                let message = 'Failed to generate module content.';
+                try {
+                    const data = await response.json();
+                    if (data.errors) {
+                        const allErrors = Object.values(data.errors).flat();
+                        if (allErrors.length > 0) {
+                            message = allErrors[0];
+                        }
+                    } else if (data.error) {
+                        message = data.error;
+                    }
+                } catch (_) {
+                    // ignore parse errors
+                }
+                throw new Error(message);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to generate module content.');
+            }
+
+            const data = result.data || {};
+            if (typeof data.description === 'string' && data.description.trim() !== '') {
+                setDescription(data.description.trim());
+            }
+
+            let aiObjectives = Array.isArray(data.learning_objectives)
+                ? data.learning_objectives.filter((obj) => typeof obj === 'string')
+                : [];
+
+            aiObjectives = aiObjectives.map((obj) => obj.trim()).filter((obj) => obj !== '');
+
+            while (aiObjectives.length < 3) {
+                aiObjectives.push('');
+            }
+
+            if (aiObjectives.length > 0) {
+                setObjectives(aiObjectives);
+                setShowObjectives(true);
+            }
+        } catch (error) {
+            console.error('Error generating module with AI', error);
+            setAiError(error.message || 'An unexpected error occurred while generating content.');
+        } finally {
+            setIsAiGenerating(false);
+        }
+    };
+
     return (
         <div className="w-full max-w-full py-2">
             <a
@@ -4372,11 +4550,23 @@ function TrainingModuleEditForm({ module }) {
                             name="difficulty"
                             value={module.difficulty || 'Beginner'}
                         />
+                        <input type="hidden" name="visibility" value={module.visibility || 'all'} />
 
                         <div>
-                            <label className={labelClass} htmlFor="title">
-                                Title <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className={labelClass} htmlFor="title">
+                                    Title <span className="text-red-500">*</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={handleGenerateWithAi}
+                                    disabled={isAiGenerating || !title.trim()}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                    title="Uses the title to draft description and learning objectives"
+                                >
+                                    {isAiGenerating ? 'Generating…' : 'Generate with AI'}
+                                </button>
+                            </div>
                             <input
                                 id="title"
                                 name="title"
@@ -4387,6 +4577,11 @@ function TrainingModuleEditForm({ module }) {
                                 placeholder="e.g. Earthquake Response & Evacuation"
                                 className={inputClass}
                             />
+                            {aiError && (
+                                <p className="mt-1 text-xs text-rose-600">
+                                    {aiError}
+                                </p>
+                            )}
                         </div>
 
                         <div>
@@ -4475,26 +4670,13 @@ function TrainingModuleEditForm({ module }) {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label
-                                    className={labelClass}
-                                    htmlFor="category"
-                                >
-                                    Hazard category <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    id="category"
-                                    name="category"
-                                    type="text"
-                                    required
-                                    value={category}
-                                    onChange={(e) =>
-                                        setCategory(e.target.value)
-                                    }
-                                    placeholder="e.g. Earthquake, Fire"
-                                    className={inputClass}
-                                />
-                            </div>
+                            <HazardCategoryField
+                                value={category}
+                                onChange={setCategory}
+                                options={categoryOptions}
+                                inputClass={inputClass}
+                                labelClass={labelClass}
+                            />
                             <div>
                                 <label className={labelClass} htmlFor="estimated_duration_minutes">
                                     Estimated duration (minutes)
@@ -4534,33 +4716,9 @@ function TrainingModuleEditForm({ module }) {
                             />
                         </div>
 
-                        <div>
-                            <label
-                                className={labelClass}
-                                htmlFor="visibility"
-                            >
-                                Visibility
-                            </label>
-                            <select
-                                id="visibility"
-                                name="visibility"
-                                value={visibility}
-                                onChange={(e) =>
-                                    setVisibility(e.target.value)
-                                }
-                                className={inputClass}
-                            >
-                                <option value="all">All participants</option>
-                                <option value="group">
-                                    Specific groups (later)
-                                </option>
-                                <option value="staff_only">Staff only</option>
-                            </select>
-                        </div>
-
                         <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200">
                             <a
-                                href="/participant/training-modules"
+                                href="/admin/training-modules"
                                 className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all duration-200"
                             >
                                 Cancel
@@ -4588,6 +4746,14 @@ function TrainingModuleEditForm({ module }) {
                             </h3>
                         </div>
                         <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2">
+                                <span className="text-emerald-500 mt-0.5 shrink-0">
+                                    •
+                                </span>
+                                <span>
+                                    Use Generate with AI after typing a title to draft description and objectives
+                                </span>
+                            </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-500 mt-0.5 shrink-0">
                                     •

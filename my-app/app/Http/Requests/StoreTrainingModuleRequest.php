@@ -51,7 +51,7 @@ class StoreTrainingModuleRequest extends FormRequest
             'available_training_sessions.*.online_platform' => ['nullable', 'string', 'max:100'],
             'available_training_sessions.*.meeting_link' => ['nullable', 'url', 'max:500'],
             'available_training_sessions.*.maximum_participants' => ['required', 'integer', 'min:1', 'max:500'],
-            'visibility' => ['required', 'string', 'in:all,group,staff_only'],
+            'visibility' => ['nullable', 'string', 'in:all,group,staff_only'],
             'thumbnail' => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
         ];
     }
@@ -64,6 +64,13 @@ class StoreTrainingModuleRequest extends FormRequest
             'learning_objectives.required' => 'At least one learning objective is required.',
             'target_audience.*.in' => 'Please select a valid target audience from the list.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('visibility')) {
+            $this->merge(['visibility' => 'all']);
+        }
     }
 
     public function withValidator(Validator $validator): void

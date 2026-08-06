@@ -333,6 +333,39 @@ class SimulationEventLifecycleService
             ->values()
             ->all();
 
+        $alreadyAssignedIds = collect($assignedMarshals)
+            ->map(fn ($row) => (string) ($row['person_external_id'] ?? ''))
+            ->filter()
+            ->values()
+            ->all();
+
+        // Only Available officers are requestable/selectable; keep those already on this event.
+        $availableMarshals = array_values(array_filter(
+            $availableMarshals,
+            function (array $member) use ($alreadyAssignedIds): bool {
+                $id = (string) ($member['id'] ?? '');
+                $alreadyOnEvent = $id !== '' && in_array($id, $alreadyAssignedIds, true);
+
+                return $this->cpsqcClient->isMarshalSelectable(
+                    $member['availability_status'] ?? $member['position'] ?? null,
+                    $alreadyOnEvent,
+                );
+            }
+        ));
+
+        $openStatuses = array_map('strtolower', $this->cpsqcClient->openRequestStatuses());
+        $openRequests = collect($requests)
+            ->filter(function ($req) use ($openStatuses) {
+                if (! is_array($req)) {
+                    return false;
+                }
+
+                return in_array(strtolower(trim((string) ($req['status'] ?? ''))), $openStatuses, true);
+            })
+            ->values()
+            ->all();
+        $hasOpenRequest = $openRequests !== [];
+
         // Auto-apply CPSQC personnel onto the event so roster shows Assigned (no manual save required).
         if ($configured && $assignedMarshals === [] && $availableMarshals !== []) {
             $toAssign = array_map(static function (array $member): array {
@@ -375,6 +408,9 @@ class SimulationEventLifecycleService
                 'special_instructions' => 'Assign marshals for disaster training simulation event.',
             ],
             'requests' => $requests,
+            'open_requests' => $openRequests,
+            'has_open_request' => $hasOpenRequest,
+            'can_request_patrol' => $configured && ! $hasOpenRequest,
             'available_marshals' => $availableMarshals,
             'assigned_marshals' => $assignedMarshals,
         ];
@@ -718,7 +754,40 @@ class SimulationEventLifecycleService
     private function assertAssignableForSync(array $row, $previous): void
     {
         $source = (string) ($row['source_group'] ?? '');
-        if ($source === 'cpsqc_patrol' || $source === '') {
+        if ($source === 'cpsqc_patrol') {
+            $externalId = (string) ($row['person_external_id'] ?? '');
+            if ($externalId === '') {
+                return;
+            }
+
+            $alreadyOnEvent = $previous->contains(
+                fn (array $existing) => ($existing['source_group'] ?? '') === 'cpsqc_patrol'
+                    && (string) ($existing['person_external_id'] ?? '') === $externalId
+            );
+            if ($alreadyOnEvent) {
+                return;
+            }
+
+            // Re-check live CPSQC status before allowing a new marshal assignment.
+            $pool = $this->cpsqcClient->marshalPoolMembers();
+            $member = collect($pool)->first(
+                fn ($item) => is_array($item) && (string) ($item['id'] ?? '') === $externalId
+            );
+            $status = is_array($member)
+                ? ($member['availability_status'] ?? $member['position'] ?? null)
+                : null;
+
+            if (! $this->cpsqcClient->isMarshalSelectable($status, false)) {
+                $label = $this->cpsqcClient->normalizeMarshalAvailabilityStatus($status);
+                throw ValidationException::withMessages([
+                    'assignments' => "CPSQC marshal \"{$row['person_name']}\" is currently \"{$label}\" and cannot be assigned.",
+                ]);
+            }
+
+            return;
+        }
+
+        if ($source === '') {
             return;
         }
 

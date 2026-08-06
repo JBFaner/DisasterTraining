@@ -194,13 +194,15 @@ class CpsqcPatrolApiClient
                 }
 
                 $bpsoId = trim((string) ($person['bpso_personnel_id'] ?? ''));
-                $status = trim((string) ($person['status'] ?? ''));
+                $status = $this->normalizeMarshalAvailabilityStatus($person['status'] ?? null);
 
                 $members[] = [
                     'id' => is_numeric($id) ? (int) $id : $id,
                     'name' => $name,
                     'specialization' => $bpsoId !== '' ? $bpsoId : 'CPSQC Patrol',
-                    'position' => $status !== '' ? $status : 'Patrol Marshal',
+                    'position' => $status,
+                    'availability_status' => $status,
+                    'is_available' => $status === 'Available',
                     'barangay' => null,
                     'source_group' => 'cpsqc_patrol',
                     'member_kind' => 'cpsqc_patrol',
@@ -214,6 +216,44 @@ class CpsqcPatrolApiClient
         usort($members, fn ($a, $b) => strcasecmp((string) $a['name'], (string) $b['name']));
 
         return $members;
+    }
+
+    /**
+     * Normalize CPSQC personnel availability labels.
+     */
+    public function normalizeMarshalAvailabilityStatus(mixed $status): string
+    {
+        $raw = trim((string) $status);
+        $lower = strtolower($raw);
+
+        return match ($lower) {
+            '', 'available' => 'Available',
+            'assigned' => 'Assigned',
+            'assigned to simulation', 'simulation' => 'Assigned to Simulation',
+            'on patrol', 'on-patrol' => 'On Patrol',
+            'on reporting', 'on-reporting', 'reporting' => 'On Reporting',
+            'unavailable', 'off duty', 'off-duty', 'offduty' => 'Unavailable',
+            default => $raw !== '' ? $raw : 'Available',
+        };
+    }
+
+    public function isMarshalSelectable(?string $status, bool $alreadyOnThisEvent = false): bool
+    {
+        if ($alreadyOnThisEvent) {
+            return true;
+        }
+
+        return $this->normalizeMarshalAvailabilityStatus($status) === 'Available';
+    }
+
+    /**
+     * Open/active request statuses that should block another patrol request for the same event.
+     *
+     * @return list<string>
+     */
+    public function openRequestStatuses(): array
+    {
+        return ['Pending', 'Under Review', 'Approved', 'Scheduled'];
     }
 
     /**

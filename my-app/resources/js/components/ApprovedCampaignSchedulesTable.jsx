@@ -213,7 +213,7 @@ function ApprovedCampaignsEmptyState() {
     );
 }
 
-export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
+export function ApprovedCampaignSchedulesTable({ schedules = [], demoToolsEnabled = true }) {
     const [scheduleRows, setScheduleRows] = React.useState(schedules);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [filterCommunity, setFilterCommunity] = React.useState('');
@@ -527,7 +527,8 @@ export function ApprovedCampaignSchedulesTable({ schedules = [] }) {
                     onPageChange={setCurrentPage}
                     renderActions={(row) => {
                         const action = resolveRowAction(row);
-                        const showMeetQuota = !row.can_create_plan
+                        const showMeetQuota = demoToolsEnabled
+                            && !row.can_create_plan
                             && !row.simulation_event_id
                             && !row.demo_force_ready
                             && row.simulation_readiness !== 'simulation_created';

@@ -1,12 +1,15 @@
 import React from 'react';
-import { ArrowLeft, BookOpen, Eye } from 'lucide-react';
+import { ArrowLeft, BookOpen, Eye, Printer } from 'lucide-react';
+import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
     AdminContentCard,
     AdminSecondaryButton,
+    AdminPrimaryButton,
 } from '../components/admin/AdminLayout';
 import { AdminTableActionButton } from '../components/admin/AdminDataTable';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 function StatusPill({ lesson }) {
     if (!lesson?.status) {
@@ -37,6 +40,43 @@ export function LessonQuizParticipantDetail({ detail }) {
 
     const lessons = detail.lessons || [];
 
+    const lessonStatusLabel = (lesson) => {
+        if (!lesson?.status) return 'Not taken';
+        if (lesson.status === 'in_progress') return 'In Progress';
+        if (lesson.status === 'expired') return 'Expired';
+        if (lesson.passed) return 'Passed';
+        return 'Failed';
+    };
+
+    const handlePrint = React.useCallback(() => {
+        const participantName = detail.participant?.name || 'Participant';
+        const headers = ['Lesson', 'Title', 'Score', 'Status', 'Completed'];
+        const rows = lessons.map((lesson) => [
+            lesson.label || '—',
+            lesson.title || '—',
+            lesson.score != null ? `${lesson.score}/${lesson.total_questions ?? '—'}` : '—',
+            lessonStatusLabel(lesson),
+            lesson.completed_at ? new Date(lesson.completed_at).toLocaleString() : '—',
+        ]);
+
+        const html = buildPrintTableDocument({
+            title: `Lesson Quiz Summary — ${participantName}`,
+            subtitle: [
+                detail.training_module?.title || 'Module',
+                detail.batch_label || null,
+                detail.participant?.email || null,
+                `Printed ${new Date().toLocaleString()}`,
+            ].filter(Boolean).join(' · '),
+            headers,
+            rows,
+            emptyMessage: 'No lesson quiz records for this participant.',
+        });
+
+        if (!printHtmlDocument(html, `Lesson Quiz — ${participantName}`)) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    }, [detail, lessons]);
+
     return (
         <AdminPageShell>
             <AdminPageHeader
@@ -44,10 +84,16 @@ export function LessonQuizParticipantDetail({ detail }) {
                 title={detail.participant?.name || 'Participant'}
                 description={`${detail.training_module?.title || 'Module'}${detail.batch_label ? ` · ${detail.batch_label}` : ''} · Lesson quiz scores`}
                 actions={(
-                    <AdminSecondaryButton href={detail.back_href || '/admin/evaluations?tab=lessons'}>
-                        <ArrowLeft className="w-4 h-4" />
-                        Back to Lesson Quizzes
-                    </AdminSecondaryButton>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <AdminPrimaryButton type="button" onClick={handlePrint}>
+                            <Printer className="w-4 h-4" />
+                            Print Summary
+                        </AdminPrimaryButton>
+                        <AdminSecondaryButton href={detail.back_href || '/admin/evaluations?tab=lessons'}>
+                            <ArrowLeft className="w-4 h-4" />
+                            Back to Lesson Quizzes
+                        </AdminSecondaryButton>
+                    </div>
                 )}
             />
 

@@ -339,6 +339,30 @@ export function SimulationExerciseTemplateModule({
             });
             return;
         }
+        if (!reuseForm.campaign_request_id) {
+            showAppAlert({
+                title: 'Campaign required',
+                description: 'Select an approved campaign for this simulation event.',
+                icon: 'warning',
+            });
+            return;
+        }
+        if (!reuseForm.event_date) {
+            showAppAlert({
+                title: 'Event date required',
+                description: 'Choose the event date before creating the simulation event.',
+                icon: 'warning',
+            });
+            return;
+        }
+        if (!String(reuseForm.venue || '').trim()) {
+            showAppAlert({
+                title: 'Venue required',
+                description: 'Enter the venue before creating the simulation event.',
+                icon: 'warning',
+            });
+            return;
+        }
 
         setIsReusing(true);
         try {
@@ -349,7 +373,10 @@ export function SimulationExerciseTemplateModule({
                     Accept: 'application/json',
                     ...getCsrfHeaders(),
                 },
-                body: JSON.stringify(reuseForm),
+                body: JSON.stringify({
+                    ...reuseForm,
+                    venue: String(reuseForm.venue).trim(),
+                }),
             });
 
             let payload = {};
@@ -552,13 +579,14 @@ export function SimulationExerciseTemplateModule({
                                 </p>
                             ) : null}
                             <label className="block text-sm">
-                                <span className="font-medium text-slate-700">Campaign (optional)</span>
+                                <span className="font-medium text-slate-700">Campaign</span>
                                 <select
                                     className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                                     value={reuseForm.campaign_request_id}
                                     onChange={(e) => setReuseForm((prev) => ({ ...prev, campaign_request_id: e.target.value }))}
+                                    required
                                 >
-                                    <option value="">No campaign link</option>
+                                    <option value="">Select campaign...</option>
                                     {approvedSchedules.map((schedule) => {
                                         const scheduleId = schedule.campaign_request_id || schedule.campaign_id;
                                         return (
@@ -577,6 +605,7 @@ export function SimulationExerciseTemplateModule({
                                         className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                                         value={reuseForm.event_date}
                                         onChange={(e) => setReuseForm((prev) => ({ ...prev, event_date: e.target.value }))}
+                                        required
                                     />
                                 </label>
                                 <label className="block text-sm">
@@ -587,6 +616,7 @@ export function SimulationExerciseTemplateModule({
                                         value={reuseForm.venue}
                                         onChange={(e) => setReuseForm((prev) => ({ ...prev, venue: e.target.value }))}
                                         placeholder="Evacuation Center"
+                                        required
                                     />
                                 </label>
                             </div>
@@ -611,7 +641,16 @@ export function SimulationExerciseTemplateModule({
                             <AdminSecondaryButton onClick={() => setReuseModalOpen(false)} disabled={isReusing}>
                                 Cancel
                             </AdminSecondaryButton>
-                            <AdminPrimaryButton onClick={handleReuse} disabled={isReusing || !reuseForm.template_id}>
+                            <AdminPrimaryButton
+                                onClick={handleReuse}
+                                disabled={
+                                    isReusing
+                                    || !reuseForm.template_id
+                                    || !reuseForm.campaign_request_id
+                                    || !reuseForm.event_date
+                                    || !String(reuseForm.venue || '').trim()
+                                }
+                            >
                                 {isReusing ? 'Creating...' : 'Create Simulation Event'}
                             </AdminPrimaryButton>
                         </div>
