@@ -285,6 +285,9 @@
             @isset($dashboard_charts)
                 data-dashboard-charts='@json($dashboard_charts)'
             @endisset
+            @isset($dashboard_extras)
+                data-dashboard-extras='@json($dashboard_extras)'
+            @endisset
             @isset($hazard_analytics)
                 data-hazard-analytics='@json($hazard_analytics)'
             @endisset

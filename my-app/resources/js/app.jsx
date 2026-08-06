@@ -687,6 +687,15 @@ if (rootElement) {
             console.error('Failed to parse dashboard charts JSON', e);
         }
     }
+    let dashboardExtras = null;
+    const dashboardExtrasJson = rootElement.getAttribute('data-dashboard-extras');
+    if (dashboardExtrasJson) {
+        try {
+            dashboardExtras = JSON.parse(dashboardExtrasJson);
+        } catch (e) {
+            console.error('Failed to parse dashboard extras JSON', e);
+        }
+    }
     let hazardAnalytics = null;
     const hazardAnalyticsJson = rootElement.getAttribute('data-hazard-analytics');
     if (hazardAnalyticsJson) {
@@ -2048,6 +2057,7 @@ if (rootElement) {
                                     role={role}
                                     dashboardStats={dashboardStats}
                                     dashboardCharts={dashboardCharts}
+                                    dashboardExtras={dashboardExtras}
                                     hazardAnalytics={hazardAnalytics}
                                 />
                             )

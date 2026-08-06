@@ -9,6 +9,7 @@ use App\Models\Certificate;
 use App\Models\Evaluation;
 use App\Models\Attendance;
 use App\Models\ParticipantEvaluation;
+use App\Services\AdminDashboardMetricsService;
 use App\Support\PortalAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,10 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly AdminDashboardMetricsService $dashboardMetrics,
+    ) {}
+
     /**
      * Dashboard as operations command center: modules, events, participants, and stats.
      */
@@ -107,12 +112,17 @@ class DashboardController extends Controller
             }
         }
 
-        // Pending certificates: eligible participants without certificate for completed events (simplified)
+        // Pending certificates: eligible participants without an issued certificate
         $pendingCertificatesCount = 0;
+        $dashboardExtras = null;
         if ($user->role !== 'PARTICIPANT') {
-            $eligible = ParticipantEvaluation::where('is_eligible_for_certification', true)->whereNotNull('submitted_at')->count();
-            $issued = Certificate::whereNull('revoked_at')->count();
-            $pendingCertificatesCount = max(0, $eligible - $issued);
+            $pendingCertificatesCount = $this->dashboardMetrics->pendingCertificatesCount();
+            $dashboardExtras = [
+                'training_modules' => $this->dashboardMetrics->trainingModuleStats(),
+                'campaign_pipeline' => $this->dashboardMetrics->campaignPipeline(5),
+                'trends' => $this->dashboardMetrics->performanceTrends(),
+                'recent_activity' => $this->dashboardMetrics->recentActivity(5),
+            ];
         }
 
         // Performance overview: average score, pass rate (from submitted evaluations)
@@ -267,6 +277,7 @@ class DashboardController extends Controller
             'participants' => $participants,
             'dashboard_stats' => $dashboardStats,
             'dashboard_charts' => $dashboardCharts,
+            'dashboard_extras' => $dashboardExtras,
             'hazard_analytics' => $user->role !== 'PARTICIPANT'
                 ? app(\App\Services\HazardAssessment\HazardTrainingRecommendationService::class)->globalAnalytics()
                 : null,
