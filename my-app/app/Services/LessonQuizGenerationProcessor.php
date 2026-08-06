@@ -72,7 +72,51 @@ class LessonQuizGenerationProcessor
         return $job;
     }
 
-    public function process(LessonQuizGenerationJob $job): void
+    /**
+     * Re-dispatch a stuck queued job (e.g. after worker was down or network blip).
+     */
+    public function requeueIfStuck(LessonQuizGenerationJob $job): LessonQuizGenerationJob
+    {
+        $job->refresh();
+
+        if ($job->status === LessonQuizGenerationJob::STATUS_FAILED) {
+            return $job;
+        }
+
+        if ($job->status === LessonQuizGenerationJob::STATUS_QUEUED
+            && $job->created_at
+            && $job->created_at->lt(now()->subMinutes(2))
+        ) {
+            ProcessLessonQuizGenerationJob::dispatch($job->id);
+        }
+
+        return $job->fresh() ?? $job;
+    }
+
+    public function retryFailed(LessonQuizGenerationJob $job): LessonQuizGenerationJob
+    {
+        $job->refresh();
+
+        if ($job->status !== LessonQuizGenerationJob::STATUS_FAILED) {
+            throw ValidationException::withMessages([
+                'generation' => 'Only failed generation jobs can be retried.',
+            ]);
+        }
+
+        $job->update([
+            'status' => LessonQuizGenerationJob::STATUS_QUEUED,
+            'error_message' => null,
+            'failed_at' => null,
+            'started_at' => null,
+            'completed_at' => null,
+        ]);
+
+        ProcessLessonQuizGenerationJob::dispatch($job->id);
+
+        return $job->fresh() ?? $job;
+    }
+
+    public function process(LessonQuizGenerationJob $job, bool $markFailedOnError = true): void
     {
         $job->refresh();
         $job->loadMissing(['config.trainingContent.module', 'requester']);
@@ -154,8 +198,17 @@ class LessonQuizGenerationProcessor
             $job->markCompleted($version);
             $this->notifyGenerationCompleted($job, $version);
         } catch (\Throwable $e) {
-            $job->markFailed($e->getMessage());
-            $this->notifyGenerationFailed($job, $e->getMessage());
+            if ($markFailedOnError) {
+                $job->markFailed($e->getMessage());
+                $this->notifyGenerationFailed($job, $e->getMessage());
+            } elseif ($job->isActive() || $job->status === LessonQuizGenerationJob::STATUS_QUEUED) {
+                // Keep job active / re-queueable so a later attempt (or online retry) can continue.
+                $job->update([
+                    'status' => LessonQuizGenerationJob::STATUS_QUEUED,
+                    'error_message' => 'Temporary failure (will retry): '.$e->getMessage(),
+                ]);
+            }
+
             throw $e;
         }
     }

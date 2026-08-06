@@ -14,6 +14,7 @@ import {
     ChevronDown,
     X,
     Plus,
+    Printer,
 } from 'lucide-react';
 import {
     AdminPageShell,
@@ -36,56 +37,33 @@ import {
     resolveScenarioTitle,
 } from '../utils/aiScenarioLocale';
 import { showPortalToast } from '../utils/portalToast';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
+import { PassingScoreSelectField, DEFAULT_PASSING_SCORE } from './admin/PassingScoreSelectField';
 
-const BANK_COUNTS = [10, 20, 30];
-const DEFAULT_BANK_COUNT = 20;
+const QUESTION_COUNTS = [5, 10, 15, 20, 30];
+const DEFAULT_QUESTION_COUNT = 10;
 
-const BANK_COUNT_LABELS = {
-    10: '10',
-    20: '20 (Recommended)',
+const QUESTION_COUNT_LABELS = {
+    5: '5 (Quick demo)',
+    10: '10 (Recommended)',
+    15: '15',
+    20: '20',
     30: '30 (Maximum)',
 };
 
-function recommendedQuizSizeForBank(bankCount) {
-    const normalized = normalizeBankCount(bankCount);
-    if (normalized === 10) return 5;
-    if (normalized === 20) return 10;
-    if (normalized === 30) return 15;
-
-    return 10;
-}
-
-function buildParticipantQuizSizeOptions(poolSize) {
-    const options = [];
-    for (let size = 5; size <= poolSize; size += 5) {
-        options.push(size);
-    }
-    return options;
-}
-
-function normalizeBankCount(count) {
+function normalizeQuestionCount(count) {
     const parsed = Number(count);
-    if (BANK_COUNTS.includes(parsed)) {
+    if (QUESTION_COUNTS.includes(parsed)) {
         return parsed;
     }
 
-    if (parsed > 30) {
-        return 30;
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return DEFAULT_QUESTION_COUNT;
     }
 
-    return DEFAULT_BANK_COUNT;
-}
-
-function normalizeQuizSize(count, bankCount) {
-    const normalizedBank = normalizeBankCount(bankCount);
-    const options = buildParticipantQuizSizeOptions(normalizedBank);
-    const parsed = Number(count);
-
-    if (options.includes(parsed)) {
-        return parsed;
-    }
-
-    return recommendedQuizSizeForBank(normalizedBank);
+    return QUESTION_COUNTS.reduce((best, option) => (
+        Math.abs(option - parsed) < Math.abs(best - parsed) ? option : best
+    ), DEFAULT_QUESTION_COUNT);
 }
 
 const GENERATION_LANGUAGES = [
@@ -365,13 +343,11 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
     const deepLinkHandled = React.useRef(false);
     const versionDeepLinkHandled = React.useRef(false);
 
-    const [bankQuestionCount, setBankQuestionCount] = React.useState(DEFAULT_BANK_COUNT);
-    const [quizQuestionCount, setQuizQuestionCount] = React.useState(recommendedQuizSizeForBank(DEFAULT_BANK_COUNT));
-    const [quizSizePoolNotice, setQuizSizePoolNotice] = React.useState('');
+    const [questionCount, setQuestionCount] = React.useState(DEFAULT_QUESTION_COUNT);
     const [generationLanguage, setGenerationLanguage] = React.useState(AI_SCENARIO_DEFAULT_LANGUAGE);
     const [timeLimitMinutes, setTimeLimitMinutes] = React.useState(60);
     const [maxAttempts, setMaxAttempts] = React.useState(3);
-    const [passingScore, setPassingScore] = React.useState(75);
+    const [passingScore, setPassingScore] = React.useState(DEFAULT_PASSING_SCORE);
     const [failRetakePolicy, setFailRetakePolicy] = React.useState('require_lesson_review');
     const [autoSubmitOnExpire, setAutoSubmitOnExpire] = React.useState(true);
     const [shuffleQuestions, setShuffleQuestions] = React.useState(true);
@@ -382,67 +358,46 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
     );
     const selectedModule = modules.find((m) => String(m.id) === String(selectedModuleId));
 
-    const participantQuizSizeOptions = React.useMemo(
-        () => buildParticipantQuizSizeOptions(bankQuestionCount),
-        [bankQuestionCount],
-    );
-
-    const buildPayload = React.useCallback(() => ({
-        training_module_id: Number(selectedModuleId),
-        bank_question_count: bankQuestionCount,
-        quiz_question_count: Number(quizQuestionCount),
-        generation_language: generationLanguage,
-        time_limit_minutes: Number(timeLimitMinutes) > 0 ? Number(timeLimitMinutes) : 60,
-        max_attempts: maxAttempts,
-        passing_score: passingScore,
-        fail_retake_policy: failRetakePolicy,
-        auto_submit_on_expire: autoSubmitOnExpire,
-        shuffle_questions: shuffleQuestions,
-        shuffle_answer_choices: shuffleAnswerChoices,
-    }), [
-        selectedModuleId, bankQuestionCount, quizQuestionCount, generationLanguage, timeLimitMinutes,
+    const buildPayload = React.useCallback(() => {
+        const count = normalizeQuestionCount(questionCount);
+        return {
+            training_module_id: Number(selectedModuleId),
+            bank_question_count: count,
+            quiz_question_count: count,
+            generation_language: generationLanguage,
+            time_limit_minutes: Number(timeLimitMinutes) > 0 ? Number(timeLimitMinutes) : 60,
+            max_attempts: maxAttempts,
+            passing_score: passingScore,
+            fail_retake_policy: failRetakePolicy,
+            auto_submit_on_expire: autoSubmitOnExpire,
+            shuffle_questions: shuffleQuestions,
+            shuffle_answer_choices: shuffleAnswerChoices,
+        };
+    }, [
+        selectedModuleId, questionCount, generationLanguage, timeLimitMinutes,
         maxAttempts, passingScore, failRetakePolicy, autoSubmitOnExpire,
         shuffleQuestions, shuffleAnswerChoices,
     ]);
 
-    const handleBankQuestionCountChange = React.useCallback((nextBank) => {
-        const normalizedBank = normalizeBankCount(nextBank);
-        const previousQuiz = Number(quizQuestionCount);
-        const recommended = recommendedQuizSizeForBank(normalizedBank);
-        const exceeded = Number.isFinite(previousQuiz) && previousQuiz > normalizedBank;
-
-        setBankQuestionCount(normalizedBank);
-        setQuizQuestionCount(recommended);
-
-        if (exceeded) {
-            setQuizSizePoolNotice('The participant quiz size has been adjusted because it exceeded the available AI question pool.');
-        } else {
-            setQuizSizePoolNotice('');
-        }
-    }, [quizQuestionCount]);
-
     const hydrateConfigForm = React.useCallback((existing) => {
         if (existing) {
-            const bankCount = normalizeBankCount(existing.bank_question_count || existing.number_of_questions || DEFAULT_BANK_COUNT);
-            setBankQuestionCount(bankCount);
-            setQuizQuestionCount(normalizeQuizSize(existing.quiz_question_count, bankCount));
-            setQuizSizePoolNotice('');
+            setQuestionCount(normalizeQuestionCount(
+                existing.quiz_question_count || existing.bank_question_count || existing.number_of_questions || DEFAULT_QUESTION_COUNT,
+            ));
             setGenerationLanguage(existing.generation_language || existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE);
             setTimeLimitMinutes(existing.time_limit_minutes > 0 ? existing.time_limit_minutes : 60);
             setMaxAttempts(existing.max_attempts ?? 3);
-            setPassingScore(existing.passing_score ?? 75);
+            setPassingScore(existing.passing_score ?? DEFAULT_PASSING_SCORE);
             setFailRetakePolicy(existing.fail_retake_policy || 'require_lesson_review');
             setAutoSubmitOnExpire(existing.auto_submit_on_expire !== false);
             setShuffleQuestions(existing.shuffle_questions !== false);
             setShuffleAnswerChoices(existing.shuffle_answer_choices !== false);
         } else {
-            setBankQuestionCount(DEFAULT_BANK_COUNT);
-            setQuizQuestionCount(recommendedQuizSizeForBank(DEFAULT_BANK_COUNT));
-            setQuizSizePoolNotice('');
+            setQuestionCount(DEFAULT_QUESTION_COUNT);
             setGenerationLanguage(AI_SCENARIO_DEFAULT_LANGUAGE);
             setTimeLimitMinutes(60);
             setMaxAttempts(3);
-            setPassingScore(75);
+            setPassingScore(DEFAULT_PASSING_SCORE);
             setFailRetakePolicy('require_lesson_review');
             setAutoSubmitOnExpire(true);
             setShuffleQuestions(true);
@@ -490,14 +445,17 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
         const existing = configByModuleId[Number(selectedModuleId)];
         hydrateConfigForm(existing);
         if (existing) {
+            const count = normalizeQuestionCount(
+                existing.quiz_question_count || existing.bank_question_count || existing.number_of_questions || DEFAULT_QUESTION_COUNT,
+            );
             const payload = {
                 training_module_id: Number(selectedModuleId),
-                bank_question_count: normalizeBankCount(existing.bank_question_count || existing.number_of_questions || DEFAULT_BANK_COUNT),
-                quiz_question_count: normalizeQuizSize(existing.quiz_question_count, existing.bank_question_count || existing.number_of_questions || DEFAULT_BANK_COUNT),
+                bank_question_count: count,
+                quiz_question_count: count,
                 generation_language: existing.generation_language || existing.generated_language || AI_SCENARIO_DEFAULT_LANGUAGE,
                 time_limit_minutes: existing.time_limit_minutes > 0 ? existing.time_limit_minutes : 60,
                 max_attempts: existing.max_attempts ?? 3,
-                passing_score: existing.passing_score ?? 75,
+                passing_score: existing.passing_score ?? DEFAULT_PASSING_SCORE,
                 fail_retake_policy: existing.fail_retake_policy || 'require_lesson_review',
                 auto_submit_on_expire: existing.auto_submit_on_expire !== false,
                 shuffle_questions: existing.shuffle_questions !== false,
@@ -667,11 +625,76 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
 
         pollStatus();
         const timer = window.setInterval(pollStatus, 5000);
+        const onOnline = () => {
+            pollStatus();
+        };
+        window.addEventListener('online', onOnline);
         return () => {
             cancelled = true;
             window.clearInterval(timer);
+            window.removeEventListener('online', onOnline);
         };
     }, [activeGenerationJob?.id, activeGenerationJob?.is_active]);
+
+    const handleRetryGeneration = async () => {
+        const jobId = activeGenerationJob?.id || selectedConfig?.latest_generation_job?.id;
+        if (!jobId) return;
+        try {
+            const data = await apiFetch(`/admin/ai-scenario-generation-jobs/${jobId}/retry`, { method: 'POST' });
+            setActiveGenerationJob(data.generation_job);
+            showPortalToast({
+                title: 'Generation re-queued',
+                description: 'Will continue when the queue worker / network is available.',
+            });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Retry failed', text: err.message });
+        }
+    };
+
+    const handleCreateManualDraft = async () => {
+        if (!selectedConfig?.id || !configSynced) return;
+        const confirm = await Swal.fire({
+            title: 'Create manual scenario draft?',
+            text: 'Creates an empty final-assessment draft so you can write questions by hand (no AI wait).',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Create draft',
+            confirmButtonColor: '#059669',
+        });
+        if (!confirm.isConfirmed) return;
+
+        try {
+            const data = await apiFetch(`/admin/ai-scenario-config/${selectedConfig.id}/manual-draft`, { method: 'POST' });
+            if (data.config) refreshConfig(data.config);
+            if (data.version) {
+                setActiveVersion(data.version);
+                setPanelMode('edit');
+                setQuestionBankDirty(false);
+            }
+            Swal.fire({ icon: 'success', title: 'Manual draft ready', text: data.message, timer: 2200, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Could not create draft', text: err.message });
+        }
+    };
+
+    const handlePrintScenarios = () => {
+        const html = buildPrintTableDocument({
+            title: 'Generated AI Scenarios',
+            subtitle: `${selectedModule?.title || 'Module'} · Printed ${new Date().toLocaleString()} · ${scenarioRows.length} version(s)`,
+            headers: ['#', 'Version', 'Questions', 'Status', 'Generated'],
+            rows: scenarioRows.map((row, index) => [
+                index + 1,
+                row.version_number ?? '—',
+                row.generated_questions?.length ?? row.question_count ?? '—',
+                row.status || '—',
+                row.created_at ? new Date(row.created_at).toLocaleString() : '—',
+            ]),
+            emptyMessage: 'No generated scenarios to print.',
+        });
+        if (!printHtmlDocument(html, 'AI Scenarios')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    };
 
     const runWorkflow = async (configId, versionId, suffix, { method = 'POST', body, successTitle, successText } = {}) => {
         if (!configId || !versionId) return null;
@@ -815,7 +838,9 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
             <LessonQuizQuestionBankReview
                 version={version}
                 lessonTitle={selectedModule?.title}
-                quizQuestionCount={config.quiz_question_count || recommendedQuizSizeForBank(config.bank_question_count || DEFAULT_BANK_COUNT)}
+                quizQuestionCount={normalizeQuestionCount(
+                    config.quiz_question_count || config.bank_question_count || DEFAULT_QUESTION_COUNT,
+                )}
                 readOnly={readOnly}
                 editable={!readOnly && activeVersionEditable}
                 workflowBusy={workflowBusy}
@@ -862,11 +887,6 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
             label: 'Training Module',
             className: 'max-w-xs whitespace-normal',
             render: (row) => <span className="text-slate-700">{row.trainingModuleTitle}</span>,
-        },
-        {
-            key: 'difficulty',
-            label: 'Difficulty',
-            render: (row) => <span className="capitalize text-slate-600">{formatDifficulty(row.difficulty)}</span>,
         },
         {
             key: 'question_count',
@@ -928,31 +948,19 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                         <form onSubmit={handleSaveConfig} className="pt-4 space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">AI Questions to Generate</label>
-                                    <select className={adminCompactInputClass} value={bankQuestionCount} onChange={(e) => handleBankQuestionCountChange(Number(e.target.value))}>
-                                        {BANK_COUNTS.map((n) => <option key={n} value={n}>{BANK_COUNT_LABELS[n] || n}</option>)}
-                                    </select>
-                                    <p className="text-[0.7rem] text-slate-500 mt-1">
-                                        Recommended: 20 questions. Maximum: 30 questions.
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Participant Quiz Size</label>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Questions to Generate</label>
                                     <select
                                         className={adminCompactInputClass}
-                                        value={String(quizQuestionCount)}
-                                        onChange={(e) => {
-                                            setQuizQuestionCount(Number(e.target.value));
-                                            setQuizSizePoolNotice('');
-                                        }}
+                                        value={String(questionCount)}
+                                        onChange={(e) => setQuestionCount(normalizeQuestionCount(e.target.value))}
                                     >
-                                        {participantQuizSizeOptions.map((n) => (
-                                            <option key={n} value={n}>{n}</option>
+                                        {QUESTION_COUNTS.map((n) => (
+                                            <option key={n} value={n}>{QUESTION_COUNT_LABELS[n] || n}</option>
                                         ))}
                                     </select>
-                                    {quizSizePoolNotice && (
-                                        <p className="text-xs text-slate-600 mt-1">{quizSizePoolNotice}</p>
-                                    )}
+                                    <p className="text-[0.7rem] text-slate-500 mt-1">
+                                        AI generates this many questions and participants get the same set size. Use 5 or 10 for faster demos.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Generation Language</label>
@@ -983,10 +991,13 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                     />
                                     <p className="text-[0.7rem] text-slate-500 mt-1">1–480 minutes. Clear the field to type a new value.</p>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Passing Score (%)</label>
-                                    <input type="number" min={1} max={100} className={adminCompactInputClass} value={passingScore} onChange={(e) => setPassingScore(Number(e.target.value))} />
-                                </div>
+                                <PassingScoreSelectField
+                                    id="ai-scenario-passing-score"
+                                    className={adminCompactInputClass}
+                                    value={passingScore}
+                                    onChange={setPassingScore}
+                                    hint="Recommended: 50%. Use + Add category… for a custom percentage (e.g. 70%)."
+                                />
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Max Attempts</label>
                                     <input type="number" min={1} max={20} className={adminCompactInputClass} value={maxAttempts} onChange={(e) => setMaxAttempts(Number(e.target.value))} />
@@ -1052,6 +1063,19 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                                     {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                                     Generate AI Content
                                 </AdminPrimaryButton>
+                                <AdminSecondaryButton
+                                    type="button"
+                                    onClick={handleCreateManualDraft}
+                                    disabled={!configSynced || !selectedConfig?.id || activeGenerationJob?.is_active}
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create Manual Scenario
+                                </AdminSecondaryButton>
+                                {(activeGenerationJob?.status === 'failed' || selectedConfig?.latest_generation_job?.status === 'failed') && (
+                                    <AdminSecondaryButton type="button" onClick={handleRetryGeneration}>
+                                        Retry failed generation
+                                    </AdminSecondaryButton>
+                                )}
                                 {!configSynced && selectedModuleId && (
                                     <span className="text-xs text-amber-600 inline-flex items-center gap-1">
                                         <AlertCircle className="w-3.5 h-3.5" />
@@ -1071,12 +1095,18 @@ export function AiScenarioTrainingModule({ modules = [], configs = [] }) {
                         <span className="font-normal text-slate-500"> — {selectedModule.title}</span>
                     )}
                 </h2>
-                {selectedConfig?.published_version && (
-                    <span className="text-xs text-sky-700 inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Learners use v{selectedConfig.published_version.version_number}
-                    </span>
-                )}
+                <div className="flex items-center gap-2">
+                    {selectedConfig?.published_version && (
+                        <span className="text-xs text-sky-700 inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Learners use v{selectedConfig.published_version.version_number}
+                        </span>
+                    )}
+                    <AdminSecondaryButton type="button" onClick={handlePrintScenarios} disabled={scenarioRows.length === 0}>
+                        <Printer className="w-4 h-4" />
+                        Print
+                    </AdminSecondaryButton>
+                </div>
             </div>
 
             <AdminDataTable

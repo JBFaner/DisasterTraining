@@ -29,8 +29,17 @@ class StoreAiScenarioConfigRequest extends FormRequest
 
         $passingScore = $this->input('passing_score');
         if ($passingScore === '' || $passingScore === null || (int) $passingScore < 1) {
-            $this->merge(['passing_score' => 75]);
+            $this->merge(['passing_score' => 50]);
         }
+
+        // Match Lesson Quiz: one question count drives both bank size and participant quiz size.
+        $questionCount = (int) ($this->input('quiz_question_count')
+            ?: $this->input('bank_question_count')
+            ?: AiScenarioConfig::DEFAULT_BANK_QUESTION_COUNT);
+        $this->merge([
+            'bank_question_count' => $questionCount,
+            'quiz_question_count' => $questionCount,
+        ]);
     }
 
     public function rules(): array
@@ -38,17 +47,7 @@ class StoreAiScenarioConfigRequest extends FormRequest
         return [
             'training_module_id' => ['required', 'integer', 'exists:training_modules,id'],
             'bank_question_count' => ['required', Rule::in(AiScenarioConfig::BANK_QUESTION_COUNTS)],
-            'quiz_question_count' => [
-                'required',
-                'integer',
-                'min:1',
-                function (string $attribute, mixed $value, \Closure $fail) {
-                    $bankCount = (int) $this->input('bank_question_count', AiScenarioConfig::DEFAULT_BANK_QUESTION_COUNT);
-                    if ((int) $value > $bankCount) {
-                        $fail('Participant quiz size cannot exceed AI questions to generate.');
-                    }
-                },
-            ],
+            'quiz_question_count' => ['required', Rule::in(AiScenarioConfig::BANK_QUESTION_COUNTS)],
             'number_of_questions' => ['sometimes', Rule::in(AiScenarioConfig::QUESTION_COUNTS)],
             'generation_language' => ['sometimes', Rule::in(AiScenarioConfig::LANGUAGES)],
             'time_limit_minutes' => ['sometimes', 'integer', 'min:1', 'max:480'],

@@ -102,7 +102,18 @@ class LessonQuizWorkflowService
 
     }
 
-
+    public function createManualDraft(LessonQuizConfig $config, ?int $actorUserId = null): LessonQuizVersion
+    {
+        return $this->createVersionFromGeneration(
+            $config,
+            [
+                'generated_questions' => [],
+                'generated_language' => LessonQuizConfig::DEFAULT_GENERATION_LANGUAGE,
+            ],
+            'Manual Draft',
+            $actorUserId,
+        );
+    }
 
     /**
 

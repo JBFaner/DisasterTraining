@@ -59,6 +59,22 @@ class AiScenarioWorkflowService
         });
     }
 
+    public function createManualDraft(AiScenarioConfig $config): AiScenarioAssessmentVersion
+    {
+        $module = $config->trainingModule;
+
+        return $this->createVersionFromGeneration($config, [
+            'disaster_type' => $module?->category,
+            'title_en' => ($module?->title ? $module->title.' — Final Assessment' : 'Manual Final Assessment'),
+            'title_fil' => null,
+            'description_en' => 'Manual draft. Edit the scenario and add questions before publishing.',
+            'description_fil' => null,
+            'learning_objectives_en' => '',
+            'learning_objectives_fil' => null,
+            'generated_questions' => [],
+        ], 'Manual Draft');
+    }
+
     /**
      * @param  array<string, mixed>  $bilingualContent
      */

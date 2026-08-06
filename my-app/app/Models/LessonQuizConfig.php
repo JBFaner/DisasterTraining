@@ -11,9 +11,9 @@ class LessonQuizConfig extends Model
 {
     public const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
-    public const BANK_QUESTION_COUNTS = [10, 20, 30];
+    public const BANK_QUESTION_COUNTS = [5, 10, 15, 20, 30];
 
-    public const QUIZ_QUESTION_COUNTS = [5, 10, 15, 20];
+    public const QUIZ_QUESTION_COUNTS = [5, 10, 15, 20, 30];
 
     public const LANGUAGES = ['en', 'fil'];
 

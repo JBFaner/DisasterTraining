@@ -15,6 +15,8 @@ import {
     ChevronDown,
     X,
     FileText,
+    Printer,
+    Plus,
 } from 'lucide-react';
 import {
     AdminPageShell,
@@ -36,59 +38,36 @@ import {
     AI_SCENARIO_DEFAULT_LANGUAGE,
     AI_SCENARIO_LANGUAGES,
 } from '../utils/aiScenarioLocale';
+import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
+import { PassingScoreSelectField, DEFAULT_PASSING_SCORE } from './admin/PassingScoreSelectField';
 
-const BANK_COUNTS = [10, 20, 30];
-const DEFAULT_BANK_COUNT = 20;
-const DEFAULT_PASSING_SCORE = 75;
+const QUESTION_COUNTS = [5, 10, 15, 20, 30];
+const DEFAULT_QUESTION_COUNT = 10;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const QUICK_TIME_LIMITS = [10, 15, 20];
 
-const BANK_COUNT_LABELS = {
-    10: '10',
-    20: '20 (Recommended)',
+const QUESTION_COUNT_LABELS = {
+    5: '5 (Quick demo)',
+    10: '10 (Recommended)',
+    15: '15',
+    20: '20',
     30: '30 (Maximum)',
 };
 
-function recommendedQuizSizeForBank(bankCount) {
-    const normalized = normalizeBankCount(bankCount);
-    if (normalized === 10) return 5;
-    if (normalized === 20) return 10;
-    if (normalized === 30) return 15;
-
-    return 10;
-}
-
-function buildParticipantQuizSizeOptions(poolSize) {
-    const options = [];
-    for (let size = 5; size <= poolSize; size += 5) {
-        options.push(size);
-    }
-    return options;
-}
-
-function normalizeBankCount(count) {
+function normalizeQuestionCount(count) {
     const parsed = Number(count);
-    if (BANK_COUNTS.includes(parsed)) {
+    if (QUESTION_COUNTS.includes(parsed)) {
         return parsed;
     }
 
-    if (parsed > 30) {
-        return 30;
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return DEFAULT_QUESTION_COUNT;
     }
 
-    return DEFAULT_BANK_COUNT;
-}
-
-function normalizeQuizSize(count, bankCount) {
-    const normalizedBank = normalizeBankCount(bankCount);
-    const options = buildParticipantQuizSizeOptions(normalizedBank);
-    const parsed = Number(count);
-
-    if (options.includes(parsed)) {
-        return parsed;
-    }
-
-    return recommendedQuizSizeForBank(normalizedBank);
+    // Snap to nearest allowed size for older configs.
+    return QUESTION_COUNTS.reduce((best, option) => (
+        Math.abs(option - parsed) < Math.abs(best - parsed) ? option : best
+    ), DEFAULT_QUESTION_COUNT);
 }
 
 function validatePassingScore(value) {
@@ -359,9 +338,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
     const [questionBankDirty, setQuestionBankDirty] = React.useState(false);
     const [translatingLocale, setTranslatingLocale] = React.useState(null);
 
-    const [bankQuestionCount, setBankQuestionCount] = React.useState(DEFAULT_BANK_COUNT);
-    const [quizQuestionCount, setQuizQuestionCount] = React.useState(recommendedQuizSizeForBank(DEFAULT_BANK_COUNT));
-    const [quizSizePoolNotice, setQuizSizePoolNotice] = React.useState('');
+    const [quizQuestionCount, setQuizQuestionCount] = React.useState(DEFAULT_QUESTION_COUNT);
     const [timeLimitMinutes, setTimeLimitMinutes] = React.useState(30);
     const [maxAttempts, setMaxAttempts] = React.useState(DEFAULT_MAX_ATTEMPTS);
     const [passingScore, setPassingScore] = React.useState(DEFAULT_PASSING_SCORE);
@@ -441,48 +418,31 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         (lesson) => String(lesson.id) === String(selectedLessonId),
     );
 
-    const participantQuizSizeOptions = React.useMemo(
-        () => buildParticipantQuizSizeOptions(bankQuestionCount),
-        [bankQuestionCount],
-    );
-
-    const buildPayload = React.useCallback(() => ({
-        training_content_id: Number(selectedLessonId),
-        bank_question_count: bankQuestionCount,
-        quiz_question_count: Number(quizQuestionCount),
-        is_enabled: false,
-        time_limit_minutes: timeLimitMinutes || null,
-        max_attempts: Number(maxAttempts),
-        passing_score: Number(passingScore),
-        shuffle_questions: shuffleQuestions,
-        shuffle_answer_choices: shuffleAnswerChoices,
-    }), [
-        selectedLessonId, bankQuestionCount, quizQuestionCount,
+    const buildPayload = React.useCallback(() => {
+        const questionCount = normalizeQuestionCount(quizQuestionCount);
+        return {
+            training_content_id: Number(selectedLessonId),
+            // Generate exactly the quiz size — no separate bank pool for demos/testing.
+            bank_question_count: questionCount,
+            quiz_question_count: questionCount,
+            is_enabled: false,
+            time_limit_minutes: timeLimitMinutes || null,
+            max_attempts: Number(maxAttempts),
+            passing_score: Number(passingScore),
+            shuffle_questions: shuffleQuestions,
+            shuffle_answer_choices: shuffleAnswerChoices,
+        };
+    }, [
+        selectedLessonId, quizQuestionCount,
         timeLimitMinutes, maxAttempts, passingScore, shuffleQuestions, shuffleAnswerChoices,
     ]);
 
-    const handleBankQuestionCountChange = React.useCallback((nextBank) => {
-        const normalizedBank = normalizeBankCount(nextBank);
-        const previousQuiz = Number(quizQuestionCount);
-        const recommended = recommendedQuizSizeForBank(normalizedBank);
-        const exceeded = Number.isFinite(previousQuiz) && previousQuiz > normalizedBank;
-
-        setBankQuestionCount(normalizedBank);
-        setQuizQuestionCount(recommended);
-
-        if (exceeded) {
-            setQuizSizePoolNotice('The participant quiz size has been adjusted because it exceeded the available AI question pool.');
-        } else {
-            setQuizSizePoolNotice('');
-        }
-    }, [quizQuestionCount]);
-
     const hydrateConfigForm = React.useCallback((existing) => {
         if (existing) {
-            const bankCount = normalizeBankCount(existing.bank_question_count || DEFAULT_BANK_COUNT);
-            setBankQuestionCount(bankCount);
-            setQuizQuestionCount(normalizeQuizSize(existing.quiz_question_count, bankCount));
-            setQuizSizePoolNotice('');
+            const questionCount = normalizeQuestionCount(
+                existing.quiz_question_count || existing.bank_question_count || DEFAULT_QUESTION_COUNT,
+            );
+            setQuizQuestionCount(questionCount);
             setTimeLimitMinutes(existing.time_limit_minutes ?? 30);
             setMaxAttempts(existing.max_attempts ?? DEFAULT_MAX_ATTEMPTS);
             setPassingScore(existing.passing_score ?? DEFAULT_PASSING_SCORE);
@@ -491,9 +451,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
             setShuffleQuestions(existing.shuffle_questions !== false);
             setShuffleAnswerChoices(existing.shuffle_answer_choices !== false);
         } else {
-            setBankQuestionCount(DEFAULT_BANK_COUNT);
-            setQuizQuestionCount(recommendedQuizSizeForBank(DEFAULT_BANK_COUNT));
-            setQuizSizePoolNotice('');
+            setQuizQuestionCount(DEFAULT_QUESTION_COUNT);
             setTimeLimitMinutes(30);
             setMaxAttempts(DEFAULT_MAX_ATTEMPTS);
             setPassingScore(DEFAULT_PASSING_SCORE);
@@ -508,14 +466,17 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         const existing = configByLessonId[Number(selectedLessonId)];
         hydrateConfigForm(existing);
         if (existing) {
+            const questionCount = normalizeQuestionCount(
+                existing.quiz_question_count || existing.bank_question_count || DEFAULT_QUESTION_COUNT,
+            );
             setSavedPayloadKey(serializeConfigPayload({
                 training_content_id: Number(selectedLessonId),
-                bank_question_count: normalizeBankCount(existing.bank_question_count || DEFAULT_BANK_COUNT),
-                quiz_question_count: normalizeQuizSize(existing.quiz_question_count, existing.bank_question_count || DEFAULT_BANK_COUNT),
+                bank_question_count: questionCount,
+                quiz_question_count: questionCount,
                 is_enabled: false,
                 time_limit_minutes: existing.time_limit_minutes ?? 30,
                 max_attempts: existing.max_attempts ?? 3,
-                passing_score: existing.passing_score ?? 75,
+                passing_score: existing.passing_score ?? DEFAULT_PASSING_SCORE,
                 shuffle_questions: existing.shuffle_questions !== false,
                 shuffle_answer_choices: existing.shuffle_answer_choices !== false,
             }));
@@ -710,8 +671,8 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         if (!selectedConfig?.id || !configSynced || activeGenerationJob?.is_active) return;
 
         const result = await Swal.fire({
-            title: 'Generate Lesson Question Bank?',
-            html: 'Gemini will analyze the selected lesson content and generate a draft question bank in the background.',
+            title: 'Generate quiz questions?',
+            html: `Gemini will create <strong>${normalizeQuestionCount(quizQuestionCount)}</strong> questions from this lesson. This runs in the background.`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Generate',
@@ -728,7 +689,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
             setActiveGenerationJob(data.generation_job);
             setConfigExpanded(false);
             showPortalToast({
-                title: 'Question Bank generation has started.',
+                title: 'Quiz generation started.',
                 description: 'This process runs in the background. You may continue working.',
             });
         } catch (err) {
@@ -759,8 +720,8 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                     setActiveGenerationJob(null);
                     window.dispatchEvent(new CustomEvent('portal-notifications-refresh'));
                     showPortalToast({
-                        title: 'Question Bank generation completed.',
-                        description: 'Review the new draft question bank when you are ready.',
+                        title: 'Quiz generation completed.',
+                        description: 'Review the new draft questions when you are ready.',
                     });
                 }
 
@@ -775,11 +736,77 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
 
         pollStatus();
         const timer = window.setInterval(pollStatus, 5000);
+        const onOnline = () => {
+            pollStatus();
+        };
+        window.addEventListener('online', onOnline);
         return () => {
             cancelled = true;
             window.clearInterval(timer);
+            window.removeEventListener('online', onOnline);
         };
     }, [activeGenerationJob?.id, activeGenerationJob?.is_active]);
+
+    const handleRetryGeneration = async () => {
+        if (!activeGenerationJob?.id && !selectedConfig?.latest_generation_job?.id) return;
+        const jobId = activeGenerationJob?.id || selectedConfig?.latest_generation_job?.id;
+        try {
+            const data = await apiFetch(`/admin/lesson-quiz-generation-jobs/${jobId}/retry`, { method: 'POST' });
+            setActiveGenerationJob(data.generation_job);
+            showPortalToast({
+                title: 'Generation re-queued',
+                description: 'Will continue when the queue worker / network is available.',
+            });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Retry failed', text: err.message });
+        }
+    };
+
+    const handleCreateManualDraft = async () => {
+        if (!selectedConfig?.id || !configSynced) return;
+        const confirm = await Swal.fire({
+            title: 'Create manual quiz draft?',
+            text: 'Creates an empty draft so you can add questions by hand (no AI wait).',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Create draft',
+            confirmButtonColor: '#059669',
+        });
+        if (!confirm.isConfirmed) return;
+
+        try {
+            const data = await apiFetch(`/admin/lesson-quiz-config/${selectedConfig.id}/manual-draft`, { method: 'POST' });
+            if (data.config) refreshConfig(data.config);
+            if (data.version) {
+                setActiveVersion(data.version);
+                setPanelMode('edit');
+                setQuestionBankDirty(false);
+            }
+            Swal.fire({ icon: 'success', title: 'Manual draft ready', text: data.message, timer: 2200, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Could not create draft', text: err.message });
+        }
+    };
+
+    const handlePrintVersions = () => {
+        const html = buildPrintTableDocument({
+            title: 'Generated Lesson Quizzes',
+            subtitle: `${selectedLesson?.title || 'Lesson'} · Printed ${new Date().toLocaleString()} · ${versionRows.length} version(s)`,
+            headers: ['#', 'Version', 'Lesson', 'Questions', 'Status', 'Generated'],
+            rows: versionRows.map((row, index) => [
+                index + 1,
+                row.version_number ?? '—',
+                selectedLesson?.title || '—',
+                row.generated_questions?.length ?? row.question_count ?? '—',
+                row.status || '—',
+                row.created_at ? new Date(row.created_at).toLocaleString() : '—',
+            ]),
+            emptyMessage: 'No generated quizzes to print.',
+        });
+        if (!printHtmlDocument(html, 'Lesson Quizzes')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    };
 
     const runWorkflow = async (configId, versionId, suffix, { method = 'POST', body, successTitle, successText } = {}) => {
         if (!configId || !versionId) return null;
@@ -836,7 +863,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
         if (!config?.id || !version?.id) return;
 
         const confirm = await Swal.fire({
-            title: asCurrent ? 'Set as current version?' : 'Publish question bank?',
+            title: asCurrent ? 'Set as current version?' : 'Publish quiz?',
             text: asCurrent
                 ? `Learners will start using v${version.version_number} for this lesson quiz.`
                 : 'Participants will receive random questions from this bank when taking the lesson quiz.',
@@ -1122,7 +1149,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
             <AdminPageHeader
                 icon={BookOpen}
                 title="Lesson Quiz Generator"
-                description="Generate AI question banks from training module lessons. Lesson content is read-only from Training Module Management."
+                description="Generate quiz questions from training module lessons. Use a smaller question count for faster demos."
                 actions={(
                     <select
                         className={adminSelectClass}
@@ -1203,37 +1230,19 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">AI Questions to Generate</label>
-                                    <select
-                                        className={adminCompactInputClass}
-                                        value={bankQuestionCount}
-                                        onChange={(e) => handleBankQuestionCountChange(Number(e.target.value))}
-                                    >
-                                        {BANK_COUNTS.map((n) => (
-                                            <option key={n} value={n}>{BANK_COUNT_LABELS[n] || n}</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[0.7rem] text-slate-500 mt-1">
-                                        Recommended: 20 questions. Maximum: 30 questions.
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Participant Quiz Size</label>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Questions to Generate</label>
                                     <select
                                         className={adminCompactInputClass}
                                         value={String(quizQuestionCount)}
-                                        onChange={(e) => {
-                                            setQuizQuestionCount(Number(e.target.value));
-                                            setQuizSizePoolNotice('');
-                                        }}
+                                        onChange={(e) => setQuizQuestionCount(normalizeQuestionCount(e.target.value))}
                                     >
-                                        {participantQuizSizeOptions.map((n) => (
-                                            <option key={n} value={n}>{n}</option>
+                                        {QUESTION_COUNTS.map((n) => (
+                                            <option key={n} value={n}>{QUESTION_COUNT_LABELS[n] || n}</option>
                                         ))}
                                     </select>
-                                    {quizSizePoolNotice && (
-                                        <p className="text-xs text-slate-600 mt-1">{quizSizePoolNotice}</p>
-                                    )}
+                                    <p className="text-[0.7rem] text-slate-500 mt-1">
+                                        AI generates this many questions and participants get the same set size. Use 5 or 10 for faster demos.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Time Limit (minutes)</label>
@@ -1258,19 +1267,21 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                                         Suggested per-lesson quiz limits: 10, 15, or 20 minutes.
                                     </p>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Passing Score (%)</label>
-                                    <AdminNumberInput
-                                        min={50}
-                                        max={100}
-                                        value={passingScore}
-                                        onChange={(next) => {
-                                            setPassingScore(next);
-                                            setPassingScoreError(validatePassingScore(next));
-                                        }}
-                                        error={passingScoreError}
-                                    />
-                                </div>
+                                <PassingScoreSelectField
+                                    id="lesson-quiz-passing-score"
+                                    className={adminCompactInputClass}
+                                    value={passingScore}
+                                    min={50}
+                                    max={100}
+                                    onChange={(next) => {
+                                        setPassingScore(next);
+                                        setPassingScoreError(validatePassingScore(next));
+                                    }}
+                                    hint="Recommended: 50%. Use + Add category… for a custom percentage (e.g. 70%)."
+                                />
+                                {passingScoreError && (
+                                    <p className="text-xs text-red-600 -mt-2">{passingScoreError}</p>
+                                )}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1">Maximum Attempts</label>
                                     <AdminNumberInput
@@ -1331,6 +1342,19 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                                     {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                                     Generate AI Content
                                 </AdminPrimaryButton>
+                                <AdminSecondaryButton
+                                    type="button"
+                                    onClick={handleCreateManualDraft}
+                                    disabled={!configSynced || !selectedConfig?.id || activeGenerationJob?.is_active}
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create Manual Quiz
+                                </AdminSecondaryButton>
+                                {(activeGenerationJob?.status === 'failed' || selectedConfig?.latest_generation_job?.status === 'failed') && (
+                                    <AdminSecondaryButton type="button" onClick={handleRetryGeneration}>
+                                        Retry failed generation
+                                    </AdminSecondaryButton>
+                                )}
                                 {!configSynced && selectedLessonId && (
                                     <span className="text-xs text-amber-600 inline-flex items-center gap-1">
                                         <AlertCircle className="w-3.5 h-3.5" />
@@ -1341,7 +1365,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                                     <span className="text-xs text-amber-600 inline-flex items-center gap-1">
                                         <AlertCircle className="w-3.5 h-3.5" />
                                         {lessonResources.ai_processing_error
-                                            || 'No readable lesson content is available for AI Question Bank generation.'}
+                                            || 'No readable lesson content is available for AI quiz generation.'}
                                     </span>
                                 )}
                             </div>
@@ -1352,20 +1376,26 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
 
             <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold text-slate-800">
-                    Generated Question Banks
+                    Generated Quizzes
                     {selectedLesson && (
                         <span className="font-normal text-slate-500"> — {selectedLesson.title}</span>
                     )}
                 </h2>
-                {selectedConfig?.published_version && (
-                    <span className="text-xs text-sky-700 inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Learners use v{selectedConfig.published_version.version_number}
-                        {!selectedConfig.is_enabled && (
-                            <span className="text-slate-500">(lesson quiz disabled)</span>
-                        )}
-                    </span>
-                )}
+                <div className="flex items-center gap-2">
+                    {selectedConfig?.published_version && (
+                        <span className="text-xs text-sky-700 inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Learners use v{selectedConfig.published_version.version_number}
+                            {!selectedConfig.is_enabled && (
+                                <span className="text-slate-500">(lesson quiz disabled)</span>
+                            )}
+                        </span>
+                    )}
+                    <AdminSecondaryButton type="button" onClick={handlePrintVersions} disabled={versionRows.length === 0}>
+                        <Printer className="w-4 h-4" />
+                        Print
+                    </AdminSecondaryButton>
+                </div>
             </div>
 
             <AdminDataTable
@@ -1373,10 +1403,10 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                 data={versionRows}
                 rowKey="id"
                 minWidth="860px"
-                emptyTitle="No generated question banks"
+                emptyTitle="No generated quizzes yet"
                 emptyDescription={selectedLesson
-                    ? `No question banks for "${selectedLesson.title}" yet. Save configuration and generate content.`
-                    : 'Select a training module and lesson to view its question banks.'}
+                    ? `No quizzes for "${selectedLesson.title}" yet. Save configuration and generate questions.`
+                    : 'Select a training module and lesson to view generated quizzes.'}
                 renderActions={(row) => {
                     const canEditOrPublish = !['published', 'archived'].includes(row.status);
                     const canSetAsCurrent = !row.is_current && (row.generated_questions?.length || 0) > 0;
@@ -1411,7 +1441,7 @@ export function LessonQuizGeneratorModule({ modules = [], configs = [] }) {
                         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900">
-                                    {panelMode === 'view' ? 'View Question Bank' : 'Edit Question Bank'}
+                                    {panelMode === 'view' ? 'View Questions' : 'Edit Questions'}
                                 </h3>
                                 <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5">
                                     Version {activeVersion.version_number}

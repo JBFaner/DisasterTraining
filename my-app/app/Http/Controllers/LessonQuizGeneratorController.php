@@ -73,17 +73,7 @@ class LessonQuizGeneratorController extends Controller
         $data = $request->validate([
             'training_content_id' => ['required', 'exists:training_contents,id'],
             'bank_question_count' => ['required', Rule::in(LessonQuizConfig::BANK_QUESTION_COUNTS)],
-            'quiz_question_count' => [
-                'required',
-                'integer',
-                'min:1',
-                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
-                    $bankCount = (int) $request->input('bank_question_count', 30);
-                    if ((int) $value > $bankCount) {
-                        $fail('Participant quiz size cannot exceed AI questions to generate.');
-                    }
-                },
-            ],
+            'quiz_question_count' => ['required', Rule::in(LessonQuizConfig::QUIZ_QUESTION_COUNTS)],
             'is_enabled' => ['nullable', 'boolean'],
             'time_limit_minutes' => ['nullable', 'integer', 'min:5', 'max:180'],
             'max_attempts' => ['nullable', 'integer', 'min:1', 'max:20'],
@@ -91,6 +81,12 @@ class LessonQuizGeneratorController extends Controller
             'shuffle_questions' => ['nullable', 'boolean'],
             'shuffle_answer_choices' => ['nullable', 'boolean'],
         ]);
+
+        // Prefer a single size for generate + attempt (demo-friendly).
+        $questionCount = (int) $data['quiz_question_count'];
+        if ((int) $data['bank_question_count'] !== $questionCount) {
+            $data['bank_question_count'] = $questionCount;
+        }
 
         $config = LessonQuizConfig::updateOrCreate(
             ['training_content_id' => $data['training_content_id']],
@@ -101,7 +97,7 @@ class LessonQuizGeneratorController extends Controller
                 'is_enabled' => $request->boolean('is_enabled'),
                 'time_limit_minutes' => $data['time_limit_minutes'] ?? null,
                 'max_attempts' => $data['max_attempts'] ?? 3,
-                'passing_score' => $data['passing_score'] ?? 75,
+                'passing_score' => $data['passing_score'] ?? 50,
                 'shuffle_questions' => $request->boolean('shuffle_questions', true),
                 'shuffle_answer_choices' => $request->boolean('shuffle_answer_choices', true),
                 'created_by' => portal_id(),
@@ -173,6 +169,7 @@ class LessonQuizGeneratorController extends Controller
             abort(403);
         }
 
+        $generationJob = $this->generationProcessor->requeueIfStuck($generationJob);
         $generationJob->loadMissing('version');
 
         $payload = [
@@ -190,6 +187,45 @@ class LessonQuizGeneratorController extends Controller
         }
 
         return response()->json($payload);
+    }
+
+    public function retryGeneration(LessonQuizGenerationJob $generationJob)
+    {
+        $this->authorizeAdmin();
+
+        $user = portal_user();
+        if (! $user || (int) $generationJob->requested_by !== (int) $user->id) {
+            abort(403);
+        }
+
+        $job = $this->generationProcessor->retryFailed($generationJob);
+
+        return response()->json([
+            'message' => 'Generation re-queued. It will continue when the worker is online.',
+            'generation_job' => $this->generationProcessor->serializeJob($job),
+        ], 202);
+    }
+
+    public function createManualDraft(Request $request, LessonQuizConfig $config)
+    {
+        $this->authorizeAdmin();
+
+        $user = portal_user();
+        if (! $user) {
+            abort(403);
+        }
+
+        $version = app(\App\Services\LessonQuizWorkflowService::class)->createManualDraft($config, $user->id);
+        $fresh = $config->fresh(array_merge(
+            LessonQuizAdminSerializer::configRelations(),
+            ['latestGenerationJob'],
+        ));
+
+        return response()->json([
+            'message' => 'Manual quiz draft created. Add questions, then publish when ready.',
+            'version' => LessonQuizAdminSerializer::serializeVersion($version, $fresh),
+            'config' => LessonQuizAdminSerializer::serializeConfig($fresh),
+        ]);
     }
 
     protected function authorizeAdmin(): void

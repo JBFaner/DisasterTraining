@@ -46,7 +46,51 @@ class AiScenarioGenerationProcessor
         return $job;
     }
 
-    public function process(AiScenarioGenerationJob $job): void
+    /**
+     * Re-dispatch a stuck queued job (e.g. after worker was down or network blip).
+     */
+    public function requeueIfStuck(AiScenarioGenerationJob $job): AiScenarioGenerationJob
+    {
+        $job->refresh();
+
+        if ($job->status === AiScenarioGenerationJob::STATUS_FAILED) {
+            return $job;
+        }
+
+        if ($job->status === AiScenarioGenerationJob::STATUS_QUEUED
+            && $job->created_at
+            && $job->created_at->lt(now()->subMinutes(2))
+        ) {
+            ProcessAiScenarioGenerationJob::dispatch($job->id);
+        }
+
+        return $job->fresh() ?? $job;
+    }
+
+    public function retryFailed(AiScenarioGenerationJob $job): AiScenarioGenerationJob
+    {
+        $job->refresh();
+
+        if ($job->status !== AiScenarioGenerationJob::STATUS_FAILED) {
+            throw ValidationException::withMessages([
+                'generation' => 'Only failed generation jobs can be retried.',
+            ]);
+        }
+
+        $job->update([
+            'status' => AiScenarioGenerationJob::STATUS_QUEUED,
+            'error_message' => null,
+            'failed_at' => null,
+            'started_at' => null,
+            'completed_at' => null,
+        ]);
+
+        ProcessAiScenarioGenerationJob::dispatch($job->id);
+
+        return $job->fresh() ?? $job;
+    }
+
+    public function process(AiScenarioGenerationJob $job, bool $markFailedOnError = true): void
     {
         $job->refresh();
         $job->loadMissing(['config.trainingModule.contents', 'requester']);
@@ -124,8 +168,16 @@ class AiScenarioGenerationProcessor
             $job->markCompleted($version);
             $this->notifyGenerationCompleted($job, $version);
         } catch (\Throwable $e) {
-            $job->markFailed($e->getMessage());
-            $this->notifyGenerationFailed($job, $e->getMessage());
+            if ($markFailedOnError) {
+                $job->markFailed($e->getMessage());
+                $this->notifyGenerationFailed($job, $e->getMessage());
+            } elseif ($job->isActive() || $job->status === AiScenarioGenerationJob::STATUS_QUEUED) {
+                $job->update([
+                    'status' => AiScenarioGenerationJob::STATUS_QUEUED,
+                    'error_message' => 'Temporary failure (will retry): '.$e->getMessage(),
+                ]);
+            }
+
             throw $e;
         }
     }

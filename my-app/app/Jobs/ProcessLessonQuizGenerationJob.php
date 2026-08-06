@@ -14,11 +14,20 @@ class ProcessLessonQuizGenerationJob implements ShouldQueue
 
     public int $timeout = 900;
 
-    public int $tries = 1;
+    /** Retry on transient Gemini / network failures so generation can continue when connectivity returns. */
+    public int $tries = 5;
 
     public function __construct(
         public int $generationJobId,
     ) {}
+
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [20, 45, 90, 180];
+    }
 
     public function handle(LessonQuizGenerationProcessor $processor): void
     {
@@ -29,12 +38,16 @@ class ProcessLessonQuizGenerationJob implements ShouldQueue
         }
 
         try {
-            $processor->process($job);
+            $processor->process($job, markFailedOnError: $this->attempts() >= $this->tries);
         } catch (\Throwable $e) {
-            Log::error('Lesson quiz generation job failed', [
+            Log::warning('Lesson quiz generation attempt failed', [
                 'generation_job_id' => $this->generationJobId,
+                'attempt' => $this->attempts(),
+                'tries' => $this->tries,
                 'error' => $e->getMessage(),
             ]);
+
+            throw $e;
         }
     }
 }

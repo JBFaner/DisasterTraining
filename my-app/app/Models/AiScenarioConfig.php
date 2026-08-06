@@ -12,11 +12,11 @@ class AiScenarioConfig extends Model
 {
     public const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
-    public const QUESTION_COUNTS = [10, 15, 20];
+    public const QUESTION_COUNTS = [5, 10, 15, 20, 30];
 
-    public const BANK_QUESTION_COUNTS = [10, 20, 30];
+    public const BANK_QUESTION_COUNTS = [5, 10, 15, 20, 30];
 
-    public const DEFAULT_BANK_QUESTION_COUNT = 20;
+    public const DEFAULT_BANK_QUESTION_COUNT = 10;
 
     public const DEFAULT_QUIZ_QUESTION_COUNT = 10;
 

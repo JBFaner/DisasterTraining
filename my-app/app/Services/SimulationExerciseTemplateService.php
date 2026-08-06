@@ -434,7 +434,7 @@ class SimulationExerciseTemplateService
             'simulation_exercise_template_id' => $template->id,
             'assigned_trainer_id' => $leadTrainer?->id,
             'target_audience' => $targetAudienceLabel,
-            'max_participants' => $campaignRequest?->expected_participants,
+            'max_participants' => $this->resolveSimulationBatchCap($campaignRequest),
             'registration_deadline' => $registrationDeadline,
             'self_registration_enabled' => false,
             'approval_required' => false,
@@ -463,6 +463,19 @@ class SimulationExerciseTemplateService
 
         return $event;
         });
+    }
+
+    /**
+     * Large campaigns are split into simulation batches of ~20–30 participants (max 30).
+     */
+    private function resolveSimulationBatchCap(?CampaignRequest $campaignRequest): int
+    {
+        $expected = (int) ($campaignRequest?->expected_participants ?? 0);
+        if ($expected > 0 && $expected <= 30) {
+            return $expected;
+        }
+
+        return 30;
     }
 
     /**

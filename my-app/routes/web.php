@@ -237,8 +237,12 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.lesson-quiz-config.store');
         Route::post('/lesson-quiz-config/{config}/generate', [LessonQuizGeneratorController::class, 'generate'])
             ->name('admin.lesson-quiz-config.generate');
+        Route::post('/lesson-quiz-config/{config}/manual-draft', [LessonQuizGeneratorController::class, 'createManualDraft'])
+            ->name('admin.lesson-quiz-config.manual-draft');
         Route::get('/lesson-quiz-generation-jobs/{generationJob}', [LessonQuizGeneratorController::class, 'generationStatus'])
             ->name('admin.lesson-quiz-generation-jobs.show');
+        Route::post('/lesson-quiz-generation-jobs/{generationJob}/retry', [LessonQuizGeneratorController::class, 'retryGeneration'])
+            ->name('admin.lesson-quiz-generation-jobs.retry');
 
         Route::get('/notifications', [PortalNotificationController::class, 'index'])
             ->name('admin.notifications.index');
@@ -290,8 +294,12 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.ai-scenario-config.store');
         Route::post('/ai-scenario-config/{config}/generate', [AiScenarioConfigController::class, 'generate'])
             ->name('admin.ai-scenario-config.generate');
+        Route::post('/ai-scenario-config/{config}/manual-draft', [AiScenarioConfigController::class, 'createManualDraft'])
+            ->name('admin.ai-scenario-config.manual-draft');
         Route::get('/ai-scenario-generation-jobs/{generationJob}', [AiScenarioConfigController::class, 'generationStatus'])
             ->name('admin.ai-scenario-generation-jobs.show');
+        Route::post('/ai-scenario-generation-jobs/{generationJob}/retry', [AiScenarioConfigController::class, 'retryGeneration'])
+            ->name('admin.ai-scenario-generation-jobs.retry');
 
         Route::prefix('ai-scenario-config/{config}/versions/{version}')->group(function () {
             Route::get('/', [AiScenarioWorkflowController::class, 'show'])

@@ -47,6 +47,10 @@ class AiScenarioConfigController extends Controller
         $this->authorizeAdmin();
 
         $data = $request->validated();
+        $questionCount = (int) $data['quiz_question_count'];
+        if ((int) $data['bank_question_count'] !== $questionCount) {
+            $data['bank_question_count'] = $questionCount;
+        }
 
         $module = TrainingModule::with('contents')->findOrFail($data['training_module_id']);
         $difficulty = $this->trainingService->resolveDifficultyForModule($module);
@@ -55,13 +59,13 @@ class AiScenarioConfigController extends Controller
             ['training_module_id' => $data['training_module_id']],
             [
                 'difficulty' => $difficulty,
-                'bank_question_count' => $data['bank_question_count'],
-                'quiz_question_count' => $data['quiz_question_count'],
-                'number_of_questions' => $data['bank_question_count'],
+                'bank_question_count' => $questionCount,
+                'quiz_question_count' => $questionCount,
+                'number_of_questions' => $questionCount,
                 'generation_language' => $data['generation_language'] ?? 'en',
                 'time_limit_minutes' => $data['time_limit_minutes'] ?? 60,
                 'max_attempts' => $data['max_attempts'] ?? 3,
-                'passing_score' => $data['passing_score'] ?? 75,
+                'passing_score' => $data['passing_score'] ?? 50,
                 'fail_retake_policy' => $data['fail_retake_policy'] ?? AiScenarioConfig::FAIL_POLICY_REQUIRE_LESSON_REVIEW,
                 'auto_submit_on_expire' => $request->boolean('auto_submit_on_expire', true),
                 'allow_resume_attempt' => true,
@@ -143,6 +147,7 @@ class AiScenarioConfigController extends Controller
             abort(403);
         }
 
+        $generationJob = $this->generationProcessor->requeueIfStuck($generationJob);
         $generationJob->loadMissing('version');
 
         $payload = [
@@ -160,6 +165,37 @@ class AiScenarioConfigController extends Controller
         }
 
         return response()->json($payload);
+    }
+
+    public function retryGeneration(AiScenarioGenerationJob $generationJob)
+    {
+        $this->authorizeAdmin();
+
+        $user = portal_user();
+        if (! $user || (int) $generationJob->requested_by !== (int) $user->id) {
+            abort(403);
+        }
+
+        $job = $this->generationProcessor->retryFailed($generationJob);
+
+        return response()->json([
+            'message' => 'Generation re-queued. It will continue when the worker is online.',
+            'generation_job' => $this->generationProcessor->serializeJob($job),
+        ], 202);
+    }
+
+    public function createManualDraft(AiScenarioConfig $config)
+    {
+        $this->authorizeAdmin();
+
+        $version = app(\App\Services\AiScenarioWorkflowService::class)->createManualDraft($config);
+        $fresh = $config->fresh(AiScenarioAdminSerializer::configRelations());
+
+        return response()->json([
+            'message' => 'Manual scenario draft created. Edit content and add questions, then publish.',
+            'version' => AiScenarioAdminSerializer::serializeVersion($version, $fresh),
+            'config' => AiScenarioAdminSerializer::serializeConfig($fresh),
+        ]);
     }
 
     protected function authorizeAdmin(): void

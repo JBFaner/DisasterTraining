@@ -582,7 +582,7 @@ PROMPT;
             'venue' => $plan->venue,
             'training_module_id' => $request->training_module_id,
             'campaign_request_id' => $request->id,
-            'max_participants' => $schedule['expected_participants'] ?: null,
+            'max_participants' => $this->resolveSimulationBatchCap((int) ($schedule['expected_participants'] ?? 0)),
             'target_audience' => $targetAudienceLabel,
             'registration_deadline' => $registrationDeadline,
             'facilitators' => array_values(array_filter([
@@ -1129,10 +1129,47 @@ PROMPT;
             return 0;
         }
 
+        $approvedOnThisEvent = EventRegistration::query()
+            ->where('simulation_event_id', $event->id)
+            ->where('status', 'approved')
+            ->count();
+
+        $maxParticipants = (int) ($event->max_participants ?? 0);
+        $remainingSlots = $maxParticipants > 0
+            ? max(0, $maxParticipants - $approvedOnThisEvent)
+            : PHP_INT_MAX;
+
+        if ($remainingSlots <= 0) {
+            return 0;
+        }
+
+        // Keep large campaigns split across events (~20–30 each): do not re-assign
+        // participants already approved on another active event of the same campaign.
+        $siblingEventIds = SimulationEvent::query()
+            ->where('campaign_request_id', $campaign->id)
+            ->where('id', '!=', $event->id)
+            ->whereNotIn('status', ['completed', 'ended', 'archived', 'cancelled'])
+            ->pluck('id');
+
+        $alreadyAssignedElsewhere = $siblingEventIds->isEmpty()
+            ? collect()
+            : EventRegistration::query()
+                ->whereIn('simulation_event_id', $siblingEventIds)
+                ->where('status', 'approved')
+                ->pluck('user_id');
+
         $now = now();
         $synced = 0;
 
         foreach ($qualifiedIds as $userId) {
+            if ($synced >= $remainingSlots) {
+                break;
+            }
+
+            if ($alreadyAssignedElsewhere->contains($userId)) {
+                continue;
+            }
+
             $registration = EventRegistration::query()->firstOrNew([
                 'simulation_event_id' => $event->id,
                 'user_id' => $userId,
@@ -1191,5 +1228,17 @@ PROMPT;
                 ->whereNotIn('status', ['completed', 'ended', 'archived', 'cancelled'])
                 ->each(fn (SimulationEvent $event) => $this->syncQualifiedParticipantsToEvent($event));
         }
+    }
+
+    /**
+     * Large campaigns are split into simulation batches of ~20–30 participants (max 30).
+     */
+    protected function resolveSimulationBatchCap(int $expectedParticipants): int
+    {
+        if ($expectedParticipants > 0 && $expectedParticipants <= 30) {
+            return $expectedParticipants;
+        }
+
+        return 30;
     }
 }
