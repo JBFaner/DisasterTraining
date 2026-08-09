@@ -24,6 +24,7 @@ import {
     AlertCircle,
     Sparkles,
     Send,
+    FlaskConical,
 } from 'lucide-react';
 import { getCsrfHeaders, getCsrfToken, pingSessionActivity } from '../utils/csrf';
 import { trainingModulePublish } from '../utils/trainingModuleRoutes';
@@ -907,6 +908,9 @@ export function TrainingModuleDetail({ module }) {
     const [isSubmittingProfile, setIsSubmittingProfile] = React.useState(false);
     const [campaignRequests, setCampaignRequests] = React.useState([]);
     const [isLoadingCampaignRequests, setIsLoadingCampaignRequests] = React.useState(false);
+    const [demoToolsEnabled, setDemoToolsEnabled] = React.useState(true);
+    const [isTogglingDemoTools, setIsTogglingDemoTools] = React.useState(false);
+    const [forceApprovingId, setForceApprovingId] = React.useState(null);
     const [thumbnailUrl, setThumbnailUrl] = React.useState(
         module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null),
     );
@@ -1104,6 +1108,113 @@ export function TrainingModuleDetail({ module }) {
         ));
     };
 
+    const canManageDemoTools = React.useMemo(() => {
+        const role = String(rootEl?.getAttribute('data-role') || '');
+        return role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
+    }, [rootEl]);
+
+    const loadDemoToolsSetting = async () => {
+        try {
+            const response = await fetch('/admin/settings/demo-tools', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+                setDemoToolsEnabled(Boolean(data.enabled));
+            }
+        } catch {
+            // keep current toggle state
+        }
+    };
+
+    const handleDemoToolsToggle = async (enabled) => {
+        if (isTogglingDemoTools) return;
+        setIsTogglingDemoTools(true);
+        try {
+            const response = await fetch('/admin/settings/demo-tools', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
+                body: JSON.stringify({ enabled }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update demo tools setting.');
+            }
+            setDemoToolsEnabled(Boolean(data.enabled));
+        } catch (error) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Could not update demo tools',
+                text: error?.message || 'Please try again.',
+            });
+        } finally {
+            setIsTogglingDemoTools(false);
+        }
+    };
+
+    const handleDemoForceApprove = async (requestItem) => {
+        if (!demoToolsEnabled || forceApprovingId) return;
+        const confirmed = await showAppConfirm({
+            title: 'Demo Force Approve?',
+            description: 'This will approve the campaign request locally for presentations (without waiting for Group 6). Continue?',
+            confirmLabel: 'Force Approve',
+            cancelLabel: 'Cancel',
+        });
+        if (!confirmed) return;
+
+        setForceApprovingId(requestItem.id);
+        try {
+            const response = await fetch(`/admin/campaign-requests/${requestItem.id}/demo-force-approve`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...getCsrfHeaders(),
+                },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Could not force-approve this request.');
+            }
+            if (data.request) {
+                setCampaignRequests((current) => current.map((item) => (
+                    item.id === requestItem.id ? { ...item, ...data.request } : item
+                )));
+            } else {
+                await loadCampaignRequests();
+            }
+            await Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: data.message || 'Approved (Demo)',
+                showConfirmButton: false,
+                timer: 2400,
+            });
+        } catch (error) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Force approve failed',
+                text: error?.message || 'Please try again.',
+            });
+        } finally {
+            setForceApprovingId(null);
+        }
+    };
+
     const loadCampaignRequests = async () => {
         setIsLoadingCampaignRequests(true);
         setCampaignRequests([]);
@@ -1184,6 +1295,7 @@ export function TrainingModuleDetail({ module }) {
     React.useEffect(() => {
         if (activeTab === 'campaign_requests') {
             loadCampaignRequests();
+            loadDemoToolsSetting();
         }
     }, [activeTab]);
 
@@ -1872,6 +1984,42 @@ export function TrainingModuleDetail({ module }) {
 
             {activeTab === 'campaign_requests' && (
                 <div className="space-y-4">
+                    {canManageDemoTools ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                                <FlaskConical className="w-4.5 h-4.5 text-amber-700 mt-0.5 shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-amber-950">Demo tools</p>
+                                    <p className="text-xs text-amber-800/90">
+                                        When on, Demo Force Approve is available for waiting campaign requests.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-xs font-semibold ${demoToolsEnabled ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                    {demoToolsEnabled ? 'On' : 'Off'}
+                                </span>
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={demoToolsEnabled}
+                                    disabled={isTogglingDemoTools}
+                                    onClick={() => handleDemoToolsToggle(!demoToolsEnabled)}
+                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${
+                                        demoToolsEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                                    }`}
+                                    title={demoToolsEnabled ? 'Disable demo tools' : 'Enable demo tools'}
+                                >
+                                    <span
+                                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                                            demoToolsEnabled ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
+
                     <AdminContentCard className="p-5">
                         <div className="flex items-center justify-between gap-3 mb-4">
                             <div>
@@ -1947,6 +2095,22 @@ export function TrainingModuleDetail({ module }) {
                                                         >
                                                             Copy Link
                                                         </button>
+                                                        {demoToolsEnabled && req.status === 'waiting_for_approval' ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDemoForceApprove(req)}
+                                                                disabled={forceApprovingId === req.id}
+                                                                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                title="Approve locally for presentation demo"
+                                                            >
+                                                                {forceApprovingId === req.id ? (
+                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                ) : (
+                                                                    <FlaskConical className="w-3.5 h-3.5" />
+                                                                )}
+                                                                Demo Force Approve
+                                                            </button>
+                                                        ) : null}
                                                     </div>
                                                 </td>
                                             </tr>

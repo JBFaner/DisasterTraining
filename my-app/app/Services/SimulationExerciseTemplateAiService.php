@@ -26,14 +26,32 @@ class SimulationExerciseTemplateAiService
             $text = $this->geminiService->generateContentText($prompt, [
                 'temperature' => 0.4,
                 'responseMimeType' => 'application/json',
-            ]);
+            ], 45);
 
             return $this->normalizeGeneratedPlan($this->parseJsonResponse($text), $resources, $input);
         } catch (\Throwable $exception) {
             Log::warning('Exercise template AI plan fallback', ['error' => $exception->getMessage()]);
 
-            return $this->fallbackPlan($input, $resources);
+            $plan = $this->fallbackPlan($input, $resources);
+            $plan['_used_fallback'] = true;
+            $plan['_fallback_reason'] = $this->friendlyAiFailureMessage($exception->getMessage());
+
+            return $plan;
         }
+    }
+
+    private function friendlyAiFailureMessage(string $raw): string
+    {
+        $lower = strtolower($raw);
+        if (str_contains($lower, 'quota') || str_contains($lower, 'rate-limit') || str_contains($lower, 'rate limit')) {
+            return 'All configured Gemini API keys are out of free-tier quota right now (Google limit: 0 requests left). A starter plan was filled in locally — review/edit it, then try AI again after quota resets or after enabling billing / a fresh Google AI Studio project.';
+        }
+
+        if (str_contains($lower, 'leaked')) {
+            return 'A Gemini API key was disabled by Google (reported leaked). Update GEMINI_API_KEY / GEMINI_API_KEYS, then try again. A starter plan was filled in locally for now.';
+        }
+
+        return 'Gemini AI was unavailable, so a starter plan was generated locally. Review and edit before saving.';
     }
 
     /**

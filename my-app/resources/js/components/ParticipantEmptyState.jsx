@@ -167,7 +167,7 @@ export const PARTICIPANT_EMPTY_STATES = {
     },
     simulationEvents: {
         title: 'No simulation events available',
-        description: 'Published drills and exercises will appear here when your LGU schedules them.',
+        description: 'Finish a training module to unlock its upcoming drills. Registered batches from your history still appear here once assigned.',
         primaryAction: { href: '/participant/training-modules', label: 'Continue Self-Paced Training' },
         secondaryActions: [{ href: '/participant/dashboard', label: 'Dashboard' }],
     },

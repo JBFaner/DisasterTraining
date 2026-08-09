@@ -170,10 +170,8 @@ class DemoBatchParticipantsSeeder extends Seeder
                 'completed_at' => now()->subDays(rand(1, 40)),
             ]);
 
-            // Some completed lessons also have a quiz attempt when a published config exists.
-            if ($bucket >= 4 && rand(0, 1) === 1) {
-                $this->maybeSeedLessonQuizAttempt($user, $lesson);
-            }
+            // Lessons with a published quiz only count as complete when the quiz is passed.
+            $this->maybeSeedLessonQuizAttempt($user, $lesson, forcePass: true);
         }
 
         if ($bucket >= 8) {
@@ -185,7 +183,7 @@ class DemoBatchParticipantsSeeder extends Seeder
         }
     }
 
-    private function maybeSeedLessonQuizAttempt(User $user, TrainingContent $lesson): void
+    private function maybeSeedLessonQuizAttempt(User $user, TrainingContent $lesson, bool $forcePass = false): void
     {
         $config = LessonQuizConfig::query()
             ->where('training_content_id', $lesson->id)
@@ -205,7 +203,7 @@ class DemoBatchParticipantsSeeder extends Seeder
             'attempt_number' => 1,
             'status' => LessonQuizAttempt::STATUS_COMPLETED,
             'score' => rand(7, 10),
-            'percentage' => rand(70, 100),
+            'percentage' => $forcePass ? rand(75, 100) : rand(70, 100),
             'passed' => true,
             'started_at' => now()->subDays(rand(1, 20)),
             'completed_at' => now()->subDays(rand(0, 18)),

@@ -56,10 +56,6 @@ import {
 import {
     ParticipantTrainingModuleFilters,
 } from './components/ParticipantTrainingModuleFilters';
-import {
-    isLowBandwidthModeEnabled,
-    setLowBandwidthMode,
-} from './utils/participantLowBandwidth';
 import { CampaignRequestShow } from './pages/CampaignRequestShow';
 import { SimulationEventPlanningDetail } from './pages/SimulationEventPlanningDetail';
 import {
@@ -3297,7 +3293,6 @@ function ParticipantTrainingLessonView({ module }) {
         React.useState(initialUnlocked);
     const [aiTraining, setAiTraining] = React.useState(module?.ai_training || null);
     const [completionError, setCompletionError] = React.useState('');
-    const [lowBandwidth, setLowBandwidth] = React.useState(() => isLowBandwidthModeEnabled());
 
     const lessonProgress = React.useMemo(
         () => buildProgressState(sortedItems, completedLessonIds).map((lesson) => ({
@@ -3393,16 +3388,19 @@ function ParticipantTrainingLessonView({ module }) {
                 throw new Error(data.message || 'Failed to update lesson completion');
             }
 
-            if (Array.isArray(data.completed_content_ids)) {
-                setCompletedLessonIds(data.completed_content_ids);
-            }
-
             if (Array.isArray(data.content_progress)) {
+                setCompletedLessonIds(
+                    data.content_progress
+                        .filter((item) => item.is_completed)
+                        .map((item) => item.id),
+                );
                 setUnlockedLessonIds(
                     data.content_progress
                         .filter((item) => item.is_unlocked)
                         .map((item) => item.id),
                 );
+            } else if (Array.isArray(data.completed_content_ids)) {
+                setCompletedLessonIds(data.completed_content_ids);
             }
 
             if (data.ai_training) {
@@ -3463,24 +3461,6 @@ function ParticipantTrainingLessonView({ module }) {
             </a>
         );
 
-        if (lowBandwidth && !downloadsDisabled && url) {
-            if (type === 'video' || type === 'pdf' || isYouTube) {
-                return (
-                    <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-sm font-medium text-slate-900">{label}</p>
-                        <p className="text-xs text-slate-600">
-                            Low-bandwidth mode saves data by skipping embedded players. Download or open the file when your connection allows.
-                        </p>
-                        {downloadLink(
-                            isYouTube ? youtubeWatchUrl : url,
-                            isYouTube ? 'Open video on YouTube' : `Download ${type || 'file'}`,
-                            isYouTube ? 'Video' : (type || 'File').toUpperCase(),
-                        )}
-                    </div>
-                );
-            }
-        }
-
         if (type === 'video') {
             if (isYouTube) {
                 const embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
@@ -3504,7 +3484,7 @@ function ParticipantTrainingLessonView({ module }) {
                 <div className="space-y-2">
                     <video
                         controls
-                        preload={lowBandwidth ? 'none' : 'metadata'}
+                        preload="metadata"
                         src={url}
                         className="w-full rounded-lg border border-slate-200 bg-black"
                     />
@@ -3561,11 +3541,9 @@ function ParticipantTrainingLessonView({ module }) {
                         <span>{label}</span>
                     </a>
                     {downloadLink(url, 'Save PDF for offline reading', 'PDF')}
-                    {!lowBandwidth && (
-                        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-[0.7rem] text-slate-500">
-                            PDF previews may open in a new tab depending on your browser settings.
-                        </div>
-                    )}
+                    <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-[0.7rem] text-slate-500">
+                        PDF previews may open in a new tab depending on your browser settings.
+                    </div>
                 </div>
             );
         }
@@ -3624,25 +3602,7 @@ function ParticipantTrainingLessonView({ module }) {
                 totalLessons={totalLessons}
             />
 
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                <label className="inline-flex items-start gap-3 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={lowBandwidth}
-                        onChange={(event) => {
-                            const enabled = event.target.checked;
-                            setLowBandwidth(enabled);
-                            setLowBandwidthMode(enabled);
-                        }}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-slate-900">Low-bandwidth mode</span>
-                        <span className="block text-xs text-slate-500">
-                            Prefer downloads and external links instead of embedded video players.
-                        </span>
-                    </span>
-                </label>
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-end">
                 <a
                     href={`/participant/training-modules/${module.id}/progress-summary`}
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"

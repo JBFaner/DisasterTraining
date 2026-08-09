@@ -37,19 +37,12 @@ class SimulationEventController extends Controller
         // - Mark published events in the past that never started as "ended"
         SimulationEvent::autoEndPastUnstartedEvents($user?->id);
 
-        // Participants see published, ongoing, ended, completed, and archived events (not draft or cancelled)
+        // Participants see only:
+        // - events they registered for (their batch / history)
+        // - published open batches under campaigns they are enrolled in (rejoin after miss/cancel)
         if ($user && $user->role === 'PARTICIPANT') {
-            $events = SimulationEvent::with(['scenario.trainingModule.lessons', 'registrations'])
-                ->whereIn('status', ['published', 'ongoing', 'ended', 'completed', 'archived'])
-                ->where('event_date', '>=', now()->subDays(7)) // Include events from past week
-                ->orderBy('event_date')
-                ->orderBy('start_time')
-                ->get();
-
-            // Add registration status for current user
-            $events->each(function ($event) use ($user) {
-                $event->user_registration = $event->registrations->where('user_id', $user->id)->first();
-            });
+            $events = app(\App\Services\ParticipantSimulationEventVisibilityService::class)
+                ->visibleEventsFor($user);
 
             return view('app', [
                 'section' => 'simulation',
@@ -966,9 +959,10 @@ class SimulationEventController extends Controller
     {
         $user = portal_user();
 
-        // Participants can only view published and ongoing events
+        // Participants can only view events linked to their enrollment / registration
         if ($user && $user->role === 'PARTICIPANT') {
-            if (! in_array($simulationEvent->status, ['published', 'ongoing', 'ended', 'completed'], true)) {
+            $visibility = app(\App\Services\ParticipantSimulationEventVisibilityService::class);
+            if (! $visibility->canView($user, $simulationEvent)) {
                 abort(404);
             }
 
@@ -990,6 +984,7 @@ class SimulationEventController extends Controller
 
             $participantContext = app(\App\Services\ParticipantSimulationEventContextService::class)
                 ->buildForParticipant($user, $simulationEvent);
+            $simulationEvent->can_self_register = $visibility->canRegister($user, $simulationEvent);
 
             return view('app', [
                 'section' => 'simulation_detail',
@@ -1091,6 +1086,19 @@ class SimulationEventController extends Controller
             return back()->with('status', 'This event is not open for registration.');
         }
 
+        $visibility = app(\App\Services\ParticipantSimulationEventVisibilityService::class);
+        if (! $visibility->canView($user, $simulationEvent)) {
+            abort(404);
+        }
+
+        if (! $visibility->canRegister($user, $simulationEvent)) {
+            if (! $visibility->hasCompletedEventModule($user, $simulationEvent)) {
+                return back()->with('status', 'Finish this event\'s training module (lessons, quizzes, and Final AI Scenario) before registering.');
+            }
+
+            return back()->with('status', 'This event is not open for registration for your campaign batch.');
+        }
+
         // Check if event hasn't started yet (event date + start time)
         $eventDate = new \DateTime($simulationEvent->event_date);
         $startTime = $simulationEvent->start_time ? explode(':', $simulationEvent->start_time) : [0, 0];
@@ -1101,18 +1109,8 @@ class SimulationEventController extends Controller
             return back()->with('status', 'Registration is closed. This event has already started.');
         }
 
-        // Check if self-registration is enabled
-        if (!$simulationEvent->self_registration_enabled) {
-            return back()->with('status', 'Self-registration is not allowed for this event.');
-        }
-
         if ($simulationEvent->registration_deadline && now()->greaterThan($simulationEvent->registration_deadline)) {
             return back()->with('status', 'Registration is closed. The registration deadline has passed.');
-        }
-
-        // Check if already registered
-        if ($simulationEvent->registrations()->where('user_id', $user->id)->exists()) {
-            return back()->with('status', 'You are already registered for this event.');
         }
 
         // Check max participants (only count approved registrations)
@@ -1128,13 +1126,25 @@ class SimulationEventController extends Controller
         $status = $autoApprovalEnabled ? 'approved' : 'pending';
         $approvedAt = $autoApprovalEnabled ? now() : null;
 
-        // Create registration
-        $simulationEvent->registrations()->create([
-            'user_id' => $user->id,
-            'status' => $status,
-            'registered_at' => now(),
-            'approved_at' => $approvedAt,
-        ]);
+        $existing = $simulationEvent->registrations()->where('user_id', $user->id)->first();
+        if ($existing) {
+            if (in_array($existing->status, ['pending', 'approved'], true)) {
+                return back()->with('status', 'You are already registered for this event.');
+            }
+
+            $existing->update([
+                'status' => $status,
+                'registered_at' => now(),
+                'approved_at' => $approvedAt,
+            ]);
+        } else {
+            $simulationEvent->registrations()->create([
+                'user_id' => $user->id,
+                'status' => $status,
+                'registered_at' => now(),
+                'approved_at' => $approvedAt,
+            ]);
+        }
 
         if ($autoApprovalEnabled) {
             $this->notificationFactory->registrationApproved($user, $simulationEvent);

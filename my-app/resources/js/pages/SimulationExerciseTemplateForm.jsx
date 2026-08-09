@@ -479,13 +479,31 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                 },
                 body: JSON.stringify(aiInput()),
             });
-            const data = await response.json();
+            const raw = await response.text();
+            let data = {};
+            try {
+                data = raw ? JSON.parse(raw) : {};
+            } catch {
+                throw new Error(
+                    response.status === 504 || response.status === 502
+                        ? 'AI generation timed out (gateway). Gemini may be slow or out of quota — try again in a few minutes, or fill the plan manually.'
+                        : `Server returned an invalid response (${response.status}).`,
+                );
+            }
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to generate exercise plan.');
             }
 
             applyPlanToState(data.plan || {}, setters);
             setPlanGenerated(true);
+            if (data.plan?._used_fallback) {
+                showAppAlert({
+                    title: 'Starter plan ready (AI unavailable)',
+                    description: data.plan._fallback_reason
+                        || 'Gemini was unavailable, so a starter plan was generated locally. Review and edit before saving.',
+                    icon: 'warning',
+                });
+            }
         } catch (error) {
             showAppAlert({
                 title: 'Generation failed',
@@ -925,20 +943,33 @@ export function SimulationExerciseTemplateForm({ formData, mode = 'create' }) {
                     </label>
                 </div>
 
-                <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-5">
-                    <AdminPrimaryButton onClick={handleGeneratePlan} disabled={isGenerating}>
-                        {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                        Generate Exercise Plan
-                    </AdminPrimaryButton>
-                    <span className="text-xs text-slate-500">
-                        Optional — you can also fill in the sections below manually.
-                    </span>
-                    {computedDuration > 0 ? (
-                        <span className="text-xs text-slate-500">
-                            Current activity total: {computedDuration} min
-                            {form.estimated_duration_minutes ? ` · Target: ${form.estimated_duration_minutes} min` : ''}
-                        </span>
+                <div className="mt-5 space-y-3 border-t border-slate-100 pt-5">
+                    {isGenerating ? (
+                        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900 flex items-start gap-3">
+                            <Loader2 className="w-4 h-4 animate-spin mt-0.5 shrink-0" />
+                            <div>
+                                <p className="font-medium">AI generation in progress</p>
+                                <p className="text-violet-800/90 mt-1">
+                                    Building activities, timeline, personnel, and evaluation objectives. Please wait…
+                                </p>
+                            </div>
+                        </div>
                     ) : null}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <AdminPrimaryButton onClick={handleGeneratePlan} disabled={isGenerating}>
+                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            {isGenerating ? 'Generating…' : 'Generate Exercise Plan'}
+                        </AdminPrimaryButton>
+                        <span className="text-xs text-slate-500">
+                            Optional — you can also fill in the sections below manually.
+                        </span>
+                        {computedDuration > 0 ? (
+                            <span className="text-xs text-slate-500">
+                                Current activity total: {computedDuration} min
+                                {form.estimated_duration_minutes ? ` · Target: ${form.estimated_duration_minutes} min` : ''}
+                            </span>
+                        ) : null}
+                    </div>
                 </div>
             </CollapsibleSection>
 

@@ -81,8 +81,10 @@ function formatDurationFromTimes(startTime, endTime) {
 }
 
 export function ParticipantSimulationEventsList({ events }) {
+    const PAGE_SIZE = 6;
     const [searchQuery, setSearchQuery] = React.useState('');
     const [registrationFilter, setRegistrationFilter] = React.useState('all');
+    const [currentPage, setCurrentPage] = React.useState(1);
 
     // Normalize and filter events
     const normalizedEvents = (events || []).map((event) => ({
@@ -111,6 +113,15 @@ export function ParticipantSimulationEventsList({ events }) {
         return matchesSearch && matchesFilter;
     });
 
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, registrationFilter, events]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredEvents.length / PAGE_SIZE));
+    const safePage = Math.min(currentPage, totalPages);
+    const pageStart = (safePage - 1) * PAGE_SIZE;
+    const pagedEvents = filteredEvents.slice(pageStart, pageStart + PAGE_SIZE);
+
     const searchSuggestions = searchQuery
         ? normalizedEvents
               .filter((event) =>
@@ -124,7 +135,7 @@ export function ParticipantSimulationEventsList({ events }) {
         <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-800">Simulation Events</h2>
             <p className="text-sm text-slate-600 mb-2">
-                Browse upcoming disaster preparedness drills and simulations. Register to participate.
+                Finish a training module to unlock its upcoming simulation batches. Your registered batches stay visible here.
             </p>
 
             {/* Search and Filter */}
@@ -206,8 +217,9 @@ export function ParticipantSimulationEventsList({ events }) {
                         : PARTICIPANT_EMPTY_STATES.simulationEventsFiltered)}
                 />
             ) : (
+                <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredEvents.map((event) => {
+                    {pagedEvents.map((event) => {
                         const userRegistration = event.user_registration;
                         const isRegistered = !!userRegistration;
                         const registrationStatus = userRegistration?.status || null;
@@ -291,7 +303,7 @@ export function ParticipantSimulationEventsList({ events }) {
                                     >
                                         Details
                                     </a>
-                                    {isUpcoming && event.self_registration_enabled && (!isRegistered || isCancelled || isRejected) && (
+                                    {isUpcoming && (event.can_self_register || event.self_registration_enabled) && (!isRegistered || isCancelled || isRejected) && (
                                         <a
                                             href={`/participant/simulation-events/${event.id}`}
                                             className="w-full py-2 rounded-md bg-emerald-600 text-white text-sm font-medium text-center hover:bg-emerald-700 transition-colors"
@@ -304,6 +316,36 @@ export function ParticipantSimulationEventsList({ events }) {
                         );
                     })}
                 </div>
+
+                {filteredEvents.length > PAGE_SIZE ? (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-xs text-slate-500">
+                            Showing {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filteredEvents.length)} of {filteredEvents.length} events
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                disabled={safePage <= 1}
+                                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Previous
+                            </button>
+                            <span className="text-sm font-medium text-slate-700">
+                                Page {safePage} of {totalPages}
+                            </span>
+                            <button
+                                type="button"
+                                disabled={safePage >= totalPages}
+                                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
+                </>
             )}
         </div>
     );
@@ -378,7 +420,9 @@ export function ParticipantSimulationEventDetail({ event, role, participantConte
     
     // Event is upcoming if it hasn't started yet
     const isUpcoming = now < eventStartDateTime;
-    const canRegister = isUpcoming && event.self_registration_enabled && (!isRegistered || isCancelled || isRejected);
+    const canRegister = isUpcoming
+        && (event.can_self_register || event.self_registration_enabled)
+        && (!isRegistered || isCancelled || isRejected);
     const canCancelRegistration = isRegistered && (isPending || isApproved);
 
     // Admin/Trainer: Calculate if Start Event button should be visible

@@ -781,7 +781,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
                 <h3 className="text-sm font-semibold text-slate-900">Final AI Scenario Assessment</h3>
             </div>
             <p className="text-xs text-slate-600">
-                Complete all lessons to unlock a Gemini-generated disaster scenario and assessment quiz.
+                Pass every lesson quiz (or mark lessons complete when a lesson has no quiz) to unlock the Gemini-generated disaster scenario and assessment quiz.
             </p>
 
             {(adminRetrainingApproved || trainingStatus === 'retraining_required') && (
@@ -856,7 +856,7 @@ export function AiScenarioTrainingUnlock({ module, aiTraining }) {
             {!meta.all_lessons_completed && !lessonReviewRequired && !adminRetrainingApproved && (
                 <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
                     <Lock className="w-4 h-4 shrink-0" />
-                    Complete all lessons to unlock this training.
+                    Pass all required lesson quizzes to unlock this training. Marking a lesson complete is not enough when that lesson has a Quiz badge.
                 </div>
             )}
 

@@ -391,7 +391,8 @@ function SummaryCard({ label, value, accent = 'slate' }) {
 
 export function HazardAssessmentDetail({ profile, intelligence = null, options = {} }) {
     const hazards = getHazardRecords(profile);
-    const documents = profile?.documents || [];
+    const [documents, setDocuments] = React.useState(profile?.documents || []);
+    const [deletingDocId, setDeletingDocId] = React.useState(null);
     const intel = intelligence || {};
     const recommendations = intel.recommended_training_modules || [];
     const scenarios = intel.suggested_scenarios || [];
@@ -399,6 +400,42 @@ export function HazardAssessmentDetail({ profile, intelligence = null, options =
         zone_specific: 'Specific zones (streets / sitios / catchments)',
         barangay_wide: 'Barangay-wide',
         pattern_based: 'Pattern-based (e.g. dense housing clusters)',
+    };
+
+    const handleDeleteDocument = async (doc) => {
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Remove document?',
+            text: `"${doc.original_filename}" will be permanently deleted. You can upload a replacement from Edit Profile.`,
+            showCancelButton: true,
+            confirmButtonText: 'Remove',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#e11d48',
+        });
+        if (!result.isConfirmed) return;
+
+        setDeletingDocId(doc.id);
+        try {
+            const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
+            const res = await fetch(`/admin/hazard-assessment-profiles/${profile.id}/documents/${doc.id}`, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                },
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.message || 'Could not remove document.');
+            }
+            setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
+            await Swal.fire({ icon: 'success', title: 'Document removed', timer: 1600, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Remove failed', text: err.message });
+        } finally {
+            setDeletingDocId(null);
+        }
     };
 
     return (
@@ -525,12 +562,29 @@ export function HazardAssessmentDetail({ profile, intelligence = null, options =
                                                 <p className="text-xs text-slate-500">{doc.document_type}</p>
                                             </div>
                                         </div>
-                                        <a href={`/admin/hazard-assessment-profiles/${profile.id}/documents/${doc.id}/download`} className="inline-flex items-center gap-1 text-sm text-emerald-700 hover:text-emerald-800 shrink-0">
-                                            <Download className="w-4 h-4" /> Download
-                                        </a>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <a
+                                                href={`/admin/hazard-assessment-profiles/${profile.id}/documents/${doc.id}/download`}
+                                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50"
+                                            >
+                                                <Download className="w-4 h-4" /> Download
+                                            </a>
+                                            <button
+                                                type="button"
+                                                disabled={deletingDocId === doc.id}
+                                                onClick={() => handleDeleteDocument(doc)}
+                                                className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                {deletingDocId === doc.id ? 'Removing…' : 'Remove'}
+                                            </button>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>
+                            <p className="mt-3 text-xs text-slate-500">
+                                To replace a file, remove it here (or in Edit), then upload the new PDF/DOC from Edit Profile.
+                            </p>
                         </section>
                     )}
                 </div>
@@ -631,7 +685,43 @@ export function HazardAssessmentForm({ profile = null, options = {} }) {
 
     const [docFiles, setDocFiles] = React.useState([]);
     const [docTypes, setDocTypes] = React.useState([]);
+    const [existingDocuments, setExistingDocuments] = React.useState(profile?.documents || []);
+    const [deletingDocId, setDeletingDocId] = React.useState(null);
     const defaultScores = { Low: 25, Moderate: 50, High: 75, 'Very High': 95 };
+
+    const handleDeleteExistingDocument = async (doc) => {
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Remove document?',
+            text: `"${doc.original_filename}" will be permanently deleted. Upload a new file below to replace it.`,
+            showCancelButton: true,
+            confirmButtonText: 'Remove',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#e11d48',
+        });
+        if (!result.isConfirmed) return;
+
+        setDeletingDocId(doc.id);
+        try {
+            const res = await fetch(`/admin/hazard-assessment-profiles/${profile.id}/documents/${doc.id}`, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                },
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.message || 'Could not remove document.');
+            }
+            setExistingDocuments((prev) => prev.filter((item) => item.id !== doc.id));
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Remove failed', text: err.message });
+        } finally {
+            setDeletingDocId(null);
+        }
+    };
 
     const updateHazard = (index, field, value) => {
         setHazards((prev) => prev.map((h, i) => {
@@ -819,6 +909,43 @@ export function HazardAssessmentForm({ profile = null, options = {} }) {
 
                 <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
                     <h3 className="text-sm font-semibold text-slate-800">Supporting Documents</h3>
+                    <p className="text-xs text-slate-500">
+                        Upload PDF, DOC, DOCX, or images. To replace an existing file, remove it first, then upload the new one.
+                    </p>
+
+                    {isEditing && existingDocuments.length > 0 && (
+                        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                            {existingDocuments.map((doc) => (
+                                <li key={doc.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-slate-800 truncate">{doc.original_filename}</p>
+                                            <p className="text-xs text-slate-500">{doc.document_type}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <a
+                                            href={`/admin/hazard-assessment-profiles/${profile.id}/documents/${doc.id}/download`}
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                                        >
+                                            <Download className="w-3.5 h-3.5" /> Download
+                                        </a>
+                                        <button
+                                            type="button"
+                                            disabled={deletingDocId === doc.id}
+                                            onClick={() => handleDeleteExistingDocument(doc)}
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-rose-700 hover:text-rose-800 disabled:opacity-50"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            {deletingDocId === doc.id ? 'Removing…' : 'Remove'}
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
                     <input
                         type="file"
                         name="documents[]"

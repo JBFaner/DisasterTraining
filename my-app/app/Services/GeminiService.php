@@ -19,6 +19,9 @@ class GeminiService
 
     private string $apiKey;
 
+    /** @var list<string> */
+    private array $apiKeys = [];
+
     private string $modelName;
 
     private string $currentApiVersion;
@@ -30,7 +33,15 @@ class GeminiService
 
     public function __construct()
     {
-        $this->apiKey = (string) config('services.gemini.api_key');
+        $configuredKeys = config('services.gemini.api_keys');
+        if (is_array($configuredKeys) && $configuredKeys !== []) {
+            $this->apiKeys = array_values(array_filter($configuredKeys, fn ($key) => is_string($key) && trim($key) !== ''));
+        } else {
+            $single = trim((string) config('services.gemini.api_key', ''));
+            $this->apiKeys = $single !== '' ? [$single] : [];
+        }
+
+        $this->apiKey = $this->apiKeys[0] ?? '';
         $this->currentApiVersion = (string) config('services.gemini.api_version', 'v1beta');
         $configuredModel = (string) config('services.gemini.model', 'gemini-2.0-flash');
         $this->modelName = $configuredModel !== '' ? $configuredModel : 'gemini-2.0-flash';
@@ -42,13 +53,54 @@ class GeminiService
      */
     public function getModelsToTry(): array
     {
-        $ordered = array_values(array_unique(array_filter([
+        $preferred = array_values(array_unique(array_filter([
             $this->modelName,
-            ...$this->availableModels,
             ...self::PREFERRED_MODELS,
-        ])));
+        ], fn ($model) => is_string($model) && $model !== '' && $this->isUsableChatModel($model))));
 
-        return $ordered;
+        if ($this->availableModels === []) {
+            return $preferred !== [] ? $preferred : ['gemini-2.0-flash'];
+        }
+
+        $available = array_flip($this->availableModels);
+        $ordered = [];
+        foreach ($preferred as $model) {
+            if (isset($available[$model])) {
+                $ordered[] = $model;
+            }
+        }
+
+        // Do not iterate the full Google model catalog (gemma/tts/etc.) — that causes
+        // long 429 cascades and nginx 504s when quota is exhausted.
+        if ($ordered === []) {
+            foreach ($this->availableModels as $model) {
+                if (! $this->isUsableChatModel($model)) {
+                    continue;
+                }
+                $ordered[] = $model;
+                if (count($ordered) >= 4) {
+                    break;
+                }
+            }
+        }
+
+        return $ordered !== [] ? $ordered : ($preferred !== [] ? $preferred : ['gemini-2.0-flash']);
+    }
+
+    private function isUsableChatModel(string $model): bool
+    {
+        $normalized = strtolower(trim($model));
+        if ($normalized === '' || ! str_starts_with($normalized, 'gemini-')) {
+            return false;
+        }
+
+        foreach (['tts', 'embedding', 'image', 'robotics', 'audio'] as $blocked) {
+            if (str_contains($normalized, $blocked)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function resolveAvailableModels(): void
@@ -552,8 +604,8 @@ Important:
     {
         $this->extendExecutionLimit();
 
-        if ($this->apiKey === '') {
-            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY to .env');
+        if ($this->apiKeys === []) {
+            throw new \Exception('Gemini API key not configured. Add GEMINI_API_KEY (and optional GEMINI_API_KEYS backups) to .env');
         }
 
         $prompt = Utf8Sanitizer::clean($prompt);
@@ -571,57 +623,71 @@ Important:
         $lastError = null;
         $leakedKey = false;
         $timeoutSeconds = max(20, min(120, $timeoutSeconds));
+        $keyCount = count($this->apiKeys);
 
-        foreach ($modelsToTry as $model) {
-            $url = $this->baseUrl.'/'.$apiVersion.'/models/'.$model.':generateContent?key='.$this->apiKey;
+        foreach ($this->apiKeys as $keyIndex => $apiKey) {
+            $this->apiKey = $apiKey;
+            $quotaHits = 0;
+            $keyLabel = 'key#'.($keyIndex + 1).'/'.$keyCount;
 
-            try {
-                $payload = [
-                    'contents' => [
-                        ['parts' => [['text' => $prompt]]],
-                    ],
-                ];
+            foreach ($modelsToTry as $model) {
+                $url = $this->baseUrl.'/'.$apiVersion.'/models/'.$model.':generateContent?key='.$apiKey;
 
-                if ($generationConfig !== []) {
-                    $payload['generationConfig'] = $generationConfig;
-                }
+                try {
+                    $payload = [
+                        'contents' => [
+                            ['parts' => [['text' => $prompt]]],
+                        ],
+                    ];
 
-                $response = Http::timeout($timeoutSeconds)->post($url, $payload);
-
-                if ($response->successful()) {
-                    $text = $response->json('candidates.0.content.parts.0.text') ?? '';
-                    if ($text !== '') {
-                        $this->modelName = $model;
-                        Log::info("Gemini generateContent OK: {$apiVersion}/{$model}");
-
-                        return $text;
+                    if ($generationConfig !== []) {
+                        $payload['generationConfig'] = $generationConfig;
                     }
-                    $lastError = 'Empty response from Gemini API';
-                    continue;
-                }
 
-                $lastError = $response->json('error.message') ?? $response->body();
+                    $response = Http::timeout($timeoutSeconds)->post($url, $payload);
 
-                if ($response->status() === 403 && stripos((string) $lastError, 'leaked') !== false) {
-                    $leakedKey = true;
-                    break;
-                }
+                    if ($response->successful()) {
+                        $text = $response->json('candidates.0.content.parts.0.text') ?? '';
+                        if ($text !== '') {
+                            $this->modelName = $model;
+                            Log::info("Gemini generateContent OK: {$apiVersion}/{$model} ({$keyLabel})");
 
-                if ($response->status() === 404) {
-                    Log::warning("Gemini model not found: {$apiVersion}/{$model}");
-                    continue;
-                }
+                            return $text;
+                        }
+                        $lastError = 'Empty response from Gemini API';
+                        continue;
+                    }
 
-                if ($response->status() === 429) {
-                    Log::warning("Gemini quota exceeded for {$model}, trying next model");
-                    continue;
+                    $lastError = $response->json('error.message') ?? $response->body();
+
+                    if ($response->status() === 403 && stripos((string) $lastError, 'leaked') !== false) {
+                        $leakedKey = true;
+                        Log::error("Gemini API key reported as leaked ({$keyLabel}) — trying next key if available");
+                        break; // next API key
+                    }
+
+                    if ($response->status() === 404) {
+                        Log::warning("Gemini model not found: {$apiVersion}/{$model}");
+                        continue;
+                    }
+
+                    if ($response->status() === 429) {
+                        $quotaHits++;
+                        Log::warning("Gemini quota exceeded for {$model} ({$keyLabel})");
+                        // After 2 quota hits on this key, rotate to the next key instead of burning gateway time.
+                        if ($quotaHits >= 2) {
+                            Log::warning("Rotating to next Gemini API key after quota on {$keyLabel}");
+                            break;
+                        }
+                        continue;
+                    }
+                } catch (\Exception $e) {
+                    $lastError = $e->getMessage();
                 }
-            } catch (\Exception $e) {
-                $lastError = $e->getMessage();
             }
         }
 
-        if ($leakedKey) {
+        if ($leakedKey && $keyCount === 1) {
             throw new \Exception(
                 'Your Gemini API key was reported as leaked and disabled by Google. '.
                 'Create a new key at https://aistudio.google.com/apikey, update GEMINI_API_KEY in .env, then run: php artisan config:clear'
@@ -632,7 +698,9 @@ Important:
             ? ' Available models: '.implode(', ', array_slice($this->availableModels, 0, 8)).'.'
             : ' Enable the Generative Language API and verify billing/quota in Google AI Studio.';
 
-        throw new \Exception('Gemini API failed: '.($lastError ?? 'Unknown error').$hint);
+        throw new \Exception(
+            'Gemini API failed after trying '.$keyCount.' API key(s): '.($lastError ?? 'Unknown error').$hint
+        );
     }
 
     public function extractTextFromImageFile(string $absolutePath, string $mimeType): string

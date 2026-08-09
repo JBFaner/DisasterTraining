@@ -229,18 +229,14 @@ class TrainingModule extends Model
         }
 
         $progression = app(\App\Services\LessonQuizProgressionService::class);
-        $completedIds = array_flip($this->participantCompletedContentIds($userId));
 
-        $this->contents->transform(function ($content, $index) use ($completedIds, $progression, $userId) {
-            $contentId = (int) $content->id;
-            $isCompleted = $progression->participantHasCompletedLesson($this, $userId, $content)
-                || isset($completedIds[$contentId]);
-            $isUnlocked = $index === 0
-                || $isCompleted
-                || ($index > 0 && (
-                    $progression->participantHasCompletedLesson($this, $userId, $this->contents[$index - 1])
-                    || isset($completedIds[(int) $this->contents[$index - 1]->id])
-                ));
+        $this->contents->transform(function ($content, $index) use ($progression, $userId) {
+            // When a lesson has a published quiz, "completed" means the quiz was passed —
+            // not merely that the lesson was marked viewed/complete.
+            $isCompleted = $progression->participantHasCompletedLesson($this, $userId, $content);
+            $previousCompleted = $index > 0
+                && $progression->participantHasCompletedLesson($this, $userId, $this->contents[$index - 1]);
+            $isUnlocked = $index === 0 || $isCompleted || $previousCompleted;
 
             $content->is_completed = $isCompleted;
             $content->is_unlocked = $isUnlocked;

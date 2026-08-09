@@ -395,24 +395,20 @@ class ParticipantDashboardService
         ?array $continueModule,
         $registrations,
     ): array {
-        $profileComplete = $this->isProfileComplete($user);
         $moduleStarted = $this->hasStartedAnyModule($user, $moduleProgress);
         $eventRegistered = $registrations
             ->whereIn('status', ['pending', 'approved'])
             ->isNotEmpty();
+        $certificateReceived = Certificate::query()
+            ->where('user_id', $user->id)
+            ->exists();
 
         $firstModuleId = (int) ($continueModule['id'] ?? ($moduleProgress[0]['id'] ?? 0));
         $firstModuleTitle = $continueModule['title'] ?? ($moduleProgress[0]['title'] ?? 'your first module');
+        $certificateModuleTitle = $continueModule['title']
+            ?? ($moduleProgress[0]['title'] ?? null);
 
         $steps = [
-            [
-                'id' => 'profile',
-                'title' => 'Complete your profile',
-                'description' => 'Add your phone number and address so your LGU can reach you.',
-                'completed' => $profileComplete,
-                'href' => '/profile',
-                'action_label' => $profileComplete ? 'View profile' : 'Update profile',
-            ],
             [
                 'id' => 'start_module',
                 'title' => 'Start your first module',
@@ -432,6 +428,16 @@ class ParticipantDashboardService
                 'completed' => $eventRegistered,
                 'href' => '/participant/simulation-events',
                 'action_label' => $eventRegistered ? 'View my events' : 'Browse events',
+            ],
+            [
+                'id' => 'receive_certificate',
+                'title' => 'Receive a certificate for your module',
+                'description' => $certificateModuleTitle
+                    ? "Finish the requirements for \"{$certificateModuleTitle}\" to earn your certificate."
+                    : 'Complete module and simulation requirements to earn a certificate for a specific module.',
+                'completed' => $certificateReceived,
+                'href' => '/participant/certificates',
+                'action_label' => $certificateReceived ? 'View certificates' : 'Check eligibility',
             ],
         ];
 
@@ -496,16 +502,6 @@ class ParticipantDashboardService
             'unread_count' => $this->notificationService->unreadCount((int) $user->id),
             'items' => $notifications,
         ];
-    }
-
-    private function isProfileComplete(User $user): bool
-    {
-        $hasPhone = filled($user->phone);
-        $hasLocation = filled($user->barangay)
-            || (filled($user->province) && filled($user->city))
-            || filled($user->street);
-
-        return $hasPhone && $hasLocation;
     }
 
     /**

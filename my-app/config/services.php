@@ -51,6 +51,15 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
+        // Comma-separated backup keys. Used automatically when a key hits quota (429).
+        // Example: GEMINI_API_KEYS=AIza...primary,AIza...backup
+        'api_keys' => array_values(array_unique(array_filter(array_map(
+            static fn ($key) => trim((string) $key),
+            array_merge(
+                [env('GEMINI_API_KEY')],
+                explode(',', (string) env('GEMINI_API_KEYS', '')),
+            ),
+        )))),
         // Use v1beta + a current model (gemini-pro and 1.5 models are deprecated)
         'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
         'api_version' => env('GEMINI_API_VERSION', 'v1beta'),

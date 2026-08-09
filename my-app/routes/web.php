@@ -5,6 +5,7 @@ use App\Support\PortalAuth;
 use App\Support\PortalSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Admin\TrainingModuleController as AdminTrainingModuleController;
 use App\Http\Controllers\Participant\TrainingModuleController as ParticipantTrainingModuleController;
@@ -44,9 +45,7 @@ use App\Http\Controllers\CampaignRegistrationController;
 use App\Http\Middleware\CheckSessionInactivity;
 use App\Http\Middleware\SyncPortalGuard;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', WelcomeController::class)->name('welcome');
 
 // Public legal pages
 Route::view('/privacy', 'privacy')->name('privacy');
@@ -184,6 +183,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.campaign-requests.store');
         Route::get('/campaign-requests/{campaignRequest}', [CampaignRequestController::class, 'show'])
             ->name('admin.campaign-requests.show');
+        Route::post('/campaign-requests/{campaignRequest}/demo-force-approve', [CampaignRequestController::class, 'demoForceApprove'])
+            ->name('admin.campaign-requests.demo-force-approve');
         Route::get('/training-modules/{trainingModule}/edit', [AdminTrainingModuleController::class, 'edit'])
             ->name('admin.training-modules.edit');
         Route::put('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'update'])

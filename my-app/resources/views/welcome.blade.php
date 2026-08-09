@@ -468,110 +468,62 @@
                 </p>
             </div>
             
-            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <!-- Earthquake -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal scroll-reveal-delay-1">
-                    <div class="h-48 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-                        <svg class="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full">OPEN</span>
+            <div class="grid md:grid-cols-2 {{ count($landingTrainings ?? []) >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-8">
+                @forelse (($landingTrainings ?? []) as $index => $training)
+                    @php
+                        $delayClass = 'scroll-reveal-delay-'.(($index % 3) + 1);
+                        $isOpen = ($training['status'] ?? '') === 'open';
+                        $theme = $training['theme'] ?? ['gradient' => 'from-teal-400 to-teal-700', 'badge' => 'bg-teal-100 text-teal-800', 'emoji' => ''];
+                    @endphp
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal {{ $delayClass }}">
+                        <div class="h-48 bg-gradient-to-br {{ $theme['gradient'] }} flex items-center justify-center">
+                            <div class="text-center px-4">
+                                <p class="text-white/90 text-sm font-semibold uppercase tracking-wide mb-2">{{ $training['category'] ?: 'Training' }}</p>
+                                <p class="text-white text-lg font-bold leading-snug line-clamp-3">{{ $training['title'] }}</p>
+                            </div>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-3">🟠 Earthquake Preparedness</h3>
-                        <p class="text-gray-600 mb-4 text-sm leading-relaxed">
-                            Learn essential earthquake safety procedures, drop-cover-hold techniques, and evacuation protocols.
-                        </p>
-                        <div class="flex gap-2">
-                            <a href="/register" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
-                                Register
-                            </a>
-                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                                Details
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Fire -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal scroll-reveal-delay-2">
-                    <div class="h-48 bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
-                        <svg class="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">UPCOMING</span>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-3">🔴 Fire Evacuation Training</h3>
-                        <p class="text-gray-600 mb-4 text-sm leading-relaxed">
-                            Master fire safety measures, proper use of fire extinguishers, and safe evacuation procedures.
-                        </p>
-                        <div class="flex gap-2">
-                            <button class="flex-1 inline-flex items-center justify-center min-w-0 bg-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed">
-                                Coming Soon
-                            </button>
-                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                                Details
-                            </button>
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-3 gap-2">
+                                <span class="{{ $isOpen ? 'bg-orange-100 text-orange-800' : 'bg-slate-100 text-slate-700' }} text-xs font-semibold px-3 py-1 rounded-full">
+                                    {{ $training['status_label'] }}
+                                </span>
+                                @if (!empty($training['seats_remaining']))
+                                    <span class="text-[0.7rem] text-slate-500">{{ $training['seats_remaining'] }} seats left</span>
+                                @endif
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800 mb-3 line-clamp-2">{{ $training['title'] }}</h3>
+                            <p class="text-gray-600 mb-4 text-sm leading-relaxed">
+                                {{ $training['description'] }}
+                            </p>
+                            @if (!empty($training['batch_label']) && $isOpen)
+                                <p class="text-xs text-slate-500 mb-3">{{ $training['batch_label'] }}</p>
+                            @endif
+                            <div class="flex gap-2">
+                                @if ($isOpen && !empty($training['register_url']))
+                                    <a href="{{ $training['register_url'] }}" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
+                                        Register
+                                    </a>
+                                    <a href="{{ $training['details_url'] }}" class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                                        Details
+                                    </a>
+                                @else
+                                    <button type="button" disabled class="flex-1 inline-flex items-center justify-center min-w-0 bg-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed">
+                                        Coming Soon
+                                    </button>
+                                    <a href="{{ url('/login') }}" class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                                        Login
+                                    </a>
+                                @endif
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Flood -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal scroll-reveal-delay-3">
-                    <div class="h-48 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                        <svg class="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.5 3A2.5 2.5 0 003 5.5v9A2.5 2.5 0 005.5 17h9a2.5 2.5 0 002.5-2.5v-9A2.5 2.5 0 0014.5 3h-9zm0 2h9a.5.5 0 01.5.5v7a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5v-7a.5.5 0 01.5-.5z" clip-rule="evenodd"/>
-                        </svg>
+                @empty
+                    <div class="md:col-span-2 lg:col-span-3 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-8 text-center">
+                        <h3 class="text-lg font-semibold text-slate-800">No published trainings yet</h3>
+                        <p class="mt-2 text-sm text-slate-600">Published training modules will appear here. Participants can also log in for self-paced access.</p>
+                        <a href="{{ url('/login') }}" class="mt-4 inline-flex items-center justify-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800">Login</a>
                     </div>
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full">OPEN</span>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-3">🔵 Flood Response Simulation</h3>
-                        <p class="text-gray-600 mb-4 text-sm leading-relaxed">
-                            Understand flood preparedness, water rescue basics, and emergency response during flooding.
-                        </p>
-                        <div class="flex gap-2">
-                            <a href="/register" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
-                                Register
-                            </a>
-                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                                Details
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- First Aid -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal">
-                    <div class="h-48 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                        <svg class="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z"/>
-                        </svg>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full">OPEN</span>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-3">🟢 First Aid & Rescue</h3>
-                        <p class="text-gray-600 mb-4 text-sm leading-relaxed">
-                            Training in emergency first aid, CPR, basic life support, and rescue operations.
-                        </p>
-                        <div class="flex gap-2">
-                            <a href="/register" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
-                                Register
-                            </a>
-                            <button class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                                Details
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                @endforelse
             </div>
         </div>
     </section>

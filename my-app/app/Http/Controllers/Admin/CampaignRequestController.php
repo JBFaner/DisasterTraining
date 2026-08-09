@@ -235,4 +235,72 @@ class CampaignRequestController extends Controller
             'campaign_request' => $serialized,
         ]);
     }
+
+    /**
+     * Presentation helper: locally approve a waiting campaign request when Demo tools are on.
+     */
+    public function demoForceApprove(Request $request, CampaignRequest $campaignRequest)
+    {
+        $campaignRequest->load('trainingModule');
+        $this->authorizeOwner($campaignRequest->trainingModule);
+
+        $user = portal_user() ?: $request->user();
+        abort_unless($user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'LEAD_TRAINER', 'SUPER_ADMIN'], true), 403);
+
+        if (! \App\Models\Setting::get('demo_tools_enabled', true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Demo tools are currently disabled. Turn Demo tools On first.',
+            ], 422);
+        }
+
+        if ($campaignRequest->status === 'approved') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Campaign request is already approved.',
+                'request' => $this->serializeCampaignRequest($campaignRequest->fresh(['trainingModule', 'submittedBy'])),
+            ]);
+        }
+
+        if ($campaignRequest->status !== 'waiting_for_approval') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only requests waiting for approval can be force-approved.',
+                'current_status' => $campaignRequest->status,
+            ], 422);
+        }
+
+        $payload = is_array($campaignRequest->payload) ? $campaignRequest->payload : [];
+        $payload['demo_force_approved'] = true;
+        $payload['demo_force_approved_at'] = now()->toIso8601String();
+        $payload['demo_force_approved_by'] = $user->id;
+
+        $campaignRequest->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+            'payload' => $payload,
+            'remarks' => array_merge(
+                is_array($campaignRequest->remarks) ? $campaignRequest->remarks : [],
+                [
+                    'demo_force_approve' => [
+                        'by' => $user->id,
+                        'at' => now()->toIso8601String(),
+                        'note' => 'Approved locally for presentation demo (Demo tools).',
+                    ],
+                ],
+            ),
+        ]);
+
+        $registrationLink = CampaignRegistrationLink::forCampaignRequest($campaignRequest);
+        $freshPayload = is_array($campaignRequest->payload) ? $campaignRequest->payload : [];
+        $freshPayload['registration_link'] = $registrationLink;
+        $freshPayload['registration_form_path'] = '/campaigns/'.$campaignRequest->id.'/register';
+        $campaignRequest->update(['payload' => $freshPayload]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Campaign request approved (Demo). Registration link is now active when the window is open.',
+            'request' => $this->serializeCampaignRequest($campaignRequest->fresh(['trainingModule', 'submittedBy'])),
+        ]);
+    }
 }

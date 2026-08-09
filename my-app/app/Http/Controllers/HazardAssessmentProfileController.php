@@ -163,7 +163,12 @@ class HazardAssessmentProfileController extends Controller
 
         abort_unless($document->barangay_profile_id === $barangayProfile->id, 404);
 
-        return Storage::disk('local')->download($document->file_path, $document->original_filename);
+        $disk = Storage::disk('local');
+        if (! $document->file_path || ! $disk->exists($document->file_path)) {
+            abort(404, 'Supporting document file is missing from storage. Re-upload the document or re-run the hazard assessment seeder.');
+        }
+
+        return $disk->download($document->file_path, $document->original_filename ?: basename($document->file_path));
     }
 
     public function deleteDocument(BarangayProfile $barangayProfile, HazardAssessmentDocument $document)

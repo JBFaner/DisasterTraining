@@ -54,7 +54,12 @@ class LessonCompletionController extends Controller
         $trainingModule->load('contents');
         $trainingModule->applyParticipantProgression($user->id);
 
-        $completedContentIds = $trainingModule->participantCompletedContentIds($user->id);
+        $completedContentIds = $trainingModule->contents
+            ->filter(fn ($item) => (bool) $item->is_completed)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
         $totalContents = $trainingModule->contents->count();
         $completedCount = count($completedContentIds);
 
