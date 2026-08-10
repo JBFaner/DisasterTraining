@@ -911,6 +911,7 @@ export function TrainingModuleDetail({ module }) {
     const [demoToolsEnabled, setDemoToolsEnabled] = React.useState(true);
     const [isTogglingDemoTools, setIsTogglingDemoTools] = React.useState(false);
     const [forceApprovingId, setForceApprovingId] = React.useState(null);
+    const [syncingOutboundId, setSyncingOutboundId] = React.useState(null);
     const [thumbnailUrl, setThumbnailUrl] = React.useState(
         module.thumbnail_url || (module.thumbnail_path ? `/storage/${module.thumbnail_path}` : null),
     );
@@ -1242,6 +1243,57 @@ export function TrainingModuleDetail({ module }) {
         }
     };
 
+    const handleRetryCampaignOutboundSync = async (requestItem) => {
+        if (!requestItem?.id || syncingOutboundId) return;
+
+        setSyncingOutboundId(requestItem.id);
+        try {
+            const response = await fetch(`/admin/campaign-requests/${requestItem.id}/sync-outbound`, {
+                method: 'POST',
+                body: (() => {
+                    const formData = new FormData();
+                    formData.append('_token', getCsrfToken());
+                    return formData;
+                })(),
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...getCsrfHeaders() },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Could not sync to Campaign System.');
+            }
+
+            if (data.request) {
+                setCampaignRequests((prev) =>
+                    prev.map((row) => (row.id === requestItem.id ? data.request : row)),
+                );
+            } else {
+                await loadCampaignRequests();
+            }
+
+            await Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Synced to Campaign System',
+                text: data.external_campaign_id
+                    ? `External campaign #${data.external_campaign_id}`
+                    : undefined,
+                showConfirmButton: false,
+                timer: 3200,
+            });
+        } catch (e) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Sync failed',
+                text: e?.message || 'Could not sync to Campaign System.',
+            });
+            await loadCampaignRequests();
+        } finally {
+            setSyncingOutboundId(null);
+        }
+    };
+
     const copyCampaignRegistrationLink = async (requestItem) => {
         const link = requestItem?.registration_link;
         if (!link) {
@@ -1502,17 +1554,33 @@ export function TrainingModuleDetail({ module }) {
         try {
             await persistIntelligenceProfile();
 
-            await handleSubmitToCampaign();
+            const submitResult = await handleSubmitToCampaign();
+            const syncOk = submitResult?.campaign_request?.external_sync_success;
+            const syncError = submitResult?.campaign_request?.external_sync_error;
+            const externalId = submitResult?.campaign_request?.external_campaign_id;
 
-            await Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Saved & submitted',
-                text: 'Training Intelligence Profile saved and submitted to Campaign. Track progress under Campaign Requests.',
-                showConfirmButton: false,
-                timer: 4500,
-            });
+            if (syncOk) {
+                await Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Saved & synced to Campaign',
+                    text: externalId
+                        ? `Training Intelligence submitted. External campaign #${externalId}.`
+                        : 'Training Intelligence submitted and pushed to Campaign System.',
+                    showConfirmButton: false,
+                    timer: 4500,
+                });
+            } else {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Submitted locally — Campaign sync pending',
+                    text: syncError
+                        ? `Request was saved, but Campaign System sync failed: ${syncError}. Use Retry sync under Campaign Requests.`
+                        : 'Request was saved, but Campaign System sync did not complete. Use Retry sync under Campaign Requests.',
+                    confirmButtonColor: '#059669',
+                });
+            }
 
             window.location.assign(`/admin/training-modules/${module.id}#campaign_requests`);
         } catch (e) {
@@ -2050,6 +2118,7 @@ export function TrainingModuleDetail({ module }) {
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Submitted To</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Submitted Date</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Campaign Sync</th>
                                             <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Action</th>
                                         </tr>
                                     </thead>
@@ -2079,6 +2148,45 @@ export function TrainingModuleDetail({ module }) {
                                                 <td className="px-4 py-3 whitespace-nowrap">
                                                     <CampaignRequestStatusBadge status={req.status} />
                                                 </td>
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    {(() => {
+                                                        const sync = req.external_sync || {};
+                                                        const status = sync.status || (req.external_campaign_id ? 'synced' : 'pending');
+                                                        if (status === 'synced') {
+                                                            return (
+                                                                <div>
+                                                                    <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                                                                        Synced
+                                                                    </span>
+                                                                    {sync.external_campaign_id || req.external_campaign_id ? (
+                                                                        <div className="mt-1 text-[11px] text-slate-500">
+                                                                            Ext #{sync.external_campaign_id || req.external_campaign_id}
+                                                                        </div>
+                                                                    ) : null}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        if (status === 'failed') {
+                                                            return (
+                                                                <div>
+                                                                    <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
+                                                                        Failed
+                                                                    </span>
+                                                                    {sync.error ? (
+                                                                        <div className="mt-1 max-w-[180px] truncate text-[11px] text-rose-600" title={sync.error}>
+                                                                            {sync.error}
+                                                                        </div>
+                                                                    ) : null}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+                                                                Not synced
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </td>
                                                 <td className="px-4 py-3 whitespace-nowrap text-right">
                                                     <div className="inline-flex items-center gap-2">
                                                         <a
@@ -2095,6 +2203,20 @@ export function TrainingModuleDetail({ module }) {
                                                         >
                                                             Copy Link
                                                         </button>
+                                                        {(req.external_sync?.status !== 'synced' && !req.external_campaign_id) ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRetryCampaignOutboundSync(req)}
+                                                                disabled={syncingOutboundId === req.id}
+                                                                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs border border-sky-300 bg-sky-50 text-sky-900 hover:bg-sky-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                title="Push this request to Campaign System again"
+                                                            >
+                                                                {syncingOutboundId === req.id ? (
+                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                ) : null}
+                                                                Retry sync
+                                                            </button>
+                                                        ) : null}
                                                         {demoToolsEnabled && req.status === 'waiting_for_approval' ? (
                                                             <button
                                                                 type="button"

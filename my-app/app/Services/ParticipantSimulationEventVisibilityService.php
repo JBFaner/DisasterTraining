@@ -12,11 +12,15 @@ use Illuminate\Support\Collection;
 
 class ParticipantSimulationEventVisibilityService
 {
+    /** @var array<int, list<int>> */
+    private array $finishedModuleIdsByUser = [];
+
     /**
      * Events a participant should see:
      * - any event they already registered for (history, including cancelled/completed)
      * - published upcoming batches for campaigns they are enrolled in, only when they
      *   have finished that event's training module (module-specific unlock)
+     * - excluding published upcoming batches for modules whose simulation they already completed
      *
      * @return Collection<int, SimulationEvent>
      */
@@ -70,15 +74,108 @@ class ParticipantSimulationEventVisibilityService
 
         $events = $query->get();
 
+        // Modules where this participant already finished a simulation batch.
+        // Hide other upcoming (published) batches for those modules.
+        $finishedSimulationModuleIds = $this->finishedSimulationModuleIds($user);
+
+        if ($finishedSimulationModuleIds !== []) {
+            $events = $events
+                ->filter(function (SimulationEvent $event) use ($finishedSimulationModuleIds) {
+                    if ($event->status !== 'published') {
+                        return true;
+                    }
+
+                    $moduleId = $this->resolveEventModuleId($event);
+                    if (! $moduleId) {
+                        return true;
+                    }
+
+                    return ! in_array($moduleId, $finishedSimulationModuleIds, true);
+                })
+                ->values();
+        }
+
         $events->each(function (SimulationEvent $event) use ($user) {
             $event->user_registration = $event->registrations
                 ->where('user_id', $user->id)
                 ->first();
             $event->can_self_register = $this->canRegister($user, $event);
             $event->module_unlocked = $this->hasCompletedEventModule($user, $event);
+            $event->participation_status = $this->participationStatusFor($user, $event);
         });
 
         return $events;
+    }
+
+    /**
+     * Module IDs where the participant already completed/ended a registered simulation.
+     *
+     * @return list<int>
+     */
+    public function finishedSimulationModuleIds(User $user): array
+    {
+        $userId = (int) $user->id;
+        if (array_key_exists($userId, $this->finishedModuleIdsByUser)) {
+            return $this->finishedModuleIdsByUser[$userId];
+        }
+
+        $eventIds = EventRegistration::query()
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['approved', 'pending'])
+            ->pluck('simulation_event_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($eventIds === []) {
+            return $this->finishedModuleIdsByUser[$userId] = [];
+        }
+
+        $events = SimulationEvent::query()
+            ->with(['campaignRequest:id,training_module_id', 'scenario:id,training_module_id'])
+            ->whereIn('id', $eventIds)
+            ->whereIn('status', ['completed', 'ended', 'archived'])
+            ->get();
+
+        return $this->finishedModuleIdsByUser[$userId] = $events
+            ->map(fn (SimulationEvent $event) => $this->resolveEventModuleId($event))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{joined: bool, completed: bool, label: string|null}
+     */
+    public function participationStatusFor(User $user, SimulationEvent $event): array
+    {
+        $registration = $event->relationLoaded('registrations')
+            ? $event->registrations->where('user_id', $user->id)->first()
+            : EventRegistration::query()
+                ->where('simulation_event_id', $event->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+        $joined = $registration
+            && in_array($registration->status, ['approved', 'pending'], true);
+        $eventDone = in_array($event->status, ['completed', 'ended', 'archived'], true);
+        $completed = $joined && $eventDone && ($registration->status === 'approved');
+
+        $label = null;
+        if ($completed) {
+            $label = 'Completed';
+        } elseif ($joined && $registration->status === 'pending') {
+            $label = 'Joined — pending approval';
+        } elseif ($joined) {
+            $label = 'Joined';
+        }
+
+        return [
+            'joined' => (bool) $joined,
+            'completed' => (bool) $completed,
+            'label' => $label,
+        ];
     }
 
     public function canView(User $user, SimulationEvent $event): bool
@@ -100,6 +197,11 @@ class ParticipantSimulationEventVisibilityService
             return false;
         }
 
+        $moduleId = $this->resolveEventModuleId($event);
+        if ($moduleId && in_array($moduleId, $this->finishedSimulationModuleIds($user), true)) {
+            return false;
+        }
+
         if (! $event->campaign_request_id
             || ! $this->enrolledCampaignIds($user)->contains((int) $event->campaign_request_id)) {
             return false;
@@ -115,6 +217,11 @@ class ParticipantSimulationEventVisibilityService
     public function canRegister(User $user, SimulationEvent $event): bool
     {
         if ($event->status !== 'published') {
+            return false;
+        }
+
+        $moduleId = $this->resolveEventModuleId($event);
+        if ($moduleId && in_array($moduleId, $this->finishedSimulationModuleIds($user), true)) {
             return false;
         }
 

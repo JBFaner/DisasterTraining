@@ -135,7 +135,7 @@ export function ParticipantSimulationEventsList({ events }) {
         <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-800">Simulation Events</h2>
             <p className="text-sm text-slate-600 mb-2">
-                Finish a training module to unlock its upcoming simulation batches. Your registered batches stay visible here.
+                Finish a training module to unlock its upcoming simulation batches. After you complete a drill for a module, other upcoming batches for that same module are hidden. Your joined and completed batches stay visible here.
             </p>
 
             {/* Search and Filter */}
@@ -227,6 +227,10 @@ export function ParticipantSimulationEventsList({ events }) {
                         const isApproved = registrationStatus === 'approved';
                         const isCancelled = registrationStatus === 'cancelled';
                         const isRejected = registrationStatus === 'rejected';
+                        const participation = event.participation_status || {};
+                        const isJoined = participation.joined ?? (isRegistered && (isPending || isApproved));
+                        const isParticipationComplete = participation.completed
+                            ?? (isApproved && ['completed', 'ended', 'archived'].includes(String(event.status || '').toLowerCase()));
 
                         const now = new Date();
                         const derivedStatus = deriveSimulationEventStatus(event, now);
@@ -251,7 +255,7 @@ export function ParticipantSimulationEventsList({ events }) {
                                 : derivedStatus === 'cancelled'
                                     ? 'bg-rose-500/20 text-white'
                                     : derivedStatus === 'completed'
-                                        ? 'bg-indigo-500/25 text-white'
+                                        ? 'bg-emerald-500/30 text-white ring-1 ring-emerald-300/40'
                                         : derivedStatus === 'ongoing'
                                             ? 'bg-emerald-500/25 text-white'
                                             : 'bg-black/20 text-white';
@@ -274,8 +278,23 @@ export function ParticipantSimulationEventsList({ events }) {
                                     <h3 className="text-base font-semibold mb-3 line-clamp-2">
                                         {event.title}
                                     </h3>
-                                    <div className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium mb-2 ${statusBadgeClass}`}>
-                                        {statusBadge}
+                                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                                        <div className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass}`}>
+                                            {statusBadge === 'Completed' ? (
+                                                <span className="inline-flex items-center gap-1">
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                    Complete
+                                                </span>
+                                            ) : (
+                                                statusBadge
+                                            )}
+                                        </div>
+                                        {isJoined && (
+                                            <div className="inline-flex items-center gap-1 rounded-full bg-sky-400/25 px-3 py-1 text-xs font-semibold text-white ring-1 ring-sky-200/40">
+                                                <Users className="h-3.5 w-3.5" />
+                                                {isPending ? 'Joined · Pending' : 'Joined'}
+                                            </div>
+                                        )}
                                     </div>
                                     {event.description && (
                                         <p className="text-sm text-slate-300 leading-relaxed line-clamp-3">
@@ -290,12 +309,17 @@ export function ParticipantSimulationEventsList({ events }) {
                                             <span>Disaster type: {event.disaster_type}</span>
                                         </div>
                                     )}
-                                    {isRegistered && (isPending || isApproved) && (
-                                        <button
-                                            className="w-full py-2 rounded-md bg-slate-600 text-white text-sm font-medium hover:bg-slate-500 transition-colors"
-                                        >
-                                            Registered
-                                        </button>
+                                    {isParticipationComplete && (
+                                        <div className="w-full py-2 rounded-md bg-emerald-500/25 text-emerald-50 text-sm font-semibold text-center ring-1 ring-emerald-300/30 inline-flex items-center justify-center gap-1.5">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            You completed this drill
+                                        </div>
+                                    )}
+                                    {isJoined && !isParticipationComplete && (
+                                        <div className="w-full py-2 rounded-md bg-sky-500/25 text-sky-50 text-sm font-semibold text-center ring-1 ring-sky-200/30 inline-flex items-center justify-center gap-1.5">
+                                            <Users className="h-4 w-4" />
+                                            {isPending ? 'You joined · awaiting approval' : 'You joined this batch'}
+                                        </div>
                                     )}
                                     <a
                                         href={`/participant/simulation-events/${event.id}`}

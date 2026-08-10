@@ -168,14 +168,9 @@ class CampaignSystemApiClient implements Group6ApiClientInterface
         $location = $this->truncate($barangayLabel.', Quezon City', 150);
 
         $targetZones = $barangayNames !== [] ? $barangayNames : ['Quezon City'];
-        if ($focusArea !== '') {
-            $targetZones[] = $this->truncate($focusArea, 180);
-        }
-        if ($exposureScope === 'pattern_based') {
-            $targetZones[] = 'Dense residential clusters (pattern-based fire exposure)';
-        }
+        // Keep zones short — Campaign DB columns reject long narratives.
         $targetZones = array_values(array_unique(array_filter(array_map(
-            static fn ($zone) => is_string($zone) ? trim($zone) : '',
+            fn ($zone) => $this->truncate(is_string($zone) ? trim($zone) : '', 120),
             $targetZones,
         ))));
 

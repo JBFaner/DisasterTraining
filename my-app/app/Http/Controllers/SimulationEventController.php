@@ -985,6 +985,7 @@ class SimulationEventController extends Controller
             $participantContext = app(\App\Services\ParticipantSimulationEventContextService::class)
                 ->buildForParticipant($user, $simulationEvent);
             $simulationEvent->can_self_register = $visibility->canRegister($user, $simulationEvent);
+            $simulationEvent->participation_status = $visibility->participationStatusFor($user, $simulationEvent);
 
             return view('app', [
                 'section' => 'simulation_detail',

@@ -23,9 +23,28 @@ class TrainingCertificateService
     {
         $attempt->loadMissing(['user', 'trainingModule']);
 
+        if ($evaluation->status !== EvaluationResult::STATUS_PASSED) {
+            return null;
+        }
+
+        $module = $attempt->trainingModule;
+        if ($module && ! app(LessonQuizProgressionService::class)->participantHasPassedAllRequiredLessonQuizzes(
+            $module,
+            (int) $attempt->user_id,
+        )) {
+            Log::warning('Skipped self-paced certificate: required lesson quizzes not passed.', [
+                'attempt_id' => $attempt->id,
+                'user_id' => $attempt->user_id,
+                'training_module_id' => $attempt->training_module_id,
+            ]);
+
+            return null;
+        }
+
         $existing = Certificate::query()
             ->where('user_id', $attempt->user_id)
             ->where('training_module_id', $attempt->training_module_id)
+            ->whereNull('simulation_event_id')
             ->whereNull('revoked_at')
             ->first();
 

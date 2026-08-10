@@ -35,6 +35,21 @@ class CampaignRequestController extends Controller
             ? ($campaignRequest->payload['registration_link'] ?? CampaignRegistrationLink::forCampaignRequest($campaignRequest))
             : null;
 
+        $payload = is_array($campaignRequest->payload) ? $campaignRequest->payload : [];
+        $remarks = is_array($campaignRequest->remarks) ? $campaignRequest->remarks : [];
+        $outbound = is_array($remarks['campaign_system_outbound'] ?? null)
+            ? $remarks['campaign_system_outbound']
+            : [];
+        $externalCampaignId = $payload['external_campaign_id'] ?? ($outbound['external_campaign_id'] ?? null);
+        $outboundSuccess = array_key_exists('success', $outbound)
+            ? (bool) $outbound['success']
+            : ($externalCampaignId !== null);
+        $externalSyncStatus = $externalCampaignId
+            ? 'synced'
+            : (array_key_exists('success', $outbound)
+                ? ($outboundSuccess ? 'synced' : 'failed')
+                : 'pending');
+
         return [
             'id' => $campaignRequest->id,
             'training_module' => $trainingModule ? [
@@ -53,6 +68,16 @@ class CampaignRequestController extends Controller
             'registration_link_active' => $registrationLinkActive,
             'registration_link' => $registrationLink,
             'remarks' => $campaignRequest->remarks,
+            'external_campaign_id' => $externalCampaignId !== null ? (int) $externalCampaignId : null,
+            'external_sync' => [
+                'status' => $externalSyncStatus,
+                'success' => $outboundSuccess && $externalCampaignId !== null,
+                'external_campaign_id' => $externalCampaignId !== null ? (int) $externalCampaignId : null,
+                'error' => is_string($outbound['error'] ?? null) ? $outbound['error'] : null,
+                'synced_at' => $payload['external_campaign_synced_at']
+                    ?? ($outbound['synced_at'] ?? null),
+                'attempted_at' => $outbound['attempted_at'] ?? null,
+            ],
             'created_at' => $campaignRequest->created_at?->toIso8601String(),
             'updated_at' => $campaignRequest->updated_at?->toIso8601String(),
             'submitted_by' => $campaignRequest->submittedBy ? [
@@ -167,42 +192,7 @@ class CampaignRequestController extends Controller
         $campaignRequest->update(['payload' => $payload]);
         $campaignRequest->refresh();
 
-        // Push Training Intelligence to the external Campaign Planning system.
-        $outbound = app(Group6ApiClientInterface::class)->submitTrainingIntelligence($campaignRequest);
-        if ($outbound['success'] ?? false) {
-            $payload['external_campaign_id'] = $outbound['external_campaign_id'] ?? null;
-            $payload['external_campaign_synced_at'] = now()->toIso8601String();
-            $campaignRequest->update([
-                'payload' => $payload,
-                'remarks' => array_merge(
-                    is_array($campaignRequest->remarks) ? $campaignRequest->remarks : [],
-                    [
-                        'campaign_system_outbound' => [
-                            'success' => true,
-                            'external_campaign_id' => $outbound['external_campaign_id'] ?? null,
-                            'synced_at' => now()->toIso8601String(),
-                        ],
-                    ],
-                ),
-            ]);
-        } else {
-            Log::warning('Training Intelligence outbound sync failed', [
-                'campaign_request_id' => $campaignRequest->id,
-                'error' => $outbound['error'] ?? 'Unknown error',
-            ]);
-            $campaignRequest->update([
-                'remarks' => array_merge(
-                    is_array($campaignRequest->remarks) ? $campaignRequest->remarks : [],
-                    [
-                        'campaign_system_outbound' => [
-                            'success' => false,
-                            'error' => $outbound['error'] ?? 'Unknown error',
-                            'attempted_at' => now()->toIso8601String(),
-                        ],
-                    ],
-                ),
-            ]);
-        }
+        $outbound = $this->syncOutbound($campaignRequest);
 
         return response()->json([
             'success' => true,
@@ -215,6 +205,83 @@ class CampaignRequestController extends Controller
                 'external_sync_error' => $outbound['error'] ?? null,
             ],
         ]);
+    }
+
+    /**
+     * Retry / push Training Intelligence to the Campaign System when sync is missing or failed.
+     */
+    public function syncOutboundToCampaign(Request $request, CampaignRequest $campaignRequest)
+    {
+        $campaignRequest->load('trainingModule', 'submittedBy');
+        $this->authorizeOwner($campaignRequest->trainingModule);
+
+        $user = portal_user() ?: $request->user();
+        abort_unless($user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'LEAD_TRAINER', 'SUPER_ADMIN'], true), 403);
+
+        $payload = is_array($campaignRequest->payload) ? $campaignRequest->payload : [];
+        if (! empty($payload['external_campaign_id']) && ! $request->boolean('force')) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Already synced to Campaign System.',
+                'request' => $this->serializeCampaignRequest($campaignRequest),
+            ]);
+        }
+
+        $outbound = $this->syncOutbound($campaignRequest->fresh(['trainingModule', 'submittedBy']));
+
+        if (! ($outbound['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => $outbound['error'] ?? 'Campaign System sync failed.',
+                'request' => $this->serializeCampaignRequest($campaignRequest->fresh(['trainingModule', 'submittedBy'])),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Synced to Campaign System.',
+            'request' => $this->serializeCampaignRequest($campaignRequest->fresh(['trainingModule', 'submittedBy'])),
+            'external_campaign_id' => $outbound['external_campaign_id'] ?? null,
+        ]);
+    }
+
+    /**
+     * @return array{success: bool, external_campaign_id: ?int, response: ?array<string, mixed>, error: ?string}
+     */
+    private function syncOutbound(CampaignRequest $campaignRequest): array
+    {
+        $outbound = app(Group6ApiClientInterface::class)->submitTrainingIntelligence($campaignRequest);
+        $payload = is_array($campaignRequest->payload) ? $campaignRequest->payload : [];
+        $remarks = is_array($campaignRequest->remarks) ? $campaignRequest->remarks : [];
+
+        if ($outbound['success'] ?? false) {
+            $payload['external_campaign_id'] = $outbound['external_campaign_id'] ?? null;
+            $payload['external_campaign_synced_at'] = now()->toIso8601String();
+            $remarks['campaign_system_outbound'] = [
+                'success' => true,
+                'external_campaign_id' => $outbound['external_campaign_id'] ?? null,
+                'synced_at' => now()->toIso8601String(),
+            ];
+            $campaignRequest->update([
+                'payload' => $payload,
+                'remarks' => $remarks,
+            ]);
+        } else {
+            Log::warning('Training Intelligence outbound sync failed', [
+                'campaign_request_id' => $campaignRequest->id,
+                'error' => $outbound['error'] ?? 'Unknown error',
+            ]);
+            $remarks['campaign_system_outbound'] = [
+                'success' => false,
+                'error' => $outbound['error'] ?? 'Unknown error',
+                'attempted_at' => now()->toIso8601String(),
+            ];
+            $campaignRequest->update([
+                'remarks' => $remarks,
+            ]);
+        }
+
+        return $outbound;
     }
 
     public function show(Request $request, CampaignRequest $campaignRequest)

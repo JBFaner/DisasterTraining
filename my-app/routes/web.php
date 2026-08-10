@@ -185,6 +185,8 @@ Route::middleware(['auth.portal', SyncPortalGuard::class, CheckSessionInactivity
             ->name('admin.campaign-requests.show');
         Route::post('/campaign-requests/{campaignRequest}/demo-force-approve', [CampaignRequestController::class, 'demoForceApprove'])
             ->name('admin.campaign-requests.demo-force-approve');
+        Route::post('/campaign-requests/{campaignRequest}/sync-outbound', [CampaignRequestController::class, 'syncOutboundToCampaign'])
+            ->name('admin.campaign-requests.sync-outbound');
         Route::get('/training-modules/{trainingModule}/edit', [AdminTrainingModuleController::class, 'edit'])
             ->name('admin.training-modules.edit');
         Route::put('/training-modules/{trainingModule}', [AdminTrainingModuleController::class, 'update'])

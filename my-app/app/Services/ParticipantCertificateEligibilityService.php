@@ -56,6 +56,7 @@ class ParticipantCertificateEligibilityService
         $certificatesByModule = Certificate::query()
             ->where('user_id', $userId)
             ->whereNull('revoked_at')
+            ->whereNull('simulation_event_id')
             ->whereNotNull('training_module_id')
             ->when($moduleIds !== [], fn ($q) => $q->whereIn('training_module_id', $moduleIds))
             ->get()
@@ -125,7 +126,9 @@ class ParticipantCertificateEligibilityService
 
         $assessmentPassed = $evaluation?->status === EvaluationResult::STATUS_PASSED;
         $assessmentFailed = $evaluation?->status === EvaluationResult::STATUS_NEEDS_IMPROVEMENT;
-        $hasCertificate = $certificate !== null;
+        // Event-based certificates also store training_module_id; only count true self-paced
+        // certificates, and only when lesson + assessment requirements are met.
+        $hasValidCertificate = $certificate !== null && $lessonsComplete && $assessmentPassed;
 
         $requirements = [
             $this->requirement(
@@ -143,22 +146,28 @@ class ParticipantCertificateEligibilityService
             $this->requirement(
                 'certificate',
                 'Receive completion certificate',
-                $hasCertificate,
+                $hasValidCertificate,
             ),
         ];
 
-        if ($hasCertificate) {
+        if ($hasValidCertificate) {
             $status = 'issued';
             $statusLabel = 'Certificate issued';
             $nextStep = 'Your self-paced completion certificate is ready to view or download.';
             $actionHref = route('participant.certificates.view', $certificate);
             $actionLabel = 'View certificate';
-        } elseif ($assessmentPassed) {
+        } elseif ($assessmentPassed && $lessonsComplete) {
             $status = 'eligible';
             $statusLabel = 'Eligible — certificate processing';
             $nextStep = 'You passed the assessment. Your certificate is issued automatically; refresh this page if it has not appeared yet.';
             $actionHref = '/participant/evaluations?tab=modules';
             $actionLabel = 'View assessment';
+        } elseif ($assessmentPassed && ! $lessonsComplete) {
+            $status = 'in_progress';
+            $statusLabel = 'Finish remaining lessons';
+            $nextStep = 'Your assessment score is recorded, but all required lesson quizzes must be passed before a certificate can be issued.';
+            $actionHref = "/participant/training-modules/{$module->id}";
+            $actionLabel = 'Continue module';
         } elseif ($assessmentFailed) {
             $status = 'assessment_failed';
             $statusLabel = 'Assessment not passed';
@@ -200,7 +209,7 @@ class ParticipantCertificateEligibilityService
             'next_step' => $nextStep,
             'action_href' => $actionHref,
             'action_label' => $actionLabel,
-            'certificate_id' => $certificate?->id,
+            'certificate_id' => $hasValidCertificate ? $certificate?->id : null,
             'assessment_score' => $evaluation?->percentage !== null ? (float) $evaluation->percentage : null,
             'path_type' => 'self_paced',
             'path_label' => 'Self-paced module',

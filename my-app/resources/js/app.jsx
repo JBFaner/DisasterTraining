@@ -3145,13 +3145,6 @@ function ParticipantTrainingModulesList({
         <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-semibold text-slate-800">Training Modules</h2>
-                <a
-                    href="/participant/training-modules/progress-summary"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                    <Download className="w-4 h-4" />
-                    Download progress summary
-                </a>
             </div>
             <ParticipantTrainingAccessBanner context={accessContext} />
             <ParticipantTrainingModuleFilters

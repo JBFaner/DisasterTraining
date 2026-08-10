@@ -88,6 +88,7 @@ class ParticipantTrainingProgressSummaryService
         $certificate = Certificate::query()
             ->where('user_id', $user->id)
             ->where('training_module_id', $module->id)
+            ->whereNull('simulation_event_id')
             ->whereNull('revoked_at')
             ->orderByDesc('issued_at')
             ->first();
