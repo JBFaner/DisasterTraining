@@ -4,12 +4,13 @@ namespace App\Policies;
 
 use App\Models\ParticipantEvaluation;
 use App\Models\User;
+use App\Support\PortalAuth;
 
 class ParticipantEvaluationPolicy
 {
     public function view(User $user, ParticipantEvaluation $participantEvaluation): bool
     {
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (PortalAuth::canEvaluate($user->role)) {
             return true;
         }
 

@@ -29,7 +29,10 @@ class RoleController extends Controller
                     $query->where('name', 'like', '%' . $search . '%');
                 }
 
-                $roles = $query->get();
+                $roles = $query
+                    ->whereNotIn('name', ['PARTICIPANT', 'VIEWER'])
+                    ->orderBy('name')
+                    ->get();
 
                 // Get permission counts for each role
                 if (DB::getSchemaBuilder()->hasTable('role_has_permissions')) {
@@ -73,7 +76,7 @@ class RoleController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name',
+            'name' => ['required', 'string', 'max:255', 'unique:roles,name', 'not_in:PARTICIPANT,VIEWER'],
             'guard_name' => 'nullable|string|max:255',
         ]);
 

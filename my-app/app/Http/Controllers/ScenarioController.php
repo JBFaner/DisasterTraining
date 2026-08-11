@@ -256,7 +256,7 @@ class ScenarioController extends Controller
     {
         $user = portal_user();
         if (! $user) abort(403);
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) abort(403);
+        if (! \App\Support\PortalAuth::canManageOperations($user->role)) abort(403);
     }
 
     public function storeInject(Request $request, Scenario $scenario)

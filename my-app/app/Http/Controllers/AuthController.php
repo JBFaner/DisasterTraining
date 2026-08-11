@@ -220,7 +220,7 @@ class AuthController extends Controller
         $user = User::where('email', $email)->first();
 
         // Only allow admin/trainer roles through admin login
-        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (! $user || ! \App\Support\PortalAuth::canManageOperations($user->role)) {
             if ($user) {
                 AuditLogger::log([
                     'user' => $user,

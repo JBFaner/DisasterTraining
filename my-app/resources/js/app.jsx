@@ -34,6 +34,8 @@ import {
     ParticipantTrainingModuleCard,
     ParticipantModuleHero,
     ParticipantLessonCard,
+    formatTrainingDuration,
+    formatTrainingModuleDate,
 } from './components/TrainingModuleCard';
 import { EvaluationResultsIndex } from './pages/EvaluationResultsIndex';
 import { EvaluationHub } from './pages/EvaluationHub';
@@ -2365,11 +2367,11 @@ if (rootElement) {
                                                     defaultRole={
                                                         (() => {
                                                             const roleFromQuery = new URLSearchParams(window.location.search).get('role');
-                                                            const allowed = ['LGU_ADMIN', 'LEAD_TRAINER', 'LGU_TRAINER', 'EVALUATOR', 'STAFF', 'VIEWER'];
+                                                            const allowed = ['LGU_ADMIN', 'LEAD_TRAINER', 'LGU_TRAINER', 'EVALUATOR', 'STAFF'];
                                                             if (roleFromQuery && allowed.includes(roleFromQuery)) {
                                                                 return roleFromQuery;
                                                             }
-                                                            return (roles && roles.length > 0) ? (roles[0].name || 'LGU_ADMIN') : 'LGU_ADMIN';
+                                                            return 'LGU_ADMIN';
                                                         })()
                                                     }
                                                     roleSelectId="account_type"
@@ -2843,6 +2845,41 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
         setCurrentPage(page);
     };
 
+    const handlePrintModules = React.useCallback(() => {
+        const moduleStatusLabel = (status) => {
+            if (!status) return '—';
+            return status.charAt(0).toUpperCase() + status.slice(1);
+        };
+        const filterBits = [
+            searchQuery.trim() ? `search="${searchQuery.trim()}"` : null,
+            filterStatus ? `status=${filterStatus}` : null,
+            filterDisasterType ? `category=${filterDisasterType}` : null,
+        ].filter(Boolean);
+
+        const html = buildPrintTableDocument({
+            title: 'Training Modules',
+            subtitle: `Printed ${new Date().toLocaleString()} · ${filteredModules.length} module(s)${filterBits.length ? ` · Filters: ${filterBits.join(', ')}` : ''}`,
+            headers: ['#', 'Title', 'Category', 'Status', 'Duration', 'Lessons', 'Participants', 'Avg. Completion', 'Created', 'Updated'],
+            rows: filteredModules.map((module, index) => [
+                index + 1,
+                module.title || '—',
+                module.category || '—',
+                moduleStatusLabel(module.status),
+                formatTrainingDuration(module.estimated_duration_minutes ?? module.duration_minutes),
+                module.lesson_count ?? '—',
+                module.participant_count ?? '—',
+                module.completion_percentage != null ? `${module.completion_percentage}%` : '—',
+                formatTrainingModuleDate(module.created_at) || '—',
+                formatTrainingModuleDate(module.updated_at) || '—',
+            ]),
+            emptyMessage: 'No training modules match the current filters.',
+        });
+
+        if (!printHtmlDocument(html, 'Training Modules')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    }, [filteredModules, searchQuery, filterStatus, filterDisasterType]);
+
     return (
         <AdminPageShell>
             <AdminPageHeader
@@ -2850,10 +2887,16 @@ function TrainingModulesTable({ modules = [], modulesPagination = null }) {
                 title="Training Modules"
                 description="Create and manage disaster training modules."
                 actions={
-                    <AdminPrimaryButton href="/admin/training-modules/create">
-                        <Plus className="w-4 h-4" />
-                        Create Training Module
-                    </AdminPrimaryButton>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <AdminPrimaryButton type="button" onClick={handlePrintModules}>
+                            <Printer className="w-4 h-4" />
+                            Print
+                        </AdminPrimaryButton>
+                        <AdminPrimaryButton href="/admin/training-modules/create">
+                            <Plus className="w-4 h-4" />
+                            Create Training Module
+                        </AdminPrimaryButton>
+                    </div>
                 }
             />
 

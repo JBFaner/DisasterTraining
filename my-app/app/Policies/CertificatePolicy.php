@@ -14,7 +14,7 @@ class CertificatePolicy
 
     public function view(User $user, Certificate $certificate): bool
     {
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (\App\Support\PortalAuth::canManageOperations($user->role)) {
             return true;
         }
 
@@ -23,7 +23,7 @@ class CertificatePolicy
 
     public function issue(User $user): bool
     {
-        return in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true);
+        return \App\Support\PortalAuth::canManageOperations($user->role);
     }
 
     public function revoke(User $user, Certificate $certificate): bool

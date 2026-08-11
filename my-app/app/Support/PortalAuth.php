@@ -38,22 +38,64 @@ class PortalAuth
         ], true);
     }
 
-    /** Trainers who can manage modules/events (assistant + lead). */
+    /** Any trainer account type (lead or assistant) — used for roster / mirrors. */
     public static function isTrainerRole(string $role): bool
     {
         return in_array($role, ['LGU_TRAINER', 'LEAD_TRAINER'], true);
     }
 
-    /** Roles that may score / manage evaluations. */
-    public static function canEvaluate(string $role): bool
+    /** Assistant Trainer accounts (`LGU_TRAINER`) — personnel/roster only. */
+    public static function isAssistantTrainerRole(string $role): bool
     {
-        return in_array($role, ['LGU_ADMIN', 'LGU_TRAINER', 'LEAD_TRAINER', 'EVALUATOR'], true);
+        return $role === 'LGU_TRAINER';
     }
 
-    /** Admin or any trainer-level account. */
+    /** Lead Trainer accounts. */
+    public static function isLeadTrainerRole(string $role): bool
+    {
+        return $role === 'LEAD_TRAINER';
+    }
+
+    /**
+     * Full Operations (modules, planning, inventory management, etc.).
+     * Admin + Lead Trainer only — not Assistant Trainer.
+     */
+    public static function canManageOperations(string $role): bool
+    {
+        return in_array($role, ['LGU_ADMIN', 'LEAD_TRAINER', 'SUPER_ADMIN'], true);
+    }
+
+    /**
+     * Score evaluations and manage attendance during drills.
+     * Admin + Lead Trainer + Evaluator (Assistant Trainer excluded).
+     */
+    public static function canEvaluate(string $role): bool
+    {
+        return in_array($role, ['LGU_ADMIN', 'LEAD_TRAINER', 'EVALUATOR', 'SUPER_ADMIN'], true);
+    }
+
+    /** Participant registry + attendance screens (Evaluator handles attendance). */
+    public static function canViewParticipantRegistry(string $role): bool
+    {
+        return self::canEvaluate($role);
+    }
+
+    /** Mark / update attendance records. */
+    public static function canManageAttendance(string $role): bool
+    {
+        return self::canEvaluate($role);
+    }
+
+    /** Admin simulation event screens (view/score; create gated separately). */
+    public static function canAccessAdminSimulationEvents(string $role): bool
+    {
+        return self::canEvaluate($role) || self::canManageOperations($role);
+    }
+
+    /** Admin or Lead Trainer (operations operators). */
     public static function isAdminOrTrainer(string $role): bool
     {
-        return $role === 'LGU_ADMIN' || self::isTrainerRole($role);
+        return self::canManageOperations($role);
     }
 
     public static function adminUser(): ?User

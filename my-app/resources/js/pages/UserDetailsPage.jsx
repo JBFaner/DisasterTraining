@@ -38,7 +38,9 @@ export function UserDetailsPage({ user, currentUser, recentLogins, recentActions
     const getRoleDisplay = (role) => {
         switch (role) {
             case 'LGU_ADMIN': return 'LGU Admin';
-            case 'LGU_TRAINER': return 'Trainer';
+            case 'LGU_TRAINER': return 'Assistant Trainer';
+            case 'LEAD_TRAINER': return 'Lead Trainer';
+            case 'EVALUATOR': return 'Evaluator';
             case 'STAFF': return 'Staff';
             default: return role;
         }

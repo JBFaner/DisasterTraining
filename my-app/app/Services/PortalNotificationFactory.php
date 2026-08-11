@@ -296,7 +296,7 @@ class PortalNotificationFactory
 
         if ($recipientIds->isEmpty()) {
             return User::query()
-                ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER'])
+                ->whereIn('role', ['LGU_ADMIN', 'LEAD_TRAINER'])
                 ->where('status', 'active')
                 ->limit(5)
                 ->get();
@@ -304,7 +304,7 @@ class PortalNotificationFactory
 
         return User::query()
             ->whereIn('id', $recipientIds)
-            ->whereIn('role', ['LGU_ADMIN', 'LGU_TRAINER'])
+            ->whereIn('role', ['LGU_ADMIN', 'LEAD_TRAINER'])
             ->where('status', 'active')
             ->get();
     }

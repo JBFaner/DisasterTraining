@@ -105,72 +105,18 @@ class HazardAssessmentSeeder extends Seeder
                 'documents' => [
                     [
                         'document_type' => 'Flood Hazard Map',
-                        'filename' => 'san-agustin-qcdmp-flood-coverage-summary.txt',
-                        'content' => <<<'TXT'
-Barangay San Agustin, Novaliches, Quezon City
-Flood coverage summary (capstone reference pack)
-
-Primary public source:
-- Quezon City Drainage Master Plan: Final Report (Phase I and II)
-  Portal: https://quezoncity.gov.ph/qc-profile/drainage-master-plan/
-  Related appendix listing: Areas Covered in Phases I and II
-  (San Agustin appears with ALL STREETS among assessed localities)
-
-Key takeaway for training / simulation planning:
-- Treat flood as the primary hazard for San Agustin readiness exercises.
-- Pre-position response for street flooding, blocked drainage, and evacuation
-  assistance for low-lying households during heavy rainfall advisories.
-
-Note: This seeded file summarizes publicly linked QC materials for demo.
-Confirm latest official maps and barangay flood monitors before operational use.
-TXT,
+                        'filename' => 'san-agustin-qcdmp-flood-coverage-summary.docx',
+                        'asset' => 'san-agustin-qcdmp-flood-coverage-summary.docx',
                     ],
                     [
                         'document_type' => 'Hazard Assessment Report',
-                        'filename' => 'san-agustin-hazard-profile-2025.txt',
-                        'content' => <<<'TXT'
-Hazard Assessment Profile — Barangay San Agustin (Novaliches, Quezon City)
-Capstone reference summary (2025)
-
-Location scope: San Agustin, District 5 / Novaliches area, Quezon City, NCR.
-
-Documented hazards in this system profile:
-1) Flood — High
-   Based on QC Drainage Master Plan Phase I/II coverage and site assessment materials.
-2) Typhoon — High
-   Extreme rainfall/wind compounding flood and utility disruption (PAGASA NCR context).
-3) Earthquake — Moderate
-   Metro Manila ground-shaking exposure (PHIVOLCS / HazardHunterPH).
-4) Fire — Moderate
-   Dense urban residential fire-spread potential (BFP preparedness context).
-
-Academic / local governance reference (BDRRM practice):
-- "Implementation of Barangay Disaster Risk Reduction Management in Barangay
-   San Agustin Novaliches Quezon City" — Ascendens Asia / Bestlink College journal
-   https://ojs.aaresearchindex.com/index.php/aasgbcpjmra/article/view/13917
-  Study notes gaps in drills, early warning signals, and resident emergency planning —
-  aligning with the need for simulation-based training in this barangay.
-
-Recommended exercise focus: flood evacuation + early warning communication drills.
-TXT,
+                        'filename' => 'san-agustin-hazard-profile-2025.docx',
+                        'asset' => 'san-agustin-hazard-profile-2025.docx',
                     ],
                     [
                         'document_type' => 'Other',
-                        'filename' => 'san-agustin-bdrrm-study-note.txt',
-                        'content' => <<<'TXT'
-Local BDRRM study note — San Agustin, Novaliches, Quezon City
-
-Citation:
-Ascendens Asia Singapore – Bestlink College of the Philippines
-Journal of Multidisciplinary Research, Vol. 4, No. 1
-Article: Implementation of Barangay Disaster Risk Reduction Management
-in Barangay San Agustin Novaliches Quezon City
-URL: https://ojs.aaresearchindex.com/index.php/aasgbcpjmra/article/view/13917
-
-Relevance to this training platform:
-- Supports choosing San Agustin as the capstone community for drills.
-- Highlights need for regular simulation exercises and early warning practice.
-TXT,
+                        'filename' => 'san-agustin-bdrrm-study-note.docx',
+                        'asset' => 'san-agustin-bdrrm-study-note.docx',
                     ],
                 ],
             ],
@@ -298,7 +244,7 @@ TXT,
     }
 
     /**
-     * @param  array<int, array{document_type: string, filename: string, content: string}>  $documents
+     * @param  array<int, array{document_type: string, filename: string, asset?: string, content?: string}>  $documents
      */
     private function seedDocuments(BarangayProfile $profile, array $documents, ?int $uploaderId): void
     {
@@ -307,10 +253,39 @@ TXT,
         }
 
         $slug = Str::slug($profile->barangay_name ?: 'barangay');
+        $assetsDir = database_path('seeders/assets/hazard-documents');
+
+        // Drop legacy placeholder .txt rows so the profile shows Word docs only.
+        $legacy = $profile->documents()
+            ->where('original_filename', 'like', '%.txt')
+            ->get();
+        foreach ($legacy as $legacyDoc) {
+            $legacyDoc->delete();
+        }
 
         foreach ($documents as $document) {
+            $binary = null;
+            $mime = 'text/plain';
+
+            if (! empty($document['asset'])) {
+                $assetPath = $assetsDir.DIRECTORY_SEPARATOR.$document['asset'];
+                if (! is_file($assetPath)) {
+                    $this->command?->warn("Missing hazard document asset: {$document['asset']}");
+
+                    continue;
+                }
+                $binary = file_get_contents($assetPath);
+                $mime = str_ends_with(strtolower($document['filename']), '.docx')
+                    ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    : (mime_content_type($assetPath) ?: 'application/octet-stream');
+            } elseif (isset($document['content'])) {
+                $binary = $document['content'];
+            } else {
+                continue;
+            }
+
             $storagePath = "hazard-assessments/{$slug}/{$document['filename']}";
-            Storage::disk('local')->put($storagePath, $document['content']);
+            Storage::disk('local')->put($storagePath, $binary);
 
             HazardAssessmentDocument::updateOrCreate(
                 [
@@ -320,8 +295,8 @@ TXT,
                 ],
                 [
                     'file_path' => $storagePath,
-                    'mime_type' => 'text/plain',
-                    'file_size' => strlen($document['content']),
+                    'mime_type' => $mime,
+                    'file_size' => strlen($binary),
                     'uploaded_by' => $uploaderId,
                 ],
             );

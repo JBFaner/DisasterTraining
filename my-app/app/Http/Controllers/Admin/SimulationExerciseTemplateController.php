@@ -322,6 +322,6 @@ class SimulationExerciseTemplateController extends Controller
     private function authorizeAccess(): void
     {
         $user = auth()->user();
-        abort_unless($user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true), 403);
+        abort_unless($user && \App\Support\PortalAuth::canManageOperations($user->role), 403);
     }
 }

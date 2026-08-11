@@ -8,7 +8,7 @@ class StoreSimulationEventRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return portal_user() && in_array(portal_user()->role, ['LGU_ADMIN', 'LGU_TRAINER'], true);
+        return portal_user() && \App\Support\PortalAuth::canManageOperations(portal_user()->role);
     }
 
     public function rules(): array

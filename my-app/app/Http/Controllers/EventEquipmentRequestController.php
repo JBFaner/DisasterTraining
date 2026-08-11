@@ -7,6 +7,7 @@ use App\Models\SimulationEvent;
 use App\Services\AuditLogger;
 use App\Services\EventEquipmentRequestService;
 use App\Services\SimulationEventLifecycleService;
+use App\Support\PortalAuth;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -150,7 +151,7 @@ class EventEquipmentRequestController extends Controller
     protected function authorizeTrainer(): void
     {
         $user = portal_user();
-        abort_unless($user && $user->role === 'LGU_TRAINER', 403, 'Only trainers can submit equipment requests.');
+        abort_unless($user && PortalAuth::canManageOperations($user->role), 403, 'Only Lead Trainers or Admins can submit equipment requests.');
     }
 
     protected function authorizeAdmin(): void
@@ -162,6 +163,6 @@ class EventEquipmentRequestController extends Controller
     protected function authorizeEventAccess(): void
     {
         $user = portal_user();
-        abort_unless($user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true), 403);
+        abort_unless($user && PortalAuth::canManageOperations($user->role), 403);
     }
 }

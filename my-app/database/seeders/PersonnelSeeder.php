@@ -125,14 +125,6 @@ class PersonnelSeeder extends Seeder
                 'position' => 'Communication Officer',
                 'role' => 'STAFF',
             ],
-            [
-                'email' => 'rowena.castillo.staff@lgu.local',
-                'name' => 'Rowena Castillo',
-                'phone' => '09321234015',
-                'barangay' => 'Barangay Fairview',
-                'position' => 'Attendance Officer',
-                'role' => 'STAFF',
-            ],
         ];
 
         foreach ($personnel as $row) {

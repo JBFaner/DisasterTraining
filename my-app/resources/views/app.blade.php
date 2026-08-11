@@ -11,10 +11,26 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
+        <script>
+            (function () {
+                try {
+                    var theme = localStorage.getItem('alertara-theme');
+                    if (theme !== 'dark' && theme !== 'light') theme = 'light';
+                    if (theme === 'dark') {
+                        document.documentElement.classList.add('dark');
+                        document.documentElement.dataset.theme = 'dark';
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        document.documentElement.dataset.theme = 'light';
+                    }
+                } catch (e) {}
+            })();
+        </script>
+
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.jsx'])
     </head>
-    <body class="bg-slate-100 text-slate-900">
+    <body class="bg-slate-100 text-slate-900 theme-light">
         <div
             id="app"
             data-role="{{ portal_check() ? (portal_user()->role ?? 'PARTICIPANT') : (($section ?? 'dashboard') === 'campaign_public' ? 'GUEST' : 'PARTICIPANT') }}"

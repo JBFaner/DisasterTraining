@@ -85,8 +85,8 @@ export function ParticipantRegistrationAttendanceModule({
 
     let totalParticipants = participantsSummary?.total ?? participants.length;
     let activeParticipants = participantsSummary?.active ?? participants.filter((p) => p.status === 'active').length;
-    let inactiveParticipants = participantsSummary?.inactive ?? participants.filter((p) => p.status === 'inactive').length;
-    let participantsSyncedThisMonth = participantsSummary?.synced_this_month ?? 0;
+    let localParticipants = participantsSummary?.local ?? 0;
+    let campaignParticipants = participantsSummary?.campaign ?? 0;
 
     return (
         <AdminPageShell>
@@ -128,10 +128,10 @@ export function ParticipantRegistrationAttendanceModule({
 
             {activeTab === 'participants' && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <StatCard label="Total Participants" value={totalParticipants} hint="Local and campaign registry" />
+                    <StatCard label="Total Participants" value={totalParticipants} hint="All registered participants" />
                     <StatCard label="Active" value={activeParticipants} hint="Active participant accounts" accent="emerald" />
-                    <StatCard label="Inactive" value={inactiveParticipants} hint="Inactive participant accounts" />
-                    <StatCard label="Synced This Month" value={participantsSyncedThisMonth} hint="Last registry sync" />
+                    <StatCard label="Local" value={localParticipants} hint="Registered in this system" />
+                    <StatCard label="Campaign" value={campaignParticipants} hint="From campaign registration" accent="sky" />
                 </div>
             )}
 
@@ -172,14 +172,17 @@ export function ParticipantRegistrationAttendanceModule({
 }
 
 function StatCard({ label, value, hint, accent = 'slate' }) {
-    const border = accent === 'emerald' ? 'border-emerald-200' : 'border-slate-200';
-    const labelColor = accent === 'emerald' ? 'text-emerald-600' : 'text-slate-500';
-    const valueColor = accent === 'emerald' ? 'text-emerald-800' : 'text-slate-900';
+    const styles = {
+        emerald: { border: 'border-emerald-200', label: 'text-emerald-600', value: 'text-emerald-800' },
+        sky: { border: 'border-sky-200', label: 'text-sky-600', value: 'text-sky-800' },
+        slate: { border: 'border-slate-200', label: 'text-slate-500', value: 'text-slate-900' },
+    };
+    const tone = styles[accent] || styles.slate;
 
     return (
-        <div className={`bg-white rounded-xl border ${border} shadow-sm p-5`}>
-            <p className={`text-xs font-semibold uppercase tracking-wide ${labelColor}`}>{label}</p>
-            <p className={`text-3xl font-bold mt-1 ${valueColor}`}>{value}</p>
+        <div className={`bg-white rounded-xl border ${tone.border} shadow-sm p-5`}>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${tone.label}`}>{label}</p>
+            <p className={`text-3xl font-bold mt-1 ${tone.value}`}>{value}</p>
             <p className="text-xs text-slate-500 mt-1">{hint}</p>
         </div>
     );
@@ -246,7 +249,6 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
     const [pagination, setPagination] = React.useState(participantsPagination);
     const [options, setOptions] = React.useState(filterOptions || { modules: [], batches: [] });
     const [isLoading, setIsLoading] = React.useState(false);
-    const [isSyncing, setIsSyncing] = React.useState(false);
     const [isPrinting, setIsPrinting] = React.useState(false);
 
     const buildParticipantsQuery = React.useCallback((page = 1, { exportAll = false } = {}) => {
@@ -467,36 +469,6 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
         return () => window.removeEventListener('participant-registry-print', onPrint);
     }, [printParticipants]);
 
-    const handleSync = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await fetch('/admin/participants/sync', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin',
-            });
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire('Registry synced', data.message, 'success');
-                await fetchParticipants(1);
-            } else {
-                Swal.fire(
-                    'Sync unavailable',
-                    data.message || 'The Community Registration & Campaign Management System API is not yet configured.',
-                    'info',
-                );
-            }
-        } catch {
-            Swal.fire('Error', 'Failed to sync participant registry.', 'error');
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
     const handleResendVerification = async (participant) => {
         try {
             const res = await fetch(`/admin/participants/${participant.id}/resend-verification`, {
@@ -584,14 +556,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                     setDateFrom('');
                     setDateTo('');
                 }}
-                trailing={(
-                    <>
-                        <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
-                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                            Sync Participants
-                        </AdminPrimaryButton>
-                    </>
-                )}
+                trailing={null}
             >
                 <AdminFilterSelect label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="all">All Status</option>
@@ -649,7 +614,7 @@ function ParticipantRegistryTab({ participants = [], participantsPagination = nu
                 onPageChange={(page) => fetchParticipants(page)}
                 minWidth="900px"
                 emptyTitle="No participants found"
-                emptyDescription="Use Register New Participant or Sync Participants to build your unified registry."
+                emptyDescription="Use Register New Participant to add people to the registry. Source shows Local vs Campaign."
                 renderActions={(row) => (
                     <>
                         <AdminTableActionButton

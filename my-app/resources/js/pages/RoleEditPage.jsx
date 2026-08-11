@@ -14,7 +14,7 @@ export function RoleEditPage({ role, groupedPermissions = [], assignedPermission
     const getRoleDisplayName = (roleName) => {
         const roleMap = {
             'LGU_ADMIN': 'Admin',
-            'LGU_TRAINER': 'Trainer',
+            'LGU_TRAINER': 'Assistant Trainer',
             'STAFF': 'Staff',
             'PARTICIPANT': 'Viewer',
         };
@@ -247,18 +247,6 @@ export function RoleEditPage({ role, groupedPermissions = [], assignedPermission
                                 required
                                 className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none text-sm font-medium text-slate-900"
                                 placeholder="e.g., LGU_ADMIN"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Guard Name
-                            </label>
-                            <input
-                                type="text"
-                                value={guardName}
-                                onChange={(e) => setGuardName(e.target.value)}
-                                className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none text-sm font-medium text-slate-900"
-                                placeholder="web"
                             />
                         </div>
                     </div>

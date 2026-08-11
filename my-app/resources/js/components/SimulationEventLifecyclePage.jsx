@@ -160,14 +160,13 @@ function assignedOptionKey(row) {
 }
 
 function memberOptionLabel(member) {
-    const detail = member.position || member.specialization || '';
-    return detail ? `${member.name} — ${detail}` : (member.name || '—');
+    return member.name || '—';
 }
 
 function buildInitialRoleSelections(pools = []) {
     const next = {};
     pools.forEach((pool) => {
-        if (!pool?.role || pool.role === 'Marshal') return;
+        if (!pool?.role || pool.role === 'Marshal' || pool.role === 'Attendance Officer') return;
         const count = Math.max(1, Number(pool.recommended_count) || 1);
         const membersByKey = new Map((pool.members || []).map((m) => [memberOptionKey(m), m]));
         const slots = Array.from({ length: count }, () => '');
@@ -185,7 +184,7 @@ function buildInitialRoleSelections(pools = []) {
 
 function RoleAssignmentPanel({ eventId, pools = [], csrf, onLifecycleUpdate, disabled = false }) {
     const rolePools = React.useMemo(
-        () => (pools || []).filter((pool) => pool?.role && pool.role !== 'Marshal'),
+        () => (pools || []).filter((pool) => pool?.role && pool.role !== 'Marshal' && pool.role !== 'Attendance Officer'),
         [pools],
     );
     const [busy, setBusy] = React.useState(false);

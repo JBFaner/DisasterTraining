@@ -99,7 +99,6 @@ class SimulationExerciseTemplate extends Model
         'Medical Team',
         'Evaluator',
         'Communication Officer',
-        'Attendance Officer',
     ];
 
     protected $fillable = [

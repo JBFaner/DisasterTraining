@@ -4,6 +4,7 @@ import { getLogoutUrl } from '../utils/portalAuth';
 import { ChevronDown, User, Settings, LogOut, Clock, PanelLeft, Timer } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
 import { formatSessionCountdown, useSessionIdle } from '../contexts/SessionIdleContext';
+import { initTheme } from '../utils/theme';
 
 export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSidebarCollapsed }) {
     const sessionIdle = useSessionIdle();
@@ -11,8 +12,14 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
     const [showProfileMenu, setShowProfileMenu] = React.useState(false);
     const profileButtonRef = React.useRef(null);
     const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, right: 0 });
+    const showSessionCountdown = Boolean(
+        sessionIdle?.enabled && Number(sessionIdle.remainingSeconds) <= 60,
+    );
 
-    // Update time every second
+    React.useEffect(() => {
+        initTheme();
+    }, []);
+
     React.useEffect(() => {
         const timer = setInterval(() => {
             setCurrentTime(new Date());
@@ -20,7 +27,6 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         return () => clearInterval(timer);
     }, []);
 
-    // Position dropdown below the profile button (fixed so it isn't clipped by overflow)
     React.useEffect(() => {
         if (showProfileMenu && profileButtonRef.current) {
             const rect = profileButtonRef.current.getBoundingClientRect();
@@ -31,7 +37,6 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         }
     }, [showProfileMenu]);
 
-    // Format time in 12-hour format with seconds
     const formatTime = (date) => {
         const hours = date.getHours();
         const minutes = date.getMinutes();
@@ -42,7 +47,6 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         return `${pad(hour12)}:${pad(minutes)}:${pad(seconds)} ${ampm}`;
     };
 
-    // Format date and day
     const formatDate = (date) => {
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -57,7 +61,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         switch (role) {
             case 'LGU_ADMIN': return 'LGU Admin';
             case 'LEAD_TRAINER': return 'Lead Trainer';
-            case 'LGU_TRAINER': return 'Trainer';
+            case 'LGU_TRAINER': return 'Assistant Trainer';
             case 'EVALUATOR': return 'Evaluator';
             case 'PARTICIPANT': return 'Participant';
             case 'STAFF': return 'Staff';
@@ -66,7 +70,6 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         }
     };
 
-    // Get user initials for default avatar
     const getUserInitials = () => {
         if (!user?.name) return 'U';
         const names = user.name.trim().split(' ');
@@ -76,29 +79,25 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         return user.name.substring(0, 2).toUpperCase();
     };
 
-    // Get default profile picture path or generate initials avatar
     const getProfilePicture = () => {
         if (user?.profile_picture) {
             return user.profile_picture.startsWith('http')
                 ? user.profile_picture
                 : `/storage/${user.profile_picture}`;
         }
-        // Return null to indicate we should use initials
         return null;
     };
 
-    // Generate initials avatar SVG
     const getInitialsAvatar = () => {
         const initials = getUserInitials();
         const colors = [
-            { bg: '#3b82f6', text: '#ffffff' }, // blue
-            { bg: '#10b981', text: '#ffffff' }, // emerald
-            { bg: '#8b5cf6', text: '#ffffff' }, // purple
-            { bg: '#f59e0b', text: '#ffffff' }, // amber
-            { bg: '#ef4444', text: '#ffffff' }, // red
-            { bg: '#06b6d4', text: '#ffffff' }, // cyan
+            { bg: '#3b82f6', text: '#ffffff' },
+            { bg: '#10b981', text: '#ffffff' },
+            { bg: '#8b5cf6', text: '#ffffff' },
+            { bg: '#f59e0b', text: '#ffffff' },
+            { bg: '#ef4444', text: '#ffffff' },
+            { bg: '#06b6d4', text: '#ffffff' },
         ];
-        // Pick color based on user name hash for consistency
         const colorIndex = user?.name ? user.name.charCodeAt(0) % colors.length : 0;
         const color = colors[colorIndex];
 
@@ -110,7 +109,6 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
         `)}`;
     };
 
-    // Handle logout with SweetAlert
     const handleLogout = (e) => {
         e.preventDefault();
         Swal.fire({
@@ -147,10 +145,8 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
     return (
         <div className="no-print bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 w-full max-w-full overflow-visible">
             <div className="px-6 py-2 w-full max-w-full">
-                <div className="flex items-center justify-between min-h-[3rem] w-full max-w-full">
-                    {/* Left Section: Sidebar Toggle, Module Name */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {/* Sidebar Toggle Button - Hidden on mobile */}
+                <div className="relative flex items-center min-h-[3rem] w-full max-w-full">
+                    <div className="z-10 flex items-center gap-2 flex-1 min-w-0 pr-2">
                         <button
                             onClick={onSidebarToggle}
                             className="hidden md:flex p-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors items-center justify-center"
@@ -159,7 +155,6 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                             <PanelLeft className="w-4 h-4 drop-shadow-sm" />
                         </button>
 
-                        {/* Module Name — hidden on index pages that provide their own title */}
                         {moduleName ? (
                             <h1 className="text-lg font-bold text-slate-900 truncate">
                                 {moduleName}
@@ -171,48 +166,47 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                         )}
                     </div>
 
-                    {/* Right Section: Time, Notifications, Profile - Centered */}
-                    <div className="flex items-center justify-center gap-2 shrink-0 relative">
-                        {/* Time/Date/Day - Hidden on mobile */}
-                        <div className="hidden lg:flex flex-col items-center text-xs">
-                            <div className="flex items-center gap-1 text-slate-700 font-medium">
-                                <Clock className="w-3.5 h-3.5 text-slate-500" />
-                                <span>{formatTime(currentTime)}</span>
+                    <div className="pointer-events-none absolute inset-0 hidden sm:flex items-center justify-center">
+                        <div className="pointer-events-auto flex items-center gap-3">
+                            <div className="hidden md:flex flex-col items-center text-xs leading-tight">
+                                <div className="flex items-center gap-1.5 text-slate-700 font-semibold tabular-nums">
+                                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>{formatTime(currentTime)}</span>
+                                </div>
+                                <div className="text-[0.65rem] text-slate-500">
+                                    {formatDate(currentTime)}
+                                </div>
                             </div>
-                            <div className="text-[0.65rem] text-slate-500">
-                                {formatDate(currentTime)}
-                            </div>
-                        </div>
 
-                        {sessionIdle?.enabled && (
-                            <button
-                                type="button"
-                                title={
-                                    sessionIdle.showWarning
-                                        ? 'Session about to expire — click to stay logged in'
-                                        : 'Time until logout due to inactivity'
-                                }
-                                onClick={() => {
-                                    if (sessionIdle.showWarning) {
-                                        sessionIdle.stayLoggedIn();
+                            {showSessionCountdown && (
+                                <button
+                                    type="button"
+                                    title={
+                                        sessionIdle.showWarning
+                                            ? 'Session about to expire — click to stay logged in'
+                                            : 'Less than 1 minute until logout due to inactivity'
                                     }
-                                }}
-                                className={`hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold font-mono transition-colors ${
-                                    sessionIdle.remainingSeconds <= 15
-                                        ? 'border-rose-300 bg-rose-50 text-rose-700'
-                                        : sessionIdle.remainingSeconds <= sessionIdle.warningSeconds
-                                          ? 'border-amber-300 bg-amber-50 text-amber-800'
-                                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                                }`}
-                            >
-                                <Timer className="w-3.5 h-3.5" />
-                                <span>Session {formatSessionCountdown(sessionIdle.remainingSeconds)}</span>
-                            </button>
-                        )}
+                                    onClick={() => {
+                                        if (sessionIdle.showWarning) {
+                                            sessionIdle.stayLoggedIn();
+                                        }
+                                    }}
+                                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold font-mono transition-colors ${
+                                        sessionIdle.remainingSeconds <= 15
+                                            ? 'border-rose-300 bg-rose-50 text-rose-700'
+                                            : 'border-amber-300 bg-amber-50 text-amber-800'
+                                    }`}
+                                >
+                                    <Timer className="w-3.5 h-3.5" />
+                                    <span>Session {formatSessionCountdown(sessionIdle.remainingSeconds)}</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
 
+                    <div className="z-10 flex items-center justify-end gap-2 flex-1 min-w-0 relative">
                         <NotificationCenter user={user} />
 
-                        {/* Profile Dropdown - Hidden on mobile */}
                         <div className="relative hidden md:block">
                             <button
                                 ref={profileButtonRef}
@@ -257,7 +251,7 @@ export function TopBar({ moduleName, breadcrumbs, user, onSidebarToggle, isSideb
                                         className="fixed inset-0 z-40"
                                         onClick={() => setShowProfileMenu(false)}
                                     />
-                                    <div 
+                                    <div
                                         className="fixed w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-50"
                                         style={{
                                             top: `${dropdownPosition.top}px`,

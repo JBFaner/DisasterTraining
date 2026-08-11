@@ -57,6 +57,16 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Roles available when creating / editing staff accounts (Viewer retired).
+     *
+     * @return list<string>
+     */
+    public static function assignableAccountRoles(): array
+    {
+        return ['LGU_ADMIN', 'LGU_TRAINER', 'LEAD_TRAINER', 'EVALUATOR', 'STAFF'];
+    }
+
+    /**
      * @return list<string>
      */
     public static function trainerOnlyPositions(): array
@@ -71,9 +81,12 @@ class AdminUserController extends Controller
             return null;
         }
 
-        // Lead Trainer role defaults to Lead Trainer position if empty.
         if ($accountType === 'LEAD_TRAINER' && ($position === null || $position === '')) {
             return 'Lead Trainer';
+        }
+
+        if ($accountType === 'LGU_TRAINER' && ($position === null || $position === '')) {
+            return 'Assistant Trainer';
         }
 
         if ($accountType === 'EVALUATOR' && ($position === null || $position === '')) {
@@ -95,12 +108,16 @@ class AdminUserController extends Controller
      */
     public static function positionOptions(): array
     {
-        $defaults = SimulationExerciseTemplate::PERSONNEL_ROLES;
+        $defaults = array_values(array_filter(
+            SimulationExerciseTemplate::PERSONNEL_ROLES,
+            fn (string $role) => $role !== 'Attendance Officer' && $role !== 'Marshal',
+        ));
 
         $custom = User::query()
             ->whereIn('role', self::staffAccountRoles())
             ->whereNotNull('position')
             ->where('position', '!=', '')
+            ->where('position', '!=', 'Attendance Officer')
             ->distinct()
             ->orderBy('position')
             ->pluck('position')
@@ -162,7 +179,10 @@ class AdminUserController extends Controller
         }
 
         $barangayProfiles = BarangayProfile::orderBy('barangay_name')->get();
-        $roles = DB::table('roles')->orderBy('name')->get();
+        $roles = DB::table('roles')
+            ->whereIn('name', self::assignableAccountRoles())
+            ->orderBy('name')
+            ->get();
 
         // Render inside the SPA shell so sidebar/navigation stays visible.
         // Note: currentUser is automatically available via auth()->user() in the blade template
@@ -193,7 +213,10 @@ class AdminUserController extends Controller
 
         $user->load('barangayProfile');
         $barangayProfiles = BarangayProfile::orderBy('barangay_name')->get();
-        $roles = DB::table('roles')->orderBy('name')->get();
+        $roles = DB::table('roles')
+            ->whereIn('name', self::assignableAccountRoles())
+            ->orderBy('name')
+            ->get();
 
         return view('app', [
             'section' => 'admin_users_edit',
@@ -517,8 +540,8 @@ class AdminUserController extends Controller
             abort(403);
         }
 
-        // Admin can create staff/viewer accounts from this screen (participants use a separate registration flow)
-        $allowedRoles = self::staffAccountRoles();
+        // Admin can create staff accounts from this screen (participants use a separate registration flow)
+        $allowedRoles = self::assignableAccountRoles();
 
         $data = $request->validate([
             'last_name' => ['required', 'string', 'max:255'],
@@ -608,7 +631,7 @@ class AdminUserController extends Controller
             abort(404);
         }
 
-        $allowedRoles = self::staffAccountRoles();
+        $allowedRoles = self::assignableAccountRoles();
         $managedBySimulation = $user->assignment_status === User::ASSIGNMENT_ASSIGNED_TO_SIMULATION;
 
         $rules = [
@@ -670,7 +693,7 @@ class AdminUserController extends Controller
             abort(403);
         }
 
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (! \App\Support\PortalAuth::canManageOperations($user->role)) {
             abort(403);
         }
 

@@ -251,7 +251,7 @@ class SimulationEventLifecycleController extends Controller
         if (! $user) {
             abort(403);
         }
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (! \App\Support\PortalAuth::canManageOperations($user->role)) {
             abort(403);
         }
     }

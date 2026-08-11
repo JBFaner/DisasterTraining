@@ -171,7 +171,7 @@ class SimulationEventLifecycleService
 
         foreach ($template->personnel->sortBy('sort_order')->values() as $roleRow) {
             $role = trim((string) $roleRow->role);
-            if ($role === '') {
+            if ($role === '' || $role === 'Attendance Officer') {
                 continue;
             }
 
@@ -495,7 +495,7 @@ class SimulationEventLifecycleService
 
         foreach ($template->personnel->sortBy('sort_order')->values() as $roleRow) {
             $role = trim((string) $roleRow->role);
-            if ($role === '' || $role === 'Marshal') {
+            if ($role === '' || $role === 'Marshal' || $role === 'Attendance Officer') {
                 continue;
             }
 
@@ -511,7 +511,11 @@ class SimulationEventLifecycleService
                     ->with('user')
                     ->orderBy('name')
                     ->get()
-                    ->filter(function (QualifiedTrainer $trainer) use ($alreadyTrainerIds) {
+                    ->filter(function (QualifiedTrainer $trainer) use ($alreadyTrainerIds, $role) {
+                        if (! $this->trainerMatchesPersonnelRole($trainer, $role)) {
+                            return false;
+                        }
+
                         if (in_array($trainer->id, $alreadyTrainerIds, true)) {
                             return true;
                         }
@@ -529,9 +533,16 @@ class SimulationEventLifecycleService
                     ->all();
             } else {
                 $members = User::query()
-                    ->where('role', 'STAFF')
                     ->where('status', 'active')
-                    ->where('position', $role)
+                    ->where(function ($query) use ($role) {
+                        if ($role === 'Evaluator') {
+                            $query->where(function ($inner) {
+                                $inner->where('role', 'STAFF')->where('position', 'Evaluator');
+                            })->orWhere('role', 'EVALUATOR');
+                        } else {
+                            $query->where('role', 'STAFF')->where('position', $role);
+                        }
+                    })
                     ->where(function ($query) use ($alreadyStaffIds) {
                         $query->where('assignment_status', User::ASSIGNMENT_AVAILABLE);
                         if ($alreadyStaffIds !== []) {
@@ -539,12 +550,12 @@ class SimulationEventLifecycleService
                         }
                     })
                     ->orderBy('name')
-                    ->get(['id', 'name', 'position'])
+                    ->get(['id', 'name', 'position', 'role'])
                     ->map(fn (User $user) => [
                         'id' => $user->id,
                         'name' => $user->name,
                         'source_group' => 'lgu_staff',
-                        'position' => $user->position,
+                        'position' => $user->position ?: ($user->role === 'EVALUATOR' ? 'Evaluator' : null),
                     ])
                     ->values()
                     ->all();
@@ -895,6 +906,19 @@ class SimulationEventLifecycleService
         }
 
         return $trainer->assignment_status === QualifiedTrainer::ASSIGNMENT_AVAILABLE;
+    }
+
+    private function trainerMatchesPersonnelRole(QualifiedTrainer $trainer, string $role): bool
+    {
+        $needle = mb_strtolower(trim($role));
+        if ($needle === '') {
+            return false;
+        }
+
+        $position = mb_strtolower(trim((string) ($trainer->user?->position ?? '')));
+        $specialization = mb_strtolower(trim((string) ($trainer->specialization ?? '')));
+
+        return $position === $needle || $specialization === $needle;
     }
 
     /**

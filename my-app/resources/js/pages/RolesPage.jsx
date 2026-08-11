@@ -20,7 +20,6 @@ export function RolesPage({ roles = [] }) {
     const [rolesState, setRolesState] = React.useState(roles);
     const [showAddModal, setShowAddModal] = React.useState(false);
     const [roleName, setRoleName] = React.useState('');
-    const [guardName, setGuardName] = React.useState('web');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [currentPage, setCurrentPage] = React.useState(1);
 
@@ -31,7 +30,7 @@ export function RolesPage({ roles = [] }) {
     const getRoleDisplayName = (roleNameVal) => {
         const roleMap = {
             'LGU_ADMIN': 'Admin',
-            'LGU_TRAINER': 'Trainer',
+            'LGU_TRAINER': 'Assistant Trainer',
             'LEAD_TRAINER': 'Lead Trainer',
             'EVALUATOR': 'Evaluator',
             'STAFF': 'Staff',
@@ -42,6 +41,7 @@ export function RolesPage({ roles = [] }) {
     };
 
     const filteredRoles = (rolesState || []).filter((role) => {
+        if (role.name === 'PARTICIPANT' || role.name === 'VIEWER') return false;
         const query = search.toLowerCase().trim();
         const displayName = getRoleDisplayName(role.name || '').toLowerCase();
         const name = (role.name || '').toLowerCase();
@@ -70,13 +70,12 @@ export function RolesPage({ roles = [] }) {
     const handleCloseModal = () => {
         setShowAddModal(false);
         setRoleName('');
-        setGuardName('web');
     };
 
     const handleSubmitAdd = async (e) => {
         e.preventDefault();
         const name = roleName.trim();
-        const guard = guardName.trim() || 'web';
+        const guard = 'web';
 
         if (!name) {
             Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Role name is required', confirmButtonColor: '#64748b' });
@@ -178,7 +177,6 @@ export function RolesPage({ roles = [] }) {
                             <tr className="bg-slate-50 border-b border-slate-200">
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">ID</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Role Name</th>
-                                <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Guard</th>
                                 <th className="px-5 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Permissions</th>
                                 <th className="px-5 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -186,7 +184,7 @@ export function RolesPage({ roles = [] }) {
                         <tbody className="divide-y divide-slate-100">
                             {filteredRoles.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-5 py-12 text-center">
+                                    <td colSpan={4} className="px-5 py-12 text-center">
                                         <p className="text-slate-500 font-medium">No roles found</p>
                                         <p className="text-slate-400 text-xs mt-1">
                                             {roles.length === 0 ? 'Click "Add Role" to create one.' : 'Try a different search term.'}
@@ -201,7 +199,6 @@ export function RolesPage({ roles = [] }) {
                                             <span className="text-sm font-medium text-slate-900">{getRoleDisplayName(role.name) || 'N/A'}</span>
                                             <span className="ml-2 text-xs text-slate-500 font-mono">{role.name}</span>
                                         </td>
-                                        <td className="px-5 py-4 whitespace-nowrap text-sm text-slate-600">{role.guard_name || 'web'}</td>
                                         <td className="px-5 py-4 whitespace-nowrap">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
                                                 {role.permissions_count || 0} {role.permissions_count === 1 ? 'permission' : 'permissions'}
@@ -274,21 +271,6 @@ export function RolesPage({ roles = [] }) {
                                     autoComplete="off"
                                 />
                                 <p className="mt-1.5 text-xs text-slate-500">Use uppercase with underscores (e.g., LGU_ADMIN, MANAGER)</p>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1" htmlFor="guard-name">
-                                    Guard Name
-                                </label>
-                                <input
-                                    id="guard-name"
-                                    type="text"
-                                    value={guardName}
-                                    onChange={(e) => setGuardName(e.target.value)}
-                                    placeholder="web"
-                                    className={adminCompactInputClass}
-                                    autoComplete="off"
-                                />
-                                <p className="mt-1.5 text-xs text-slate-500">Authentication guard for this role (default: web)</p>
                             </div>
                             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
                                 <AdminSecondaryButton type="button" onClick={handleCloseModal}>

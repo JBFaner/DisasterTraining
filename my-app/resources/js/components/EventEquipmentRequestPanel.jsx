@@ -27,7 +27,7 @@ export function EventEquipmentRequestPanel({
     const [rows, setRows] = React.useState([{ resource_id: '', quantity: 1 }]);
 
     const selectable = (inventory || []).filter((item) => item.selectable);
-    const isTrainer = role === 'LGU_TRAINER';
+    const isTrainer = role === 'LEAD_TRAINER' || role === 'LGU_ADMIN' || role === 'SUPER_ADMIN';
     const isAdmin = role === 'LGU_ADMIN';
     const pending = (requests || []).filter((r) => r.status === 'pending');
     const canEdit = !disabled && !busy;

@@ -4,17 +4,18 @@ namespace App\Policies;
 
 use App\Models\EvaluationResult;
 use App\Models\User;
+use App\Support\PortalAuth;
 
 class EvaluationResultPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'PARTICIPANT'], true);
+        return PortalAuth::canEvaluate($user->role) || $user->role === 'PARTICIPANT';
     }
 
     public function view(User $user, EvaluationResult $evaluationResult): bool
     {
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (PortalAuth::canEvaluate($user->role)) {
             return true;
         }
 

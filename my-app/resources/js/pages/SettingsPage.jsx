@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Clock, Link2, Shield, User } from 'lucide-react';
+import { Bell, Clock, Link2, Moon, Shield, User } from 'lucide-react';
 import { dashboardIndex } from '../utils/portalRoutes';
 import { getCsrfToken } from '../utils/csrf';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { initTheme } from '../utils/theme';
 
 const DEFAULT_NOTIFICATION_PREFERENCES = {
     in_app_enabled: true,
@@ -56,6 +58,10 @@ export function SettingsPage({
     const [autoApproval, setAutoApproval] = useState(null);
     const [autoApprovalBusy, setAutoApprovalBusy] = useState(false);
     const [autoApprovalMessage, setAutoApprovalMessage] = useState('');
+
+    useEffect(() => {
+        initTheme();
+    }, []);
 
     useEffect(() => {
         if (!isAdmin) return undefined;
@@ -144,7 +150,10 @@ export function SettingsPage({
                 <aside className="bg-white rounded-2xl shadow-md border border-slate-200 p-4 space-y-4">
                     <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Settings</h2>
                     <nav className="space-y-1 text-sm">
-                        <a href="#notifications" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white font-medium shadow-sm">
+                        <a href="#appearance" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white font-medium shadow-sm">
+                            <Moon className="w-4 h-4" /> Appearance
+                        </a>
+                        <a href="#notifications" className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200">
                             <Bell className="w-4 h-4" /> Notifications
                         </a>
                         <a href="#session" className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200">
@@ -162,6 +171,22 @@ export function SettingsPage({
                 </aside>
 
                 <div className="space-y-6">
+                    <section id="appearance" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-4">
+                        <div>
+                            <h2 className="text-sm font-semibold text-slate-900">Appearance</h2>
+                            <p className="mt-1 text-xs text-slate-500">
+                                Choose light or dark mode for the portal. Your preference is saved on this device.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 max-w-xl">
+                            <div>
+                                <p className="text-sm font-medium text-slate-900">Color theme</p>
+                                <p className="text-xs text-slate-500 mt-0.5">Switch anytime between Light and Dark.</p>
+                            </div>
+                            <ThemeToggle />
+                        </div>
+                    </section>
+
                     <section id="notifications" className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-4">
                         <div>
                             <h2 className="text-sm font-semibold text-slate-900">Notification Preferences</h2>
@@ -227,7 +252,7 @@ export function SettingsPage({
                         <div>
                             <h2 className="text-sm font-semibold text-slate-900">Session timeout</h2>
                             <p className="mt-1 text-xs text-slate-500">
-                                These values are set by the system. The TopBar shows a live countdown while you are signed in.
+                                These values are set by the system. The TopBar countdown only appears in the final minute before logout.
                             </p>
                         </div>
                         <dl className="grid gap-3 sm:grid-cols-2 max-w-xl">

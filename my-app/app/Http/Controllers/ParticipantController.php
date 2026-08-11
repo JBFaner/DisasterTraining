@@ -11,6 +11,7 @@ use App\Services\Group6\ParticipantSyncService;
 use App\Services\ParticipantUpsertService;
 use App\Services\ParticipantRegistryService;
 use App\Services\TrainingResetService;
+use App\Support\PortalAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
@@ -512,7 +513,7 @@ class ParticipantController extends Controller
     private function authorizeParticipantAccess(): void
     {
         $user = portal_user();
-        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (! $user || ! PortalAuth::canViewParticipantRegistry($user->role)) {
             abort(403, 'Unauthorized access.');
         }
     }

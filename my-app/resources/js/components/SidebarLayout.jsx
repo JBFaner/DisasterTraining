@@ -52,8 +52,8 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
     const isTrainer = role === 'LGU_TRAINER';
     const isLeadTrainer = role === 'LEAD_TRAINER';
     const isEvaluator = role === 'EVALUATOR';
-    // Treat lead trainer like trainer for nav access.
-    const hasTrainerAccess = isTrainer || isLeadTrainer;
+    // Full Operations: Admin + Lead Trainer only (Assistant Trainer is personnel-only).
+    const hasOpsAccess = isAdmin || isLeadTrainer;
     const isParticipant = role === 'PARTICIPANT';
 
     // Close drawer when clicking outside or on overlay
@@ -207,7 +207,7 @@ export function SidebarLayout({ role, currentSection = 'dashboard', children, mo
                             <div className="text-sm font-semibold">
                                 {role === 'LGU_ADMIN' && 'LGU Admin'}
                                 {role === 'LEAD_TRAINER' && 'Lead Trainer'}
-                                {role === 'LGU_TRAINER' && 'Trainer'}
+                                {role === 'LGU_TRAINER' && 'Assistant Trainer'}
                                 {role === 'EVALUATOR' && 'Evaluator'}
                                 {role === 'STAFF' && 'Staff'}
                                 {role === 'VIEWER' && 'Viewer'}
@@ -349,8 +349,8 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
     const isTrainer = role === 'LGU_TRAINER';
     const isLeadTrainer = role === 'LEAD_TRAINER';
     const isEvaluator = role === 'EVALUATOR';
-    // Treat lead trainer like trainer for nav access.
-    const hasTrainerAccess = isTrainer || isLeadTrainer;
+    // Full Operations: Admin + Lead Trainer only (Assistant Trainer is personnel-only).
+    const hasOpsAccess = isAdmin || isLeadTrainer;
     const isParticipant = role === 'PARTICIPANT';
 
     if (isParticipant) {
@@ -446,7 +446,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     isCollapsed={isCollapsed}
                 />
             </div>
-            {(isAdmin || hasTrainerAccess) && (
+            {(isAdmin || hasOpsAccess) && (
                 <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Operations</NavSectionTitle>}
                     <NavItem
@@ -519,7 +519,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     />
                 </div>
             )}
-            {isEvaluator && !isAdmin && !hasTrainerAccess && (
+            {isEvaluator && !isAdmin && !hasOpsAccess && (
                 <div className={isCollapsed ? 'w-full' : ''}>
                     {!isCollapsed && <NavSectionTitle>Evaluation</NavSectionTitle>}
                     <NavItem
@@ -540,7 +540,7 @@ function renderNavigationItems(role, currentSection, isCollapsed, onNavigate) {
                     />
                     <NavItem
                         icon={Users}
-                        label="Participants"
+                        label="Participants & Attendance"
                         href="/admin/participants"
                         active={currentSection === 'participants'}
                         isCollapsed={isCollapsed}

@@ -248,10 +248,11 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
                     }}
                 >
                     <option value="all">All Roles</option>
-                    <option value="LGU_ADMIN">LGU Admin</option>
-                    <option value="LGU_TRAINER">Trainer</option>
+                    <option value="LGU_ADMIN">Admin</option>
+                    <option value="LEAD_TRAINER">Lead Trainer</option>
+                    <option value="LGU_TRAINER">Assistant Trainer</option>
+                    <option value="EVALUATOR">Evaluator</option>
                     <option value="STAFF">Staff</option>
-                    <option value="VIEWER">Viewer</option>
                 </AdminFilterSelect>
                 <AdminFilterSelect
                     label="Position"
@@ -313,11 +314,13 @@ export function AdminUsersPage({ users = [], currentUser = null, positionOptions
                                     </td>
                                     <td className="px-5 py-4 whitespace-nowrap">
                                         <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                                            {user.role === 'LGU_ADMIN' && 'LGU Admin'}
-                                            {user.role === 'LGU_TRAINER' && 'Trainer'}
+                                            {user.role === 'LGU_ADMIN' && 'Admin'}
+                                            {user.role === 'LEAD_TRAINER' && 'Lead Trainer'}
+                                            {user.role === 'LGU_TRAINER' && 'Assistant Trainer'}
+                                            {user.role === 'EVALUATOR' && 'Evaluator'}
                                             {user.role === 'STAFF' && 'Staff'}
                                             {user.role === 'VIEWER' && 'Viewer'}
-                                            {!['LGU_ADMIN', 'LGU_TRAINER', 'STAFF', 'VIEWER'].includes(user.role) && user.role}
+                                            {!['LGU_ADMIN', 'LEAD_TRAINER', 'LGU_TRAINER', 'EVALUATOR', 'STAFF', 'VIEWER'].includes(user.role) && user.role}
                                         </span>
                                     </td>
                                     <td className="px-5 py-4 text-sm text-slate-700 whitespace-nowrap">{user.position || '—'}</td>

@@ -12,7 +12,7 @@ class StoreAiScenarioConfigRequest extends FormRequest
     {
         $user = portal_user() ?: $this->user();
 
-        return $user && in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true);
+        return $user && \App\Support\PortalAuth::canManageOperations($user->role);
     }
 
     protected function prepareForValidation(): void

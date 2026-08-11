@@ -10,7 +10,6 @@ import Swal from 'sweetalert2';
 import {
     AdminPageShell,
     AdminPageHeader,
-    AdminPrimaryButton,
     AdminSecondaryButton,
 } from './admin/AdminLayout';
 import { AdminStatusBadge } from './admin/AdminDataTable';
@@ -97,7 +96,6 @@ export function ParticipantRegistryProfile({ participant }) {
     const csrf = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
     const [record, setRecord] = React.useState(participant);
     const [activeTab, setActiveTab] = React.useState(getInitialTab);
-    const [isSyncing, setIsSyncing] = React.useState(false);
 
     const profile = record.registry_profile || {};
     const statuses = profile.statuses || {};
@@ -132,36 +130,6 @@ export function ParticipantRegistryProfile({ participant }) {
         if (!res.ok) throw new Error('Failed to refresh participant');
         const data = await res.json();
         if (data.participant) setRecord(data.participant);
-    };
-
-    const handleSync = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await fetch('/admin/participants/sync', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin',
-            });
-            const data = await res.json();
-            if (data.success) {
-                await refreshRecord();
-                Swal.fire('Registry synced', data.message, 'success');
-            } else {
-                Swal.fire(
-                    'Sync unavailable',
-                    data.message || 'The Community Registration & Campaign Management System API is not yet configured.',
-                    'info',
-                );
-            }
-        } catch {
-            Swal.fire('Error', 'Failed to sync participant registry.', 'error');
-        } finally {
-            setIsSyncing(false);
-        }
     };
 
     const lessonCompletions = profile.lesson_completions || record.lesson_completions || [];
@@ -233,7 +201,7 @@ export function ParticipantRegistryProfile({ participant }) {
             <AdminPageHeader
                 icon={Users}
                 title={record.name}
-                description={record.participant_id ? `Participant ID: ${record.participant_id}` : 'Synchronized participant record'}
+                description={record.participant_id ? `Participant ID: ${record.participant_id}` : 'Participant registry profile'}
                 actions={
                     <div className="flex flex-wrap gap-2">
                         <AdminSecondaryButton href={`/admin/participants?tab=registrations`}>
@@ -244,16 +212,12 @@ export function ParticipantRegistryProfile({ participant }) {
                             <BarChart3 className="w-4 h-4" />
                             View Progress
                         </AdminSecondaryButton>
-                        <AdminPrimaryButton onClick={handleSync} disabled={isSyncing}>
-                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                            Sync Participants
-                        </AdminPrimaryButton>
                     </div>
                 }
             />
 
             <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 mb-4">
-                This participant profile is part of the unified registry and supports both local and campaign records from the Community Registration & Campaign Management System.
+                Participants enter through registration. Source shows whether this record is local or from a campaign.
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
@@ -261,7 +225,7 @@ export function ParticipantRegistryProfile({ participant }) {
                 <SummaryChip label="Attendance" value={record.attendance_status || statuses.attendance_status} />
                 <SummaryChip label="Evaluation" value={record.evaluation_status || statuses.evaluation_status} />
                 <SummaryChip label="Certificate" value={record.certificate_status || statuses.certificate_status} />
-                <SummaryChip label="Last Synced" value={formatDate(record.last_synced_at)} plain />
+                <SummaryChip label="Source" value={<SourceBadge source={record.participant_source} />} plain />
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 w-full overflow-x-auto mb-4">
@@ -305,7 +269,6 @@ export function ParticipantRegistryProfile({ participant }) {
                         <DetailItem label="Registry Status" value={<AdminStatusBadge status={record.status} />} />
                         <DetailItem label="Source" value={<SourceBadge source={record.participant_source} />} />
                         <DetailItem label="External ID" value={record.group6_external_id || '—'} />
-                        <DetailItem label="Last Synced" value={formatDateTime(record.last_synced_at)} />
                     </dl>
                 </div>
             )}

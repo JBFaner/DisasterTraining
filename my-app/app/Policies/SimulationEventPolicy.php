@@ -4,17 +4,19 @@ namespace App\Policies;
 
 use App\Models\SimulationEvent;
 use App\Models\User;
+use App\Support\PortalAuth;
 
 class SimulationEventPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER', 'PARTICIPANT'], true);
+        return PortalAuth::canAccessAdminSimulationEvents($user->role)
+            || $user->role === 'PARTICIPANT';
     }
 
     public function view(User $user, SimulationEvent $event): bool
     {
-        if (in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (PortalAuth::canAccessAdminSimulationEvents($user->role)) {
             return true;
         }
 
@@ -24,12 +26,12 @@ class SimulationEventPolicy
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true);
+        return PortalAuth::canManageOperations($user->role);
     }
 
     public function update(User $user, SimulationEvent $event): bool
     {
-        return in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true);
+        return PortalAuth::canManageOperations($user->role);
     }
 
     public function delete(User $user, SimulationEvent $event): bool
@@ -39,6 +41,6 @@ class SimulationEventPolicy
 
     public function export(User $user): bool
     {
-        return in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true);
+        return PortalAuth::canManageOperations($user->role);
     }
 }

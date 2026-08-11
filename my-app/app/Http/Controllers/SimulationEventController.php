@@ -17,6 +17,7 @@ use App\Services\PortalNotificationFactory;
 use App\Services\SimulationEventLifecycleService;
 use App\Services\SimulationEventPlanningService;
 use App\Services\SimulationExerciseTemplateService;
+use App\Support\PortalAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -117,7 +118,7 @@ class SimulationEventController extends Controller
 
     public function create()
     {
-        $this->authorizeEventAccess();
+        $this->authorizeEventManage();
 
         return view('app', array_merge([
             'section' => 'simulation_create',
@@ -128,7 +129,7 @@ class SimulationEventController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorizeEventAccess();
+        $this->authorizeEventManage();
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -319,7 +320,7 @@ class SimulationEventController extends Controller
 
     public function update(Request $request, SimulationEvent $simulationEvent)
     {
-        $this->authorizeEventAccess();
+        $this->authorizeEventManage();
 
         // Prevent updating published, cancelled, or archived events
         if (in_array($simulationEvent->status, ['published', 'cancelled', 'archived'], true)) {
@@ -941,8 +942,20 @@ class SimulationEventController extends Controller
     protected function authorizeEventAccess(): void
     {
         $user = portal_user();
-        if (! $user) abort(403);
-        if (! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) abort(403);
+        if (! $user) {
+            abort(403);
+        }
+        if (! PortalAuth::canAccessAdminSimulationEvents($user->role)) {
+            abort(403);
+        }
+    }
+
+    protected function authorizeEventManage(): void
+    {
+        $user = portal_user();
+        if (! $user || ! PortalAuth::canManageOperations($user->role)) {
+            abort(403);
+        }
     }
 
     protected function authorizeEventDelete(): void

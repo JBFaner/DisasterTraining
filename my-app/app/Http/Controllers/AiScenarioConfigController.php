@@ -201,7 +201,7 @@ class AiScenarioConfigController extends Controller
     protected function authorizeAdmin(): void
     {
         $user = portal_user();
-        if (! $user || ! in_array($user->role, ['LGU_ADMIN', 'LGU_TRAINER'], true)) {
+        if (! $user || ! \App\Support\PortalAuth::canManageOperations($user->role)) {
             abort(403);
         }
     }

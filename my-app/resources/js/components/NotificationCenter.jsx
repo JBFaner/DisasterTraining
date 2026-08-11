@@ -30,7 +30,7 @@ function groupNotifications(notifications) {
 }
 
 export function NotificationCenter({ user }) {
-    const canUseNotifications = user && ['LGU_ADMIN', 'LGU_TRAINER', 'PARTICIPANT'].includes(user.role);
+    const canUseNotifications = user && ['LGU_ADMIN', 'LEAD_TRAINER', 'LGU_TRAINER', 'EVALUATOR', 'PARTICIPANT'].includes(user.role);
     const apiBase = React.useMemo(
         () => (canUseNotifications ? notificationsApi(user.role) : ''),
         [canUseNotifications, user?.role],
