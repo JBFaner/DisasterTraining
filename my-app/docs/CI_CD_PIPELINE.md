@@ -114,4 +114,9 @@ flowchart LR
 2. **Admin Deployment buttons:** Log in as LGU Admin → Deployment → Run Git Pull, then Run Laravel & Build (set `DEPLOY_*_PATH` in `.env` if needed).
 3. **GitHub Actions (optional):** Add `.github/workflows/deploy.yml` to run on push and deploy to Hostinger via SSH or Hostinger API.
 
-For a printable or slide-ready visual, open `docs/CI_CD_PIPELINE.html` in a browser or export the Mermaid diagrams from [mermaid.live](https://mermaid.live).
+For a printable or slide-ready visual, use:
+
+- **Image (thesis-ready):** `Documents/05_CI_CD_Pipeline.png` (also copied to `my-app/docs/CI_CD_Pipeline.png`)
+- Or open `docs/CI_CD_PIPELINE.html` in a browser / export Mermaid from [mermaid.live](https://mermaid.live)
+
+**Suggested caption:** Figure __. CI/CD Pipeline of the Disaster Preparedness Training and Simulation System (Development → GitHub → Build/Test/Deploy → Hostinger Production).

@@ -1,0 +1,230 @@
+<?php
+
+/**
+ * Generate Word copies of Documents/*.md content (narrative; Mermaid stays in .md).
+ * Run from repo: php Documents/generate_documents_docx.php
+ */
+
+require __DIR__.'/../my-app/vendor/autoload.php';
+
+use Database\Seeders\Support\SimpleDocxBuilder;
+
+function writeDocx(string $filename, callable $build): void
+{
+    $doc = new SimpleDocxBuilder();
+    $build($doc);
+    $path = __DIR__.DIRECTORY_SEPARATOR.$filename;
+    $doc->save($path);
+    echo "Wrote {$filename} (".filesize($path)." bytes)\n";
+}
+
+writeDocx('00_Diagram_Guidelines_for_Groupmates.docx', function (SimpleDocxBuilder $d) {
+    $d->title('Diagram & Documentation Guidelines')
+        ->subtitle('For groupmates — Disaster Preparedness Training & Simulation Platform')
+        ->meta('Focus: Barangay San Agustin, Novaliches, Quezon City')
+        ->meta('Product flow: Approved Campaign → Exercise Plan → Use Template → Readiness → Publish → Monitoring')
+        ->heading('Assignment board')
+        ->para('BPMN AS-IS/TO-BE, Infrastructure as Code, Microservices DFD, and Communication Pattern are drafted in the Documents folder. BPA, ERD, DFD 0/1, Workflow, Use Case, Sequence, CI/CD, Microservices diagram, Sprint backlogs, and Sprint chart are team-owned — polish captions and figure numbers only.')
+        ->heading('Shared rules')
+        ->bullet('Caption format: Figure X. <Name> of the Disaster Preparedness Training and Simulation System')
+        ->bullet('One idea per diagram (never mix AS-IS and TO-BE on one canvas)')
+        ->bullet('Actors: Admin, Lead Trainer, Assistant Trainer, Evaluator, Staff, Participant')
+        ->bullet('Modules: Training Modules, Campaign Requests, Exercise Plans, Simulation Events, Hazard Assessment, Evaluation, Attendance, Certificates')
+        ->bullet('Export PNG/SVG; keep Draw.io / Mermaid source in the group drive')
+        ->heading('Tools')
+        ->bullet('BPMN: Draw.io BPMN shapes or Camunda Modeler')
+        ->bullet('ERD: Draw.io, dbdiagram.io, or MySQL Workbench')
+        ->bullet('DFD: Draw.io (Gane–Sarson / Yourdon)')
+        ->bullet('UML Use Case / Sequence: Draw.io, StarUML, or PlantUML')
+        ->bullet('Architecture / CI/CD: Draw.io or Mermaid (mermaid.live)')
+        ->heading('Per-diagram must-include (summary)')
+        ->para('BPMN: start/end, lanes, gateways; AS-IS = manual drills; TO-BE = campaign→plan→template→readiness→publish→monitoring.')
+        ->para('BPA: process owner, trigger, pain points, improvements, KPI — reference BPMN, do not redraw it.')
+        ->para('ERD: users/roles, training modules, campaign requests, simulation events/templates, barangay hazards, participants, attendance, evaluations, certificates.')
+        ->para('DFD 0: one system process + externals. DFD 1: Auth, Training, Campaign, Simulation, Eval/Reporting + data stores.')
+        ->para('Workflow: happy path of simulation lifecycle.')
+        ->para('Use Case: 8–15 ovals; actors linked clearly; include/extend sparingly.')
+        ->para('Sequence: one critical scenario per figure (login, AI generate, or publish readiness).')
+        ->para('IaC: docker-compose, env contract, scripted Hostinger deploy (see Documents/02).')
+        ->para('CI/CD: commit → build → test → deploy Hostinger → operate.')
+        ->para('Microservices DFD & communication: see Documents/03 and Documents/04.')
+        ->para('Sprints / Sprint chart: align with my-app Sprint Board and 3.4 backlog docs.')
+        ->heading('Service naming (use consistently)')
+        ->bullet('Authentication Service')
+        ->bullet('Disaster Training Management')
+        ->bullet('Simulation Core / Event Lifecycle')
+        ->bullet('AI Scenario Generator (Gemini)')
+        ->bullet('Reporting & Evaluation Service')
+        ->bullet('External: Campaign Planning (Group 6), CPSQC Patrol')
+        ->heading('Submission checklist')
+        ->bullet('Figure number reserved')
+        ->bullet('No e-commerce leftover labels')
+        ->bullet('Names match this guideline')
+        ->bullet('Source file saved')
+        ->bullet('Readable in black-and-white print')
+        ->bullet('3–5 sentence explanation under the figure')
+        ->meta('Full detail: Documents/00_Diagram_Guidelines_for_Groupmates.md');
+});
+
+writeDocx('01_BPMN_AS_IS_and_TO_BE.docx', function (SimpleDocxBuilder $d) {
+    $d->title('BPMN — AS-IS and TO-BE')
+        ->subtitle('Disaster Preparedness Training & Simulation Platform')
+        ->heading('AS-IS narrative')
+        ->para('Before the platform, barangay drills were largely manual. Trainers prepared static scenarios on paper or slides, attendance was recorded by hand, evaluation was delayed, and there was little reusable digital history linking campaign approval, exercise design, and after-action results. Coordination with external campaign scheduling was informal, which made readiness hard to audit.')
+        ->heading('AS-IS process steps')
+        ->bullet('Start: Drill requested')
+        ->bullet('Trainer prepares static scenario (paper/slides)')
+        ->bullet('Notify participants (chat/bulletin)')
+        ->bullet('Gateway: Drill day? If no, wait/reschedule')
+        ->bullet('Manual attendance sheet')
+        ->bullet('Conduct on-site drill')
+        ->bullet('Handwritten evaluator notes')
+        ->bullet('Delayed Word/Excel summary')
+        ->bullet('Paper / personal-drive archive — limited reuse')
+        ->heading('TO-BE narrative')
+        ->para('With the platform, an approved campaign becomes an exercise plan, optionally from a template, then passes a readiness checklist (personnel, resources, hazard context). When ready, the event is published and monitored (attendance, evaluation, lifecycle). AI-assisted scenario generation and partner integrations support repeatable, documented drills aligned with RA 10121 preparedness practice.')
+        ->heading('TO-BE process steps (protected product flow)')
+        ->bullet('Campaign request from Training Module')
+        ->bullet('Campaign Planning approve/reject gateway')
+        ->bullet('Create Exercise Plan')
+        ->bullet('Use Exercise Template? (yes/no)')
+        ->bullet('Readiness checklist')
+        ->bullet('Ready to publish? gateway')
+        ->bullet('Publish simulation event')
+        ->bullet('Monitoring: attendance, lifecycle, evaluation')
+        ->bullet('After-action / certificates / reports')
+        ->heading('Suggested captions')
+        ->para('Figure A. BPMN Diagram (AS-IS) of Manual Barangay Disaster Drill Conduct')
+        ->para('Figure B. BPMN Diagram (TO-BE) of Simulation Event Lifecycle in the Training Platform')
+        ->heading('Defense talking points')
+        ->bullet('AS-IS = fragmented; TO-BE = gated digital lifecycle')
+        ->bullet('Readiness gate prevents incomplete publish')
+        ->bullet('External approve mirrors real multi-system LGU coordination')
+        ->meta('Diagram graphics: see Mermaid in Documents/01_BPMN_AS_IS_and_TO_BE.md (export via mermaid.live)');
+});
+
+writeDocx('02_Infrastructure_as_Code.docx', function (SimpleDocxBuilder $d) {
+    $d->title('Infrastructure as Code (IaC)')
+        ->subtitle('Disaster Preparedness Training & Simulation Platform')
+        ->heading('Definition in this project')
+        ->para('Infrastructure as Code means the environment is declared in versioned files instead of only clicking through a hosting panel. This capstone applies IaC practically: Docker Compose for local services, environment configuration contracts, dependency manifests, and scripted Hostinger deployment commands.')
+        ->heading('Artifacts')
+        ->bullet('docker-compose.yml — MariaDB, Adminer, Mailpit')
+        ->bullet('.env.example — documented variables (secrets not in Git)')
+        ->bullet('composer.json / package.json — deterministic installs')
+        ->bullet('Deploy docs — migrate, build, cache clear sequence')
+        ->heading('Honest defense note')
+        ->para('Production is VPS + Apache + Laravel (not Kubernetes). IaC emphasizes repeatable Compose + config-as-code + scripted deploy, which is appropriate for LGU pilot scale.')
+        ->heading('Local stack (Compose)')
+        ->bullet('mysql — MariaDB database (port 3306)')
+        ->bullet('adminer — DB UI (port 8080)')
+        ->bullet('mailpit — mail catcher (1025/8025)')
+        ->bullet('Volume mysql_data — persist DB files')
+        ->heading('Production apply sequence')
+        ->bullet('composer install --no-dev')
+        ->bullet('npm ci && npm run build')
+        ->bullet('php artisan migrate --force')
+        ->bullet('php artisan config/cache/view/route clear as needed')
+        ->heading('Suggested caption')
+        ->para('Figure __. Infrastructure as Code model for the Disaster Preparedness Training Platform (Docker Compose, configuration files, and scripted Hostinger deployment).')
+        ->heading('Manuscript paragraph')
+        ->para('The project treats infrastructure as versioned definitions wherever practical. Docker Compose declares local database and supporting services so every developer can recreate the same stack. Application and integration settings are expressed through environment configuration files, with secrets kept off the repository. Production on Hostinger follows a documented command sequence for dependencies, asset build, migrations, and cache refresh. Together, these practices reduce environment drift and support stable LGU demos.')
+        ->meta('Diagram: Mermaid in Documents/02_Infrastructure_as_Code.md');
+});
+
+writeDocx('03_Microservices_Data_Flow_Diagram.docx', function (SimpleDocxBuilder $d) {
+    $d->title('Data Flow Diagram — Microservices View')
+        ->subtitle('Disaster Preparedness Training & Simulation Platform')
+        ->heading('Narrative')
+        ->para('Client requests enter through the web application / API edge. Authentication establishes identity and role. Training and Campaign data flow to the Training store and to Campaign Planning (Group 6). Simulation Core reads plans, hazard profiles, and templates, then writes lifecycle, attendance, and evaluation outcomes. The AI Scenario Generator calls Gemini and stores generated content. Reporting aggregates metrics for dashboards and certificates.')
+        ->heading('Logical services')
+        ->bullet('Authentication & Authorization')
+        ->bullet('Disaster Training Management')
+        ->bullet('Simulation Core / Event Lifecycle')
+        ->bullet('AI Scenario Generator')
+        ->bullet('Reporting & Evaluation')
+        ->heading('External entities')
+        ->bullet('LGU users (Admin, Trainers, Evaluator, Staff)')
+        ->bullet('Participants')
+        ->bullet('Campaign Planning (Group 6)')
+        ->bullet('Google Gemini API')
+        ->bullet('CPSQC Patrol API (optional)')
+        ->heading('Data stores')
+        ->bullet('Users / Roles DB')
+        ->bullet('Training / Campaign DB')
+        ->bullet('Simulation / Attendance / Evaluation DB')
+        ->bullet('Logs / Audit')
+        ->heading('Major flows')
+        ->bullet('User → Auth: credentials / session')
+        ->bullet('Trainer → Training: modules & campaign payload')
+        ->bullet('Training ↔ Group 6: list + approve/reject')
+        ->bullet('Lead Trainer → Simulation: plan, template, readiness')
+        ->bullet('AI ↔ Gemini: prompt and generated scenario')
+        ->bullet('Evaluator → Reporting: scores, attendance, certificates')
+        ->heading('Suggested caption')
+        ->para('Figure __. Data Flow Diagram of Microservices in the Disaster Preparedness Training and Simulation Platform.')
+        ->heading('Manuscript paragraph')
+        ->para('The microservices data-flow diagram illustrates how information moves among authentication, training management, simulation, AI scenario generation, and reporting. External partners exchange bounded payloads with training and simulation services. Persistent stores hold users, training/campaign records, and simulation results, while Gemini is invoked only on the AI path. Each service owns a clear data responsibility even when deployed together on the Laravel host for the LGU pilot.')
+        ->meta('Diagram: Mermaid in Documents/03_Microservices_Data_Flow_Diagram.md');
+});
+
+writeDocx('04_Microservices_Communication_Pattern.docx', function (SimpleDocxBuilder $d) {
+    $d->title('Communication Pattern for Microservices')
+        ->subtitle('Disaster Preparedness Training & Simulation Platform')
+        ->heading('Purpose')
+        ->para('This document explains how services communicate. Primary pattern is synchronous HTTPS request/response through the application edge with role-based access. Partners use REST pull and status patch. Outbound integrations call Gemini and optional CPSQC with API keys. Persistence uses shared MySQL with logical module ownership (modular monolith deployment).')
+        ->heading('Patterns used')
+        ->bullet('Synchronous request/response (REST/HTTP)')
+        ->bullet('API Gateway / edge routing')
+        ->bullet('External API integration (Gemini, CPSQC)')
+        ->bullet('Partner pull + status patch (Group 6)')
+        ->bullet('Shared-database modular monolith')
+        ->heading('Interaction map')
+        ->bullet('User ↔ Web App: sync Inertia/HTTPS')
+        ->bullet('Training ↔ Group 6: sync REST pull/PATCH')
+        ->bullet('AI ↔ Gemini: sync outbound REST')
+        ->bullet('Simulation ↔ CPSQC: sync outbound REST when enabled')
+        ->bullet('Services ↔ MySQL: sync ORM/SQL')
+        ->heading('Note on async')
+        ->para('No message broker (Kafka/RabbitMQ) is required for the current pilot. Async event bus can be a future enhancement for notifications and reporting at larger scale.')
+        ->heading('Suggested caption')
+        ->para('Figure __. Communication Patterns among Microservices of the Disaster Preparedness Training Platform.')
+        ->heading('Manuscript paragraph')
+        ->para('Services communicate primarily through synchronous HTTPS via the application edge, which enforces authentication and RBAC. Training management exposes partner APIs so Campaign Planning can pull requests and push approvals. The AI path calls Gemini synchronously and persists results. Optional CPSQC calls follow the same outbound API pattern. A shared MySQL database with logical ownership fits the LGU deployment model while preserving a clear microservices communication story for documentation and defense.')
+        ->heading('Defense talking points')
+        ->bullet('Sync REST fits transactional LGU workflows')
+        ->bullet('Edge = security + routing, not a full service mesh')
+        ->bullet('Externals never write directly to our DB')
+        ->bullet('Message bus = future work, not a pilot blocker')
+        ->meta('Diagram: Mermaid in Documents/04_Microservices_Communication_Pattern.md');
+});
+
+writeDocx('07_BPA_Business_Process_Analysis.docx', function (SimpleDocxBuilder $d) {
+    $d->title('Business Process Analysis (BPA)')
+        ->subtitle('Disaster Preparedness Drill & Simulation — San Agustin Pilot')
+        ->heading('Process identification')
+        ->para('Process: Barangay/LGU disaster preparedness drill and simulation conduct. Trigger: need to run a preparedness drill. AS-IS owner: trainer/officer (manual). TO-BE owner: Lead Trainer / LGU Admin; Evaluator for scoring and attendance.')
+        ->heading('AS-IS (manual)')
+        ->bullet('Informal drill request → static paper/slide scenario → chat/bulletin notify')
+        ->bullet('Manual attendance → on-site drill → handwritten notes')
+        ->bullet('Delayed Word/Excel report → paper/personal-drive archive (limited reuse)')
+        ->heading('AS-IS pain points')
+        ->bullet('Static scenarios; informal notifications; paper attendance errors')
+        ->bullet('No readiness gate; delayed evaluation; fragmented partner coordination')
+        ->heading('TO-BE (digital platform)')
+        ->para('Protected flow: Approved Campaign → Exercise Plan → Use Template → Readiness → Publish → Monitoring.')
+        ->bullet('Campaign request → Group 6 approve/reject → Exercise Plan (+ template)')
+        ->bullet('Readiness checklist → Publish → Monitor attendance/lifecycle/evaluation')
+        ->bullet('Certificates / AAR → digitized reusable records')
+        ->heading('Key improvements')
+        ->bullet('Gated lifecycle and role-aware access (Lead / Assistant / Evaluator)')
+        ->bullet('AI scenarios (Gemini); digital attendance and scoring')
+        ->bullet('Partner APIs (Campaign Planning, CPSQC); San Agustin hazard docs')
+        ->heading('Suggested caption')
+        ->para('Figure __. Business Process Analysis (AS-IS vs TO-BE) of Disaster Preparedness Drill and Simulation Conduct for Barangay San Agustin.')
+        ->heading('Manuscript paragraph')
+        ->para('The Business Process Analysis compares the manual barangay drill process with the proposed digital lifecycle of the training and simulation platform. In the AS-IS state, drills rely on static scenarios, informal notification, paper attendance, and delayed evaluation. The TO-BE process introduces a gated flow from approved campaign through exercise planning, readiness validation, publishing, and monitoring with digital attendance, evaluation, and certification, supporting RA 10121 preparedness practice for the San Agustin pilot.')
+        ->meta('See also Documents/07_BPA_Business_Process_Analysis.md and .png');
+});
+
+echo "Done.\n";
