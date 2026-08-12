@@ -2,24 +2,16 @@
 
 Development work for the **LGU Disaster Preparedness Training & Simulation System (AlertaraQC)** is organized into repeating **two-week** sprint cycles. For this thesis implementation, the operational pilot scope is **Barangay San Agustin**, Quezon City—covering training modules, campaigns, simulation events, evaluation, and certification for that community.
 
-### Table no. 2 — Scrum Board (completed board for the pilot scope)
+### Table no. 2 — Scrum Board (updated 2026-08-12)
 
 | To Do | In Progress | Done |
 |---|---|---|
-|  |  | Dynamic landing training cards |
-|  |  | Module-gated simulation unlock |
-|  |  | Events pagination (6/page) |
-|  |  | Demo Force Approve |
-|  |  | Onboarding: Module → Event → Certificate |
-|  |  | Gemini multi-key + fallback plan |
-|  |  | Final Scenario quiz-aware unlock |
-|  |  | Restore San Agustin hazard docs |
-|  |  | Portal auth & RBAC baseline |
-|  |  | Campaign registration path |
-|  |  | Exercise plan → publish → monitoring |
-|  |  | CPSQC patrol request flow |
-|  |  | Certificate issuance for San Agustin |
-|  |  | Word thesis Scrum artifacts export |
+| SMS notifications (optional) | Capstone diagram docs (BPMN/IaC/MS) | Auth + refined RBAC (Lead / Assistant / Evaluator) |
+| External cert authority API | Prod role migration (Assistant → Lead where needed) | Campaign → Exercise → Readiness → Publish → Monitoring |
+| Custom report builder | Groupmate diagram polish from guidelines | CPSQC patrol · Equipment requests |
+| Final WCAG / design-system pack | | Evaluation · Certificates (internal) |
+| | | Hazard profile + Word supporting docs |
+| | | Light/Dark theme · Print helpers · Notifications |
 
 - **Sprint Planning:** The team selects the highest-priority items from the Product Backlog and commits to delivering them within the Sprint.
 - **Daily Stand-up:** Short daily sync on progress, blockers, and ownership.
