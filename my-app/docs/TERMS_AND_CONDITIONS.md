@@ -1,220 +1,288 @@
 # Terms and Conditions
 
-**Disaster Preparedness Training and Simulation System**  
-**Last Updated:** August 2, 2026
+**Disaster Preparedness Training and Simulation System (ALERtARA)**  
+**Last Updated:** August 12, 2026
 
 ---
 
 ## 1. Acceptance of Terms
 
-By accessing, browsing, or using the Disaster Preparedness Training and Simulation System ("Service"), including the website https://disaster-training.alertaraqc.com and any related subdomains or applications, you agree to be bound by these Terms and Conditions ("Terms"). If you do not agree to these Terms in their entirety, you must not access or use the Service.
+By accessing, browsing, registering for, or using the Disaster Preparedness Training and Simulation System ("Service" or "System"), including the website https://disaster-training.alertaraqc.com, related subdomains, and any connected applications, you agree to be bound by these Terms and Conditions ("Terms"). If you do not agree to these Terms in their entirety, you must not access or use the Service.
 
-Your use of the Service constitutes your acceptance of these Terms and your agreement to comply with all applicable laws and regulations of the Republic of the Philippines. If you are using the Service on behalf of an organization or government unit, you represent that you have the authority to bind that entity to these Terms.
+Your use of the Service constitutes your acceptance of these Terms and your agreement to comply with all applicable laws and regulations of the Republic of the Philippines, including the Data Privacy Act of 2012 (Republic Act No. 10173). If you are using the Service on behalf of an organization or local government unit ("LGU"), you represent that you have the authority to bind that entity to these Terms.
 
 ---
 
 ## 2. Description of the Service
 
-The Disaster Preparedness Training and Simulation System is a web-based platform operated by or on behalf of AlertaraQC and local government units ("LGUs") for the purpose of:
+The Disaster Preparedness Training and Simulation System is a web-based platform operated by or on behalf of AlertaraQC and participating LGUs to support disaster preparedness training, simulation exercises, and related administrative operations.
 
-- Delivering disaster preparedness and response training modules;
-- Managing simulation events and scenario-based exercises;
-- Registering and tracking participants in training and simulation activities;
-- Recording attendance, lesson completion, and certification status;
-- Managing resources, equipment, and barangay profiles;
-- Administering user accounts, roles, and permissions for administrators and trainers;
-- Facilitating evaluation and reporting of training outcomes;
-- Creating and managing application database backups for operational continuity;
-- Integrating with the AlerTara Centralized Login System (https://login.alertaraqc.com) for single sign-on where applicable.
+### 2.1 Administrative and LGU Features
 
-The Service is intended for use by LGU administrators, lead trainers, trainers, evaluators, staff, viewers, and registered participants in disaster preparedness programs. Access to certain features is restricted based on user role and permissions.
+Authorized administrators, trainers, evaluators, and staff may use the Service to:
+
+- **Operations dashboard** — View KPIs, charts, hazard analytics, campaign pipeline status, and operational alerts.
+- **Training module management** — Create, edit, publish, and archive disaster preparedness training modules with lessons, learning resources, and structured content; optionally use AI-assisted module generation where enabled.
+- **AI scenario training & final assessment** — Configure, generate, review, approve, and publish AI-assisted scenario-based assessments linked to training modules.
+- **Lesson quiz generator** — Create, generate, translate, and publish lesson-level quizzes using configured AI workflows.
+- **Scenario-based exercise design** — Design disaster scenarios with hazards, injects, expected actions, and optional AI-assisted scenario drafting.
+- **Simulation exercise templates** — Build reusable exercise plan templates, publish them, and reuse templates when planning events (including AI-assisted plan generation where enabled).
+- **Campaign planning & simulation event planning** — Review approved training campaigns, assess readiness, create simulation plans, and generate simulation events from approved schedules.
+- **Simulation event management** — Schedule, publish, run, monitor, and complete simulation events; manage event lifecycle checklists, execution steps, post-evaluation, and event status transitions.
+- **Participant registry & attendance** — Maintain participant records, qualified trainer directories, event registrations, attendance marking, and registration approvals.
+- **Evaluation & scoring** — Record and review module evaluations, event drill evaluations, AI scenario attempts, lesson quiz attempts, scores, pass/fail results, and evaluation reports.
+- **Certification issuance** — Manage certificate templates, issue and revoke certificates, track issuance history, configure automation rules, and export certification records.
+- **Resource & equipment inventory** — Track equipment, assignments, maintenance logs, and usage related to simulations.
+- **Resource budget proposals** — Create, submit, review, and manage budget proposals for preparedness resources and supplies.
+- **Hazard assessment profiles** — Maintain barangay hazard assessment data, risk records, and hazard intelligence used for training recommendations and planning.
+- **Audit logs** — Review system activity, security events, and administrative actions.
+- **Backup & recovery** — Create, download, delete, and restore application database backups through the in-app Backup & Recovery module.
+- **Notifications** — Send and manage in-app portal notifications to users where applicable.
+
+### 2.2 Participant Portal Features
+
+Registered participants may use the Service to:
+
+- Access a personal dashboard with training progress, evaluations, certificates, and notifications.
+- Enroll in and complete training modules and lessons, including campaign-linked modules where access is granted through approved registration.
+- Take AI scenario training attempts and lesson quizzes where assigned or available.
+- Register for, view, and manage simulation event participation; export calendar entries; and perform self check-in where enabled.
+- View attendance history and campaign-based training enrollments ("My Trainings").
+- View evaluation results for modules, event drills, and related assessments; access attempt history and export an evaluation portfolio where available.
+- View, print, share, verify, and request email delivery of issued certificates.
+- Manage profile information, notification preferences, and account security settings within permitted scope.
+
+### 2.3 Public and Unauthenticated Features
+
+Certain features are available without a full account login, including:
+
+- Public landing and informational pages (Terms, Privacy Policy, Data Protection, Accessibility).
+- Public certificate verification using a unique verification token or QR code.
+- Public campaign landing pages for published simulation events.
+- Public campaign registration flows linked to approved campaign requests, subject to LGU approval workflows.
+
+### 2.4 Integrations and Supporting Services
+
+The Service may integrate with or rely on:
+
+- **AlerTara Centralized Login System** (https://login.alertaraqc.com) for single sign-on where configured.
+- **Email delivery** for account verification, admin login OTP, password reset, certificate delivery, and system notifications.
+- **AI generation services** (where enabled) to assist with training content, scenarios, quizzes, and planning drafts. AI-generated content requires human review and approval before publication where the workflow provides for it.
+- **Hosting and server infrastructure** (for example CyberPanel / Hostinger or equivalent) for application availability and, separately, full server recovery.
+
+Access to features depends on user role, LGU configuration, campaign approval status, event status, and module publication state. Not all features are available to all users.
 
 ---
 
-## 3. User Accounts
+## 3. User Accounts and Roles
 
-### 3.1 Account Types
+### 3.1 Account Types and Roles
 
-The Service supports two primary user types:
+The Service supports role-based access, including but not limited to:
 
-- **Administrators and Trainers (LGU Admin, LGU Trainer):** Authorized personnel who manage training content, simulation events, participants, and system configuration. Admin accounts may require additional verification (e.g., OTP, USB security key) as configured.
-- **Participants:** Individuals registered to participate in training modules and simulation events. Participant accounts require email verification before full access.
+- **LGU Admin, Lead Trainer, LGU Trainer, Evaluator, Staff, and Viewer** — Administrative and operational roles with permissions scoped to their responsibilities.
+- **Participant** — Individuals registered to access training, simulations, evaluations, and certificates.
 
-### 3.2 Account Creation and Security
+Role assignments and permissions are controlled by LGU administrators. You may only use features authorized for your role.
 
-You are responsible for maintaining the confidentiality of your account credentials, including your password and any USB security key or OTP device associated with your account. You must notify the system administrator immediately of any unauthorized use of your account or any breach of security.
+### 3.2 Account Creation and Verification
 
-Account creation may be subject to approval by administrators. You agree to provide accurate, current, and complete information during registration and to update such information as needed.
+- **Participants** must register with accurate information and verify their email address before gaining full access, unless otherwise configured by the LGU.
+- **Administrators and trainers** may require email verification, password authentication, and additional verification steps such as email OTP at login where enabled.
+- Account creation or elevated access may require approval by an LGU administrator.
 
-### 3.3 Centralized Login
+### 3.3 Account Security
 
-Where the Service is integrated with the AlerTara Centralized Login System, your access may be authenticated through that system. By using centralized login, you also agree to the terms and policies of that system. The Service Provider is not responsible for the availability or policies of third-party authentication systems.
+You are responsible for maintaining the confidentiality of your credentials, including your password and any one-time verification codes sent to your registered email. You must not share your account or allow others to use your credentials. Notify your LGU administrator or system operator immediately if you suspect unauthorized access.
+
+The Service may automatically log you out after a period of inactivity for security purposes.
+
+### 3.4 Centralized Login
+
+Where centralized login is enabled, authentication may occur through the AlerTara Centralized Login System. By using centralized login, you also agree to the terms and policies of that authentication service. The Service Provider is not responsible for the availability, security, or policies of third-party authentication systems beyond reasonable integration efforts.
 
 ---
 
-## 4. User Responsibilities and Prohibited Uses
+## 4. Acceptable Use
 
 ### 4.1 Permitted Use
 
-You agree to use the Service only for lawful purposes related to disaster preparedness training, simulation, and related administrative functions. You must comply with all applicable laws, regulations, and institutional policies.
+You agree to use the Service only for lawful purposes related to disaster preparedness training, simulation exercises, evaluation, certification, and authorized LGU administrative functions. You must comply with applicable laws, LGU policies, and these Terms.
+
+Permitted uses include, where authorized:
+
+- Creating and delivering official training and simulation programs;
+- Registering and managing participants in accordance with LGU rules;
+- Accurately recording attendance, evaluations, scores, and certifications;
+- Exporting reports, certificates, and evaluation portfolios for legitimate government or program use;
+- Verifying certificates through official verification links or QR codes.
 
 ### 4.2 Prohibited Conduct
 
 You must not:
 
-- Use the Service for any illegal, fraudulent, or unauthorized purpose;
-- Attempt to gain unauthorized access to the Service, other user accounts, or any systems or networks connected to the Service;
-- Interfere with or disrupt the integrity or performance of the Service;
-- Transmit any virus, malware, or other harmful code;
-- Scrape, harvest, or collect data from the Service through automated means without prior written consent;
-- Impersonate any person or entity or misrepresent your affiliation;
-- Share your credentials or allow others to access the Service using your account;
-- Use the Service to harass, abuse, or harm others;
-- Remove, alter, or obscure any proprietary notices on the Service;
-- Reverse engineer, decompile, or disassemble any part of the Service except as permitted by law.
+- Use the Service for illegal, fraudulent, or unauthorized purposes;
+- Attempt unauthorized access to accounts, data, modules, or systems;
+- Interfere with or disrupt the Service or its security controls;
+- Upload malicious code or intentionally submit false attendance, evaluation, or certification data;
+- Scrape, harvest, or automate data collection without prior written consent;
+- Impersonate another person or misrepresent your role, qualifications, or affiliation;
+- Share credentials or bypass access controls (including campaign locks or module restrictions);
+- Use exported data, certificates, or reports for purposes outside approved LGU or program use;
+- Reverse engineer or misuse AI-generated outputs as official emergency directives without proper human review and authorization;
+- Remove or alter proprietary notices on the Service.
 
-Violation of these provisions may result in immediate suspension or termination of your account and may subject you to legal action.
-
----
-
-## 5. Intellectual Property Rights
-
-All content, materials, software, design, text, graphics, logos, and other elements of the Service are the property of the Service Provider, AlertaraQC, the relevant LGU, or their licensors and are protected by copyright, trademark, and other intellectual property laws of the Republic of the Philippines and international treaties.
-
-You are granted a limited, non-exclusive, non-transferable license to access and use the Service for its intended purpose. You may not copy, modify, distribute, sell, or create derivative works from the Service or any part thereof without prior written authorization.
-
-Training materials, scenarios, and simulation content provided through the Service may be subject to additional licensing terms. You must not reproduce or redistribute such materials outside the scope of your authorized use.
+Violation may result in suspension or termination of access and may expose you to administrative or legal consequences.
 
 ---
 
-## 6. User-Generated Content
+## 5. Training Content, AI-Generated Materials, and Simulations
 
-Where the Service permits you to submit content (e.g., responses to evaluations, registration information, or other data), you grant the Service Provider and the relevant LGU a non-exclusive, royalty-free, perpetual license to use, store, and process such content for the purposes of operating the Service, administering training programs, and generating reports.
+Training modules, scenarios, quizzes, plans, evaluations, and simulation outcomes provided through the Service are for **training, preparedness, and educational purposes only**. They do not constitute official emergency orders, real-time hazard warnings, or substitutes for professional emergency response, incident command, or government disaster management authority.
 
-You represent that you have the right to submit such content and that it does not infringe the rights of any third party. The Service Provider reserves the right to remove any user-generated content that violates these Terms or is otherwise objectionable.
+Where the Service uses AI-assisted generation:
+
+- Outputs may contain errors or require editing;
+- Authorized personnel remain responsible for reviewing, approving, and publishing content;
+- Participants must follow official LGU instructions during real emergencies, not simulation content alone.
+
+Simulation events, drill scores, and certificates reflect program participation and evaluation within the System. They do not by themselves confer professional licensure, employment entitlement, or legal authority unless expressly stated by the issuing LGU outside this System.
 
 ---
 
-## 7. Fees and Billing
+## 6. User-Generated and Operational Data
 
-The Service is currently provided without charge to authorized users for disaster preparedness training purposes. The Service Provider reserves the right to introduce fees for certain features or usage in the future. Any such change will be communicated in advance and will not apply retrospectively without your consent where required by law.
+When you submit information or content through the Service (including registration data, attendance records, evaluation responses, planning notes, hazard profiles, equipment records, and administrative actions), you grant the Service Provider and the relevant LGU a non-exclusive, royalty-free license to use, store, process, and display such content as necessary to operate the Service, administer programs, produce reports, issue certificates, maintain audit logs, and comply with law.
+
+You represent that you have the right to submit such content and that it is accurate to the best of your knowledge. The Service Provider may remove or restrict content that violates these Terms or applicable law.
 
 ---
 
-## 8A. Data Backup, Retention, and Recovery
+## 7. Certificates and Verification
+
+Certificates issued through the Service are digital records of program completion or participation as defined by the issuing LGU and configured certificate templates. The Service may provide:
+
+- Printable or viewable certificate documents;
+- Unique verification tokens, verification URLs, and QR codes for third-party verification;
+- Email delivery of certificates to the participant's registered email where requested.
+
+Certificate verification pages display information intended to confirm issuance within the System. Revoked certificates must not be represented as valid. Participants and third parties should use the official verification link or QR code provided on the certificate.
+
+---
+
+## 8. Intellectual Property
+
+All software, design, branding, documentation, and system elements of the Service are owned by the Service Provider, AlertaraQC, the relevant LGU, or their licensors and are protected by applicable intellectual property laws.
+
+You receive a limited, non-exclusive, non-transferable license to access and use the Service for its intended purpose. You may not copy, modify, distribute, sell, or create derivative works from the Service except as expressly permitted by the LGU or Service Provider.
+
+Training materials, scenarios, templates, and other content may be subject to additional LGU or third-party rights. Unauthorized reproduction or redistribution outside approved program use is prohibited.
+
+---
+
+## 9. Fees and Billing
+
+The Service is currently provided without charge to authorized users for disaster preparedness training and related LGU operations, unless otherwise agreed in writing. The Service Provider reserves the right to introduce fees for certain features in the future with advance notice where required by law.
+
+---
+
+## 10. Privacy and Data Protection
+
+Your use of the Service is also governed by our Privacy Policy, available at `/privacy`, which is incorporated into these Terms by reference. Personal information is processed in accordance with the Data Privacy Act of 2012 and its implementing rules.
+
+The Service may collect and process personal information such as name, email, phone, organization, attendance records, evaluation results, certificate details, audit logs, and usage data necessary to operate the platform. Contact your LGU Data Protection Officer or the system operator for privacy-related requests.
+
+---
+
+## 11. Data Backup, Retention, and Recovery
 
 The Service may create application database backups (SQL dumps) automatically after important operational events and on a configured schedule. Authorized administrators may create, download, delete, or restore backups through the Backup & Recovery module.
 
-In-app backups cover the application database (training records, participants, events, evaluations, certifications, and related operational data). They do not replace full hosting or VPS backups of application files, SSL certificates, or server configuration. Full site or server disaster recovery remains the responsibility of the hosting environment (for example CyberPanel / Hostinger). Administrators should maintain off-server copies of critical backups where required by LGU policy.
+**In-app backups** cover the application database (training records, participants, events, evaluations, certifications, hazard profiles, audit logs, and related operational data). They **do not replace** full hosting or VPS backups of application files, SSL certificates, or server configuration. Full site or server disaster recovery remains the responsibility of the hosting environment.
 
-Restoring a database backup overwrites current application data. Only authorized LGU administrators should perform restores, and only after confirming the correct backup file. When possible, the Service creates a safety backup before an in-app restore.
+Restoring a database backup overwrites current application data. Only authorized LGU administrators should perform restores after confirming the correct backup file. The Service may create a safety backup before an in-app restore when possible.
 
-The Service may keep a limited number of recent backup files (configurable by administrators). Older files may be pruned automatically. Retention settings do not guarantee indefinite storage; follow LGU records management and the Data Privacy Act of 2012 for official archives.
-
----
-
-## 8. Privacy Policy Reference
-
-Your use of the Service is also governed by our Privacy Policy, which describes how we collect, use, store, and protect your personal information. The Privacy Policy is incorporated into these Terms by reference. By using the Service, you consent to the practices described in the Privacy Policy, which is available at [insert Privacy Policy URL or /privacy].
-
-The Service processes personal data in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173) and its implementing rules and regulations.
+Backup retention is limited and configurable. Older files may be pruned automatically. Follow LGU records management policies and data privacy requirements for official archives.
 
 ---
 
-## 9. Service Availability Disclaimer
+## 12. Service Availability Disclaimer
 
-The Service is provided "as is" and "as available." The Service Provider does not guarantee that the Service will be uninterrupted, error-free, or free of viruses or other harmful components. Scheduled maintenance and unscheduled downtime may occur. The Service Provider will use reasonable efforts to minimize disruption but is not liable for any loss or inconvenience arising from Service unavailability.
+The Service is provided **"as is"** and **"as available."** The Service Provider does not guarantee uninterrupted, error-free, or secure operation at all times. Maintenance, updates, network issues, third-party service outages (including email, AI, authentication, or hosting providers), and force majeure events may cause temporary unavailability.
 
-The Service is designed for disaster preparedness training and simulation. It is not a substitute for professional emergency response or official disaster management procedures. Outcomes from simulations and training are for educational purposes only.
+The Service Provider will use reasonable efforts to maintain operational continuity but is not liable for losses arising from downtime, delayed notifications, or incomplete synchronization with external systems.
 
 ---
 
-## 10. Limitation of Liability
+## 13. Limitation of Liability
 
 To the maximum extent permitted by applicable law in the Republic of the Philippines:
 
-- The Service Provider, AlertaraQC, the relevant LGU, and their officers, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or goodwill, arising from or related to your use of the Service.
+- The Service Provider, AlertaraQC, the relevant LGU, and their officers, employees, and agents shall not be liable for indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or goodwill, arising from or related to your use of the Service.
 - The total aggregate liability of the Service Provider for any claims arising from or related to the Service shall not exceed the amount you paid (if any) for access to the Service in the twelve (12) months preceding the claim, or one thousand Philippine Pesos (PHP 1,000), whichever is greater.
-- The foregoing limitations apply whether the claim is based in contract, tort, negligence, strict liability, or any other legal theory, even if the Service Provider has been advised of the possibility of such damages.
+- The System is a support tool for training and simulation administration. It does not replace official emergency response procedures, government warnings, or command authority.
 
-Certain jurisdictions do not allow the exclusion or limitation of incidental or consequential damages. In such cases, the above limitations may not apply to you to the extent prohibited by law.
+Certain jurisdictions do not allow some limitations. Where prohibited by law, those limitations apply only to the extent permitted.
 
 ---
 
-## 11. Indemnification
+## 14. Indemnification
 
-You agree to indemnify, defend, and hold harmless the Service Provider, AlertaraQC, the relevant LGU, and their officers, directors, employees, agents, and affiliates from and against any and all claims, damages, losses, liabilities, costs, and expenses (including reasonable attorneys' fees) arising from or related to:
+You agree to indemnify, defend, and hold harmless the Service Provider, AlertaraQC, the relevant LGU, and their officers, directors, employees, agents, and affiliates from claims, damages, losses, liabilities, costs, and expenses (including reasonable attorneys' fees) arising from:
 
 - Your use of the Service;
 - Your violation of these Terms;
-- Your violation of any third-party right, including intellectual property or privacy rights;
-- Any content you submit to the Service;
-- Any conduct that would constitute a breach of these Terms.
+- Your violation of third-party rights;
+- Content or records you submit;
+- Misuse of certificates, reports, or exported data.
 
 ---
 
-## 12. Termination and Suspension
+## 15. Termination and Suspension
 
-### 12.1 Termination by You
+You may stop using the Service at any time. Account deletion or data handling after termination may be subject to LGU retention requirements.
 
-You may cease using the Service at any time. If you have an account, you may request account deletion by contacting the system administrator. Deletion may be subject to data retention requirements.
+The Service Provider or LGU may suspend or terminate access, with or without notice, for violations of these Terms, security risks, fraud, misuse, inactivity, operational necessity, or requests by competent authority.
 
-### 12.2 Termination or Suspension by the Service Provider
-
-The Service Provider reserves the right to suspend or terminate your access to the Service, with or without notice, for any reason, including but not limited to:
-
-- Violation of these Terms;
-- Fraudulent or illegal activity;
-- Misuse of the Service or abuse of other users;
-- Extended inactivity;
-- Request by the relevant LGU or competent authority;
-- Operational or legal necessity.
-
-### 12.3 Effect of Termination
-
-Upon termination, your right to use the Service ceases immediately. Provisions of these Terms that by their nature should survive termination shall survive, including Sections 5 (Intellectual Property), 8 (Privacy), 10 (Limitation of Liability), 11 (Indemnification), 14 (Governing Law), and 15 (General).
+Provisions that by nature should survive termination (including intellectual property, privacy, limitation of liability, indemnification, governing law, and general provisions) shall survive.
 
 ---
 
-## 13. Changes to Terms
+## 16. Changes to Terms
 
-The Service Provider may modify these Terms at any time. Material changes will be communicated by posting the updated Terms on the Service and updating the "Last Updated" date. Your continued use of the Service after the effective date of such changes constitutes your acceptance of the revised Terms.
+The Service Provider may modify these Terms at any time. Material changes will be posted on the Service with an updated "Last Updated" date. Continued use after the effective date constitutes acceptance of the revised Terms. Where practicable, notice may also be provided by email or in-app notification.
 
-If you do not agree to the revised Terms, you must stop using the Service and may request account deletion. For users with existing accounts, we may provide advance notice of material changes by email or in-app notification where practicable.
-
----
-
-## 14. Governing Law and Dispute Resolution
-
-These Terms shall be governed by and construed in accordance with the laws of the Republic of the Philippines, without regard to its conflict of law principles.
-
-Any dispute arising from or relating to these Terms or the Service shall first be attempted to be resolved amicably through good-faith negotiation. If the dispute cannot be resolved within thirty (30) days, it shall be submitted to the exclusive jurisdiction of the courts of Quezon City, Philippines, or such other courts as may have proper jurisdiction over the matter.
+If you do not agree to revised Terms, you must stop using the Service and may request account deactivation through your LGU administrator.
 
 ---
 
-## 15. General Provisions
+## 17. Governing Law and Dispute Resolution
 
-**Entire Agreement:** These Terms, together with the Privacy Policy and any other policies referenced herein, constitute the entire agreement between you and the Service Provider regarding the Service.
-
-**Severability:** If any provision of these Terms is held to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.
-
-**Waiver:** The failure of the Service Provider to enforce any right or provision of these Terms shall not constitute a waiver of such right or provision.
-
-**Assignment:** You may not assign or transfer these Terms or your rights hereunder without the prior written consent of the Service Provider. The Service Provider may assign these Terms without restriction.
-
-**Force Majeure:** The Service Provider shall not be liable for any failure or delay in performing its obligations under these Terms where such failure or delay results from circumstances beyond its reasonable control, including but not limited to natural disasters, pandemics, acts of government, war, terrorism, or failure of third-party services.
+These Terms are governed by the laws of the Republic of the Philippines. Disputes shall first be addressed through good-faith coordination with the relevant LGU administrator or system operator. If unresolved, disputes shall be submitted to the exclusive jurisdiction of the courts of Quezon City, Philippines, or other courts with proper jurisdiction.
 
 ---
 
-## 16. Contact Information
+## 18. General Provisions
 
-For questions, complaints, or notices regarding these Terms or the Service, please contact:
+**Entire Agreement:** These Terms, together with the Privacy Policy and referenced policies, constitute the entire agreement regarding the Service.
 
-**Disaster Preparedness Training and Simulation System**  
-**Support:** [Insert support email or contact form URL]  
-**Address:** [Insert physical or postal address, if applicable]
+**Severability:** If any provision is invalid or unenforceable, the remaining provisions remain in effect.
 
-For data privacy concerns, you may also contact the relevant Data Protection Officer of the LGU or AlertaraQC.
+**Waiver:** Failure to enforce a provision is not a waiver of that provision.
+
+**Assignment:** You may not assign these Terms without consent. The Service Provider may assign them in connection with operational or organizational changes.
+
+**Force Majeure:** The Service Provider is not liable for failure or delay due to circumstances beyond reasonable control, including natural disasters, pandemics, government actions, war, terrorism, or third-party service failures.
+
+---
+
+## 19. Contact Information
+
+For questions about these Terms or the Service:
+
+**Disaster Preparedness Training and Simulation System (ALERtARA)**  
+**Support:** Contact your LGU system administrator or disaster preparedness focal person.  
+**Privacy:** Contact your LGU Data Protection Officer or AlertaraQC where applicable.
 
 ---
 

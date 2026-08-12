@@ -1,918 +1,519 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LGU Disaster Preparedness Training & Simulation System</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Disaster Preparedness Training &amp; Simulation — ALERTARA</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        
-        * {
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .hero-bg {
-            position: relative;
-            background-image: url('{{ asset('images/hero-training.jpg') }}');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-        
-        .hero-bg::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(20, 30, 48, 0.9) 0%, rgba(36, 59, 85, 0.85) 50%, rgba(58, 118, 117, 0.8) 100%);
-            z-index: 1;
-        }
-        
-        .hero-content {
-            position: relative;
-            z-index: 2;
-        }
-        
-        .section-bg {
-            background-image: linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)), url('{{ asset('images/pexels-vladbagacian-1368382.jpg') }}');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-        
-        .gradient-text {
-            background: linear-gradient(135deg, #3a7675 0%, #2d5a59 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-        
-        .pulse-animation {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: .7;
-            }
-        }
-        
-        .scroll-smooth {
-            scroll-behavior: smooth;
-        }
-        
-        nav {
-            backdrop-filter: blur(10px);
-            background-color: rgba(255, 255, 255, 0.9);
-        }
-        
-        /* Scroll-based reveal (Apple-style) */
-        .scroll-reveal {
-            opacity: 0;
-            transform: translateY(40px);
-            transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .scroll-reveal.is-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .scroll-reveal-delay-1 { transition-delay: 0.1s; }
-        .scroll-reveal-delay-2 { transition-delay: 0.2s; }
-        .scroll-reveal-delay-3 { transition-delay: 0.3s; }
-        
-        /* Section decorative backgrounds – colors match image backgrounds */
-        .section-about-bg {
-            background-color: #f8f8f8;
-            position: relative;
-            overflow: hidden;
-        }
-        .section-about-bg .section-bg-image-right {
-            position: absolute;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            width: 58%;
-            max-width: 780px;
-            background-image: url('{{ asset('images/Firehat.png') }}');
-            background-size: contain;
-            background-position: right center;
-            background-repeat: no-repeat;
-            opacity: 0;
-            transform: translateX(24px) scale(0.96);
-            transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .section-about-bg.section-image-visible .section-bg-image-right {
-            opacity: 0.92;
-            transform: translateX(0) scale(1);
-        }
-        .section-trainings-bg {
-            background-color: #F1F1F1;
-            position: relative;
-            overflow: hidden;
-        }
-        .section-trainings-bg .section-bg-image-left {
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 68%;
-            max-width: 920px;
-            background-image: url('{{ asset('images/Whistle.png') }}');
-            background-size: contain;
-            background-position: left top;
-            background-repeat: no-repeat;
-            opacity: 0;
-            transform: translateX(-24px) scale(0.96);
-            transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .section-trainings-bg .section-bg-image-left::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            left: 0;
-            background: linear-gradient(to right, transparent 15%, #F1F1F1 70%, #F1F1F1 100%);
-            pointer-events: none;
-        }
-        .section-trainings-bg.section-image-visible .section-bg-image-left {
-            opacity: 0.92;
-            transform: translateX(0) scale(1);
-        }
-        .section-how-it-works-bg {
-            background: linear-gradient(
-                180deg,
-                #f4f7f6 0%,
-                #e6f0ee 40%,
-                #dcebea 100%
-            );
-            position: relative;
-        }
-        .how-it-works-card {
-            transition: box-shadow 0.3s ease;
-        }
-        .how-it-works-card:hover {
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(0, 0, 0, 0.08);
-        }
-        /* How It Works: single stacked cards, reveal 1→5 on scroll (CodePen-style) */
-        .how-it-works-stack-container {
-            position: relative;
-            height: 520vh;
-        }
-        @media (max-width: 768px) {
-            .how-it-works-stack-container {
-                height: 420vh;
-            }
-        }
-        .how-it-works-stack {
-            position: sticky;
-            top: 5rem;
-            min-height: calc(100vh - 6rem);
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding: 6rem 1rem 2rem 1rem;
-            box-sizing: border-box;
-        }
-        .how-it-works-stack-heading {
-            flex-shrink: 0;
-            text-align: center;
-            padding-bottom: 2rem;
-        }
-        .how-it-works-stack-cards {
-            position: relative;
-            width: 100%;
-            max-width: 52rem;
-            height: 480px;
-        }
-        .how-it-works-stack-cards .stack-card {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            max-width: 52rem;
-            padding: 2.75rem 3rem;
-            border-radius: 1rem;
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            transition: transform 1s cubic-bezier(0.33, 1, 0.68, 1), box-shadow 0.3s ease;
-            will-change: transform;
-        }
-        .how-it-works-stack-cards .stack-card h3 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.02em;
-        }
-        .how-it-works-stack-cards .stack-card p {
-            font-size: 1.125rem;
-            line-height: 1.5;
-            color: #4b5563;
-        }
-        .how-it-works-stack-cards .stack-card.bg-teal-50 p {
-            color: #4b5563;
-        }
-        .how-it-works-stack-cards .stack-card.bg-gradient-to-r p {
-            color: rgba(255, 255, 255, 0.9);
-        }
-        .how-it-works-stack-cards .stack-card:nth-child(1) {
-            z-index: 1;
-            width: 100%;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
-            transform: translate(-50%, -50%) rotate(-0.5deg);
-        }
-        .how-it-works-stack-cards .stack-card:nth-child(2) {
-            z-index: 2;
-            width: 96%;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05);
-            transform: translate(-50%, -50%) translateY(120%) rotate(0.5deg);
-        }
-        .how-it-works-stack-cards .stack-card:nth-child(3) {
-            z-index: 3;
-            width: 92%;
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1), 0 6px 14px rgba(0, 0, 0, 0.06);
-            transform: translate(-50%, -50%) translateY(120%) rotate(-0.5deg);
-        }
-        .how-it-works-stack-cards .stack-card:nth-child(4) {
-            z-index: 4;
-            width: 88%;
-            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.11), 0 8px 18px rgba(0, 0, 0, 0.07);
-            transform: translate(-50%, -50%) translateY(120%) rotate(0.5deg);
-        }
-        .how-it-works-stack-cards .stack-card:nth-child(5) {
-            z-index: 5;
-            width: 84%;
-            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.14), 0 10px 22px rgba(0, 0, 0, 0.08);
-            transform: translate(-50%, -50%) translateY(120%) rotate(-0.5deg);
-            border-color: rgba(0, 0, 0, 0.12);
-            background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #115e59 100%);
-        }
-        .how-it-works-stack-cards.reveal-2 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
-        .how-it-works-stack-cards.reveal-3 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
-        .how-it-works-stack-cards.reveal-3 .stack-card:nth-child(3) { transform: translate(-50%, -50%) rotate(-0.5deg); }
-        .how-it-works-stack-cards.reveal-4 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
-        .how-it-works-stack-cards.reveal-4 .stack-card:nth-child(3) { transform: translate(-50%, -50%) rotate(-0.5deg); }
-        .how-it-works-stack-cards.reveal-4 .stack-card:nth-child(4) { transform: translate(-50%, -50%) rotate(0.5deg); }
-        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(2) { transform: translate(-50%, -50%) rotate(0.5deg); }
-        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(3) { transform: translate(-50%, -50%) rotate(-0.5deg); }
-        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(4) { transform: translate(-50%, -50%) rotate(0.5deg); }
-        .how-it-works-stack-cards.reveal-5 .stack-card:nth-child(5) { transform: translate(-50%, -50%) rotate(-0.5deg); }
-        @media (max-width: 768px) {
-            .how-it-works-stack-cards { max-width: 100%; height: 400px; }
-            .how-it-works-stack-cards .stack-card { max-width: 100%; padding: 2rem 1.5rem; }
-            .how-it-works-stack-cards .stack-card h3 { font-size: 1.5rem; }
-            .how-it-works-stack-cards .stack-card p { font-size: 1rem; }
-        }
-        @media (max-width: 640px) {
-            .how-it-works-stack-cards .stack-card:nth-child(1) { width: 100%; }
-            .how-it-works-stack-cards .stack-card:nth-child(2) { width: 98%; }
-            .how-it-works-stack-cards .stack-card:nth-child(3) { width: 96%; }
-            .how-it-works-stack-cards .stack-card:nth-child(4) { width: 94%; }
-            .how-it-works-stack-cards .stack-card:nth-child(5) { width: 92%; }
-            .how-it-works-stack-cards .stack-card { padding: 1.75rem 1.25rem; }
-            .how-it-works-stack-cards .stack-card h3 { font-size: 1.35rem; }
-        }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/landing.js'])
 </head>
-<body class="scroll-smooth">
-    
-    <!-- 1️⃣ Header / Navigation Bar -->
-    <nav class="fixed top-0 left-0 right-0 z-50 shadow-md">
+<body class="bg-slate-50 text-slate-900 antialiased">
+    {{-- Replace public/videos/landing-hero.mp4 with your LGU drill footage when ready --}}
+    @php
+        $heroPoster = asset('images/landing/hero-poster.jpg');
+        $heroVideo = asset('videos/landing-hero.mp4');
+    @endphp
+
+    <header id="landing-nav" class="landing-nav is-over-hero sticky top-0 z-50 border-b border-transparent">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
-                <!-- Logo and System Name -->
-                <div class="flex items-center space-x-4">
-                    <img src="{{ asset('images/logo.svg') }}" alt="LGU Logo" class="h-12 w-auto">
-                    <div class="hidden md:block">
-                        <h1 class="text-lg font-bold text-gray-800 leading-tight">
-                            LGU Disaster Preparedness<br>
-                            <span class="text-sm font-normal text-gray-600">Training & Simulation System</span>
-                        </h1>
+            <div class="flex h-16 items-center justify-between gap-4">
+                <a href="{{ url('/') }}" class="flex items-center gap-3 min-w-0">
+                    <img src="{{ asset('images/logo.svg') }}" alt="ALERTARA" class="h-9 w-auto shrink-0">
+                    <div class="hidden sm:block min-w-0">
+                        <p class="landing-nav-brand-title text-sm font-bold text-slate-900 leading-tight truncate">ALERTARA</p>
+                        <p class="landing-nav-brand-sub text-[11px] text-slate-500 leading-tight truncate">Training &amp; Simulation</p>
                     </div>
-                </div>
-                
-                <!-- Navigation Links -->
-                <div class="hidden lg:flex items-center space-x-8">
-                    <a href="#home" class="text-gray-700 hover:text-teal-700 font-medium transition">Home</a>
-                    <a href="#about" class="text-gray-700 hover:text-teal-700 font-medium transition">About</a>
-                    <a href="#trainings" class="text-gray-700 hover:text-teal-700 font-medium transition">Trainings & Drills</a>
-                    <a href="#how-it-works" class="text-gray-700 hover:text-teal-700 font-medium transition">How It Works</a>
-                    <a href="/participant/login" class="text-teal-700 hover:text-teal-800 font-semibold transition">Login</a>
-                    <a href="/register" class="bg-teal-700 text-white px-6 py-2.5 rounded-lg hover:bg-teal-800 font-semibold transition shadow-md">
+                </a>
+
+                <nav class="hidden lg:flex items-center gap-6 text-sm font-medium">
+                    <a href="#about" class="landing-nav-link text-slate-600 hover:text-emerald-700 transition-colors">About</a>
+                    <a href="#trainings" class="landing-nav-link text-slate-600 hover:text-emerald-700 transition-colors">Trainings</a>
+                    <a href="#how-it-works" class="landing-nav-link text-slate-600 hover:text-emerald-700 transition-colors">How it works</a>
+                    <a href="#announcements" class="landing-nav-link text-slate-600 hover:text-emerald-700 transition-colors">Updates</a>
+                </nav>
+
+                <div class="hidden lg:flex items-center gap-2 shrink-0">
+                    <a href="{{ url('/participant/login') }}" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 bg-white/90 rounded-lg hover:bg-white transition-colors">
+                        Login
+                    </a>
+                    <a href="{{ url('/register') }}" class="landing-btn-primary inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
                         Register
+                        <svg class="landing-btn-arrow w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                     </a>
                 </div>
-                
-                <!-- Mobile Menu Button -->
-                <div class="lg:hidden">
-                    <button id="mobile-menu-btn" class="text-gray-700 hover:text-teal-700 focus:outline-none">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                        </svg>
-                    </button>
-                </div>
+
+                <button type="button" id="mobile-menu-btn" class="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 text-white hover:bg-white/10" aria-label="Open menu">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
             </div>
         </div>
-        
-        <!-- Mobile Menu -->
-        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t">
-            <div class="px-4 pt-2 pb-4 space-y-2">
-                <a href="#home" class="block px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-md">Home</a>
-                <a href="#about" class="block px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-md">About</a>
-                <a href="#trainings" class="block px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-md">Trainings & Drills</a>
-                <a href="#how-it-works" class="block px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-md">How It Works</a>
-                <a href="/participant/login" class="block px-3 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded-md">Login</a>
-                <a href="/register" class="block px-3 py-2 bg-teal-700 text-white text-center rounded-md hover:bg-teal-800">Register</a>
+        <div id="mobile-menu" class="hidden lg:hidden border-t border-slate-200 bg-white">
+            <div class="px-4 py-3 space-y-1 text-sm">
+                <a href="#about" class="block px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50">About</a>
+                <a href="#trainings" class="block px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50">Trainings</a>
+                <a href="#how-it-works" class="block px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50">How it works</a>
+                <a href="#announcements" class="block px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50">Updates</a>
+                <a href="{{ url('/participant/login') }}" class="block px-3 py-2 rounded-lg text-emerald-700 font-medium hover:bg-emerald-50">Participant Login</a>
+                <a href="{{ url('/register') }}" class="block px-3 py-2 rounded-lg bg-emerald-600 text-white text-center font-semibold hover:bg-emerald-700">Register</a>
             </div>
         </div>
-    </nav>
-    
-    <!-- 2️⃣ Hero Section -->
-    <section id="home" class="hero-bg min-h-screen flex items-center justify-center pt-20">
-        <div class="hero-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-            <div class="animate-fade-in">
-                <h1 class="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight drop-shadow-2xl">
-                    Preparing Communities<br>for Emergencies
-                </h1>
-                <p class="text-xl md:text-2xl text-white/95 mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
-                    A centralized platform for disaster preparedness training, simulation drills, evaluation, and certification conducted by the Local Government Unit.
-                </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <a href="/participant/register" class="bg-white text-teal-700 px-10 py-4 rounded-lg text-lg font-bold hover:bg-gray-100 transition shadow-xl hover:shadow-2xl transform hover:scale-105">
-                        ✅ Register as Participant
-                    </a>
-                    <a href="/participant/login" class="bg-white/10 backdrop-blur-md text-white border-2 border-white/50 px-10 py-4 rounded-lg text-lg font-bold hover:bg-white/20 transition shadow-xl">
-                        LOGIN
-                    </a>
-                </div>
-                
-                <!-- Scroll Down Indicator -->
-                <div class="mt-16 pulse-animation">
-                    <a href="#about" class="text-white text-sm uppercase tracking-wider flex flex-col items-center">
-                        <span class="mb-2">Learn More</span>
-                        <svg class="w-6 h-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-                        </svg>
-                    </a>
+    </header>
+
+    <main>
+        {{-- Hero with video background --}}
+        <section id="home" class="landing-hero relative overflow-hidden border-b border-slate-800">
+            <div class="absolute inset-0 -z-20">
+                <video
+                    id="landing-hero-video"
+                    class="landing-hero-video absolute inset-0 h-full w-full"
+                    autoplay
+                    muted
+                    loop
+                    playsinline
+                    poster="{{ $heroPoster }}"
+                >
+                    <source src="{{ $heroVideo }}" type="video/mp4">
+                </video>
+                <div id="landing-hero-fallback" class="hidden absolute inset-0">
+                    <img src="{{ $heroPoster }}" alt="" class="landing-ken-burns h-full w-full object-cover" aria-hidden="true">
                 </div>
             </div>
-        </div>
-    </section>
-    
-    <!-- 3️⃣ About the System -->
-    <section id="about" class="section-about-bg py-20">
-        <div class="section-bg-image-right" aria-hidden="true"></div>
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16 scroll-reveal">
-                <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">
-                    About the System
-                </h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Building resilient communities through comprehensive disaster preparedness training and realistic simulation exercises.
-                </p>
-            </div>
-            
-            <div class="grid md:grid-cols-3 gap-8 mb-12">
-                <!-- What it is -->
-                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover scroll-reveal scroll-reveal-delay-1">
-                    <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-                        <svg class="w-8 h-8 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
+            <div class="landing-hero-overlay absolute inset-0 -z-10"></div>
+
+            {{-- Ambient blobs --}}
+            <div class="pointer-events-none absolute -z-10 top-20 right-10 h-64 w-64 rounded-full bg-emerald-500/20 landing-blob" aria-hidden="true"></div>
+            <div class="pointer-events-none absolute -z-10 bottom-10 left-10 h-48 w-48 rounded-full bg-sky-400/15 landing-blob landing-blob-delay" aria-hidden="true"></div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 relative">
+                <div class="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+                    <div class="space-y-6">
+                        <div data-landing-hero class="inline-flex items-center gap-3 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 backdrop-blur-sm">
+                            <div id="lottie-shield" class="h-7 w-7 shrink-0" aria-hidden="true"></div>
+                            <span class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                LGU Disaster Preparedness Platform
+                            </span>
+                        </div>
+
+                        <h1 data-landing-hero class="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
+                            Preparing communities for emergencies
+                        </h1>
+                        <p data-landing-hero class="text-base sm:text-lg text-slate-200 max-w-xl leading-relaxed">
+                            A centralized platform for disaster preparedness training, simulation drills, evaluations, and digital certification—operated by your Local Government Unit.
+                        </p>
+
+                        <div data-landing-hero class="flex flex-col sm:flex-row gap-3">
+                            <a href="{{ url('/register') }}" class="landing-btn-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-500">
+                                Register as participant
+                                <svg class="landing-btn-arrow w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                            </a>
+                            <a href="{{ url('/participant/login') }}" class="inline-flex items-center justify-center px-5 py-3 text-sm font-semibold text-white border border-white/25 bg-white/10 rounded-lg hover:bg-white/15 backdrop-blur-sm transition-colors">
+                                Participant login
+                            </a>
+                        </div>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">What It Is</h3>
-                    <p class="text-gray-600 text-center leading-relaxed">
-                        A comprehensive digital platform designed to manage, track, and conduct disaster preparedness training and simulation drills for the entire community.
-                    </p>
-                </div>
-                
-                <!-- Who it's for -->
-                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover scroll-reveal scroll-reveal-delay-2">
-                    <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-                        <svg class="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">Who It's For</h3>
-                    <ul class="text-gray-600 space-y-2">
-                        <li class="flex items-center">
-                            <span class="text-teal-600 mr-2">✓</span> LGU Staff
-                        </li>
-                        <li class="flex items-center">
-                            <span class="text-teal-600 mr-2">✓</span> Volunteers
-                        </li>
-                        <li class="flex items-center">
-                            <span class="text-teal-600 mr-2">✓</span> Students
-                        </li>
-                        <li class="flex items-center">
-                            <span class="text-teal-600 mr-2">✓</span> Community Members
-                        </li>
-                    </ul>
-                </div>
-                
-                <!-- Why it exists -->
-                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover scroll-reveal scroll-reveal-delay-3">
-                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-                        <svg class="w-8 h-8 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">Why It Exists</h3>
-                    <ul class="text-gray-600 space-y-2">
-                        <li class="flex items-center">
-                            <span class="text-red-600 mr-2">•</span> Improve disaster readiness
-                        </li>
-                        <li class="flex items-center">
-                            <span class="text-red-600 mr-2">•</span> Conduct realistic simulations
-                        </li>
-                        <li class="flex items-center">
-                            <span class="text-red-600 mr-2">•</span> Track training progress
-                        </li>
-                        <li class="flex items-center">
-                            <span class="text-red-600 mr-2">•</span> Issue certifications
-                        </li>
-                    </ul>
-                </div>
-                <div class="how-it-works-media-layer image-layer" id="how-it-works-image-layer"></div>
-            </div>
-            <div class="how-it-works-media-layer layer-3" id="how-it-works-layer3"></div>
-        </div>
-    </section>
-    
-    <!-- 4️⃣ Available Disaster Trainings & Simulations -->
-    <section id="trainings" class="section-trainings-bg py-20">
-        <div class="section-bg-image-left" aria-hidden="true"></div>
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16 scroll-reveal">
-                <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">
-                    Available Trainings & Simulations
-                </h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Join our comprehensive disaster preparedness programs designed to save lives and protect communities.
-                </p>
-            </div>
-            
-            <div class="grid md:grid-cols-2 {{ count($landingTrainings ?? []) >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-8">
-                @forelse (($landingTrainings ?? []) as $index => $training)
-                    @php
-                        $delayClass = 'scroll-reveal-delay-'.(($index % 3) + 1);
-                        $isOpen = ($training['status'] ?? '') === 'open';
-                        $theme = $training['theme'] ?? ['gradient' => 'from-teal-400 to-teal-700', 'badge' => 'bg-teal-100 text-teal-800', 'emoji' => ''];
-                    @endphp
-                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover scroll-reveal {{ $delayClass }}">
-                        <div class="h-48 bg-gradient-to-br {{ $theme['gradient'] }} flex items-center justify-center">
-                            <div class="text-center px-4">
-                                <p class="text-white/90 text-sm font-semibold uppercase tracking-wide mb-2">{{ $training['category'] ?: 'Training' }}</p>
-                                <p class="text-white text-lg font-bold leading-snug line-clamp-3">{{ $training['title'] }}</p>
+
+                    {{-- Tilt product preview --}}
+                    <div data-landing-hero class="relative">
+                        <div id="hero-preview" class="landing-preview rounded-2xl border border-white/20 bg-white/95 shadow-2xl overflow-hidden">
+                            <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                                <span class="ml-2 text-[11px] font-medium text-slate-500">Participant portal preview</span>
+                            </div>
+                            <div class="p-4 sm:p-5 space-y-3 bg-slate-50/50">
+                                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dashboard</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-900">Training progress &amp; upcoming drills</p>
+                                    <div class="mt-3 grid grid-cols-3 gap-2">
+                                        <div class="rounded-lg bg-emerald-50 border border-emerald-100 p-2 text-center">
+                                            <p class="text-lg font-bold text-emerald-700">3</p>
+                                            <p class="text-[10px] text-slate-500">Modules</p>
+                                        </div>
+                                        <div class="rounded-lg bg-amber-50 border border-amber-100 p-2 text-center">
+                                            <p class="text-lg font-bold text-amber-700">1</p>
+                                            <p class="text-[10px] text-slate-500">Pending eval</p>
+                                        </div>
+                                        <div class="rounded-lg bg-sky-50 border border-sky-100 p-2 text-center">
+                                            <p class="text-lg font-bold text-sky-700">2</p>
+                                            <p class="text-[10px] text-slate-500">Certificates</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p class="text-xs font-semibold text-emerald-700">Open training</p>
+                                            <p class="text-sm font-semibold text-slate-900 mt-0.5">Earthquake preparedness module</p>
+                                        </div>
+                                        <span class="shrink-0 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold">Open</span>
+                                    </div>
+                                    <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                                        <div class="h-full w-2/3 rounded-full bg-emerald-600"></div>
+                                    </div>
+                                </div>
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4">
+                                    <p class="text-xs font-semibold text-emerald-800">Certificate issued</p>
+                                    <p class="text-sm text-slate-700 mt-1">Verify, share, or download your LGU certificate after completing drills.</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="p-6">
-                            <div class="flex items-center justify-between mb-3 gap-2">
-                                <span class="{{ $isOpen ? 'bg-orange-100 text-orange-800' : 'bg-slate-100 text-slate-700' }} text-xs font-semibold px-3 py-1 rounded-full">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {{-- About --}}
+        <section id="about" class="py-14 lg:py-16">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="landing-reveal max-w-2xl mb-10">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">About the system</p>
+                    <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-slate-900">Built for LGU training operations</h2>
+                    <p class="mt-3 text-slate-600">Manage the full preparedness lifecycle—from training modules and campaign registration to simulation drills, evaluations, and certification.</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-5">
+                    @foreach ([
+                        ['icon' => 'book', 'bg' => 'bg-emerald-100', 'text' => 'text-emerald-700', 'title' => 'What it is', 'body' => 'A digital platform to deliver training modules, run simulation events, score participants, and issue verifiable certificates.'],
+                        ['icon' => 'users', 'bg' => 'bg-sky-100', 'text' => 'text-sky-700', 'title' => "Who it's for", 'list' => ['LGU staff & trainers', 'Volunteers & responders', 'Students & community members']],
+                        ['icon' => 'shield', 'bg' => 'bg-amber-100', 'text' => 'text-amber-700', 'title' => 'Why it exists', 'list' => ['Improve disaster readiness across barangays', 'Run realistic simulation drills with records', 'Track evaluations and issue certificates']],
+                    ] as $card)
+                        <article class="landing-about-card landing-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                            <div class="w-10 h-10 rounded-xl {{ $card['bg'] }} {{ $card['text'] }} flex items-center justify-center mb-4">
+                                @if ($card['icon'] === 'book')
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                @elseif ($card['icon'] === 'users')
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                @else
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                @endif
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-900">{{ $card['title'] }}</h3>
+                            @if (!empty($card['body']))
+                                <p class="mt-2 text-sm text-slate-600 leading-relaxed">{{ $card['body'] }}</p>
+                            @else
+                                <ul class="mt-2 text-sm text-slate-600 space-y-1.5">
+                                    @foreach ($card['list'] as $item)
+                                        <li class="flex items-center gap-2"><span class="text-emerald-600">✓</span> {{ $item }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </article>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+
+        {{-- Trainings --}}
+        <section id="trainings" class="py-14 lg:py-16 bg-white border-y border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="landing-reveal flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Available programs</p>
+                        <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-slate-900">Trainings &amp; simulations</h2>
+                        <p class="mt-2 text-slate-600 max-w-2xl">Published training modules from your LGU. Register when a campaign batch is open.</p>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 {{ count($landingTrainings ?? []) >= 4 ? 'xl:grid-cols-4' : 'lg:grid-cols-3' }} gap-5">
+                    @forelse (($landingTrainings ?? []) as $training)
+                        @php
+                            $isOpen = ($training['status'] ?? '') === 'open';
+                            $theme = $training['theme'] ?? [];
+                            $imageUrl = $training['image_url'] ?? asset('images/landing/training-default.jpg');
+                        @endphp
+                        <article class="landing-card group rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+                            <div class="relative h-40 overflow-hidden">
+                                <img src="{{ $imageUrl }}" alt="" class="landing-card-image h-full w-full object-cover" loading="lazy">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+                                <span class="absolute top-3 right-3 shrink-0 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm {{ $isOpen ? 'bg-emerald-500/90 text-white border-emerald-400' : 'bg-white/90 text-slate-600 border-slate-200' }}">
                                     {{ $training['status_label'] }}
                                 </span>
-                                @if (!empty($training['seats_remaining']))
-                                    <span class="text-[0.7rem] text-slate-500">{{ $training['seats_remaining'] }} seats left</span>
-                                @endif
+                                <p class="absolute bottom-3 left-4 text-xs font-semibold uppercase tracking-wide text-white/90">{{ $training['category'] ?: 'Training' }}</p>
                             </div>
-                            <h3 class="text-xl font-bold text-gray-800 mb-3 line-clamp-2">{{ $training['title'] }}</h3>
-                            <p class="text-gray-600 mb-4 text-sm leading-relaxed">
-                                {{ $training['description'] }}
-                            </p>
-                            @if (!empty($training['batch_label']) && $isOpen)
-                                <p class="text-xs text-slate-500 mb-3">{{ $training['batch_label'] }}</p>
-                            @endif
-                            <div class="flex gap-2">
-                                @if ($isOpen && !empty($training['register_url']))
-                                    <a href="{{ $training['register_url'] }}" class="flex-1 inline-flex items-center justify-center min-w-0 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-800 transition">
-                                        Register
-                                    </a>
-                                    <a href="{{ $training['details_url'] }}" class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                                        Details
-                                    </a>
-                                @else
-                                    <button type="button" disabled class="flex-1 inline-flex items-center justify-center min-w-0 bg-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed">
-                                        Coming Soon
-                                    </button>
-                                    <a href="{{ url('/login') }}" class="flex-1 inline-flex items-center justify-center min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                                        Login
-                                    </a>
-                                @endif
+                            <div class="px-5 py-4 border-b border-slate-100 {{ $theme['accent'] ?? 'bg-emerald-50' }}">
+                                <h3 class="text-base font-bold text-slate-900 line-clamp-2">{{ $training['title'] }}</h3>
                             </div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="md:col-span-2 lg:col-span-3 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-8 text-center">
-                        <h3 class="text-lg font-semibold text-slate-800">No published trainings yet</h3>
-                        <p class="mt-2 text-sm text-slate-600">Published training modules will appear here. Participants can also log in for self-paced access.</p>
-                        <a href="{{ url('/login') }}" class="mt-4 inline-flex items-center justify-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800">Login</a>
-                    </div>
-                @endforelse
-            </div>
-        </div>
-    </section>
-    
-    <!-- 5️⃣ How the System Works (stacked cards, reveal 1→5 on scroll – CodePen-style) -->
-    <section id="how-it-works" class="section-how-it-works-bg py-16">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="how-it-works-stack-container" id="how-it-works-stack-container">
-                <div class="how-it-works-stack">
-                    <div class="how-it-works-stack-heading scroll-reveal">
-                        <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">How It Works</h2>
-                        <p class="text-xl text-gray-600 max-w-3xl mx-auto">Simple, transparent process from registration to certification</p>
-                    </div>
-                    <div class="how-it-works-stack-cards reveal-1" id="how-it-works-stack-cards">
-                    <div class="stack-card bg-teal-50 how-it-works-card">
-                        <h3 class="text-2xl font-bold text-teal-800 mb-2">1. Register as Participant</h3>
-                        <p class="text-gray-700">Create your account with basic information and verify your identity.</p>
-                    </div>
-                    <div class="stack-card bg-teal-50 how-it-works-card">
-                        <h3 class="text-2xl font-bold text-teal-800 mb-2">2. Join a Training or Drill</h3>
-                        <p class="text-gray-700">Browse available events and register for the training programs you're interested in.</p>
-                    </div>
-                    <div class="stack-card bg-teal-50 how-it-works-card">
-                        <h3 class="text-2xl font-bold text-teal-800 mb-2">3. Attend the Simulation</h3>
-                        <p class="text-gray-700">Participate in hands-on training and realistic disaster simulation exercises.</p>
-                    </div>
-                    <div class="stack-card bg-teal-50 how-it-works-card">
-                        <h3 class="text-2xl font-bold text-teal-800 mb-2">4. Get Evaluated</h3>
-                        <p class="text-gray-700">Your performance is assessed based on established criteria and competency standards.</p>
-                    </div>
-                    <div class="stack-card bg-gradient-to-r from-teal-600 to-teal-700 text-white how-it-works-card">
-                        <h3 class="text-2xl font-bold mb-2">5. Receive Certification 🎓</h3>
-                        <p>Download your official digital certificate and add it to your professional profile.</p>
-                    </div>
-                </div>
-            </div>
-            </div>
-        </div>
-    </section>
-    
-    <!-- 6️⃣ Certifications & Benefits -->
-    <section class="py-20 bg-gradient-to-br from-teal-700 to-teal-900 text-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-extrabold mb-4">
-                    Certifications & Benefits
-                </h2>
-                <p class="text-xl text-teal-100 max-w-3xl mx-auto">
-                    Enhance your skills and earn recognized certifications
-                </p>
-            </div>
-            
-            <div class="grid md:grid-cols-2 gap-12 items-center">
-                <!-- Left: Benefits -->
-                <div class="space-y-6">
-                    <div class="flex items-start space-x-4">
-                        <div class="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold mb-2">Digital Certificates Issued</h3>
-                            <p class="text-teal-100">Official LGU-issued certificates upon successful completion of training programs.</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start space-x-4">
-                        <div class="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold mb-2">Proof of Participation</h3>
-                            <p class="text-teal-100">Verified attendance records and participation certificates for all completed drills.</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start space-x-4">
-                        <div class="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold mb-2">Skills Gained</h3>
-                            <p class="text-teal-100">Emergency response, evacuation procedures, first aid, team coordination, and more.</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start space-x-4">
-                        <div class="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/>
-                                <path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold mb-2">Career Benefits</h3>
-                            <p class="text-teal-100">Enhance employability, fulfill school requirements, and contribute to community resilience.</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Right: Visual -->
-                <div class="flex justify-center">
-                    <div class="bg-white/10 backdrop-blur-lg p-8 rounded-3xl shadow-2xl border border-white/20">
-                        <div class="bg-white p-8 rounded-2xl shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                            <div class="text-center">
-                                <div class="w-20 h-20 bg-teal-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <h4 class="text-2xl font-bold text-gray-800 mb-2">Official Certificate</h4>
-                                <p class="text-gray-600 mb-4">Disaster Preparedness Training</p>
-                                <div class="border-t border-gray-200 pt-4">
-                                    <p class="text-sm text-gray-500">Issued by:</p>
-                                    <p class="font-semibold text-gray-800">Local Government Unit</p>
+                            <div class="p-5 flex flex-col flex-1">
+                                <p class="text-sm text-slate-600 leading-relaxed flex-1">{{ $training['description'] }}</p>
+                                @if (!empty($training['batch_label']) && $isOpen)
+                                    <p class="mt-3 text-xs text-slate-500">{{ $training['batch_label'] }}</p>
+                                @endif
+                                @if (!empty($training['seats_remaining']) && $isOpen)
+                                    <p class="mt-1 text-xs font-medium text-amber-700">{{ $training['seats_remaining'] }} seats remaining</p>
+                                @endif
+                                <div class="mt-4 flex gap-2">
+                                    @if ($isOpen && !empty($training['register_url']))
+                                        <a href="{{ $training['register_url'] }}" class="landing-btn-primary flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
+                                            Register
+                                        </a>
+                                        <a href="{{ $training['details_url'] }}" class="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50">
+                                            Details
+                                        </a>
+                                    @else
+                                        <span class="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-slate-500 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed">
+                                            Coming soon
+                                        </span>
+                                        <a href="{{ url('/participant/login') }}" class="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50">
+                                            Login
+                                        </a>
+                                    @endif
                                 </div>
                             </div>
+                        </article>
+                    @empty
+                        <div class="landing-reveal md:col-span-2 lg:col-span-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+                            <h3 class="text-lg font-semibold text-slate-800">No published trainings yet</h3>
+                            <p class="mt-2 text-sm text-slate-600">Published modules will appear here when your LGU opens registration campaigns.</p>
+                            <a href="{{ url('/participant/login') }}" class="landing-btn-primary mt-4 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">Participant login</a>
                         </div>
+                    @endforelse
+                </div>
+            </div>
+        </section>
+
+        {{-- How it works --}}
+        <section id="how-it-works" class="py-14 lg:py-16 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="landing-reveal max-w-2xl mb-10">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Participant journey</p>
+                    <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-slate-900">How it works</h2>
+                    <p class="mt-3 text-slate-600">From registration to verifiable certificate—five clear steps.</p>
+                </div>
+                <div class="relative">
+                    <div class="landing-timeline-line" aria-hidden="true">
+                        <div id="landing-timeline-progress" class="landing-timeline-progress"></div>
+                    </div>
+                    <ol class="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        @foreach ([
+                            ['step' => '1', 'title' => 'Register', 'desc' => 'Create your participant account and verify your email.'],
+                            ['step' => '2', 'title' => 'Join training', 'desc' => 'Enroll in an open campaign or assigned training module.'],
+                            ['step' => '3', 'title' => 'Attend drill', 'desc' => 'Participate in simulation events and mark attendance.'],
+                            ['step' => '4', 'title' => 'Get evaluated', 'desc' => 'Complete evaluations for modules and event drills.'],
+                            ['step' => '5', 'title' => 'Receive certificate', 'desc' => 'Download, verify, and share your digital LGU certificate.'],
+                        ] as $item)
+                            <li class="landing-step rounded-2xl border border-slate-200 bg-white p-5 shadow-sm relative z-10">
+                                <span class="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-emerald-600 text-white text-sm font-bold">{{ $item['step'] }}</span>
+                                <h3 class="mt-3 text-sm font-semibold text-slate-900">{{ $item['title'] }}</h3>
+                                <p class="mt-1.5 text-xs text-slate-600 leading-relaxed">{{ $item['desc'] }}</p>
+                            </li>
+                        @endforeach
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        {{-- Certifications --}}
+        <section class="py-14 lg:py-16 bg-white border-y border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid lg:grid-cols-2 gap-10 items-center">
+                    <div class="landing-reveal">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Certifications</p>
+                        <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-slate-900">Recognized completion records</h2>
+                        <p class="mt-3 text-slate-600">Successful participants receive LGU-issued digital certificates with verification support.</p>
+                        <ul class="mt-6 space-y-4">
+                            @foreach ([
+                                ['title' => 'Digital certificates', 'desc' => 'Official records upon successful completion of training and drills.'],
+                                ['title' => 'Verification & QR', 'desc' => 'Third parties can confirm authenticity through verify links and QR codes.'],
+                                ['title' => 'Skills documentation', 'desc' => 'Attendance, evaluations, and certificates tracked in your participant portal.'],
+                            ] as $benefit)
+                                <li class="flex gap-3">
+                                    <span class="shrink-0 w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                    </span>
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-900">{{ $benefit['title'] }}</p>
+                                        <p class="text-sm text-slate-600">{{ $benefit['desc'] }}</p>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    <div class="landing-reveal">
+                        <div id="landing-cert-scene" class="landing-cert-scene" tabindex="0" role="button" aria-label="Sample certificate — hover to tilt, click to flip">
+                            <div id="landing-cert-flipper" class="landing-cert-flipper">
+                                <div id="landing-cert-tilt" class="landing-cert-tilt">
+                                    {{-- Front --}}
+                                    <article class="landing-cert-face landing-cert-front">
+                                        <div id="landing-cert-shine" class="landing-cert-shine" aria-hidden="true"></div>
+                                        <div class="landing-cert-inner">
+                                            <div class="landing-cert-border">
+                                                <div class="landing-cert-content">
+                                                    <div class="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p class="text-[10px] uppercase tracking-[0.2em] text-emerald-800/80">Republic of the Philippines</p>
+                                                            <p class="text-xs font-semibold text-slate-800 mt-0.5">Local Government Unit</p>
+                                                            <p class="text-[10px] text-slate-500">Disaster Preparedness Office</p>
+                                                        </div>
+                                                        <div class="landing-cert-seal" aria-hidden="true">
+                                                            <span class="text-[8px] font-bold uppercase tracking-wide text-emerald-900">LGU</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="text-center my-4 sm:my-5">
+                                                        <p class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-emerald-700 font-semibold">Certificate of Completion</p>
+                                                        <p class="text-[10px] text-slate-500 mt-2">This certifies that</p>
+                                                        <p class="text-lg sm:text-xl font-bold text-slate-900 mt-1 font-serif tracking-tight">Maria Clara Santos</p>
+                                                        <p class="text-[10px] sm:text-xs text-slate-500 mt-3 max-w-xs mx-auto leading-relaxed">
+                                                            has successfully completed the training and simulation requirements for
+                                                        </p>
+                                                        <p class="text-sm sm:text-base font-semibold text-emerald-800 mt-2 leading-snug">Earthquake Preparedness &amp; Evacuation Drill</p>
+                                                    </div>
+
+                                                    <div class="grid grid-cols-2 gap-3 text-[10px] sm:text-xs border-t border-emerald-100 pt-3 mt-auto">
+                                                        <div>
+                                                            <p class="text-slate-400 uppercase tracking-wide">Event date</p>
+                                                            <p class="font-medium text-slate-800 mt-0.5">March 15, 2026</p>
+                                                        </div>
+                                                        <div>
+                                                            <p class="text-slate-400 uppercase tracking-wide">Certificate no.</p>
+                                                            <p class="font-mono font-medium text-slate-800 mt-0.5">CERT-2026-004821</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-end justify-between gap-3 mt-4 pt-3 border-t border-dashed border-emerald-200/80">
+                                                        <div class="space-y-3 flex-1">
+                                                            <div>
+                                                                <div class="h-px w-28 bg-slate-400"></div>
+                                                                <p class="text-[9px] text-slate-500 mt-1">LGU Trainer / Facilitator</p>
+                                                            </div>
+                                                            <div>
+                                                                <div class="h-px w-28 bg-slate-400"></div>
+                                                                <p class="text-[9px] text-slate-500 mt-1">LGU Administrator</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="shrink-0 text-center">
+                                                            <div class="landing-cert-qr bg-white p-1 border border-slate-200 rounded" aria-hidden="true">
+                                                                <svg viewBox="0 0 64 64" class="w-14 h-14 sm:w-16 sm:h-16 text-slate-900">
+                                                                    <rect width="64" height="64" fill="white"/>
+                                                                    <path fill="currentColor" d="M8 8h16v16H8V8zm4 4v8h8v-8h-8zm20-4h16v16H32V8zm4 4v8h8v-8h-8zM8 32h16v16H8V32zm4 4v8h8v-8h-8zm12 0h4v4h-4v-4zm8 0h4v4h-4v-4zm8 0h4v4h-4v-4zm-8 8h4v4h-4v-4zm8-8h4v4h-4v-4zm0 8h4v4h-4v-4zm8-8h8v8h-8v-8zm0 12h4v4h-4v-4zm-12 4h4v4h-4v-4zM32 32h16v16H32V32zm4 4v8h8v-8h-8z"/>
+                                                                </svg>
+                                                            </div>
+                                                            <p class="text-[8px] text-slate-400 mt-1">Scan to verify</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </article>
+
+                                    {{-- Back --}}
+                                    <article class="landing-cert-face landing-cert-back">
+                                        <div class="landing-cert-inner landing-cert-inner-back">
+                                            <div class="landing-cert-border">
+                                                <div class="landing-cert-content text-center">
+                                                    <p class="text-xs uppercase tracking-[0.2em] text-emerald-700 font-semibold">Verification record</p>
+                                                    <p class="text-sm font-bold text-slate-900 mt-2">ALERTARA Digital Certificate</p>
+                                                    <p class="text-xs text-slate-500 mt-1">Sample data for demonstration only</p>
+
+                                                    <div class="mt-5 rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 text-left text-xs space-y-2">
+                                                        <div class="flex justify-between gap-2"><span class="text-slate-500">Status</span><span class="font-semibold text-emerald-700">Valid</span></div>
+                                                        <div class="flex justify-between gap-2"><span class="text-slate-500">Issued</span><span class="font-medium text-slate-800">Mar 15, 2026</span></div>
+                                                        <div class="flex justify-between gap-2"><span class="text-slate-500">Participant</span><span class="font-medium text-slate-800">Maria Clara Santos</span></div>
+                                                        <div class="flex justify-between gap-2"><span class="text-slate-500">Program</span><span class="font-medium text-slate-800 text-right">Earthquake Preparedness</span></div>
+                                                    </div>
+
+                                                    <div class="mt-5 mx-auto w-fit landing-cert-qr bg-white p-2 border border-slate-200 rounded-lg" aria-hidden="true">
+                                                        <svg viewBox="0 0 64 64" class="w-20 h-20 text-slate-900">
+                                                            <rect width="64" height="64" fill="white"/>
+                                                            <path fill="currentColor" d="M8 8h16v16H8V8zm4 4v8h8v-8h-8zm20-4h16v16H32V8zm4 4v8h8v-8h-8zM8 32h16v16H8V32zm4 4v8h8v-8h-8zm12 0h4v4h-4v-4zm8 0h4v4h-4v-4zm8 0h4v4h-4v-4zm-8 8h4v4h-4v-4zm8-8h4v4h-4v-4zm0 8h4v4h-4v-4zm8-8h8v8h-8v-8zm0 12h4v4h-4v-4zm-12 4h4v4h-4v-4zM32 32h16v16H32V32zm4 4v8h8v-8h-8z"/>
+                                                        </svg>
+                                                    </div>
+                                                    <p class="text-[10px] font-mono text-slate-500 mt-3 break-all">verify.alertara.local/CERT-2026-004821</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-center text-xs text-slate-500 mt-4">
+                            <span class="hidden sm:inline">Hover to tilt</span><span class="hidden sm:inline"> · </span>Click to flip
+                        </p>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-    
-    <!-- 7️⃣ Announcements & Notices -->
-    <section class="py-20 bg-gray-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4">
-                    Announcements & Notices
-                </h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Stay updated with the latest news and schedules
-                </p>
+        </section>
+
+        {{-- Announcements --}}
+        <section id="announcements" class="py-14 lg:py-16">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="landing-reveal max-w-2xl mb-8">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Updates</p>
+                    <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-slate-900">Announcements &amp; notices</h2>
+                    <p class="mt-3 text-slate-600">Live updates from open campaigns and upcoming simulation events.</p>
+                </div>
+                @if (count($landingAnnouncements ?? []) > 0)
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @foreach ($landingAnnouncements as $notice)
+                            @php
+                                $toneClass = match ($notice['tone'] ?? 'slate') {
+                                    'amber' => 'border-amber-200 bg-amber-50/50',
+                                    'sky' => 'border-sky-200 bg-sky-50/50',
+                                    default => 'border-slate-200 bg-white',
+                                };
+                            @endphp
+                            <a href="{{ $notice['href'] ?? '#' }}" class="landing-notice block rounded-2xl border p-5 shadow-sm {{ $toneClass }}">
+                                <p class="text-xs text-slate-500">{{ $notice['date_label'] ?? '' }}</p>
+                                <h3 class="mt-1 text-base font-semibold text-slate-900">{{ $notice['title'] }}</h3>
+                                <p class="mt-2 text-sm text-slate-600">{{ $notice['message'] }}</p>
+                            </a>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="landing-reveal rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
+                        No active announcements right now. Check back when new training campaigns or events are published.
+                    </div>
+                @endif
             </div>
-            
-            <div class="grid md:grid-cols-3 gap-8">
-                <!-- Announcement 1 -->
-                <div class="bg-white border-l-4 border-red-500 shadow-lg rounded-lg p-6 card-hover">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-gray-500 mb-1">Dec 22, 2025</p>
-                            <h3 class="text-lg font-bold text-gray-900 mb-2">Earthquake Drill - Registration Deadline</h3>
-                            <p class="text-gray-600 text-sm">Final day to register for the Earthquake Preparedness Drill scheduled for Dec 28, 2025. Limited slots available.</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Announcement 2 -->
-                <div class="bg-white border-l-4 border-blue-500 shadow-lg rounded-lg p-6 card-hover">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-gray-500 mb-1">Dec 20, 2025</p>
-                            <h3 class="text-lg font-bold text-gray-900 mb-2">Upcoming Flood Response Training</h3>
-                            <p class="text-gray-600 text-sm">Flood Response Simulation will be conducted on January 15, 2026. Early registration now open for all qualified participants.</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Announcement 3 -->
-                <div class="bg-white border-l-4 border-green-500 shadow-lg rounded-lg p-6 card-hover">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-gray-500 mb-1">Dec 18, 2025</p>
-                            <h3 class="text-lg font-bold text-gray-900 mb-2">LGU Advisory: System Maintenance</h3>
-                            <p class="text-gray-600 text-sm">System maintenance scheduled for Dec 24, 2025, 11 PM - 3 AM. Registration and login may be temporarily unavailable.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-    
-    <!-- 8️⃣ Footer Section -->
-    <footer class="bg-gray-900 text-gray-300 py-12">
+        </section>
+    </main>
+
+    <footer class="border-t border-slate-800 bg-slate-900 text-slate-300 py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid md:grid-cols-4 gap-8 mb-8">
-                <!-- About -->
                 <div>
-                    <div class="flex items-center space-x-3 mb-4">
-                        <img src="{{ asset('images/logo.svg') }}" alt="LGU Logo" class="h-10 w-auto">
-                        <h3 class="text-white font-bold text-lg">LGU ALERTARA</h3>
+                    <div class="flex items-center gap-3 mb-4">
+                        <img src="{{ asset('images/logo.svg') }}" alt="ALERTARA" class="h-9 w-auto">
+                        <span class="text-white font-bold">ALERTARA</span>
                     </div>
-                    <p class="text-sm leading-relaxed">
-                        Building safer, more resilient communities through comprehensive disaster preparedness training and simulation programs.
+                    <p class="text-sm leading-relaxed text-slate-400">
+                        Building safer, more resilient communities through disaster preparedness training and simulation programs.
                     </p>
                 </div>
-                
-                <!-- Quick Links -->
                 <div>
-                    <h4 class="text-white font-bold mb-4">Quick Links</h4>
+                    <h4 class="text-white font-semibold mb-4 text-sm">Quick links</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#home" class="hover:text-teal-400 transition">Home</a></li>
-                        <li><a href="#about" class="hover:text-teal-400 transition">About the Program</a></li>
-                        <li><a href="#trainings" class="hover:text-teal-400 transition">Trainings & Drills</a></li>
-                        <li><a href="#how-it-works" class="hover:text-teal-400 transition">How It Works</a></li>
+                        <li><a href="#home" class="hover:text-emerald-400 transition-colors">Home</a></li>
+                        <li><a href="#about" class="hover:text-emerald-400 transition-colors">About</a></li>
+                        <li><a href="#trainings" class="hover:text-emerald-400 transition-colors">Trainings</a></li>
+                        <li><a href="#how-it-works" class="hover:text-emerald-400 transition-colors">How it works</a></li>
                     </ul>
                 </div>
-                
-                <!-- Contact -->
                 <div>
-                    <h4 class="text-white font-bold mb-4">Contact Information</h4>
-                    <ul class="space-y-3 text-sm">
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-teal-400 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
-                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
-                            </svg>
-                            <span>disaster.preparedness@lgu.gov.ph</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-teal-400 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-                            </svg>
-                            <span>+63 (2) 123-4567</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-teal-400 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>LGU Main Office, City Hall Complex</span>
-                        </li>
+                    <h4 class="text-white font-semibold mb-4 text-sm">Access</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="{{ url('/register') }}" class="hover:text-emerald-400 transition-colors">Register</a></li>
+                        <li><a href="{{ url('/participant/login') }}" class="hover:text-emerald-400 transition-colors">Participant login</a></li>
+                        <li><a href="{{ url('/admin/login') }}" class="hover:text-emerald-400 transition-colors">LGU admin login</a></li>
                     </ul>
                 </div>
-                
-                <!-- Legal -->
                 <div>
-                    <h4 class="text-white font-bold mb-4">Legal</h4>
+                    <h4 class="text-white font-semibold mb-4 text-sm">Legal</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="{{ route('privacy') }}" class="hover:text-teal-400 transition">Privacy Policy</a></li>
-                        <li><a href="{{ route('terms') }}" class="hover:text-teal-400 transition">Terms and Conditions</a></li>
-                        <li><a href="{{ route('data.protection') }}" class="hover:text-teal-400 transition">Data Protection</a></li>
-                        <li><a href="{{ route('accessibility') }}" class="hover:text-teal-400 transition">Accessibility</a></li>
+                        <li><a href="{{ route('privacy') }}" class="hover:text-emerald-400 transition-colors">Privacy Policy</a></li>
+                        <li><a href="{{ route('terms') }}" class="hover:text-emerald-400 transition-colors">Terms &amp; Conditions</a></li>
+                        <li><a href="{{ route('data.protection') }}" class="hover:text-emerald-400 transition-colors">Data Protection</a></li>
+                        <li><a href="{{ route('accessibility') }}" class="hover:text-emerald-400 transition-colors">Accessibility</a></li>
                     </ul>
                 </div>
             </div>
-            
-            <!-- Bottom Bar -->
-            <div class="border-t border-gray-800 pt-8 text-center text-sm">
-                <p>&copy; 2025 Local Government Unit - Disaster Preparedness Office. All rights reserved.</p>
-                <p class="mt-2 text-gray-500">Powered by LGU LERTARA - Building Resilient Communities</p>
+            <div class="border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
+                <p>&copy; {{ date('Y') }} Local Government Unit — Disaster Preparedness Office. All rights reserved.</p>
+                <p class="mt-1">Powered by ALERTARA</p>
             </div>
         </div>
     </footer>
-    
-    <!-- Mobile Menu Toggle Script -->
-    <script>
-        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
-            const menu = document.getElementById('mobile-menu');
-            menu.classList.toggle('hidden');
-        });
-        
-        // Close mobile menu when clicking on a link
-        document.querySelectorAll('#mobile-menu a').forEach(link => {
-            link.addEventListener('click', function() {
-                document.getElementById('mobile-menu').classList.add('hidden');
-            });
-        });
-        
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
-        });
-        
-        // Navbar background on scroll
-        window.addEventListener('scroll', function() {
-            const nav = document.querySelector('nav');
-            if (window.scrollY > 50) {
-                nav.style.backgroundColor = 'rgba(255, 255, 255, 0.98)';
-            } else {
-                nav.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-            }
-        });
-        
-        // Scroll-based reveal (Apple-style): reveal elements when they enter viewport
-        (function() {
-            const revealEls = document.querySelectorAll('.scroll-reveal');
-            if (!revealEls.length) return;
-            const observer = new IntersectionObserver(function(entries) {
-                entries.forEach(function(entry) {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('is-visible');
-                    }
-                });
-            }, { rootMargin: '0px 0px -60px 0px', threshold: 0.1 });
-            revealEls.forEach(function(el) { observer.observe(el); });
-        })();
-        
-        // Section background images: scroll transition (reveal when section enters view)
-        (function() {
-            const sections = document.querySelectorAll('.section-about-bg, .section-trainings-bg, .section-how-it-works-bg');
-            if (!sections.length) return;
-            const observer = new IntersectionObserver(function(entries) {
-                entries.forEach(function(entry) {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('section-image-visible');
-                    }
-                });
-            }, { rootMargin: '0px 0px -80px 0px', threshold: 0.15 });
-            sections.forEach(function(section) { observer.observe(section); });
-        })();
-        
-        // How It Works: scroll-driven 3-layer media (SafetyKit.png → video → safetykit2.png)
-        (function() {
-            var section = document.getElementById('how-it-works');
-            var videoLayer = document.getElementById('how-it-works-video-layer');
-            var imageLayer = document.getElementById('how-it-works-image-layer');
-            var video = document.getElementById('how-it-works-video');
-            if (!section || !videoLayer || !imageLayer || !video || typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
-
-            gsap.registerPlugin(ScrollTrigger);
-
-            function initScrollTriggerVideo() {
-                ScrollTrigger.create({
-                    trigger: section,
-                    start: 'top top',
-                    end: 'bottom top',
-                    scrub: 1,
-                    onUpdate: function(self) {
-                        var p = self.progress;
-                        if (video.readyState >= 2 && video.duration && !isNaN(video.duration)) {
-                            video.currentTime = p * video.duration;
-                        }
-                        videoLayer.style.opacity = p <= 0.85 ? 1 : Math.max(0, 1 - (p - 0.85) / 0.15);
-                        imageLayer.style.opacity = p <= 0.75 ? 0 : Math.min(1, (p - 0.75) / 0.2);
-                    }
-                });
-                ScrollTrigger.refresh();
-            }
-            
-            video.addEventListener('loadedmetadata', updateHowItWorksMedia);
-            video.addEventListener('loadeddata', updateHowItWorksMedia);
-            window.addEventListener('scroll', updateHowItWorksMedia, { passive: true });
-            window.addEventListener('resize', updateHowItWorksMedia);
-            updateHowItWorksMedia();
-        })();
-
-        // How It Works: stacked cards – reveal card 1→5 as user scrolls (CodePen-style)
-        (function() {
-            var container = document.getElementById('how-it-works-stack-container');
-            var cardsEl = document.getElementById('how-it-works-stack-cards');
-            if (!container || !cardsEl) return;
-            function updateStackReveal() {
-                var rect = container.getBoundingClientRect();
-                var windowHeight = window.innerHeight;
-                var containerHeight = container.offsetHeight;
-                var scrollProgress = 0;
-                if (rect.top < windowHeight && rect.bottom > 0) {
-                    var visibleStart = Math.max(0, windowHeight - rect.top);
-                    scrollProgress = Math.min(1, visibleStart / (containerHeight * 0.85));
-                }
-                var step = Math.floor(scrollProgress * 5) + 1;
-                step = Math.max(1, Math.min(5, step));
-                cardsEl.classList.remove('reveal-1', 'reveal-2', 'reveal-3', 'reveal-4', 'reveal-5');
-                cardsEl.classList.add('reveal-' + step);
-            }
-            window.addEventListener('scroll', updateStackReveal, { passive: true });
-            window.addEventListener('resize', updateStackReveal);
-            updateStackReveal();
-        })();
-    </script>
 </body>
 </html>

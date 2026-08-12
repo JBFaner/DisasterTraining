@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SimulationEvent;
 use App\Models\TrainingModule;
 use App\Services\CampaignRegistrationService;
 use App\Support\CampaignRegistrationLink;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class WelcomeController extends Controller
@@ -15,8 +17,16 @@ class WelcomeController extends Controller
 
     public function __invoke(): View
     {
+        $landingTrainings = $this->buildLandingTrainings();
+        $openCampaigns = $this->campaignRegistration->listOpenForRegistration();
+
         return view('welcome', [
-            'landingTrainings' => $this->buildLandingTrainings(),
+            'landingTrainings' => $landingTrainings,
+            'landingStats' => [
+                'published_modules' => count($landingTrainings),
+                'open_registrations' => count($openCampaigns),
+            ],
+            'landingAnnouncements' => $this->buildLandingAnnouncements($openCampaigns),
         ]);
     }
 
@@ -49,19 +59,20 @@ class WelcomeController extends Controller
                     'id' => $moduleId,
                     'title' => $module->title,
                     'category' => $module->category,
-                    'description' => \Illuminate\Support\Str::limit($description, 160),
+                    'description' => Str::limit($description, 160),
                     'status' => $isOpen ? 'open' : 'upcoming',
-                    'status_label' => $isOpen ? 'OPEN' : 'UPCOMING',
+                    'status_label' => $isOpen ? 'Open' : 'Upcoming',
                     'register_url' => $isOpen
                         ? CampaignRegistrationLink::forCampaignRequest((int) $openCampaign['campaign_request_id'])
                         : null,
                     'register_label' => $isOpen ? 'Register' : 'Coming Soon',
                     'details_url' => $isOpen
                         ? CampaignRegistrationLink::forCampaignRequest((int) $openCampaign['campaign_request_id'])
-                        : url('/login'),
+                        : url('/participant/login'),
                     'details_label' => $isOpen ? 'Details' : 'Login',
                     'batch_label' => $isOpen ? ($openCampaign['batch_label'] ?? null) : null,
                     'seats_remaining' => $isOpen ? ($openCampaign['seats_remaining'] ?? null) : null,
+                    'image_url' => $this->imageForCategory((string) ($module->category ?? '')),
                     'theme' => $theme,
                 ];
             })
@@ -70,33 +81,107 @@ class WelcomeController extends Controller
     }
 
     /**
-     * @return array{gradient: string, badge: string, emoji: string}
+     * @param  list<array<string, mixed>>  $openCampaigns
+     * @return list<array<string, mixed>>
+     */
+    private function buildLandingAnnouncements(array $openCampaigns): array
+    {
+        $announcements = collect($openCampaigns)
+            ->map(function (array $campaign) {
+                $title = $campaign['training_title'] ?? $campaign['module_title'] ?? 'Training campaign';
+                $deadline = $campaign['registration_deadline'] ?? null;
+                $seats = $campaign['seats_remaining'] ?? null;
+
+                $message = 'Registration is open for this approved training campaign.';
+                if ($deadline) {
+                    $message = 'Register before '.(\Illuminate\Support\Carbon::parse($deadline)->format('M j, Y')).'.';
+                }
+                if ($seats !== null) {
+                    $message .= ' '.$seats.' seat'.($seats === 1 ? '' : 's').' remaining.';
+                }
+
+                return [
+                    'type' => 'registration',
+                    'tone' => 'amber',
+                    'title' => $title,
+                    'message' => trim($message),
+                    'date_label' => $deadline
+                        ? \Illuminate\Support\Carbon::parse($deadline)->format('M j, Y')
+                        : now()->format('M j, Y'),
+                    'href' => CampaignRegistrationLink::forCampaignRequest((int) $campaign['campaign_request_id']),
+                ];
+            })
+            ->values();
+
+        $upcomingEvents = SimulationEvent::query()
+            ->whereIn('status', ['published', 'ongoing'])
+            ->whereDate('event_date', '>=', now()->toDateString())
+            ->orderBy('event_date')
+            ->limit(3)
+            ->get(['id', 'title', 'event_date', 'status']);
+
+        foreach ($upcomingEvents as $event) {
+            $announcements->push([
+                'type' => 'event',
+                'tone' => 'sky',
+                'title' => $event->title,
+                'message' => 'Upcoming simulation event on '.$event->event_date->format('M j, Y').'.',
+                'date_label' => $event->event_date->format('M j, Y'),
+                'href' => url('/participant/login'),
+            ]);
+        }
+
+        return $announcements->take(6)->all();
+    }
+
+    /**
+     * @return array{accent: string, badge: string, icon_bg: string, image: string}
      */
     private function themeForCategory(string $category): array
     {
         $key = strtolower(trim($category));
+        $image = $this->imageForCategory($category);
 
         return match (true) {
             str_contains($key, 'earthquake') => [
-                'gradient' => 'from-orange-400 to-orange-600',
-                'badge' => 'bg-orange-100 text-orange-800',
-                'emoji' => '🟠',
+                'accent' => 'border-orange-200 bg-orange-50 text-orange-800',
+                'badge' => 'bg-orange-100 text-orange-800 border-orange-200',
+                'icon_bg' => 'bg-orange-100 text-orange-700',
+                'image' => $image,
             ],
             str_contains($key, 'fire') => [
-                'gradient' => 'from-red-400 to-red-600',
-                'badge' => 'bg-red-100 text-red-800',
-                'emoji' => '🔴',
+                'accent' => 'border-rose-200 bg-rose-50 text-rose-800',
+                'badge' => 'bg-rose-100 text-rose-800 border-rose-200',
+                'icon_bg' => 'bg-rose-100 text-rose-700',
+                'image' => $image,
             ],
             str_contains($key, 'flood') => [
-                'gradient' => 'from-blue-400 to-blue-600',
-                'badge' => 'bg-blue-100 text-blue-800',
-                'emoji' => '🔵',
+                'accent' => 'border-sky-200 bg-sky-50 text-sky-800',
+                'badge' => 'bg-sky-100 text-sky-800 border-sky-200',
+                'icon_bg' => 'bg-sky-100 text-sky-700',
+                'image' => $image,
             ],
             default => [
-                'gradient' => 'from-teal-400 to-teal-700',
-                'badge' => 'bg-teal-100 text-teal-800',
-                'emoji' => '🟢',
+                'accent' => 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                'badge' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                'icon_bg' => 'bg-emerald-100 text-emerald-700',
+                'image' => $image,
             ],
         };
+    }
+
+    private function imageForCategory(string $category): string
+    {
+        $key = strtolower(trim($category));
+
+        $filename = match (true) {
+            str_contains($key, 'earthquake') => 'training-earthquake.jpg',
+            str_contains($key, 'fire') => 'training-fire.jpg',
+            str_contains($key, 'flood') => 'training-flood.jpg',
+            str_contains($key, 'typhoon'), str_contains($key, 'storm') => 'training-flood.jpg',
+            default => 'training-default.jpg',
+        };
+
+        return asset('images/landing/'.$filename);
     }
 }

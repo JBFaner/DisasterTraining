@@ -17,7 +17,13 @@ export default defineConfig({
     },
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.jsx', 'resources/js/auth.jsx', 'resources/js/campaign-register.jsx'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.jsx',
+                'resources/js/auth.jsx',
+                'resources/js/campaign-register.jsx',
+                'resources/js/landing.js',
+            ],
             refresh: true,
         }),
         react({

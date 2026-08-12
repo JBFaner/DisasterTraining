@@ -28,7 +28,7 @@
                 <span class="hidden sm:inline text-xs font-semibold text-emerald-700">Terms of Service</span>
             </div>
             <span class="hidden sm:inline text-xs text-slate-500">
-                Last updated: August 2, 2026
+                Last updated: August 12, 2026
             </span>
         </div>
     </div>
@@ -55,7 +55,7 @@
                         <span>Operational use only</span>
                     </div>
                     <p class="text-emerald-100">
-                        Last updated <span class="font-medium">August 2, 2026</span>
+                        Last updated <span class="font-medium">August 12, 2026</span>
                     </p>
                 </div>
             </div>
@@ -132,20 +132,42 @@
                             </p>
                         </div>
                     </div>
-                    <div class="border-l-2 border-emerald-100 pl-4 space-y-2">
+                    <div class="border-l-2 border-emerald-100 pl-4 space-y-3">
                         <h3 class="text-sm font-semibold text-slate-900">
-                            System Purpose
+                            What the System Provides
                         </h3>
                         <p class="text-sm text-slate-600">
-                            The System is a web‑based platform used by Local Government Units (LGUs) and partners to:
+                            ALERtARA is a web-based platform used by Local Government Units (LGUs) and partners for disaster preparedness training and simulation operations, including:
                         </p>
-                        <ul class="text-sm text-slate-600 list-disc pl-5 space-y-1">
-                            <li>Design and deliver disaster preparedness and response training modules;</li>
-                            <li>Plan and manage simulation events and scenario‑based exercises;</li>
-                            <li>Register participants and track attendance, lesson completion, and certifications;</li>
-                            <li>Manage resources, equipment, hazard assessment profiles, and exercise planning;</li>
-                            <li>Support evaluation, reporting, database backup for operational continuity, and continuous improvement of preparedness programs.</li>
-                        </ul>
+                        <div class="grid sm:grid-cols-2 gap-3 text-sm text-slate-600">
+                            <div>
+                                <p class="font-semibold text-slate-800 mb-1">Admin &amp; LGU tools</p>
+                                <ul class="list-disc pl-5 space-y-1">
+                                    <li>Operations dashboard, KPIs, and hazard analytics;</li>
+                                    <li>Training modules with lessons, resources, and optional AI-assisted content generation;</li>
+                                    <li>AI scenario training, final assessments, and lesson quiz generator workflows;</li>
+                                    <li>Scenario design, simulation exercise templates, and event planning from approved campaigns;</li>
+                                    <li>Simulation event lifecycle, monitoring, attendance, and evaluations;</li>
+                                    <li>Certification templates, issuance, revocation, and export;</li>
+                                    <li>Resource inventory, budget proposals, hazard assessment profiles;</li>
+                                    <li>Audit logs and in-app database backup &amp; recovery.</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-slate-800 mb-1">Participant portal &amp; public features</p>
+                                <ul class="list-disc pl-5 space-y-1">
+                                    <li>Personal dashboard, training progress, and in-app notifications;</li>
+                                    <li>Lesson completion, AI scenario attempts, and lesson quizzes;</li>
+                                    <li>Event registration, self check-in, attendance, and My Trainings;</li>
+                                    <li>Evaluation results, attempt history, and portfolio export;</li>
+                                    <li>Digital certificates with verify/share/email options;</li>
+                                    <li>Public certificate verification and campaign registration pages.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500">
+                            Access depends on your role, LGU configuration, campaign approval status, and module or event publication state. Not all features are available to every user.
+                        </p>
                     </div>
                 </div>
 
@@ -155,16 +177,17 @@
                         User Accounts &amp; Responsibilities
                     </h2>
                     <p class="text-sm text-slate-600">
-                        The System supports roles such as LGU Admin, Lead Trainer, Trainer, Evaluator, Staff, Viewer, and Participants.
-                        Each role has specific permissions, but all users share responsibilities for accuracy and security.
+                        The System supports role-based access for LGU Admin, Lead Trainer, LGU Trainer, Evaluator, Staff, Viewer, and Participants.
+                        Each role has scoped permissions. Administrators and trainers may be required to complete email OTP verification at login.
+                        Participants must verify their email during registration before full access.
                     </p>
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div class="space-y-2">
                             <h3 class="text-sm font-semibold text-slate-900">Account Security</h3>
                             <p class="text-sm text-slate-600">
-                                Keep your username, password, and any verification tools (such as OTP) private.
-                                Inform your LGU administrator immediately if you suspect unauthorized access or
-                                account misuse.
+                                Keep your username, password, and one-time verification codes private. Do not share credentials.
+                                The System may log you out after inactivity. Where enabled, login may also use the AlerTara Centralized Login System.
+                                Report suspected unauthorized access to your LGU administrator immediately.
                             </p>
                         </div>
                         <div class="space-y-2">
@@ -208,10 +231,11 @@
                                 Permitted
                             </h3>
                             <ul class="text-sm text-emerald-900 list-disc pl-5 space-y-1">
-                                <li>Using the System for official training and simulation events;</li>
-                                <li>Registering and managing participants in line with LGU policies;</li>
-                                <li>Accurately recording attendance, evaluations, and certifications;</li>
-                                <li>Exporting reports and certificates for legitimate government use.</li>
+                                <li>Using the System for official training, simulation, and LGU preparedness programs;</li>
+                                <li>Creating, reviewing, and publishing training content through approved workflows;</li>
+                                <li>Registering and managing participants, attendance, evaluations, and certifications accurately;</li>
+                                <li>Exporting reports, evaluation portfolios, and certificates for legitimate government use;</li>
+                                <li>Verifying certificates through official verification links or QR codes.</li>
                             </ul>
                         </div>
                         <div class="rounded-xl border border-rose-100 bg-rose-50/70 p-4 space-y-2">
@@ -220,12 +244,43 @@
                                 Prohibited
                             </h3>
                             <ul class="text-sm text-rose-900 list-disc pl-5 space-y-1">
-                                <li>Attempting to bypass security or access data you are not authorized to see;</li>
+                                <li>Attempting to bypass security, campaign locks, or role-based access controls;</li>
                                 <li>Uploading malicious files, harmful code, or intentionally inaccurate records;</li>
                                 <li>Sharing your account or using someone else’s credentials;</li>
-                                <li>Using exported data for purposes outside approved government or LGU use;</li>
-                                <li>Impersonating other users or falsifying attendance or evaluation data.</li>
+                                <li>Using exported data, certificates, or reports outside approved LGU or program use;</li>
+                                <li>Impersonating others or falsifying attendance, evaluation, or certification data;</li>
+                                <li>Treating AI-generated drafts or simulation content as official emergency orders without review.</li>
                             </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training, AI, and certificates -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+                    <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-1">
+                        Training Content, AI Tools &amp; Certificates
+                    </h2>
+                    <p class="text-sm text-slate-600">
+                        Training modules, scenarios, quizzes, simulation plans, evaluations, and certificates are for
+                        <strong class="font-semibold text-slate-800">training and preparedness purposes only</strong>.
+                        They do not replace official emergency response procedures, government warnings, or incident command authority.
+                    </p>
+                    <div class="grid sm:grid-cols-2 gap-4 text-sm text-slate-600">
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-4 space-y-2">
+                            <h3 class="font-semibold text-slate-900">AI-assisted features</h3>
+                            <p>
+                                Where enabled, AI may help generate modules, scenarios, quizzes, or planning drafts.
+                                Authorized personnel remain responsible for reviewing and approving content before publication.
+                                AI outputs may contain errors and must not be relied on without human verification.
+                            </p>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50/70 p-4 space-y-2">
+                            <h3 class="font-semibold text-slate-900">Certificates &amp; verification</h3>
+                            <p>
+                                Certificates are digital records of program completion or participation as defined by the issuing LGU.
+                                The System may provide printable views, verification URLs, QR codes, and email delivery.
+                                Revoked certificates must not be represented as valid. Use only official verification links for confirmation.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -305,8 +360,11 @@
                         </h2>
                         <p class="text-sm text-slate-600">
                             Personal information is collected and processed in accordance with the Data Privacy Act
-                            of 2012 and its implementing rules. The System’s Privacy Policy explains what data is
-                            collected, how it is used, and your rights as a data subject.
+                            of 2012 and its implementing rules. This may include identity and contact information,
+                            attendance and evaluation records, certificate details, audit logs, and usage data needed
+                            to operate the Service. See our
+                            <a href="{{ route('privacy') }}" class="text-emerald-700 font-medium hover:text-emerald-800 underline-offset-2 hover:underline">Privacy Policy</a>
+                            for details and your rights as a data subject.
                         </p>
                     </div>
                     <div class="space-y-2">
@@ -420,8 +478,9 @@
                                 <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform">⌃</span>
                             </summary>
                             <p class="mt-2 text-xs text-slate-600">
-                                Access is limited to LGU‑approved administrators, trainers, and registered participants.
-                                Guest or shared accounts are not allowed so that activity logs and records stay accurate.
+                                Access is limited to LGU‑approved administrators, trainers, evaluators, staff, viewers, and registered participants.
+                                Public pages (such as certificate verification and campaign registration) are available where published by the LGU.
+                                Shared accounts are not allowed so that attendance, evaluation, and audit records stay accurate.
                             </p>
                         </details>
 
@@ -449,6 +508,19 @@
                                 The System follows the Data Privacy Act of 2012 and uses role‑based access, logging,
                                 and technical safeguards. Only authorized personnel can see sensitive information needed
                                 for their role.
+                            </p>
+                        </details>
+
+                        <details class="group rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                            <summary class="flex items-center justify-between cursor-pointer list-none">
+                                <span class="font-medium text-slate-900">
+                                    Are AI-generated quizzes and scenarios official instructions?
+                                </span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform">⌃</span>
+                            </summary>
+                            <p class="mt-2 text-xs text-slate-600">
+                                No. AI-assisted content is a drafting and training aid. Authorized LGU personnel must review and approve
+                                published materials. During real emergencies, follow official LGU and government instructions—not simulation content alone.
                             </p>
                         </details>
 
