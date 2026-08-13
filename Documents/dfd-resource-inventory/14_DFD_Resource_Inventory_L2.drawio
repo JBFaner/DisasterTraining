@@ -1,0 +1,134 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="res-l2" name="Level 2 — Process 2.0 Detail">
+    <mxGraphModel dx="1522" dy="966" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 2 — Process 2.0 Assign Equipment to Event (Detail)" vertex="1">
+          <mxGeometry height="40" width="1220" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sim" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Simulation Event Planning" vertex="1">
+          <mxGeometry height="64" width="150" x="1110" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="p21" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="2.1 Validate Stock Availability" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p22" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="2.2 Create / Approve Equipment Request" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="E-HA3HeXYBFMPo_rqy0w-1" edge="1" parent="1" source="p23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="p22" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p23" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="2.3 Create Event Assignment" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="p24" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="2.4 Log Movement &amp; Update Status" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D1 Equipment Catalog" vertex="1">
+          <mxGeometry height="44" width="160" x="850" y="128" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D2 Assignments &amp; Requests" vertex="1">
+          <mxGeometry height="44" width="160" x="730" y="236" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D3 Movements" vertex="1">
+          <mxGeometry height="44" width="160" x="960" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="d5e" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D5e Published Event (read)" vertex="1">
+          <mxGeometry height="44" width="160" x="740" y="544" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f1" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p21" value="Select item + qty">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f2" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p21" value="Qty available / condition">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f3" edge="1" parent="1" source="p21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_admin" value="Available / shortfall">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="80" />
+              <mxPoint x="110" y="80" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f4" edge="1" parent="1" source="e_sim" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p22" value="Event equipment request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="735.05" y="382" />
+              <mxPoint x="735.05" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f5" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p22" value="Approve / reject request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f6" edge="1" parent="1" source="p22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="EventEquipmentRequest status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f7" edge="1" parent="1" source="d5e" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p22" value="Event context">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="70" y="566" />
+              <mxPoint x="70" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f8" edge="1" parent="1" source="p22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p23" value="Approved request lines">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="330" />
+              <mxPoint x="170" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f9" edge="1" parent="1" source="p21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p23" value="Validated stock">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="440" y="120" />
+              <mxPoint x="440" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f10" edge="1" parent="1" source="p23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="ResourceEventAssignment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f11" edge="1" parent="1" source="p23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p24" value="Assigned rows">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f12" edge="1" parent="1" source="p24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d3" value="Assign movement log">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1040" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f13" edge="1" parent="1" source="p24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d1" value="Status = assigned">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="750" />
+              <mxPoint x="920" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f14" edge="1" parent="1" source="p24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_sim" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="E-HA3HeXYBFMPo_rqy0w-2" connectable="0" parent="l2f14" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Text" vertex="1">
+          <mxGeometry relative="1" x="-0.4227" y="-3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 2 maps to ResourceController::assignToEvent and EventEquipmentRequestController." vertex="1">
+          <mxGeometry height="36" width="1220" x="40" y="820" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

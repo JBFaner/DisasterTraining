@@ -1,0 +1,243 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="eval-l1" name="Level 1 — Decomposition">
+    <mxGraphModel dx="3457" dy="1368" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 1 — Evaluation &amp; Scoring System (Decomposition)" vertex="1">
+          <mxGeometry height="40" width="1330" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_eval" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Evaluator / Admin" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e_part" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Participant" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sim" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Simulation Event Planning" vertex="1">
+          <mxGeometry height="64" width="160" x="1080" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ai" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#334155;fontStyle=1;fontSize=10;" value="AI Scenario Training" vertex="1">
+          <mxGeometry height="64" width="160" x="1080" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cert" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Certification" vertex="1">
+          <mxGeometry height="64" width="160" x="1080" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="1.0 Ingest Training Assessment Results" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="2.0 Score Simulation Event Drill" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="3.0 Aggregate &amp; Summarize" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.0 Lock / Reset Finalize" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="5.0 Publish Portfolio &amp; Export" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="704" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D1 Training Evaluation Results" vertex="1">
+          <mxGeometry height="52" width="170" x="830" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D2 Event Evaluations &amp; Participant Scores" vertex="1">
+          <mxGeometry height="52" width="170" x="690" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D3 Criteria Score Lines" vertex="1">
+          <mxGeometry height="52" width="170" x="940" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D4 Quiz/Scenario Attempts (read)" vertex="1">
+          <mxGeometry height="52" width="170" x="680" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D5 Locked Status &amp; Exports" vertex="1">
+          <mxGeometry height="52" width="170" x="950" y="532" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f1" edge="1" parent="1" source="e_ai" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p1" value="Submitted quiz/scenario attempts">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1300" y="432" />
+              <mxPoint x="1300" y="70" />
+              <mxPoint x="350" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f2" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p1" value="Attempt + score payload">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180.03" y="506.03" />
+              <mxPoint x="180.03" y="170.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f3" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d1" value="EvaluationResult rows">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="597.5" y="160" />
+              <mxPoint x="597.5" y="132.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f4" edge="1" parent="1" source="e_eval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;entryX=0.491;entryY=0.016;entryDx=0;entryDy=0;entryPerimeter=0;" target="p1" value="Review / reset training results">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="70" y="70" />
+              <mxPoint x="311.62" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f5" edge="1" parent="1" source="e_eval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" target="p2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="90.03" />
+              <mxPoint x="230.03" y="90.03" />
+              <mxPoint x="230.03" y="292.49" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="bbq7qokSQlbY1zjXQcOt-2" connectable="0" parent="l1f5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;font-size: 9px;&quot;&gt;Enter criteria scores&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.4089" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f6" edge="1" parent="1" source="e_sim" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p2" value="Completed event + objectives">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f7" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="Evaluation + ParticipantEvaluation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f8" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d3" value="EvaluationScore lines">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1025" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f9" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p2" value="Draft scores for edit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="527.5" y="266" />
+              <mxPoint x="527.5" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f10" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Training totals">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="870" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f11" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Drill totals">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="775" y="220.03" />
+              <mxPoint x="450.03" y="220.03" />
+              <mxPoint x="450.03" y="452.49" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f12" edge="1" parent="1" source="d3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Criteria breakdown">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330.03" y="366.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f13" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_eval" value="Hub / summary dashboard">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f14" edge="1" parent="1" source="e_eval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p4" value="Lock / update status / bulk reset">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="60" y="612.55" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f15" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="p4" value="Open evaluation">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="775" y="340.03" />
+              <mxPoint x="810.03" y="340.03" />
+              <mxPoint x="810.03" y="450.03" />
+              <mxPoint x="490.03" y="450.03" />
+              <mxPoint x="490.03" y="530.03" />
+              <mxPoint x="312.49" y="530.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f16" edge="1" parent="1" source="p4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d5" value="Locked flag / status">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="657.5" y="590" />
+              <mxPoint x="657.5" y="558" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f17" edge="1" parent="1" source="p4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bbq7qokSQlbY1zjXQcOt-1" connectable="0" parent="l1f17" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;font-size: 9px;&quot;&gt;Reset training result&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.4333" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f18" edge="1" parent="1" source="p4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_sim" value="Post-evaluation complete">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1280" y="630" />
+              <mxPoint x="1280" y="192" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f19" edge="1" parent="1" source="e_part" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Open portfolio">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="150" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f20" edge="1" parent="1" source="e_eval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Export CSV/summary">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-10" y="132" />
+              <mxPoint x="-10" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f21" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Training results">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1330" y="116" />
+              <mxPoint x="1330" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f22" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Event drill scores">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="890" y="266" />
+              <mxPoint x="890" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f23" edge="1" parent="1" source="d5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Locked exports">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="450" y="558" />
+              <mxPoint x="450" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f24" edge="1" parent="1" source="p5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_part" value="Portfolio / download">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f25" edge="1" parent="1" source="p5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_cert" value="Pass/eligible signals">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 1: Training results (auto from AI Scenario) + manual event drill scoring. Attendance eligibility is checked when scoring." vertex="1">
+          <mxGeometry height="36" width="1340" x="-10" y="820" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

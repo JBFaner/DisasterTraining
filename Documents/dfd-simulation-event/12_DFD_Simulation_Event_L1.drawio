@@ -1,0 +1,244 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="sim-l1" name="Level 1 — Decomposition">
+    <mxGraphModel dx="934" dy="623" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 1 — Simulation Event Planning (Decomposition)" vertex="1">
+          <mxGeometry height="40" width="1220" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e_camp" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Campaign Planning (approved)" vertex="1">
+          <mxGeometry height="64" width="160" x="1080" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cpsqc" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="CPSQC Patrol" vertex="1">
+          <mxGeometry height="64" width="160" x="1080" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="e_inv" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Resource Inventory" vertex="1">
+          <mxGeometry height="64" width="160" x="1080" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="BfpJUli1YAAGRnRGUyZw-2" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="p2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="1.0 Manage Exercise Plan (Template)" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="2.0 Create Event from Template" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="BfpJUli1YAAGRnRGUyZw-1" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="p4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="3.0 Assign Personnel &amp; Equipment" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.0 Validate Readiness &amp; Publish" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="5.0 Monitor Lifecycle &amp; Execution" vertex="1">
+          <mxGeometry height="105" width="105" x="260" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D1 Exercise Plans (templates)" vertex="1">
+          <mxGeometry height="52" width="170" x="830" y="106.5" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D2 Simulation Events" vertex="1">
+          <mxGeometry height="52" width="170" x="710" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D3 Personnel &amp; Resource Assignments" vertex="1">
+          <mxGeometry height="52" width="170" x="840" y="328" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D4 Readiness &amp; Publish State" vertex="1">
+          <mxGeometry height="52" width="170" x="590" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D5 Timeline &amp; Execution Progress" vertex="1">
+          <mxGeometry height="52" width="170" x="840" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f1" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="p1" value="Activities, timeline, eval objectives">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="70" y="70" />
+              <mxPoint x="312.5" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f2" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d1" value="Save / publish / archive template">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f3" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p1" value="Template detail for edit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="915" y="100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f4" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p2" value="Use template + schedule">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f5" edge="1" parent="1" source="e_camp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p2" value="Approved campaign link">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="630" y="170" />
+              <mxPoint x="630" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f6" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p2" value="Published template snapshot">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="915" y="70" />
+              <mxPoint x="490" y="70" />
+              <mxPoint x="490" y="292.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f7" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="New SimulationEvent">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="250" />
+              <mxPoint x="590" y="270" />
+              <mxPoint x="740" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f8" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_camp" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1160" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="BfpJUli1YAAGRnRGUyZw-3" connectable="0" parent="l1f8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;font-size: 9px;&quot;&gt;Batch / event linkage&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.3983" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f9" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Select trainers / equipment">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="90" y="452.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f10" edge="1" parent="1" source="e_cpsqc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Personnel pool availability">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f11" edge="1" parent="1" source="e_inv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Stock / condition">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="592" />
+              <mxPoint x="420" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f12" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Event context">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="160" y="216" />
+              <mxPoint x="160" y="452.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f13" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d3" value="Assignments saved">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="925" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f14" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p4" value="Publish when ready">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="50" y="184.42" />
+              <mxPoint x="50" y="580" />
+            </Array>
+            <mxPoint x="50" y="184.42" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f15" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p4" value="Draft event">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="230" />
+              <mxPoint x="390" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f16" edge="1" parent="1" source="d3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p4" value="Assigned roster &amp; resources">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="230" y="354" />
+              <mxPoint x="230" y="612.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f17" edge="1" parent="1" source="p4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d4" value="Checklist + published flag">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="477.5" y="612.5" />
+              <mxPoint x="477.5" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f18" edge="1" parent="1" source="p4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="Published status">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="795" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f19" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Start steps, complete, timeline">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="770" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f20" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Published event">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="200" />
+              <mxPoint x="210" y="752.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f21" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Ready-to-start gate">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="546" />
+              <mxPoint x="510" y="710" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f22" edge="1" parent="1" source="p5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d5" value="Execution progress / timeline">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f23" edge="1" parent="1" source="p5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_cpsqc" value="Start / complete notify">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1020" y="790" />
+              <mxPoint x="1020" y="500" />
+              <mxPoint x="1160" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f24" edge="1" parent="1" source="d5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Current step state">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="925" y="700" />
+              <mxPoint x="570" y="700" />
+              <mxPoint x="570" y="730" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 1 flow: Exercise Plan → Use Template → Assign → Readiness &amp; Publish → Monitoring. Deprecated Edit Simulation Event form is out of scope." vertex="1">
+          <mxGeometry height="36" width="1220" x="40" y="820" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

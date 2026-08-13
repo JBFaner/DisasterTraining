@@ -1,0 +1,118 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="ai-l2" name="Level 2 — Process 3.0 Detail">
+    <mxGraphModel dx="1334" dy="890" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 2 — Process 3.0 Generate AI Content (Detail)" vertex="1">
+          <mxGeometry height="40" width="1220" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gem" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Google Gemini API" vertex="1">
+          <mxGeometry height="64" width="150" x="880" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="p31" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="3.1 Queue Generation Job" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p32" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="3.2 Extract Lesson / Module Context" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="p33" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="3.3 Call Gemini &amp; Parse Response" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="p34" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="3.4 Save Draft Version &amp; Notify Admin" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D3 Generation Jobs" vertex="1">
+          <mxGeometry height="44" width="160" x="560" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D5 Training Lessons (source)" vertex="1">
+          <mxGeometry height="44" width="160" x="560" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D1 Quiz Question Bank (draft)" vertex="1">
+          <mxGeometry height="44" width="160" x="560" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D2 Scenario Version (draft)" vertex="1">
+          <mxGeometry height="44" width="160" x="560" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f1" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p31" value="Generate / retry click">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f2" edge="1" parent="1" source="p31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d3" value="Job queued (ProcessAiScenarioGenerationJob)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="90" />
+              <mxPoint x="780" y="90" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f3" edge="1" parent="1" source="d3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p32" value="Active job payload">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="220" />
+              <mxPoint x="310" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f4" edge="1" parent="1" source="d5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p32" value="Lesson text, resources, module title">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f5" edge="1" parent="1" source="p32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p33" value="Structured prompt context">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f6" edge="1" parent="1" source="p33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_gem" value="API request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="320" y="540" />
+              <mxPoint x="965" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f7" edge="1" parent="1" source="e_gem" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p33" value="JSON questions / scenario">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="965" y="370.14" />
+              <mxPoint x="380" y="370.14" />
+              <mxPoint x="380" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f8" edge="1" parent="1" source="p33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p34" value="Validated draft content">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f9" edge="1" parent="1" source="p34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d1" value="Lesson quiz bank (if lesson job)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="700" />
+              <mxPoint x="510" y="462" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f10" edge="1" parent="1" source="p34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="AssessmentVersion draft (if final job)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f11" edge="1" parent="1" source="p34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d3" value="Job completed / failed status">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="769.94" y="710.06" />
+              <mxPoint x="769.94" y="230.06" />
+              <mxPoint x="639.94" y="230.06" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f12" edge="1" parent="1" source="p34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_admin" value="Portal notification + review UI">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 2: maps to AiScenarioGenerationProcessor / LessonQuizGenerationProcessor + GeminiService + queued jobs." vertex="1">
+          <mxGeometry height="36" width="1220" x="40" y="820" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

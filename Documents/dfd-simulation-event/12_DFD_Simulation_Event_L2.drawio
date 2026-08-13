@@ -1,0 +1,159 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="sim-l2" name="Level 2 — Process 4.0 Detail">
+    <mxGraphModel dx="934" dy="623" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 2 — Process 4.0 Validate Readiness &amp; Publish (Detail)" vertex="1">
+          <mxGeometry height="40" width="1220" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cpsqc" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="CPSQC Patrol" vertex="1">
+          <mxGeometry height="64" width="150" x="1080" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="e_inv" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Resource Inventory" vertex="1">
+          <mxGeometry height="64" width="150" x="1080" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="p41" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.1 Build Readiness Checklist" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p42" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.2 Verify Personnel &amp; Equipment" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="p43" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.3 Gate Ready-to- Publish / Start" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="p44" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.4 Publish Event &amp; Notify" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D2 Simulation Events" vertex="1">
+          <mxGeometry height="44" width="160" x="790" y="131" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D3 Assignments" vertex="1">
+          <mxGeometry height="44" width="160" x="790" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D4 Readiness &amp; Publish State" vertex="1">
+          <mxGeometry height="44" width="160" x="790" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D5 Timeline (init on publish)" vertex="1">
+          <mxGeometry height="44" width="160" x="800" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f1" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p41" value="Open planning / readiness UI">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f2" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p41" value="Event + schedule fields">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f3" edge="1" parent="1" source="p41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d4" value="Checklist items built">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="309.94" y="80.06" />
+              <mxPoint x="489.94" y="80.06" />
+              <mxPoint x="489.94" y="420.06" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f4" edge="1" parent="1" source="d3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p42" value="Personnel / equipment rows">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f5" edge="1" parent="1" source="e_cpsqc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p42" value="Live assignment availability">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="232" />
+              <mxPoint x="210" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f6" edge="1" parent="1" source="e_inv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="p42" value="Equipment ready flags">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="512" />
+              <mxPoint x="950" y="540" />
+              <mxPoint x="410" y="540" />
+              <mxPoint x="410" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f7" edge="1" parent="1" source="p42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d4" value="Pass/fail checklist updates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f8" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p43" value="Checklist status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f9" edge="1" parent="1" source="p43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_admin" value="Ready / blocked reasons">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f10" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p44" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="420" />
+              <mxPoint x="200" y="420" />
+              <mxPoint x="200" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Cg80FLF2mgPA0FZkOfgO-3" connectable="0" parent="l2f10" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;span style=&quot;font-size: 9px;&quot;&gt;Confirm publish&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.3768" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f11" edge="1" parent="1" source="p44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="status = published">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="690" />
+              <mxPoint x="740" y="200" />
+              <mxPoint x="870" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f12" edge="1" parent="1" source="p44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d4" value="Published + ready-to-start">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1000" y="730" />
+              <mxPoint x="1000" y="442" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f13" edge="1" parent="1" source="p44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d5" value="Initialize execution progress">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="610" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f14" edge="1" parent="1" source="p44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_cpsqc" value="Optional pre-start roster sync">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="770" />
+              <mxPoint x="1040" y="770" />
+              <mxPoint x="1040" y="232" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 2 maps to SimulationEventLifecycleService::buildReadinessChecklist / isReadyToStart + publish path. Monitoring is Process 5.0." vertex="1">
+          <mxGeometry height="36" width="1220" x="40" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="Cg80FLF2mgPA0FZkOfgO-1" edge="1" parent="1" source="p41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d4" value="Checklist items built">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="110" />
+              <mxPoint x="430" y="420.05" />
+            </Array>
+            <mxPoint x="310" y="100" as="sourcePoint" />
+            <mxPoint x="790" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

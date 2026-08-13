@@ -1,0 +1,206 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="ai-l1" name="Level 1 — Decomposition">
+    <mxGraphModel dx="934" dy="623" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 1 — AI Scenario Training (Decomposition)" vertex="1">
+          <mxGeometry height="40" width="1220" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="64" width="150" x="10" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e_part" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Participant" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gem" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Google Gemini API" vertex="1">
+          <mxGeometry height="64" width="150" x="1100" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="1.0 Configure Lesson Quiz" vertex="1">
+          <mxGeometry height="105" width="105" x="280" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="2.0 Configure Final AI Scenario" vertex="1">
+          <mxGeometry height="105" width="105" x="280" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="3.0 Generate AI Content" vertex="1">
+          <mxGeometry height="105" width="105" x="280" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.0 Review &amp; Publish Version" vertex="1">
+          <mxGeometry height="105" width="105" x="280" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="5.0 Deliver &amp; Score Attempts" vertex="1">
+          <mxGeometry height="105" width="105" x="290" y="712" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D1 Lesson Quiz Config &amp; Question Bank" vertex="1">
+          <mxGeometry height="52" width="170" x="860" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D2 AI Scenario Config &amp; Versions" vertex="1">
+          <mxGeometry height="52" width="170" x="980" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D3 Generation Jobs (queue / status)" vertex="1">
+          <mxGeometry height="52" width="170" x="730" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D4 Participant Attempts &amp; Scores" vertex="1">
+          <mxGeometry height="52" width="170" x="850" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D5 Training Lessons (source content)" vertex="1">
+          <mxGeometry height="52" width="170" x="850" y="508" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f1" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p1" value="Per-lesson quiz settings, counts, passing score">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="70.06" y="90.06" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f2" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d1" value="LessonQuizConfig + bank">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="945" y="130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f3" edge="1" parent="1" source="d5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p1" value="Lesson text/resources link">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260" y="534" />
+              <mxPoint x="1260" y="112.57" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f4" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p2" value="Final scenario config, retake policy">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="190" />
+              <mxPoint x="210" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f5" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="AiScenarioConfig">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f6" edge="1" parent="1" source="d5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p2" value="Module lessons for context">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="510" />
+              <mxPoint x="210" y="272.48" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f7" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Generate / retry request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="130" y="432.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f8" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d3" value="Queued job record">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="815" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f9" edge="1" parent="1" source="d3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="Job to process">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f10" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_gem" value="Prompt + lesson context">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f11" edge="1" parent="1" source="e_gem" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p3" value="AI output">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="742.53" y="462.06" />
+              <mxPoint x="742.53" y="480.06" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f12" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d1" value="Generated quiz bank">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="944.97" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f13" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="Draft assessment version">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1040" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f14" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p4" value="Approve / publish version">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="539.94" y="180" />
+              <mxPoint x="539.94" y="580.06" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f15" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p4" value="Draft version">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1064.97" y="650" />
+              <mxPoint x="200" y="650" />
+              <mxPoint x="200" y="592.48" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f16" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p4" value="Published quiz bank">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="186" />
+              <mxPoint x="430" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f17" edge="1" parent="1" source="p4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d2" value="Published scenario version">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f18" edge="1" parent="1" source="e_part" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Start, save progress, submit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="690" />
+              <mxPoint x="240" y="690" />
+              <mxPoint x="240" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f19" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Published lesson quiz">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="200" />
+              <mxPoint x="590" y="680" />
+              <mxPoint x="342.5" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f20" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Published final scenario">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1065.03" y="240" />
+              <mxPoint x="500" y="240" />
+              <mxPoint x="500" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l1f21" edge="1" parent="1" source="p5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d4" value="Attempt rows + scores">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f22" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p5" value="Resume / retake state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l1f23" edge="1" parent="1" source="p5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_part" value="Questions, feedback, pass/fail">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="90.06" y="764.53" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 1: Lesson Quiz Generator (1.0, D1) + Final AI Scenario (2.0, D2). D5 = lesson content owned by Training Module, read here." vertex="1">
+          <mxGeometry height="36" width="1220" y="840" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

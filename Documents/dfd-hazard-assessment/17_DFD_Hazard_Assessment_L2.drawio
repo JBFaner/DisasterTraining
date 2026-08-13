@@ -1,0 +1,111 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="haz-l2" name="Level 2 — Process 4.0 Detail">
+    <mxGraphModel dx="892" dy="566" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 2 — Process 4.0 Generate Intelligence Recommendations (Detail)" vertex="1">
+          <mxGeometry height="40" width="1220" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_admin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="64" width="150" x="40" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="e_train" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Training Module" vertex="1">
+          <mxGeometry height="64" width="150" x="1080" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="e_inv" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Resource Inventory" vertex="1">
+          <mxGeometry height="64" width="150" x="1080" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="p41" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.1 Load Profile &amp; Hazards" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p42" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.2 Match Training Modules" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="p43" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.3 Suggest Scenarios Equipment Trainers" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="p44" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="4.4 Build Intelligence Package" vertex="1">
+          <mxGeometry height="100" width="100" x="260" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D1 Barangay Profiles" vertex="1">
+          <mxGeometry height="44" width="160" x="830" y="128" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D2 Hazard Records" vertex="1">
+          <mxGeometry height="44" width="160" x="830" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D5 Training Catalog (read)" vertex="1">
+          <mxGeometry height="44" width="160" x="830" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" parent="1" style="shape=partialRectangle;whiteSpace=wrap;html=1;leftSpacing=0;fillColor=#fef9c3;strokeColor=#854d0e;fontStyle=1;fontSize=10;align=left;spacingLeft=8;" value="D4 Intelligence Package" vertex="1">
+          <mxGeometry height="44" width="160" x="830" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f1" edge="1" parent="1" source="e_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p41" value="Open intelligence page">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="114.97" y="150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f2" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p41" value="Profile fields">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="595" y="150.03" />
+              <mxPoint x="595" y="70.03" />
+              <mxPoint x="310.03" y="70.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f3" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p41" value="Hazard types / severity">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540.03" y="322.03" />
+              <mxPoint x="540.03" y="150.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f4" edge="1" parent="1" source="p41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p42" value="Normalized hazard keywords">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f5" edge="1" parent="1" source="e_train" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p42" value="Published modules">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="440.03" y="232.03" />
+              <mxPoint x="440.03" y="300.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f6" edge="1" parent="1" source="d5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p42" value="Module hazard tags">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910.03" y="360.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f7" edge="1" parent="1" source="p42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p43" value="Matched module list">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="330" />
+              <mxPoint x="220" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2f8" edge="1" parent="1" source="e_inv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p43" value="Equipment catalog cues">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f9" edge="1" parent="1" source="p43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p44" value="Scenario / equipment / trainer suggestions">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f10" edge="1" parent="1" source="p44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="d4" value="Intelligence package saved/derived">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2f11" edge="1" parent="1" source="p44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_admin" value="UI package display">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 2 maps to HazardTrainingRecommendationService::buildIntelligencePackage / recommendTrainingModules / suggestScenarios / suggestEquipment / suggestTrainers." vertex="1">
+          <mxGeometry height="36" width="1220" x="40" y="820" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

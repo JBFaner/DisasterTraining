@@ -1,0 +1,93 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="eval-l0" name="Level 0 — Context">
+    <mxGraphModel dx="1362" dy="864" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="DFD Level 0 — Evaluation &amp; Scoring System (Context)" vertex="1">
+          <mxGeometry height="40" width="1220" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e_eval" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Evaluator / Lead Trainer" vertex="1">
+          <mxGeometry height="64" width="150" x="60" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e_part" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Participant" vertex="1">
+          <mxGeometry height="64" width="150" x="60" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sim" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ecfeff;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Simulation Event Planning" vertex="1">
+          <mxGeometry height="64" width="170" x="1080" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ai" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#334155;fontStyle=1;fontSize=10;" value="AI Scenario Training" vertex="1">
+          <mxGeometry height="64" width="170" x="1080" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="e_att" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Participant Reg. &amp; Attendance" vertex="1">
+          <mxGeometry height="64" width="170" x="1080" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cert" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#334155;fontStyle=1;fontSize=10;" value="Certification Issuance" vertex="1">
+          <mxGeometry height="64" width="170" x="1080" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="p0" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="0 Evaluation &amp; Scoring System" vertex="1">
+          <mxGeometry height="180" width="180" x="550" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="f1" edge="1" parent="1" source="e_eval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p0" value="Score drills, review results, lock/export">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="600" y="172" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f2" edge="1" parent="1" source="p0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_eval" value="Hub, summaries, score sheets">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f3" edge="1" parent="1" source="e_part" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p0" value="View portfolio / event drill scores">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="512" />
+              <mxPoint x="460" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f4" edge="1" parent="1" source="p0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_part" value="Scores, pass/fail, portfolio download">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="600" />
+              <mxPoint x="134.95" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f5" edge="1" parent="1" source="e_sim" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p0" value="Completed event + eval objectives">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f6" edge="1" parent="1" source="p0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_sim" value="Post-evaluation / locked status">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="330" />
+              <mxPoint x="750" y="230" />
+              <mxPoint x="1165.05" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f7" edge="1" parent="1" source="e_ai" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p0" value="Lesson quiz &amp; AI scenario attempt scores">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f8" edge="1" parent="1" source="e_att" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="p0" value="Attendance present for eligibility to score">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="905.05" y="512" />
+              <mxPoint x="905.05" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f9" edge="1" parent="1" source="p0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;" target="e_cert" value="Eligible results for certificate gate">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Level 0: Hub combines training assessment results + simulation event manual scoring. Certification consumes pass results (separate module)." vertex="1">
+          <mxGeometry height="36" width="1220" x="40" y="820" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
