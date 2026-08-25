@@ -68,7 +68,7 @@ class CpsqcPatrolApiClient
         } catch (\Throwable $e) {
             Log::error('CPSQC patrol request exception', ['message' => $e->getMessage()]);
 
-            return $this->fail('Unable to reach CPSQC: '.$e->getMessage());
+            return $this->fail($this->transportError($e->getMessage()));
         }
     }
 
@@ -129,7 +129,7 @@ class CpsqcPatrolApiClient
             return [
                 'success' => false,
                 'data' => [],
-                'error' => 'Unable to reach CPSQC: '.$e->getMessage(),
+                'error' => $this->transportError($e->getMessage()),
             ];
         }
     }
@@ -371,7 +371,7 @@ class CpsqcPatrolApiClient
 
             return [
                 'success' => false,
-                'error' => 'Unable to reach CPSQC: '.$e->getMessage(),
+                'error' => $this->transportError($e->getMessage()),
                 'response' => null,
             ];
         }
@@ -383,6 +383,11 @@ class CpsqcPatrolApiClient
             ->acceptJson()
             ->asJson();
 
+        // Partner cert may not match the surveillance hostname (cURL 60).
+        if (! config('cpsqc.api.verify_ssl', false)) {
+            $request = $request->withoutVerifying();
+        }
+
         $key = trim((string) config('cpsqc.api.key', ''));
         if ($key !== '') {
             $request = $request
@@ -391,6 +396,21 @@ class CpsqcPatrolApiClient
         }
 
         return $request;
+    }
+
+    /**
+     * Make transport errors readable for the UI (especially SSL hostname mismatch).
+     */
+    private function transportError(string $raw): string
+    {
+        if (stripos($raw, 'cURL error 60') !== false || stripos($raw, 'SSL') !== false) {
+            return 'Unable to reach CPSQC (SSL certificate mismatch on surveillance.alertaraqc.com). '
+                .'Our client allows this partner host when CPSQC_API_VERIFY_SSL=false. '
+                .'Ask CPSQC to install a certificate that includes surveillance.alertaraqc.com. '
+                .'Details: '.$raw;
+        }
+
+        return 'Unable to reach CPSQC: '.$raw;
     }
 
     private function url(string $path): string

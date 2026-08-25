@@ -15,11 +15,17 @@ return [
     'enabled' => env('CPSQC_INTEGRATION_ENABLED', false),
 
     'api' => [
-        // Production: https://surveillance.alertaraqc.com
+        // Production host (cert today is issued for alertaraqc.com only — see verify_ssl).
         'base_url' => rtrim((string) env('CPSQC_API_BASE_URL', 'https://surveillance.alertaraqc.com'), '/'),
         // Must match Patrol PATROL_REQUEST_API_KEY when that env is set (list endpoint).
         'key' => env('CPSQC_API_KEY', env('PATROL_REQUEST_API_KEY')),
         'timeout' => (int) env('CPSQC_API_TIMEOUT', 30),
+        /*
+         * Partner SSL for surveillance.alertaraqc.com currently presents CN=alertaraqc.com
+         * (no SAN for the surveillance subdomain) → cURL error 60 if verify is on.
+         * Keep false until CPSQC installs a matching certificate; then set true.
+         */
+        'verify_ssl' => filter_var(env('CPSQC_API_VERIFY_SSL', false), FILTER_VALIDATE_BOOLEAN),
 
         'endpoints' => [
             'receive' => env('CPSQC_ENDPOINT_RECEIVE', '/api/patrol_requests_receive.php'),
