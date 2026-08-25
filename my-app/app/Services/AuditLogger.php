@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Models\AuditLog;
 use App\Models\User;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AuditLogger
 {
     /**
      * Create an audit log entry.
+     * Soft-fails so audit issues never break the primary user action.
      *
      * @param  array<string,mixed>  $attributes
      */
@@ -21,7 +23,7 @@ class AuditLogger
 
         $request = request();
 
-        return AuditLog::create([
+        $payload = [
             'user_id' => $user?->id,
             'user_name' => $user?->name,
             'user_role' => $user?->role,
@@ -37,7 +39,19 @@ class AuditLogger
             'new_values' => $attributes['new_values'] ?? null,
             'failure_reason' => $attributes['failure_reason'] ?? null,
             'performed_at' => $attributes['performed_at'] ?? now(),
-        ]);
+        ];
+
+        try {
+            return AuditLog::create($payload);
+        } catch (Throwable $e) {
+            Log::warning('Audit log write failed', [
+                'action' => $payload['action'],
+                'module' => $payload['module'],
+                'message' => $e->getMessage(),
+            ]);
+
+            return new AuditLog($payload);
+        }
     }
 }
 

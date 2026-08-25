@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CampaignRequestController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateGroup6CampaignRequestStatusRequest;
 use App\Models\CampaignRequest;
+use App\Services\AuditLogger;
 use App\Support\CampaignRegistrationLink;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,7 @@ class Group6CampaignPlanningController extends Controller
 
         $data = $request->validated();
         $newStatus = (string) $data['status'];
+        $oldStatus = $campaignRequest->status;
 
         $updateData = [
             'status' => $newStatus,
@@ -105,6 +107,21 @@ class Group6CampaignPlanningController extends Controller
 
         $campaignRequest->update($updateData);
         $campaignRequest->load(['trainingModule', 'submittedBy']);
+
+        AuditLogger::log([
+            'action' => $newStatus === 'approved'
+                ? 'Partner approved campaign request'
+                : 'Partner rejected campaign request',
+            'module' => 'Campaign Planning',
+            'status' => 'success',
+            'description' => "Campaign request #{$campaignRequest->id} {$newStatus} via partner API",
+            'old_values' => ['status' => $oldStatus],
+            'new_values' => [
+                'campaign_request_id' => $campaignRequest->id,
+                'status' => $newStatus,
+                'note' => $data['note'] ?? null,
+            ],
+        ]);
 
         return response()->json([
             'success' => true,

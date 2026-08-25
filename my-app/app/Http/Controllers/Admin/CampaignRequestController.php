@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CampaignRequest;
 use App\Models\TrainingModule;
 use App\Services\HazardAssessment\HazardTrainingRecommendationService;
+use App\Services\AuditLogger;
 use App\Support\CampaignPlanningPayload;
 use App\Support\CampaignRegistrationLink;
 use Illuminate\Http\Request;
@@ -194,6 +195,20 @@ class CampaignRequestController extends Controller
 
         $outbound = $this->syncOutbound($campaignRequest);
 
+        AuditLogger::log([
+            'action' => 'Submitted campaign request',
+            'module' => 'Campaign Planning',
+            'status' => 'success',
+            'description' => "Campaign request #{$campaignRequest->id} submitted for {$trainingModule->title}",
+            'new_values' => [
+                'campaign_request_id' => $campaignRequest->id,
+                'training_module_id' => $trainingModule->id,
+                'status' => $campaignRequest->status,
+                'external_campaign_id' => $outbound['external_campaign_id'] ?? null,
+                'external_sync_success' => (bool) ($outbound['success'] ?? false),
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'campaign_request' => [
@@ -363,6 +378,18 @@ class CampaignRequestController extends Controller
         $freshPayload['registration_link'] = $registrationLink;
         $freshPayload['registration_form_path'] = '/campaigns/'.$campaignRequest->id.'/register';
         $campaignRequest->update(['payload' => $freshPayload]);
+
+        AuditLogger::log([
+            'action' => 'Demo force-approved campaign request',
+            'module' => 'Campaign Planning',
+            'status' => 'success',
+            'description' => "Campaign request #{$campaignRequest->id} force-approved via Demo tools",
+            'new_values' => [
+                'campaign_request_id' => $campaignRequest->id,
+                'status' => 'approved',
+                'approved_by' => $user->id,
+            ],
+        ]);
 
         return response()->json([
             'success' => true,

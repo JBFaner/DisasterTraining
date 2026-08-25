@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CampaignRequest;
 use App\Models\Setting;
+use App\Services\AuditLogger;
 use App\Services\SimulationEventPlanningService;
 use Illuminate\Http\Request;
 
@@ -83,6 +84,18 @@ class SimulationEventPlanningController extends Controller
 
         $plan = $this->planningService->savePlan($campaignRequest, $data, portal_id());
 
+        AuditLogger::log([
+            'action' => 'Saved simulation plan',
+            'module' => 'Simulation Event Planning',
+            'status' => 'success',
+            'description' => "Simulation plan saved for campaign request #{$campaignRequest->id}",
+            'new_values' => [
+                'campaign_request_id' => $campaignRequest->id,
+                'plan_id' => $plan->id,
+                'exercise_type' => $plan->exercise_type,
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Simulation plan saved successfully.',
@@ -103,6 +116,18 @@ class SimulationEventPlanningController extends Controller
                 'message' => $exception->getMessage(),
             ], 422);
         }
+
+        AuditLogger::log([
+            'action' => 'Generated simulation event from plan',
+            'module' => 'Simulation Event Planning',
+            'status' => 'success',
+            'description' => "Simulation event #{$event->id} generated for campaign request #{$campaignRequest->id}",
+            'new_values' => [
+                'campaign_request_id' => $campaignRequest->id,
+                'simulation_event_id' => $event->id,
+                'title' => $event->title,
+            ],
+        ]);
 
         return response()->json([
             'success' => true,
@@ -184,6 +209,14 @@ class SimulationEventPlanningController extends Controller
         }
 
         $updated = $this->planningService->enableDemoMeetQuota($campaignRequest);
+
+        AuditLogger::log([
+            'action' => 'Demo meet quota enabled',
+            'module' => 'Simulation Event Planning',
+            'status' => 'success',
+            'description' => "Demo readiness quota met for campaign request #{$campaignRequest->id}",
+            'new_values' => ['campaign_request_id' => $campaignRequest->id],
+        ]);
 
         return response()->json([
             'success' => true,

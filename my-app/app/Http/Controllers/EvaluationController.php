@@ -7,6 +7,7 @@ use App\Models\ParticipantEvaluation;
 use App\Models\EvaluationScore;
 use App\Models\SimulationEvent;
 use App\Models\Attendance;
+use App\Services\AuditLogger;
 use App\Services\DatabaseBackupService;
 use App\Services\EvaluationHubService;
 use App\Services\PortalNotificationFactory;
@@ -481,6 +482,22 @@ class EvaluationController extends Controller
             ? 'Evaluation submitted successfully.' 
             : 'Evaluation saved as draft.';
 
+        AuditLogger::log([
+            'action' => $data['status'] === 'submitted'
+                ? 'Submitted participant evaluation'
+                : 'Saved participant evaluation draft',
+            'module' => 'Evaluations',
+            'status' => 'success',
+            'description' => "Evaluation for user #{$userId} on event #{$simulationEvent->id} ({$data['status']})",
+            'new_values' => [
+                'simulation_event_id' => $simulationEvent->id,
+                'evaluation_id' => $evaluation->id,
+                'participant_user_id' => (int) $userId,
+                'status' => $data['status'],
+                'competency_rating' => $data['competency_rating'],
+            ],
+        ]);
+
         // Return JSON response for AJAX requests, redirect for regular requests
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -530,11 +547,25 @@ class EvaluationController extends Controller
             $updateData['group6_payload_prepared_at'] = now();
         }
 
+        $oldStatus = $evaluation->status;
         $evaluation->update($updateData);
 
         if ($data['status'] === 'completed') {
             app(DatabaseBackupService::class)->queueAfterCommit('final_evaluation_completed');
         }
+
+        AuditLogger::log([
+            'action' => 'Updated evaluation status',
+            'module' => 'Evaluations',
+            'status' => 'success',
+            'description' => "Evaluation #{$evaluation->id} status changed to {$data['status']}",
+            'old_values' => ['status' => $oldStatus],
+            'new_values' => [
+                'evaluation_id' => $evaluation->id,
+                'simulation_event_id' => $evaluation->simulation_event_id,
+                'status' => $data['status'],
+            ],
+        ]);
 
         return back()->with('status', 'Evaluation status updated successfully.');
     }

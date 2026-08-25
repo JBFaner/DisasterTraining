@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\EventRegistration;
 use App\Models\SimulationEvent;
+use App\Services\AuditLogger;
 use App\Services\PortalNotificationFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -64,6 +65,19 @@ class EventRegistrationController extends Controller
             );
         }
 
+        AuditLogger::log([
+            'action' => 'Approved event registration',
+            'module' => 'Event Registrations',
+            'status' => 'success',
+            'description' => "Registration #{$eventRegistration->id} approved for event #{$eventRegistration->simulation_event_id}",
+            'new_values' => [
+                'event_registration_id' => $eventRegistration->id,
+                'simulation_event_id' => $eventRegistration->simulation_event_id,
+                'user_id' => $eventRegistration->user_id,
+                'status' => 'approved',
+            ],
+        ]);
+
         return back()->with('status', 'Registration approved.');
     }
 
@@ -98,6 +112,20 @@ class EventRegistrationController extends Controller
             );
         }
 
+        AuditLogger::log([
+            'action' => 'Rejected event registration',
+            'module' => 'Event Registrations',
+            'status' => 'warning',
+            'description' => "Registration #{$eventRegistration->id} rejected for event #{$eventRegistration->simulation_event_id}",
+            'new_values' => [
+                'event_registration_id' => $eventRegistration->id,
+                'simulation_event_id' => $eventRegistration->simulation_event_id,
+                'user_id' => $eventRegistration->user_id,
+                'status' => 'rejected',
+                'rejection_reason' => $data['rejection_reason'],
+            ],
+        ]);
+
         return back()->with('status', 'Registration rejected.');
     }
 
@@ -110,6 +138,19 @@ class EventRegistrationController extends Controller
 
         $eventRegistration->update([
             'status' => 'cancelled',
+        ]);
+
+        AuditLogger::log([
+            'action' => 'Cancelled event registration',
+            'module' => 'Event Registrations',
+            'status' => 'warning',
+            'description' => "Registration #{$eventRegistration->id} cancelled for event #{$eventRegistration->simulation_event_id}",
+            'new_values' => [
+                'event_registration_id' => $eventRegistration->id,
+                'simulation_event_id' => $eventRegistration->simulation_event_id,
+                'user_id' => $eventRegistration->user_id,
+                'status' => 'cancelled',
+            ],
         ]);
 
         return back()->with('status', 'Registration cancelled.');

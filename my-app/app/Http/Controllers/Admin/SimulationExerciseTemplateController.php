@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SimulationExerciseTemplate;
+use App\Services\AuditLogger;
 use App\Services\SimulationExerciseTemplateAiService;
 use App\Services\SimulationExerciseTemplateService;
 use Illuminate\Http\JsonResponse;
@@ -119,6 +120,18 @@ class SimulationExerciseTemplateController extends Controller
         $data = $this->validatePayload($request);
         $template = $this->templateService->saveTemplate(null, $data, $request->user()?->id);
 
+        AuditLogger::log([
+            'action' => 'Created simulation exercise template',
+            'module' => 'Simulation Exercise Templates',
+            'status' => 'success',
+            'description' => "Template #{$template->id}: {$template->title}",
+            'new_values' => [
+                'template_id' => $template->id,
+                'title' => $template->title,
+                'status' => $template->status,
+            ],
+        ]);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -163,7 +176,25 @@ class SimulationExerciseTemplateController extends Controller
         $this->authorizeAccess();
 
         $data = $this->validatePayload($request);
+        $old = [
+            'template_id' => $simulationExerciseTemplate->id,
+            'title' => $simulationExerciseTemplate->title,
+            'status' => $simulationExerciseTemplate->status,
+        ];
         $template = $this->templateService->saveTemplate($simulationExerciseTemplate, $data, $request->user()?->id);
+
+        AuditLogger::log([
+            'action' => 'Updated simulation exercise template',
+            'module' => 'Simulation Exercise Templates',
+            'status' => 'success',
+            'description' => "Template #{$template->id}: {$template->title}",
+            'old_values' => $old,
+            'new_values' => [
+                'template_id' => $template->id,
+                'title' => $template->title,
+                'status' => $template->status,
+            ],
+        ]);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -192,6 +223,18 @@ class SimulationExerciseTemplateController extends Controller
 
         $template = $this->templateService->publish($simulationExerciseTemplate, $request->user()?->id);
 
+        AuditLogger::log([
+            'action' => 'Published simulation exercise template',
+            'module' => 'Simulation Exercise Templates',
+            'status' => 'success',
+            'description' => "Template #{$template->id}: {$template->title}",
+            'new_values' => [
+                'template_id' => $template->id,
+                'title' => $template->title,
+                'status' => $template->status,
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'template' => $this->templateService->serializeListItem($template),
@@ -203,6 +246,18 @@ class SimulationExerciseTemplateController extends Controller
         $this->authorizeAccess();
 
         $template = $this->templateService->archive($simulationExerciseTemplate, $request->user()?->id);
+
+        AuditLogger::log([
+            'action' => 'Archived simulation exercise template',
+            'module' => 'Simulation Exercise Templates',
+            'status' => 'success',
+            'description' => "Template #{$template->id}: {$template->title}",
+            'new_values' => [
+                'template_id' => $template->id,
+                'title' => $template->title,
+                'status' => $template->status,
+            ],
+        ]);
 
         return response()->json([
             'success' => true,
@@ -229,6 +284,19 @@ class SimulationExerciseTemplateController extends Controller
             $request->user()?->id,
         );
 
+        AuditLogger::log([
+            'action' => 'Reused simulation exercise template',
+            'module' => 'Simulation Exercise Templates',
+            'status' => 'success',
+            'description' => "Template #{$simulationExerciseTemplate->id} reused as event #{$event->id}",
+            'new_values' => [
+                'template_id' => $simulationExerciseTemplate->id,
+                'campaign_request_id' => $data['campaign_request_id'],
+                'simulation_event_id' => $event->id,
+                'title' => $event->title,
+            ],
+        ]);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -253,7 +321,20 @@ class SimulationExerciseTemplateController extends Controller
             ], 422);
         }
 
+        $snapshot = [
+            'template_id' => $simulationExerciseTemplate->id,
+            'title' => $simulationExerciseTemplate->title,
+            'status' => $simulationExerciseTemplate->status,
+        ];
         $simulationExerciseTemplate->delete();
+
+        AuditLogger::log([
+            'action' => 'Deleted simulation exercise template',
+            'module' => 'Simulation Exercise Templates',
+            'status' => 'warning',
+            'description' => "Template #{$snapshot['template_id']}: {$snapshot['title']}",
+            'old_values' => $snapshot,
+        ]);
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true]);

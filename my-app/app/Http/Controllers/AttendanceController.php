@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\EventRegistration;
 use App\Models\SimulationEvent;
+use App\Services\AuditLogger;
 use App\Services\PortalNotificationFactory;
 use App\Support\PortalAuth;
 use Illuminate\Http\Request;
@@ -91,6 +92,22 @@ class AttendanceController extends Controller
 
         $this->maybeNotifyAttendanceMarked($attendance, $previousStatus);
 
+        AuditLogger::log([
+            'action' => $previousStatus ? 'Updated attendance' : 'Marked attendance',
+            'module' => 'Attendance',
+            'status' => 'success',
+            'description' => "Attendance for registration #{$eventRegistration->id} set to {$attendance->status}",
+            'old_values' => $previousStatus ? ['status' => $previousStatus] : null,
+            'new_values' => [
+                'attendance_id' => $attendance->id,
+                'event_registration_id' => $eventRegistration->id,
+                'simulation_event_id' => $eventRegistration->simulation_event_id,
+                'user_id' => $eventRegistration->user_id,
+                'status' => $attendance->status,
+                'check_in_method' => $attendance->check_in_method,
+            ],
+        ]);
+
         return back()->with('status', 'Attendance marked successfully.');
     }
 
@@ -128,6 +145,20 @@ class AttendanceController extends Controller
         ]);
 
         $this->maybeNotifyAttendanceMarked($attendance->fresh(), $previousStatus);
+
+        AuditLogger::log([
+            'action' => 'Updated attendance',
+            'module' => 'Attendance',
+            'status' => 'success',
+            'description' => "Attendance #{$attendance->id} updated to {$data['status']}",
+            'old_values' => ['status' => $previousStatus],
+            'new_values' => [
+                'attendance_id' => $attendance->id,
+                'simulation_event_id' => $attendance->simulation_event_id,
+                'user_id' => $attendance->user_id,
+                'status' => $data['status'],
+            ],
+        ]);
 
         return back()->with('status', 'Attendance updated successfully.');
     }
@@ -182,6 +213,14 @@ class AttendanceController extends Controller
 
         // Then lock all attendance records for this event
         $simulationEvent->attendances()->update(['is_locked' => true]);
+
+        AuditLogger::log([
+            'action' => 'Locked attendance records',
+            'module' => 'Attendance',
+            'status' => 'success',
+            'description' => "Attendance locked for simulation event #{$simulationEvent->id}",
+            'new_values' => ['simulation_event_id' => $simulationEvent->id],
+        ]);
 
         return back()->with('status', 'Attendance records locked.');
     }

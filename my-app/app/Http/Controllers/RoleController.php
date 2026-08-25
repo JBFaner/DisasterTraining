@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +87,18 @@ class RoleController extends Controller
                 'guard_name' => $validated['guard_name'] ?? 'web',
                 'created_at' => now(),
                 'updated_at' => now(),
+            ]);
+
+            AuditLogger::log([
+                'action' => 'Created role',
+                'module' => 'Roles',
+                'status' => 'success',
+                'description' => "Role created: {$validated['name']}",
+                'new_values' => [
+                    'role_id' => $role,
+                    'name' => $validated['name'],
+                    'guard_name' => $validated['guard_name'] ?? 'web',
+                ],
             ]);
 
             return response()->json([
@@ -256,6 +269,7 @@ class RoleController extends Controller
             }
 
             // Update role
+            $oldRole = DB::table('roles')->where('id', $id)->first();
             DB::table('roles')
                 ->where('id', $id)
                 ->update([
@@ -283,6 +297,24 @@ class RoleController extends Controller
                     DB::table('role_has_permissions')->insert($permissionsToInsert);
                 }
             }
+
+            AuditLogger::log([
+                'action' => 'Updated role',
+                'module' => 'Roles',
+                'status' => 'success',
+                'description' => "Role #{$id} updated to {$validated['name']}",
+                'old_values' => $oldRole ? [
+                    'role_id' => $oldRole->id,
+                    'name' => $oldRole->name,
+                    'guard_name' => $oldRole->guard_name,
+                ] : null,
+                'new_values' => [
+                    'role_id' => (int) $id,
+                    'name' => $validated['name'],
+                    'guard_name' => $validated['guard_name'] ?? 'web',
+                    'permission_count' => count($validated['permissions'] ?? []),
+                ],
+            ]);
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -320,6 +352,7 @@ class RoleController extends Controller
         }
 
         try {
+            $oldRole = DB::table('roles')->where('id', $id)->first();
             if (DB::getSchemaBuilder()->hasTable('role_has_permissions')) {
                 DB::table('role_has_permissions')->where('role_id', $id)->delete();
             }
@@ -327,6 +360,20 @@ class RoleController extends Controller
                 DB::table('model_has_roles')->where('role_id', $id)->delete();
             }
             DB::table('roles')->where('id', $id)->delete();
+
+            AuditLogger::log([
+                'action' => 'Deleted role',
+                'module' => 'Roles',
+                'status' => 'warning',
+                'description' => $oldRole
+                    ? "Role #{$id} ({$oldRole->name}) deleted"
+                    : "Role #{$id} deleted",
+                'old_values' => $oldRole ? [
+                    'role_id' => $oldRole->id,
+                    'name' => $oldRole->name,
+                    'guard_name' => $oldRole->guard_name,
+                ] : ['role_id' => (int) $id],
+            ]);
 
             return redirect()->route('admin.roles.index')
                 ->with('success', 'Role deleted successfully');
