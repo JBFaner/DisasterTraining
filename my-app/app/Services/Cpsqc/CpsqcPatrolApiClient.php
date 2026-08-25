@@ -243,7 +243,11 @@ class CpsqcPatrolApiClient
             return true;
         }
 
-        return $this->normalizeMarshalAvailabilityStatus($status) === 'Available';
+        $normalized = $this->normalizeMarshalAvailabilityStatus($status);
+
+        // Available = free; Assigned = CPSQC already put them on this patrol request.
+        // Hide On Patrol / On Reporting / Unavailable from new selection.
+        return in_array($normalized, ['Available', 'Assigned'], true);
     }
 
     /**

@@ -339,7 +339,7 @@ class SimulationEventLifecycleService
             ->values()
             ->all();
 
-        // Only Available officers are requestable/selectable; keep those already on this event.
+        // Show Available + Assigned (CPSQC-assigned to this request). Hide On Patrol / Unavailable.
         $availableMarshals = array_values(array_filter(
             $availableMarshals,
             function (array $member) use ($alreadyAssignedIds): bool {
