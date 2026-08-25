@@ -2,6 +2,7 @@
 $docsDir = __DIR__;
 $outDocx = $docsDir . DIRECTORY_SEPARATOR . 'Chapter_3.3_to_3.4.7_Scrum_Artifacts.docx';
 
+// Standard Scrum artifacts only: Product Backlog, Sprint Backlog, Increment (+ 3.3 sprint cycles)
 $files = [
     '3.3_Sprint_Cycles.md',
     '3.4_Scrum_Artifacts.md',
@@ -115,7 +116,7 @@ function md_to_word($md) {
 $body = '';
 $body .= p('Disaster Preparedness Training and Simulation System', 'Heading1');
 $body .= p('Chapter 3.3 Sprint Cycles and 3.4 Scrum Artifacts', 'Heading2');
-$body .= p('Includes Product Backlogs (EIS Security, Standards, Integration, Analytics), Sprint Backlog, and Increment');
+$body .= p('AlertaraQC Scrum artifacts — realistic table sizes for thesis Chapter 3.4');
 $body .= p('');
 
 foreach ($files as $i => $file) {

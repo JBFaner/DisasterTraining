@@ -1,0 +1,13 @@
+{
+  "name": "erd",
+  "version": "1.0.0",
+  "description": "Overall database ERD for the **Disaster Preparedness Training & Simulation System** (MySQL 8.0 InnoDB).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

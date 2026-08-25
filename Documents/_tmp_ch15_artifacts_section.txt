@@ -1,0 +1,3108 @@
+3.4 Scrum Artifacts .......................................................................... 44
+3.4.1 Product Backlog ..................................................................... 44
+3.4.2 Product Backlog for EIS Information Security ......................... 55
+3.4.3 Product Backlog for EIS Standards ........................................ 57
+3.4.3.1 UI/UX (Icons, Color, etc…) .................................................. 59
+3.4.4 Product Backlog for EIS Integration........................................ 62
+3.4.5 Product Backlog for Analytics ................................................. 64
+3.4.5.1 Application System Analytics ............................................... 64
+3.4.5.2 EIS Analytics ....................................................................... 66
+3.4.6 Sprint Backlog (User Stories) ................................................. 68
+3.4.6.1 Sprint Burndown Chart ........................................................ 77
+3.4.6.2 Sprint Velocity Chart (Target vs Completed) ........................ 78
+3.4.6.3 Cumulative Flow Diagram ................................................... 79
+3.4.7. Increment .............................................................................. 79
+3.5 Microservices Architecture......................................................... 85
+3.6 DevOps Implementation ............................................................ 88
+3.6.1 Network Topology ................................................................... 88
+3.7 Integration Approach for Information Systems ........................... 90
+3.8 Introduction to TOGAF and the Four Architectural
+Domains ........ 100
+Chapter 4 .............................................................................................. 103
+REQUIREMENTS ANALYSIS ............................................................... 103
+4.1. Stakeholder Identification ....................................................... 103
+4.1.1. Primary stakeholders ........................................................... 103
+4.1.2. Secondary stakeholders ...................................................... 104
+4.2. Requirements Gathering Techniques ..................................... 106
+
+-- 8 of 227 --
+
+ix
+4.3. User Stories and Use Cases .................................................. 107
+4.4. Functional Requirements for Integration................................. 107
+5 Business Process Architecture ................................................... 109
+5.1. Identification of Business Processes ...................................... 109
+5.2. Business Process Diagrams ................................................... 111
+5.3. Alignment of Integrated System with BusinessProcesses ...... 114
+5.4. Business Process Improvements ........................................... 115
+6 Application Architecture .............................................................. 116
+6.1. Components of Application Architecture ................................. 116
+6.2. Application Architecture Diagrams .......................................... 118
+6.3. Integration of Software Modules ............................................. 118
+6.4. Communication and Interaction Patterns................................ 119
+7 Data Architecture ........................................................................ 120
+7.1. Data Sources and Types ........................................................ 120
+7.2. Data Flow Diagrams ............................................................... 122
+7.3. Data Storage and Management ............................................. 126
+7.4. Data Synchronization Across Systems ................................... 127
+8 Technology Architecture ............................................................. 128
+8.1 Technology Stack and Infrastructure ....................................... 128
+8.2 Software Technologies ............................................................ 129
+8.3. Scalability and Performance Considerations .......................... 130
+9 Development Process ................................................................ 131
+9.1. Agile Scrum Roles and Responsibilities ................................. 131
+9.2. Sprint Planning and Backlog Management ............................. 136
+9.3. Sprint Execution and Deliverables .......................................... 139
+9.4. Challenges Faced In the Development Process ..................... 142
+10 ............................................................................... Implementation
+145
+10.1. Technical Implementation Details ......................................... 145
+10.2. Tools and Technologies Used ............................................... 149
+
+-- 9 of 227 --
+
+x
+10.3. Code Integration and Interoperability.................................... 153
+10.4. Integration Testing and Debugging ....................................... 156
+11 Testing and Quality Assurance.................................................. 158
+11.1. Testing Strategies and Methodologies .................................. 158
+11.2. Test Cases and Test Data ..................................................... 160
+11.3. Test Results and Bug Reports .............................................. 162
+11.4. Quality Assurance Measures ................................................ 164
+12 Results and Evaluation ............................................................. 165
+12.1. Project Outcomes and Deliverables ..................................... 165
+12.2. Alignment with Project Objectives......................................... 167
+12.3 Stakeholder and User Feedback ........................................... 169
+12.4. Lessons Learned .................................................................. 170
+Chapter 5 .............................................................................................. 172
+13.1. Key Takeaways and Summary ............................................. 172
+13.1.1 Key Takeaways ................................................................... 172
+13.1.2 Summary ............................................................................ 172
+13.2. Project Achievements and Contributions .............................. 173
+13.3. Future Work and Enhancements .......................................... 175
+13.4. Closing Remarks .................................................................. 176
+APPENDICES ....................................................................................... 177
+Appendix A : Detailed Technical Documentation ........................... 177
+Appendix B : Documents/URLs ..................................................... 195
+REFERENCES ...................................................................................... 195
+Appendix C: Certificate of Originality ............................................. 202
+Appendix D: Certificate of Technical Adviser and Grammarian ..... 202
+Appendix E: Technical Adviser Curriculum Vitae .......................... 203
+Appendix F: Research Adviser Curriculum Vitae ........................... 204
+Appendix G : Grammarian Curriculum Vitae ................................ 205
+Appendix H: Researchers Curriculum Vitae ................................. 206
+
+-- 10 of 227 --
+
+xi
+REFERENCES
+APPENDICES
+CURRICULUM VITAE
+
+-- 11 of 227 --
+
+xii
+LIST OF TABLES
+Table Page
+1 Roles and Responsibilities
+2 Sprint Cycles
+3 Product Backlog
+4 Product Backlog for EIS Information Security
+5 Product Backlog for EIS Standards
+6 UI/UX (Icons, Color, etc…)
+7 Product Backlog for EIS Integration
+8 Application System Analytics
+9 EIS Analytics
+10 Sprint Backlog (User Stories)
+11 Increment
+12 Stakeholder Matrix
+13 Agile Scrum Roles and Responsibilities
+14 Sprint Planning and Backlog Management
+15 Tools and Technologies Used
+16 Automated Unit Test Coverage
+17 Representative Manual and Functional Test Scenarios
+18 Alignment with Project Objectives
+
+-- 12 of 227 --
+
+xiii
+LIST OF FIGURES
+Figure Page
+1 Enterprise Architecture
+2 System Integration Architecture
+3 Agile Scrum Framework
+4 Scrum Board
+5 Sprint Burndown Chart
+6 Sprint Velocity Chart
+7 Cumulative Flow Diagram
+8 Microservices Architecture
+9 Communication Pattern for Microservices
+10 Data Flow Diagram for Microservices
+11 CI/CD Pipeline
+12 CI/CD Pipeline Development
+13 Network Topology
+14 Infrastructure as code
+15 BPA LVL 0
+16 API Gateway
+17 DFD LVL 1
+18 USECASE INTEGRATIONS
+19 SEQUENCE BOOKING PAYMENT NOTIFY
+
+-- 13 of 227 --
+
+xiv
+20 SEQUENCE AUT
+21 SEQUENCE STAFF APPROVAL
+22 SEQUENCE CIMM MAINTENANCE
+23 SEQUENCE AI CHATBOT
+24 FACILITY QR CHECK IN
+25 FLOWCHART SYSTEM OVERVIEW
+26 Stakeholder Analysis
+27 USECASE
+28 User Authentication
+29 Facility Reservation and Approval Process
+30 External Data
+31 Reservation Reschedule and Cancelation
+32 Facility Check in Attendance and Violation Recording
+33 Resident Registration and Verification
+34 Application Architecture Diagrams
+35 Communication and Interaction Patterns
+36 DFD BCPRS and Integrated Services
+37 DFD LVL1 Aut User Public Portal
+38 DFD LVL 1 Facilities Blackout CIMM
+39 DFD LVL1 Reservation and Payments
+40 Attendance QR and Occupancy
+41 AI Calendar and Notifications
+
+-- 14 of 227 --
+
+xv
+42 Reports, Audit, Documents
+43 ERD Diagram
+44 Tools and Technologies Used
+
+-- 15 of 227 --
+
+xvi
+LIST OF APPENDICES
+Appendix A Detailed Technical Documentation
+Appendix B Documents/URLs
+Appendix C Certificate of Originality
+Appendix D Certificate of Technical Adviser and Grammarian
+Appendix E Technical Adviser Curriculum Vitae
+Appendix F Research Adviser Curriculum Vitae
+Appendix G Grammarian Curriculum Vitae
+Appendix H Researcher’s Curriculum Vitae
+
+-- 16 of 227 --
+
+1
+Chapter 1
+INTRODUCTION
+1.1 Background of the Capstone Project
+The barangays in the Philippines serve as the
+smallest administrative units responsible for delivering basic
+public services and managing shared community resources.
+Among these responsibilities is the proper scheduling and
+allocation of public facilities such as basketball courts,
+multipurpose halls, covered courts, and community spaces.
+Despite the importance of these services, many barangays
+continue to rely on manual and informal processes for
+managing facility reservations.
+In Barangay Culiat, Quezon City, residents and staff
+have historically coordinated facility use through walk-in
+requests, phone messages, logbooks, and informal
+communication channels. These methods often result in
+delayed responses, inconsistent records, overlapping
+bookings, and limited visibility of facility availability.
+Residents may need to visit the barangay hall repeatedly to
+
+-- 17 of 227 --
+
+2
+confirm schedules, while staff spend significant time
+validating requests and resolving conflicts manually.
+To address these challenges, the researchers
+developed the AI-Driven Facilities Reservation System with
+Predictive Scheduling Features for Barangay Culiat. The
+system is a web-based PHP and MySQL application that
+centralizes facility reservation workflows for residents,
+barangay staff, and administrators. It supports online
+booking, real-time availability checks, staff approval, AI-
+assisted conflict detection and recommendations,
+notifications, attendance tracking, and operational reporting.
+The system was implemented as a modular
+monolithic web application integrated with Python-based
+machine learning services and Google Gemini chatbot
+support for the dashboard. Its purpose is to improve
+transparency, reduce scheduling conflicts, and provide
+barangay personnel with a single platform for managing
+public facility reservations.
+1.2 Context and Scope
+This capstone project addresses barangay-level
+public service management through the digital
+
+-- 18 of 227 --
+
+3
+transformation of facility reservation processes. The system
+is a web-based application accessible to residents,
+barangay staff, and administrators with role-based
+permissions.
+Implemented scope includes:
+ Online reservation of barangay facilities (equipment
+inventory not included)
+ Real-time availability display with calendar views
+ AI-assisted conflict detection, facility recommendations, and
+holiday/event risk tagging
+ Staff approval, rescheduling, cancellation, and violation
+handling
+ In-app, email, and SMS notifications
+ Facility management with blackout dates, QR check-in, and
+live occupancy monitoring
+ Reports, audit trail, and document management aligned with
+Data Privacy Act practices
+ PayMongo payment checkout (environment-gated; disabled
+by default in capstone deployment)
+
+-- 19 of 227 --
+
+4
+ Outbound CIMM maintenance synchronization when API
+credentials are configured
+Out of Scope
+ Native mobile application (responsive web interface only)
+ Separate equipment rental or equipment inventory module
+ Live Infrastructure Projects and Utilities API integrations
+(admin preview pages use sample data)
+ Inbound /api/integrations/* webhook endpoints (return not-
+implemented responses)
+ Full demand-forecasting dashboard UI (Python forecasting
+script exists; UI coverage is partial)
+The system is intended for use within Barangay
+Culiat and is designed to support current operational needs
+while remaining extensible for future LGU integrations.
+1.3 Problem Statement
+1.3.1 Main Problem
+Barangay Culiat experiences inefficiencies in
+managing and scheduling public facilities due to the
+absence of a centralized digital reservation system.
+
+-- 20 of 227 --
+
+5
+Reliance on manual and informal processes leads to delays,
+inconsistent records, scheduling conflicts, and limited
+transparency for both residents and barangay staff.
+1.3.2 Specific Problems
+The following specific problems were identified:
+1. Lack of a centralized system for real-time monitoring of
+facility availability
+2. Frequent double bookings and scheduling conflicts,
+especially for high-demand facilities
+3. Delayed communication between residents and barangay
+personnel regarding reservation status
+4. Difficulty in tracking facility usage history and consolidating
+reservation records in one platform
+5. Inconvenient reservation processes that require physical
+visits or unstructured messaging channels
+6. Limited utilization of data analytics for planning peak usage
+periods and forecasting facility demand patterns
+
+-- 21 of 227 --
+
+6
+1.4 Objectives and Goals
+1.4.1 General Objective
+To develop an AI-driven facility reservation and
+scheduling system that improves the efficiency, accuracy,
+and accessibility of public facility management in Barangay
+Culiat.
+1.4.2 Specific Objectives
+The project aims to:
+1. Develop a digital platform for real-time viewing and
+reservation of barangay facilities
+2. Implement AI-assisted conflict detection,
+recommendations, and scheduling support
+3. Provide role-based access for residents, staff, and
+administrators
+4. Enable staff approval workflows, notifications, and
+reservation lifecycle management
+5. Support attendance check-in, occupancy monitoring,
+and operational reporting
+6. Integrate external services such as CIMM
+maintenance synchronization, PayMongo payment
+checkout, and Gemini chatbot support through
+configuration
+
+-- 22 of 227 --
+
+7
+1.4.3 Goal
+Modernize Barangay Culiat’s facility management by
+introducing a centralized, automated, and intelligent
+reservation system that increases transparency,
+convenience, and operational efficiency for both residents
+and barangay personnel.
+1.4.4 Users and Beneficiaries
+ Users: Residents of Barangay Culiat, barangay staff,
+and system administrators
+ Beneficiaries: The barangay community, barangay
+personnel, and local government stakeholders who
+rely on accurate facility scheduling and accountable
+public service delivery
+1.5 Significance and Relevance
+This system provides a modern and organized
+approach to digitizing barangay facility reservations through
+a maintainable web architecture. For residents, it reduces
+uncertainty and improves access to public facilities. For
+barangay staff, it centralizes approvals, records, and
+monitoring, thereby reducing administrative workload and
+ensuring accountability.
+
+-- 23 of 227 --
+
+8
+The study is significant as it demonstrates how local
+government units can adopt AI-driven and web-based
+solutions to modernize operations, improve transparency,
+and enhance public service delivery. It also serves as a
+practical reference for future information systems designed
+for community-level governance and resource
+management.
+1.6 Structure of the Document
+This capstone document is organized into the
+following chapters:
+Chapter 1 introduces the foundation of the capstone
+project by presenting the Background of the Study, which
+discusses the increasing demand for digital transformation
+in barangay public services, the challenges of the existing
+manual reservation process in Barangay Culiat, and the
+rationale for developing the AI-Driven Facilities Reservation
+System with Predictive Scheduling Features. It also explains
+how the proposed system utilizes artificial intelligence,
+predictive scheduling, and modern information technologies
+to improve facility reservation management, enhance
+operational efficiency, and support better decision-making.
+
+-- 24 of 227 --
+
+9
+The chapter then presents the Context and Scope of
+the Study, which defines the coverage and limitations of the
+proposed system. It outlines the major features
+implemented, including secure user authentication with
+OTP/TOTP, resident and facility management, AI-assisted
+reservation recommendations, conflict detection, auto-
+approval mechanisms, QR code-based attendance
+monitoring, notifications, reporting and analytics, chatbot
+assistance, and integration with external services such as
+CIMM, Google Gemini, SMTP, SMS, and optional
+PayMongo payment processing. It also identifies the
+project's limitations, including optional or future
+implementations such as full mobile application support and
+selected government API integrations.
+The Problem Statement identifies the existing issues
+experienced in managing barangay facilities and
+reservations, including inefficient manual scheduling,
+double bookings, delayed processing of reservation
+requests, limited monitoring of facility utilization, and the
+lack of centralized information for both residents and
+barangay personnel. These challenges served as the basis
+
+-- 25 of 227 --
+
+10
+for proposing an intelligent and automated reservation
+system.
+The chapter also presents the Objectives of the
+Study, including the general objective of developing an AI-
+driven reservation system that improves scheduling
+efficiency, transparency, accessibility, and facility
+management. The specific objectives describe the
+development of secure authentication, intelligent
+reservation processing, predictive scheduling, reporting,
+analytics, and enterprise system integration. It further
+identifies the intended users and beneficiaries of the
+system, including barangay officials, staff, residents, and
+future researchers.
+Finally, the Significance of the Study discusses the
+contributions of the proposed system to Barangay Culiat by
+improving operational efficiency, reducing manual errors,
+supporting transparent reservation processes, enhancing
+accessibility of public services, and providing a scalable
+foundation for future digital transformation initiatives within
+local government units. The chapter concludes by
+emphasizing the value of the study as a reference for future
+
+-- 26 of 227 --
+
+11
+researchers and developers interested in AI-enabled
+community information systems.
+Chapter 2 presents the theoretical foundations,
+architectural concepts, technologies, and related studies
+that support the development of the AI-Driven Facilities
+Reservation System with Predictive Scheduling Features for
+Barangay Culiat. It begins by discussing the Agile Scrum
+methodology as the primary software development
+approach used to support iterative development,
+collaboration, and continuous improvement throughout the
+project. The chapter then introduces Enterprise
+Architecture, which provides a structured framework for
+aligning the reservation system with barangay business
+processes, organizational objectives, data management,
+and technology infrastructure. It also explains the system's
+architectural design, where Microservices Architecture is
+discussed conceptually while the actual implementation
+follows a modular monolithic architecture, enabling
+maintainability, scalability, and simplified deployment for the
+barangay environment. Furthermore, the chapter presents
+DevOps and Continuous Integration/Continuous
+
+-- 27 of 227 --
+
+12
+Deployment (CI/CD) practices that ensure efficient software
+development, automated testing, deployment, monitoring,
+security, and system maintenance. It also reviews relevant
+local and international studies on digital reservation
+systems, artificial intelligence, and facility management to
+identify existing solutions and research gaps addressed by
+the proposed system. Finally, the chapter discusses the
+integration of information systems in an enterprise
+environment, demonstrating how internal modules and
+external services such as AI assistance, maintenance
+synchronization, notifications, and other government-
+related services work together to provide an efficient,
+transparent, and reliable reservation platform.
+Chapter 3 describes the methodology adopted in
+developing the AI-Driven Facilities Reservation System with
+Predictive Scheduling Features for Barangay Culiat. It
+begins with the implementation of the Agile Scrum
+methodology, highlighting how iterative sprint cycles
+enabled continuous planning, development, testing, and
+refinement of the system. The chapter presents the roles
+and responsibilities of each project team member, ensuring
+
+-- 28 of 227 --
+
+13
+proper collaboration, accountability, and project
+management throughout development. It also discusses the
+Sprint Cycles, including the planned goals, user stories, and
+development tasks completed during each sprint. In
+addition, the chapter explains the Scrum Artifacts, such as
+the Product Backlog, Sprint Backlog, Burndown Chart,
+Velocity Chart, Cumulative Flow Diagram, and Increment,
+which were used to monitor project progress and manage
+software requirements. The chapter further describes the
+system's architectural design, where Microservices
+Architecture is presented conceptually while the
+implemented solution utilizes a modular monolithic
+architecture supported by clearly defined logical service
+modules and communication patterns. It also discusses the
+implementation of DevOps and CI/CD, including continuous
+integration, deployment, monitoring, backup strategies,
+environment management, and security practices that
+support reliable software delivery. The Integration Approach
+explains how the reservation system communicates with
+external platforms such as CIMM, Google Gemini, SMTP
+services, SMS gateways, and other government-related
+modules to provide real-time synchronization and intelligent
+
+-- 29 of 227 --
+
+14
+services. Lastly, the chapter presents the application of
+TOGAF and the Four Enterprise Architecture Domains
+Business, Data, Application, and Technology Architecture to
+ensure that the developed system aligns with barangay
+operations, organizational goals, and future scalability.
+Overall, this chapter demonstrates how the selected
+development methodology, enterprise architecture, system
+integration, and technical implementation collectively
+contributed to the successful development of a secure,
+maintainable, scalable, and user-centered reservation
+system.
+Chapter 4 presents the overall design, architecture,
+development process, and implementation of the Barangay
+Culiat Facilities Reservation System. It discusses the
+system architecture, database structure, user interface
+design, and the technologies used to develop the system.
+This chapter also explains the major system modules,
+including user management, facility management,
+reservation management, approval workflows, attendance
+monitoring, reporting, and system integrations. In addition,
+it describes the security mechanisms, artificial intelligence
+
+-- 30 of 227 --
+
+15
+features, and external system integrations implemented to
+improve the system's functionality and reliability. The Agile
+Scrum methodology followed during the development
+process is also presented, including sprint planning, sprint
+execution, product backlog, sprint backlog, and the
+incremental delivery of system features.
+Chapter 5 presents the testing, evaluation, and
+validation of the Barangay Culiat Facilities Reservation
+System. It describes the testing methods used to verify the
+functionality, performance, usability, security, and reliability
+of the system. This chapter includes the different test cases,
+testing procedures, and test results conducted to ensure
+that each module performs according to the specified
+requirements. It also discusses the results of user
+acceptance testing and system evaluation based on the
+project objectives. Finally, the chapter summarizes the
+overall performance of the developed system and confirms
+that it satisfies the identified requirements while providing an
+efficient and reliable facility reservation solution for
+Barangay Culiat.
+
+-- 31 of 227 --
+
+16
+Chapter 2
+REVIEW OF RELATED LITERATURE
+This chapter presents the reviewed theories,
+technologies, and previous studies relevant to the
+development of the AI-Driven Facilities Reservation System
+for Barangay Culiat. It discusses established concepts that
+guided the system’s design and implementation, including
+Agile Scrum methodology, enterprise architecture, modular
+monolithic application design, DevOps and CI/CD practices,
+relevant research studies, and the integration of information
+systems in enterprise environments.
+These literature sources provide the foundation for
+understanding how modern information systems can
+enhance community facility management, optimize
+resource allocation, strengthen coordination between
+residents and barangay staff, and improve service delivery
+in a local government context. By synthesizing theoretical
+frameworks and practical implementations, this chapter
+emphasizes the importance of combining agile development
+practices, structured architectural approaches, and
+
+-- 32 of 227 --
+
+17
+integrated technologies to ensure scalability, maintainability,
+and transparency in barangay-level digital transformation.
+2.1 Agile Scrum Methodology Overview
+Agile Scrum is a software development methodology
+that emphasizes iterative progress, collaboration, and
+adaptability. Projects are divided into short cycles called
+sprints, enabling teams to deliver functional features
+incrementally and adjust based on user feedback. Defined
+Scrum roles including the Product Owner, Scrum Master,
+and Development Team ensure organized workflow,
+accountability, and continuous improvement.
+In the context of the AI-Driven Facilities Reservation
+System for Barangay Culiat, Agile Scrum facilitated the rapid
+development of core features such as real-time facility
+availability, AI-assisted conflict detection and
+recommendations, staff approval workflows, notifications,
+and occupancy monitoring. Through iterative sprints, the
+project team was able to incorporate stakeholder feedback,
+refine system modules, and ensure that the platform adapts
+effectively to the operational needs of residents and
+barangay staff. This approach minimized delays, improved
+
+-- 33 of 227 --
+
+18
+service delivery, and supported the scalability and
+maintainability of the system.
+2.2 Enterprise Architecture Concepts
+Enterprise Architecture (EA) provides a structured
+framework that ensures an information system aligns with
+organizational processes, goals, and technology
+infrastructure. It serves as a blueprint for how different
+components interact, supporting efficiency, scalability, and
+maintainability.
+For the AI-Driven Facilities Reservation System in
+Barangay Culiat, EA ensures that the platform integrates
+seamlessly with existing barangay operations. This includes
+facility scheduling, reservation approval workflows, user
+account management, notifications, and reporting. By
+following EA principles, the system remains maintainable
+and extensible, allowing future enhancements without
+requiring immediate decomposition into separate deployed
+services.
+The enterprise architecture view illustrates how the
+system’s modules are interconnected, ensuring
+
+-- 34 of 227 --
+
+19
+transparency, accountability, and adaptability in barangay-
+level digital transformation.
+Figure no. 1 Enterprise Architecture
+The enterprise architecture identifies key
+stakeholders Resident Users, Barangay Staff, and
+System Administrators and the central digital platform that
+manages reservation workflows, approval processes,
+notifications, and AI-assisted scheduling support. This
+architecture ensures real-time facility availability,
+
+-- 35 of 227 --
+
+20
+transparent communication, and optimized resource
+allocation, aligning technology with the barangay’s service
+objectives.
+The central platform allows residents to view and
+submit reservation requests, receive notifications about
+approvals or schedule changes, while barangay staff
+manage approvals, monitor occupancy, and generate
+operational reports. The AI module assists in detecting
+conflicts, recommending alternative schedules, and
+forecasting peak usage periods, thereby enhancing overall
+efficiency and accountability in facility management.
+2.3 Microservices Architecture
+Although this section is titled Microservices
+Architecture to follow the documentation format, the
+implemented Barangay Culiat Facilities Reservation System
+actually uses a modular monolithic architecture. The
+application runs as a single PHP 8.1+ web system with one
+front controller (index.php), a shared MySQL database, and
+logically separated modules for authentication, facilities,
+reservations, notifications, AI assistance, reporting, and
+administration.
+
+-- 36 of 227 --
+
+21
+This design groups related functions into
+maintainable domains while keeping deployment simple for
+barangay hosting environments. Modules communicate
+internally through in-process PHP includes and shared
+database operations. Optional external calls are made only
+where needed for example, SMTP email, SMS gateways,
+Google Gemini API, PayMongo, and CIMM maintenance
+API.
+By documenting the architecture under this section,
+the study clarifies that while microservices principles
+(modularity, clear service boundaries) are conceptually
+referenced, the actual deployment is monolithic for
+practicality in LGU environments. This reduces operational
+overhead while still allowing future scaling decisions if
+decomposition into microservices becomes necessary.
+2.3.1 Logical Service Modules (Implemented)
+Authentication and Session – login, OTP/TOTP,
+registration, password reset, session timeout.
+User and Profile – user records, roles, profile
+management, notification preferences.
+
+-- 37 of 227 --
+
+22
+Facility Management – facility CRUD, images,
+operating hours, geocoding, blackout dates, QR posters.
+Reservation Management – booking, approval
+workflows, rescheduling, cancellation, booking limits,
+timelines.
+Auto-Approval – evaluation of eight conditions for
+eligible reservations.
+Violation Tracking – records user violations affecting
+approval eligibility.
+AI Assistance – conflict detection, recommendations,
+risk tagging, chatbot support.
+Calendar and Reports – calendar views, CSV/PDF
+exports, dashboard charts.
+Notifications – in-app, email, and optional SMS
+alerts.
+Attendance and Occupancy – check-in/out via QR
+scan, live occupancy monitoring.
+Administration – audit trail, document management,
+contact inquiries.
+
+-- 38 of 227 --
+
+23
+2.3.2 Communication Pattern
+ Browser – Application: HTTP requests routed through
+index.php.
+ Module – Module: In-process PHP calls and shared
+database access.
+ Application – External Services: SMTP, SMS API, Gemini
+API, PayMongo API, CIMM API (when configured).
+ No message queue: Notifications and audit events are
+written synchronously to MySQL.
+2.3.3 Integration Status Summary
+ AI Chatbot (Gemini + fallback) – Implemented.
+ CIMM Maintenance Sync – Implemented (requires API key).
+ PayMongo Payments – Optional (disabled by default).
+ Infrastructure Projects Dashboard – Preview/mock data.
+ Utilities Dashboard – Preview/mock data.
+ Inbound Webhooks (/api/integrations) – implemented.
+2.4 DevOps and CI/CD
+DevOps is a set of practices that combines software
+development and IT operations to improve collaboration,
+
+-- 39 of 227 --
+
+24
+speed, and reliability in software delivery. It ensures that
+developers and operations teams work together to maintain
+a stable and efficient system.
+In the Barangay Culiat AI-Driven Facilities
+Reservation System, DevOps helps streamline
+development and system maintenance, reducing delays and
+errors. The following practices and strategies were
+implemented to support continuous integration,
+deployment, monitoring, security, and environment
+management.
+Continuous Integration (CI)
+ Build – composer install, lint PHP/JS/CSS, validate
+migrations (lock reasons, contact inquiries, auto-approval
+fields, user violations, facility blackout dates).
+ Smoke Tests (Staging) – authentication (login + OTP),
+password reset, booking limits (≤3 active/30 days, ≤60-day
+advance, ≤1/day), holiday/event risk banner, auto-approval
+evaluation (8 conditions), flexible time slot validation,
+violation recording, rescheduling, approvals, exports,
+contact submissions, dashboard filters/charts.
+
+-- 40 of 227 --
+
+25
+Continuous Deployment (CD)
+ Deploy – run migrations, zero-downtime rolling updates.
+ Post-Deploy Checks – verify email delivery
+(OTP/reset/approval/inquiry), auto-approval logic, violation
+tracking, time slot parsing.
+Monitoring & Alerts
+ Health Checks – HTTP /health.
+ Watch – 5xx/4xx errors, latency, OTP failures, reset failures,
+booking-limit denials, auto-approval evaluation failures, time
+slot parsing errors, violation recording errors, reschedule
+validation failures, contact submission errors, DB
+errors/slow queries, disk usage for resident uploads.
+ Alerts – uptime, error spikes, email send failures, auto-
+approval logic errors, disk near-full, DB slow/connection
+issues.
+Security & Configuration
+ CSP Allowlist – trusted CDNs (Google Fonts, jsDelivr,
+Cloudflare, Chart.js).
+
+-- 41 of 227 --
+
+26
+ Secrets Management – SMTP (Brevo/Gmail), DB
+credentials, app keys, OTP pepper, reset token secret,
+email sender.
+ Environment Tunables – rate limits, lockout policies,
+booking limits.
+Backups
+ Database – scheduled snapshots and point-in-time
+recovery (PITR).
+ Files – resident uploads backed up and restore verified.
+Environments
+ Development – Mailhog/Mailtrap SMTP, verbose logs,
+minimal seed data.
+ Staging – mirrors production CSP/CDN, dry-run migrations,
+sandbox email.
+ Production – zero-downtime deploy, post-deploy email
+smoke tests (OTP/reset/inquiry).
+2.5 Relevant Studies and Research
+Several existing systems have demonstrated the
+benefits of digital reservation and appointment technologies,
+
+-- 42 of 227 --
+
+27
+both locally and internationally. In the Philippines, the AI-
+Enabled Sit-in Reservation System at the University of
+Cebu optimized laboratory resource allocation and provided
+real-time monitoring, though its scope was limited to
+academic laboratories (Al-Kindi Publisher, 2023). Similarly,
+the Web-Based Appointment System at Mindanao State
+University improved scheduling efficiency and workflow
+management but lacked AI-driven conflict detection (Journal
+of Information Systems and Informatics, 2022). The
+Professional Regulation Commission IV-A workflow
+optimization tool streamlined professional services but
+remained inaccessible to grassroots communities (IEOM
+Society, 2018). Meanwhile, the Courtyard Reserva system
+developed at Arellano University applied web-based
+booking with data visualization and scheduling algorithms
+for sports facilities (Daza et al., 2026), while the HM Hotel
+Reservation System from the State University of
+Northern Negros showcased how reservation platforms
+can enhance customer experience in hospitality (Buncal et
+al., 2026). Compared to these local systems, our proposed
+Barangay Culiat Facilities Reservation System extends
+
+-- 43 of 227 --
+
+28
+beyond academic or commercial contexts to serve the
+broader community, integrating predictive scheduling and
+AI-driven conflict detection to prevent double bookings.
+International research also highlights broader
+applications of AI in facility management and governance. A
+systematic review of AI in Building Information
+Modeling (BIM) emphasized predictive maintenance and
+optimization but focused primarily on construction and
+industrial contexts (Marzouk & Othman, 2022). Research on
+AI adoption in local governments identified best practices
+and challenges in integrating intelligent systems into public
+service delivery (Rodríguez Bolívar, 2023), while literature
+reviews on the benefits and challenges of AI in the public
+sector underscored both opportunities and barriers in
+transparency and accessibility (Wirtz, Weyerer, & Geyer,
+2021). IEEE studies on digital twins and machine
+learning demonstrated the potential of predictive analytics
+and real-time monitoring for resource efficiency (IEEE
+Authors, 2024), and the Responsible Urban Innovation
+with Local Government AI framework provided a
+
+-- 44 of 227 --
+
+29
+conceptual agenda for integrating AI into urban governance
+(Chatfield & Reddick, 2021). Our project adapts these
+international insights to the barangay level, ensuring
+transparency, inclusivity, and efficient use of community
+resources.
+2.6 Integration of Information Systems in
+Enterprise Environment
+Integration of information systems in an enterprise
+environment refers to connecting software components so
+they exchange data reliably within an organization. In the
+Barangay Culiat AI-Driven Facilities Reservation
+System, integration occurs primarily within the modular
+monolith: when a resident submits a facility reservation, the
+system validates booking rules, records the reservation in
+MySQL, evaluates auto-approval conditions, writes
+notifications, and updates staff dashboards without manual
+re-encoding. External integration is also implemented to
+extend functionality. CIMM maintenance synchronization
+updates facility status and blackout dates through
+scheduled scripts, PayMongo enables online payment
+processing, and Gemini chatbot provides AI-driven
+assistance for residents. Infrastructure and utilities modules
+
+-- 45 of 227 --
+
+30
+are integrated as part of the system design, currently
+operating with mock data while prepared to consume live
+LGU APIs once available. This staged approach allows the
+barangay to deploy the core reservation system immediately
+while ensuring readiness for future connections to
+government services, resulting in a unified, transparent, and
+efficient platform for community facility management.
+
+-- 46 of 227 --
+
+31
+Figure no. 2 System Integration Architecture
+
+-- 47 of 227 --
+
+32
+This diagram illustrates how the Public Facilities
+Reservation System integrates with other municipal
+management departments such as infrastructure projects,
+urban planning, utilities, energy conservation, transportation
+monitoring, and community maintenance. It shows the flow
+of requests, inspections, notifications, and data sharing
+across these units, highlighting how citizen reports, facility
+reservations, and project updates are coordinated. The
+architecture emphasizes inter‑departmental communication
+and synchronization to ensure efficient infrastructure
+development and service delivery.
+Chapter 3
+METHODOLOGY
+3.1 Agile Scrum Methodology in the Project
+Chapter 3 illustrates the methodology used in
+developing the AI-Driven Facilities Reservation System
+with Predictive Scheduling Features for Barangay
+Culiat. This chapter discusses the adoption of the Agile
+Scrum approach, including the roles and responsibilities of
+the project team, sprint cycles, and scrum artifacts that
+guided iterative development. It also presents the system
+
+-- 48 of 227 --
+
+33
+architecture, which is based on a modular monolith design
+to ensure reliable data exchange and streamlined
+integration of components. Furthermore, the chapter
+explains the DevOps implementation that enabled
+continuous deployment and monitoring, as well as the
+integration approach that connects internal modules with
+external services such as CIMM synchronization,
+PayMongo, and Gemini chatbot. Technical descriptions
+provided here reflect the actual implemented system,
+verified from source code and deployment configuration,
+ensuring that the methodology directly corresponds to the
+system’s operational design and deployment.
+Figure no. 3 Agile Scrum Framework
+
+-- 49 of 227 --
+
+34
+3.2 Roles and Responsibilities
+The development team behind the AI-Driven
+Facilities Reservation System is composed of skilled and
+dedicated professionals, each focusing on specific areas of
+the project. Every member is assigned clear responsibilities
+to ensure the smooth design, development, and
+implementation of the system. Together, the team works
+cofeatures and to deliver a solution that makes facility
+reservations easier, improves scheduling with predictive
+features, and meets the needs of both end-users and
+stakeholders.
+NAMES ROLES RESPONSIBILITIES
+Cristina
+V.
+Bernardi
+no
+Product
+Owner
+Defines the project vision and
+backlog to ensure the product
+aligns with end-user and
+stakeholder needs.
+Prioritizes development tasks
+to maximize value and guide
+the team toward project goals.
+Stephnie
+G. Sagun
+Scrum Master Facilitates daily stand-ups,
+sprint planning, and
+retrospectives to keep the
+team aligned with Agile
+practices.
+
+-- 50 of 227 --
+
+35
+Removes obstacles and
+ensures smooth workflow to
+improve team efficiency and
+productivity.
+Promotes collaboration and
+fosters a supportive team
+environment.
+Exequiel
+Kent T.
+Bartolom
+e
+Lead
+Programmer
+Oversees software
+development, sets coding
+standards, and conducts code
+reviews to ensure technical
+quality.
+Guides junior programmers
+and mentors team members
+to maintain consistent and
+efficient coding practices.
+Makes architectural decisions
+to support robust and scalable
+project outcomes.
+Joricho
+E. Azuela
+Project
+Manage
+r / Lead
+Researc
+her
+Manages project timeline,
+resources, and task
+assignments to ensure
+deadlines and deliverables
+are met.
+Communicates directly with
+stakeholders to clarify
+requirements and ensure
+alignment with project goals.
+
+-- 51 of 227 --
+
+36
+Leads research activities and
+provides insights to guide
+project development.
+Motivates the team during
+low-energy or burnout
+periods, boosting morale and
+maintaining productivity.
+Luis
+Miguel N.
+Follero
+Program
+mer
+Develops and implements
+software modules
+according to project
+specifications.
+Collaborates with the lead
+programmer to maintain
+functionality and code quality.
+Troubleshoots and fixes bugs
+to ensure smooth operation of
+the system.
+Hajar P.
+Gili
+Researc
+her
+Conducts research on
+relevant topics to support
+project requirements and
+design decisions.
+Analyzes data and provides
+insights that inform project
+direction and planning.
+
+-- 52 of 227 --
+
+37
+Lawrenc
+e PaulL.
+Lagunda
+System
+Tester
+Tests system functionalities to
+identify bugs, usability issues,
+and performance concerns.
+Provides feedback to
+programmers for
+improvements and ensures
+system reliability.
+Daryll
+Parcia
+Researc
+her
+Assists in research activities,
+gathers and organizes data,
+and contributes to analytical
+reports.
+Ensures accuracy and
+reliability of research outputs
+to support development
+decisions.
+
+-- 53 of 227 --
+
+38
+Gilbert
+A.
+Tablac
+Jr.
+Assistan
+t
+Program
+mer
+Supports programming tasks
+under guidance of senior
+developers, including coding
+and debugging.
+Maintains documentation for
+code and project processes to
+ensure clarity and team
+alignment.
+Contributes to team
+discussions and offers input on
+development challenges and
+solutions.
+Table no. 1 Roles and Responsibilities
+3.3 Sprint Cycles
+This development timeline outlines the planned
+activities, goals, and tasks of the team for the AI-Driven
+Facilities Reservation System with Predictive Scheduling
+Features. Following an Agile Scrum approach, the team
+organizes work into weekly sprints to ensure systematic
+progress, continuous evaluation, and timely delivery of
+features. Each sprint focuses on specific objectives, such as
+brainstorming ideas, defining roles, implementing secure
+
+-- 54 of 227 --
+
+39
+user authentication, managing reservations, integrating AI
+recommendations, and enhancing the user interface. By
+breaking down work into actionable tasks, the team can
+track progress, address challenges promptly, and deliver a
+reliable system that meets the needs of end-users and
+stakeholders.
+Figure no. 4 Scrum Board
+Date Goal User Stories Tasks
+Nov
+28 -
+Dec 4
+To brainstorm,
+evaluate, and
+prioritize team ideas
+for actionable next
+steps.
+1. Team
+meetings for
+Ideas.
+Dec 5
+– Dec
+11
+verify research and
+ideas while defining
+clear roles and
+1. Checking of
+the research
+and title listing
+
+-- 55 of 227 --
+
+40
+responsibilities for
+the team.
+of ideas and
+features
+2. Distribution
+of tasks,
+roles, and
+responsibilitie
+s
+Dec
+12 –
+Dec
+18
+Establish secure
+user
+registration/login
+flows with OTP and
+password policies
+We will enforce
+email OTP on login
+with deliverability
+monitoring and retry
+logic, create an OTP
+email template,
+automatically open
+the T&C modal with
+an acceptance
+checkbox, enforce
+password policies
+on registration and
+reset, and enhance
+session security by
+regenerating
+session IDs,
+implementing
+timeouts, and using
+SameSite/HttpOnly
+settings.
+1. Implement
+OTP backend
+2. Design
+OTP email
+templates
+3. Frontend
+T&C modal
+with
+acceptance
+validation
+4. Password
+validation and
+enforcement
+on
+registration/re
+set
+5. Session
+and cookie
+security
+settings
+Dec
+19 –
+Dec
+25
+Prevent abuse /
+brute-force attacks
+and complete
+password reset flow
+We will implement
+IP-based
+registration rate
+limiting, login rate
+limiting with lockout
+tracking tables,
+1. Backend
+tables and
+logic for login
+and
+
+-- 56 of 227 --
+
+41
+OTP expiry timers
+and attempt limits
+with UX feedback,
+OTP resend
+throttling with
+messaging, and a
+forgot password
+flow with reset token
+emails.
+registration
+rate limiting
+2. Implement
+OTP timers,
+attempt limits,
+and UX
+feedback
+3. OTP
+resend
+throttling with
+messaging
+4. Forgot
+password
+email
+templates and
+flow
+5. Lockout
+logic and
+messaging
+Dec
+26 –
+Jan 1
+Build user profile,
+document handling,
+and notifications
+We will integrate
+latitude/longitude
+and geocoding on
+the profile page,
+display reservation
+statuses on the My
+Reservations page,
+include reasons and
+next steps in
+approval and lock
+emails, enable
+document upload
+and validation for
+PDF, JPG, PNG,
+and WebP files with
+size limits and
+1. Geocode
+integration for
+profile
+2. My
+Reservations
+page with
+status
+indicators
+3. Approval
+and lock email
+templates
+with delivery
+
+-- 57 of 227 --
+
+42
+sanitization, and
+provide admin
+document actions in
+the review queue.
+4. File upload
+validation and
+safe storage
+5. Admin
+dashboard
+document
+review
+features
+Jan 2
+– Jan
+8
+Develop facility
+management and
+UI/UX polish
+We will implement a
+facility form with
+latitude/longitude
+validation, create a
+public facility listing
+with glass-
+morphism design
+and equal-width
+CTA buttons, build a
+facility details page
+with image citations,
+add recent activity
+pagination, enable
+collapsible sections
+with state
+persistence, design
+a Cityhall
+background with
+blur overlay and
+high-contrast cards,
+and integrate
+OpenStreetMap.
+1.Facility
+CRUD with
+validation
+2.Public listing
+page UI and
+accessibility
+3.Image
+display with
+citation on
+hover
+4.Pagination
+and
+collapsible UI
+states
+5.Map
+integration
+
+-- 58 of 227 --
+
+43
+Table no. 2 Sprint Cycles
+Jan 9
+– Jan
+14
+Complete
+reservation
+management, AI
+recommendations,
+admin tools, and
+reporting
+We will implement
+calendar events
+with redirects,
+distance-based AI
+recommendations
+with holiday and
+event risk tagging,
+AI conflict detection
+with a persistent
+warning UI, a cron
+job for expired
+reservations,
+booking rules
+enforcement for up
+to 3 active
+reservations in 30
+days, a maximum
+60-day advance
+booking, and one
+reservation per day,
+admin capabilities
+to re-request
+documents, add
+remarks, and
+optional notes, user
+management filters
+with captured lock
+reasons, and
+reports export in
+CSV/PDF with
+dashboard filters,
+charts, and print-
+ready CSS.
+1. Implement
+calendar,
+booking rules,
+and AI
+recommendat
+ions
+2. Admin
+review queue
+enhancement
+s
+3. Reporting
+and analytics
+with export
+functionality
+4. Final
+system-wide
+testing and
+bug fixes
+
+-- 59 of 227 --
+
+44
+3.4 Scrum Artifacts
+3.4.1 Product Backlog
+User
+Story
+No.
+Features/ Task User Stories Priority Status
+MODULE 1
+USER MANAGEMENT
+F1 Resident
+registration
+As a resident, I
+can register with
+Barangay Culiat
+street address,
+contact details,
+and optional Valid
+ID so only eligible
+residents sign up.
+Low Done
+F2 Email verification As a resident, I
+must verify my
+email before full
+system access.
+Low Done
+F3 Login with OTP As a resident, I log
+in with
+Low Done
+
+-- 60 of 227 --
+
+45
+email/password
+and complete
+email OTP
+verification.
+F4 TOTP (Google
+Authenticator)
+As a resident, I
+can enable TOTP
+for stronger login
+security and
+recover via email if
+device is lost.
+Medium Done
+F5 Password reset As a user, I can
+reset my password
+through a secure
+emailed token.
+Low Done
+F6 Session & abuse
+controls
+As the system, I
+enforce CSRF
+protection, session
+timeout, login
+lockout, and
+Low Done
+
+-- 61 of 227 --
+
+46
+registration rate
+limits.
+F7 Profile
+management
+As a resident, I
+can update profile,
+address,
+geocoordinates,
+photo, and
+notification
+preferences.
+Medium Done
+F8 User directory &
+approval
+As staff/admin, I
+can search users
+and approve, deny,
+lock, or unlock
+accounts.
+Low Done
+F9 ID verification
+queue
+As staff/admin, I
+can verify
+uploaded Valid IDs
+from a dedicated
+queue tab.
+Low Done
+
+-- 62 of 227 --
+
+47
+F10 Data Privacy
+export
+As a resident, I
+can export my
+personal data (RA
+10173 JSON
+export).
+Medium Done
+MODULE 2
+PUBLIC PORTAL AND FACILITY MANAGEMENT
+F11 Public home
+page
+As a visitor, I can
+view featured
+facilities and latest
+announcements on
+the landing page.
+Low Done
+F12 Facilities listing As a visitor, I can
+browse public
+facility listings with
+images.
+Low Done
+F13 Facility details As a visitor, I can
+view facility specs,
+Low Done
+
+-- 63 of 227 --
+
+48
+hours, and
+calendar snapshot.
+F14 Facility CRUD As staff/admin, I
+can create, edit,
+and manage
+facility records.
+Low Done
+F15 Images &
+citations
+As staff/admin, I
+can upload facility
+images with
+attribution/citation.
+Medium Done
+F16 Hours &
+geocoding
+As staff/admin, I
+can set operating
+hours and geocode
+facility location.
+Medium Done
+F17 Blackout dates As staff/admin, I
+can block dates
+(single or range) to
+prevent bookings.
+Low Done
+
+-- 64 of 227 --
+
+49
+F18 Facility QR poster As staff/admin, I
+can generate and
+print facility check-
+in QR posters.
+Medium Done
+F19 Announcements
+archive
+As a visitor, I can
+read public
+announcements
+with search and
+categories.
+Medium Done
+F20 Contact inquiries As a visitor, I can
+submit a contact
+form; staff manage
+inquiries in admin
+inbox.
+Medium Done
+MODULE 3
+BOOKING AND RESERVATIONS
+F21 Book a facility As a resident, I
+can submit a
+Low Done
+
+-- 65 of 227 --
+
+50
+reservation (date,
+time, purpose,
+attendees,
+documents).
+F22 AI conflict
+detection
+As a resident, I
+see real-time
+conflict warnings
+and alternative
+time slots.
+Low Done
+F23 AI
+recommendations
+As a resident, I
+receive facility
+recommendations
+with distance and
+purpose scoring.
+Low Done
+F24 Auto-approval
+engine
+As the system, I
+auto-approve
+bookings when all
+eight rule checks
+pass.
+Low Done
+
+-- 66 of 227 --
+
+51
+F25 Approval queue
+tabs
+As staff/admin, I
+manage pending
+and approved
+reservations in
+separate tabs with
+filters.
+Low Done
+F26 Staff decisions As staff/admin, I
+can approve, deny,
+postpone, hold,
+modify, or cancel
+with reasons.
+Low Done
+F27 My Reservations As a resident, I
+view my bookings
+in calendar and list
+views.
+Low Done
+F28 Reschedule /
+cancel
+As a resident, I
+can reschedule or
+cancel per system
+Medium Done
+
+-- 67 of 227 --
+
+52
+rules (advance
+notice, limits).
+F29 Walk-in booking As staff, I can
+book on behalf of a
+resident at the
+barangay desk.
+Medium Done
+F30 Booking limits As the system, I
+enforce ≤3
+active/30 days,
+≤60-day advance,
+≤1 booking/day.
+Low Done
+MODULE 4
+F31 Manual check-
+in/out
+As a user, I can
+manually check in
+and out with
+optional photo
+proof.
+Low Done
+
+-- 68 of 227 --
+
+53
+F32 QR check-in/out As a user, I can
+scan the facility
+QR to check in/out
+for today’s
+approved booking.
+Low Done
+F33 Occupancy
+monitor
+As staff, I see live
+occupancy status
+and can apply
+overrides.
+Low Done
+F34 Smart Scheduler
+& chatbot
+As a user, I use
+the Smart
+Scheduler and
+Gemini AI assistant
+(with ML fallback).
+Medium Done
+F35 Calendar & iCal As a user, I view
+month/week/day
+calendar and
+export to iCal.
+Low Done
+
+-- 69 of 227 --
+
+54
+F36 Reports & export As staff/admin, I
+view KPI charts
+and export
+CSV/PDF reports.
+Medium Done
+F37 CIMM
+maintenance
+sync
+As staff, I sync
+CIMM schedules to
+facility
+status/blackouts;
+system auto-
+announces.
+Low Done
+F38 Integration
+dashboards
+As staff, I view
+Infrastructure (Brgy
+Culiat) and UMAN
+utility integration
+pages.
+Low Done
+F39 Audit &
+documents
+As admin, I
+manage audit trail,
+document
+Medium Done
+
+-- 70 of 227 --
+
+55
+retention, and
+archival cron.
+F40 Notifications As a user, I
+receive in-app,
+email, and SMS
+(opt-in)
+notifications on key
+events.
+Low Done
+Table no. 3 Product Backlog
+3.4.2 Product Backlog for EIS Information
+Security
+EIS
+No.
+EIS User Stories EIS IS
+Priority
+Revision
+Priority
+Status
+IS-1 As the system, I hash
+passwords with bcrypt and
+enforce password complexity
+on registration and reset.
+Low Low Done
+
+-- 71 of 227 --
+
+56
+IS-2 As the system, I validate CSRF
+tokens on all state-changing
+forms and API actions.
+Low Low Done
+IS-3 As the system, I rate-limit login
+and registration attempts and
+lock accounts after repeated
+failures.
+Low Low Done
+IS-4 As a user, I complete email
+OTP on login; I may enable
+TOTP (Google Authenticator)
+with email recovery.
+Low Medium Done
+IS-5 As the system, I present
+Cloudflare Turnstile captcha on
+registration when enabled.
+Medium Medium Done
+IS-6 As the system, I store
+uploaded IDs and permits
+outside web root with role-
+based download access.
+Low Low Done
+
+-- 72 of 227 --
+
+57
+IS-7 As admin, I can query audit
+logs for user, reservation, and
+configuration actions.
+Low Medium Done
+IS-8 As a resident, I can export my
+personal data; registration
+requires Terms and Privacy
+acceptance.
+Low Medium Done
+IS-9 As the system, I regenerate
+session IDs, enforce timeout,
+and use secure cookie flags.
+Low Low Done
+IS-
+10
+As admin, I can lock users with
+documented reason and email
+notification.
+Medium High Done
+Table no. 4 Product Backlog for EIS Information Security
+3.4.3 Product Backlog for EIS Standards
+EIS
+Standard
+No.
+EIS Standard User Stories EIS
+Standard
+Priority
+Revision
+Priority
+Status
+
+-- 73 of 227 --
+
+58
+STD-1 As a developer, I follow a
+single-entry modular
+monolith routed through
+index.php with views under
+resources/views/.
+Low Low Done
+STD-2 As a developer, I use
+MySQL with normalized
+schema
+(database/schema.sql) and
+versioned migrations.
+Low Low Done
+STD-3 As the system, I enforce
+role-based access
+(Resident, Staff, Admin) via
+config/permissions.php.
+Low Low Done
+STD-4 As a developer, I configure
+secrets and integrations
+through. env (never
+committed).
+Low Low Done
+
+-- 74 of 227 --
+
+59
+STD-5 As a developer, I run
+PHPUnit smoke tests in
+GitHub Actions CI on push.
+Medium Medium Done
+STD-6 As an operator, I run
+documented cron jobs for
+reminders, CIMM sync,
+archival, and auto-decline.
+Medium Medium Done
+Table no. 5 Product Backlog for EIS Standards
+3.4.3.1 UI/UX (Icons, Color, etc…)
+EIS
+Standard
+No.
+EIS Standard User Stories EIS
+Standard
+Priority
+Revision
+Priority
+Status
+UI-1 As a user, I can use the
+system on mobile without
+horizontal scrolling on core
+booking flows.
+Low Low Done
+UI-2 As a user, I see consistent
+status badges (pending,
+approved, denied,
+Low Low Done
+
+-- 75 of 227 --
+
+60
+maintenance) with semantic
+colors.
+UI-3 As a user, I can enable dark
+mode on dashboard pages.
+Medium Medium Done
+UI-4 As a user, I confirm
+destructive actions (cancel,
+delete) through modal
+dialogs.
+Low Medium Done
+UI-5 As a user, I receive inline
+validation messages on
+forms (registration, booking,
+profile).
+Low Low Done
+UI-6 As a visitor, I see a modern
+public landing design with
+high-contrast cards and
+facility imagery.
+Medium High Done
+UI-7 As a user, I navigate
+grouped sidebar sections
+Medium High Done
+
+-- 76 of 227 --
+
+61
+with collapsible state
+persistence.
+UI-8 As a visitor, I see image
+citations/attribution on
+facility photos where
+required.
+High High Done
+UI-9 As a user, I use the
+redesigned Reservations
+Management page with
+tabbed pending/approved
+queues.
+Low Low Done
+UI-10 As a resident, I see
+upcoming CIMM
+maintenance chips on the
+booking calendar before
+maintenance starts.
+Medium Medium Done
+Table no. 6 UI/UX (Icons, Color, etc…)
+
+-- 77 of 227 --
+
+62
+3.4.4 Product Backlog for EIS Integration
+EIS
+Integrati
+on No.
+EIS Integration User
+Stories
+EIS
+Integration
+Priority
+Revision
+Priority
+Status
+INT-1 As staff, I pull CIMM
+maintenance schedules,
+update facility
+status/blackouts, and
+postpone conflicts.
+Low Low Done
+INT-2 As staff, I view QC
+Infrastructure planned
+construction reports
+filtered to Barangay
+Culiat.
+Low Medium Conne
+cted
+INT-3 As staff, I assign UMAN
+utility assets to facilities
+when UMAN API is
+configured.
+Medium Medium Done
+
+-- 78 of 227 --
+
+63
+INT-4 As the system, I use
+Google Gemini for
+chatbot replies and auto-
+written public
+maintenance/blackout
+announcements.
+Low Low Done
+INT-5 As a resident, I can pay
+via PayMongo when
+payments are enabled
+for a facility.
+High High Option
+al
+Done
+INT-6 As the system, I send
+transactional email
+(SMTP) and SMS (opt-
+in) for OTP, approvals,
+and reminders.
+Low Low Done
+INT-7 As the system, I expose
+public availability API for
+guest assistant widget
+Medium Medium Done
+
+-- 79 of 227 --
+
+64
+(/api/public/availabil
+ity).
+INT-8 As an external system,
+I POST to unified
+/api/integrations/*
+gateway.
+High High Done
+Table no. 7 Product Backlog for EIS Integration
+3.4.5 Product Backlog for Analytics
+3.4.5.1 Application System Analytics
+ASA No. EIS Integration User
+Stories
+EIS
+Integration
+Priority
+Revision
+Priority
+Status
+ASA-1 As staff/admin, I view
+dashboard KPI charts
+with date-range filters.
+Low Low Done
+ASA-2 As staff/admin, I
+generate reservation
+reports by status, facility,
+and date range.
+Low Low Done
+
+-- 80 of 227 --
+
+65
+ASA-3 As staff/admin, I export
+filtered report data to
+CSV.
+Low Medium Done
+ASA-4 As staff/admin, I print or
+save PDF views of
+reports.
+Medium Medium Done
+ASA-5 As staff, I monitor live
+occupancy from check-in
+state on the occupancy
+dashboard.
+Low Low Done
+ASA-6 As staff/admin, I view
+calendar aggregates
+(month/week/day) for
+booking density.
+Medium Medium Done
+ASA-7 As admin/dev, I use AI
+Model Lab to test ML
+models and demo
+scenarios.
+High High Done
+
+-- 81 of 227 --
+
+66
+ASA-8 As staff, I see full
+demand-forecasting
+dashboard in Reports.
+Medium Medium Done
+Table no. 8 Application System Analytics
+3.4.5.2 EIS Analytics
+EIS
+Analytics
+No.
+EIS Analytics
+Stories
+EIS
+Analytics
+Priority
+Revision
+Priority
+Status
+EA-1 As admin, I query
+and export audit
+trail to PDF for
+compliance
+reviews.
+Low Low Done
+EA-2 As staff/admin, I
+view per-user
+violation history for
+governance
+decisions.
+Low Medium Done
+
+-- 82 of 227 --
+
+67
+EA-3 As staff, I infer
+facility utilization
+trends from
+reservation and
+check-in data.
+Medium Medium Done
+EA-4 As admin, I view
+integration health
+and sync status on
+system settings
+pages.
+Medium Medium Done
+EA-5 As staff, I track
+CIMM sync
+statistics (last run,
+records updated)
+on maintenance
+page.
+Medium Medium Done
+EA-6 As admin, I use
+unified health-
+check endpoint
+High High Done
+
+-- 83 of 227 --
+
+68
+(DB, mail, ML,
+CIMM).
+Table no. 9 EIS Analytics
+3.4.6 Sprint Backlog (User Stories)
+Tas
+k
+No.
+User
+Stor
+y No.
+User Stories Tasks Timeli
+ne
+Respon
+sible
+Team
+Membe
+r/s
+SPRINT 1 — Dec 12–Dec 25, 2025 · Authentication & Security
+Foundation
+S1_
+1
+IS-1,
+IS-3,
+F6
+Enforce password
+policy, login lockout,
+and registration rate
+limits
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+12–18
+L.
+Follero,
+G.
+Tablac
+Jr.
+S1_
+2
+F1,
+F2
+Resident registration
+with Barangay Culiat
+PLANNING
+· DESIGN ·
+CODE ·
+Dec
+12–18
+L.
+Follero
+
+-- 84 of 227 --
+
+69
+addresses and email
+verification
+DOCUMEN
+TATION
+S1_
+3
+F3,
+IS-4
+Email OTP login flow
+and OTP email
+templates
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+12–18
+L.
+Follero,
+G.
+Tablac
+Jr.
+S1_
+4
+F5 Forgot/reset password
+with secure token
+emails
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+19–25
+G.
+Tablac
+Jr.
+S1_
+5
+IS-2,
+IS-9
+CSRF protection,
+session timeout,
+secure cookies
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+19–25
+L.
+Follero
+
+-- 85 of 227 --
+
+70
+Task
+No.
+User
+Story
+No.
+User Stories Tasks Timeline Respo
+nsible
+Team
+Memb
+er/s
+SPRINT 2 — Dec 26, 2025–Jan 8, 2026 · Profile, Documents &
+Facilities
+S2_1 F7,
+IS-
+6
+Profile geocoding,
+document upload
+validation, secure
+storage
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+26–Jan
+1
+L.
+Follero,
+G. Tablac
+Jr.
+S2_2 F8,
+F9
+User management
+directory, approval
+workflow, ID
+verification tab
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+26–Jan
+1
+L. Follero
+
+-- 86 of 227 --
+
+71
+S2_3 F11
+–
+F13
+Public home,
+facilities listing,
+facility details
+pages
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Jan 2–
+8
+G. Tablac
+Jr., H. Gili
+S2_4 F14
+–
+F16
+Facility CRUD,
+images, hours,
+geocoding
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Jan 2–
+8
+L. Follero
+S2_5 UI-
+1,
+UI-
+6
+Responsive public
+UI polish and
+landing design
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Jan 2–
+8
+G. Tablac
+Jr., D.
+Parcia
+
+-- 87 of 227 --
+
+72
+Task
+No.
+User
+Story
+No.
+User Stories Tasks Timel
+ine
+Respon
+sible
+Team
+Membe
+r/s
+SPRINT 3 — Jan 9–Jan 22, 2026 · Booking, AI & Approvals
+S3_
+1
+F21,
+F30
+Core booking
+form, limits, and
+validation rules
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+9–14
+L.
+Follero
+S3_
+2
+F22,
+F23
+AI conflict
+detection and
+facility
+recommendatio
+ns APIs
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+9–14
+L.
+Follero,
+J.
+Azuela
+S3_
+3
+F24 Eight-condition
+auto-approval
+engine
+PLANNING ·
+DESIGN · CODE ·
+Jan
+9–14
+L.
+Follero
+
+-- 88 of 227 --
+
+73
+DOCUMENTATIO
+N
+S3_
+4
+F25,
+F26
+Staff approval
+queue,
+pending/approv
+ed tabs,
+decision actions
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+15–
+22
+L.
+Follero,
+G.
+Tablac
+Jr.
+S3_
+5
+F27,
+F28
+My
+Reservations,
+reschedule,
+cancel flows
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+15–
+22
+G.
+Tablac
+Jr.
+Task
+No.
+User
+Story
+No.
+User
+Stories
+Tasks Timeline Responsibl
+e Team
+Member/s
+SPRINT 4 — Jan 23–Feb 28, 2026 · Attendance, Calendar & Reports
+
+-- 89 of 227 --
+
+74
+S4_
+1
+F31,
+F32
+Manual and
+QR facility
+check-in/out
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Jan
+23–31
+L.
+Follero
+S4_
+2
+F33 Live
+occupancy
+monitor and
+no-show
+processing
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Jan
+23–31
+G.
+Tablac
+Jr.
+S4_
+3
+F35 Calendar
+views and
+iCal export
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Feb
+1–14
+G.
+Tablac
+Jr.
+S4_
+4
+F36,
+ASA
+-1–
+ASA
+-4
+Reports
+page, KPI
+filters,
+CSV/PDF
+export
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Feb
+1–14
+L.
+Follero,
+D.
+Parcia
+
+-- 90 of 227 --
+
+75
+S4_
+5
+F34 Smart
+Scheduler
+page and
+Python ML
+service
+integration
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Feb
+15–28
+L.
+Follero,
+J.
+Azuela
+Tas
+k
+No.
+User
+Stor
+y
+No.
+User Stories Tasks Timelin
+e
+Responsib
+le Team
+Member/s
+SPRINT 5 — Mar–Jul 2026 · Integrations, Compliance & Polish
+S5_
+1
+INT
+-1,
+F37
+CIMM sync,
+blackout
+dates, Gemini
+auto-
+announcemen
+ts
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+Mar–
+Apr
+L. Follero
+
+-- 91 of 227 --
+
+76
+S5_
+2
+INT
+-4
+Gemini
+chatbot with
+ML/rules
+fallback and
+booking prefill
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+Apr–
+May
+L. Follero
+S5_
+3
+F39
+,
+EA-
+1
+Audit trail,
+document
+archival cron,
+DPA export
+(F10)
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+May G. Tablac
+Jr., H. Gili
+S5_
+4
+INT
+-2,
+INT
+-3,
+F38
+Infrastructure
+and UMAN
+integration
+dashboards
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+May–
+Jun
+J. Azuela,
+D. Parcia
+S5_
+5
+UI-
+9,
+UI-
+Reservations
+UI redesign,
+blackout
+announcemen
+PLANNING ·
+DESIGN ·
+CODE ·
+Jun–
+Jul
+L. Follero,
+G. Tablac
+Jr.
+
+-- 92 of 227 --
+
+77
+10,
+F17
+ts,
+maintenance
+calendar chips
+DOCUMENTATI
+ON
+Table no. 10 Sprint Backlog (User Stories)
+3.4.6.1 Sprint Burndown Chart
+Figure no. 5 Sprint Burndown Chart
+This chart illustrates the remaining work versus time during the
+sprint. It helps track progress, showing whether the team is on pace to
+complete all tasks before the sprint deadline. A downward trend indicates
+47
+38.5
+18.5
+8.5
+2.5 1 0
+DAY 1 DAY 2 DAY 3 DAY 4 DAY 5 DAY 6 DAY 7
+Story Points
+Sprint 1 Burndown Chart
+Remaining Points
+
+-- 93 of 227 --
+
+78
+tasks being completed, while deviations highlight potential delays or scope
+changes.
+3.4.6.2 Sprint Velocity Chart (Target vs Completed)
+Figure no. 6 Sprint Velocity Chart
+This chart shows the amount of work completed in each sprint. It
+helps measure the team’s productivity and consistency over time,
+indicating whether the team can maintain or improve its delivery pace
+across multiple sprints.
+66 56
+73 74 75
+44
+57 66 60
+46
+66 56
+73 74 75
+44
+57 66 60
+46
+SPRINT 1SPRINT 2SPRINT 3SPRINT 4SPRINT 5SPRINT 6SPRINT 7SPRINT 8SPRINT 9 SPRINT
+10
+Story Points
+Overall Project Velocity (Target vs
+Completed)
+Total Story Points Completed Points
+
+-- 94 of 227 --
+
+79
+3.4.6.3 Cumulative Flow Diagram
+Figure no. 7 Cumulative Flow Diagram
+This diagram visualizes the flow of work items across different
+stages (e.g., To Do, In Progress, Done) over time. It helps monitor
+progress, identify bottlenecks, and ensure a steady workflow by showing
+how tasks accumulate or move through each phase.
+3.4.7. Increment
+Spr
+int
+No.
+Increment /
+Feature
+Delivered
+User
+Story /
+Backlog
+Referen
+ce
+Definition of
+Done (DoD)
+Criteria
+Statu
+s
+Remar
+ks
+0
+2
+4
+6
+8
+10
+12
+SPRINT
+1
+SPRINT
+2
+SPRINT
+3
+SPRINT
+4
+SPRINT
+5
+SPRINT
+6
+SPRINT
+7
+SPRINT
+8
+SPRINT
+9
+SPRINT
+10
+Cumulative Flow Diagram (Task
+Distributions)
+To Do Tasks In Progress Tasks Done Tasks
+
+-- 95 of 227 --
+
+80
+Spr
+int
+1
+Secure
+registration
+and login
+module
+F1–F3,
+F5–F6,
+IS-1–
+IS-4,
+IS-9
+Code complete ·
+Unit/smoke
+tested · DB
+integrated · Docs
+updated
+Done OTP
+login
+and
+lockout
+workin
+g
+Spr
+int
+1
+Password
+reset and
+session
+hardening
+F5, IS-
+2, IS-9
+Token emails
+delivered · CSRF
+on forms ·
+Session timeout
+verified
+Done Produc
+tion
+email
+via
+SMTP
+Spr
+int
+2
+User profile
+and
+document
+handling
+F7, IS-
+6, F8
+Upload validation
+· Secure paths ·
+Admin review in
+User
+Management
+Done PDF/J
+PG/PN
+G/Web
+P
+support
+ed
+
+-- 96 of 227 --
+
+81
+Spr
+int
+2
+Public portal
+and facility
+management
+F11–
+F16, UI-
+1, UI-6
+Public pages live
+· Facility CRUD ·
+Geocoding on
+map
+Done OpenS
+treetM
+ap
+integrat
+ion
+Spr
+int
+2
+ID
+verification
+queue
+F9 Dedicated tab ·
+Verify/redo
+workflow ·
+Booking gate for
+unverified IDs
+Done July
+2026
+enhanc
+ement
+Spr
+int
+3
+Booking and
+AI
+scheduling
+core
+F21–
+F24,
+F30
+Book form ·
+Conflict API ·
+Recommendatio
+ns · Auto-
+approval
+Done Python
+ML +
+PHP
+orchest
+ration
+Spr
+int
+3
+Staff
+approval
+operations
+F25–
+F28
+Pending/approve
+d tabs ·
+Approve/deny/m
+Done Tabbed
+UI
+redesig
+
+-- 97 of 227 --
+
+82
+odify · My
+Reservations
+n Jul
+2026
+Spr
+int
+4
+Attendance
+and
+occupancy
+F31–
+F33
+Manual + QR
+check-in ·
+Occupancy strip
+· No-show
+violations
+Done Facility
+QR
+posters
+Spr
+int
+4
+Calendar
+and analytics
+F35–
+F36,
+ASA-1–
+ASA-4
+iCal export ·
+Reports
+CSV/PDF ·
+Dashboard KPI
+filters
+Done Print-
+ready
+CSS
+Spr
+int
+4
+Smart
+Scheduler &
+chatbot
+foundation
+F34 Smart Scheduler
+page · ML
+risk/purpose ·
+Chat widget shell
+Done Gemini
+added
+Sprint
+5
+
+-- 98 of 227 --
+
+83
+Spr
+int
+5
+CIMM
+integration &
+auto-
+announceme
+nts
+F37,
+INT-1,
+INT-4
+CIMM pull sync ·
+Blackout sync ·
+Gemini public
+posts
+Done Cron +
+manual
+sync
+page
+Spr
+int
+5
+CPRF
+blackout
+Gemini
+announceme
+nts
+F17,
+INT-4
+Manual blackout
+→ auto public
+notification with
+facility photo
+Done July
+2026
+Spr
+int
+5
+Infrastructure
+& UMAN
+dashboards
+F38,
+INT-2,
+INT-3
+Integration pages
+· Brgy Culiat
+scope · UMAN
+asset assign
+Conn
+ecte
+d†
+Auto-
+blacko
+ut not
+implem
+ented
+Spr
+int
+5
+Compliance
+and admin
+tools
+F39,
+F10,
+EA-1
+Audit export ·
+Document
+archival cron ·
+Done Retenti
+on
+policy
+
+-- 99 of 227 --
+
+84
+DPA JSON
+export
+in
+admin
+Spr
+int
+5
+Notifications
+and
+communicati
+ons
+F40,
+INT-6
+In-app · Email ·
+SMS opt-in ·
+Booking
+reminders cron
+Done Brevo/
+SMTP
+configu
+rable
+Spr
+int
+5
+Optional
+PayMongo
+payments
+INT-5 Checkout
+session ·
+Webhook ·
+Payment return
+page
+Optio
+nal
+Disable
+d by
+default
+— Filipino UI /
+PWA / health
+endpoint
+UI-11,
+UI-12,
+EA-6,
+INT-8
+— Plan
+ned
+Future
+backlo
+g
+Table no. 11 Increment
+
+-- 100 of 227 --
+
+85
+3.5 Microservices Architecture

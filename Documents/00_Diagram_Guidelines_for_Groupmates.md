@@ -18,7 +18,8 @@ Send this file to anyone assigned to draw diagrams. Follow the **tool**, **must 
 | DFD Level 0 & 1 | Done by team ✓ | Polish caption + figure number only |
 | Workflow Diagram | Done by team ✓ | Polish caption + figure number only |
 | Use Case Diagram | Done by team ✓ | Polish caption + figure number only |
-| Sequence Diagram | Done by team ✓ | Polish caption + figure number only |
+| Sequence Diagram | **Drafted** in `Documents/sequence/` | Polish caption + figure number only |
+| Network Topology | **Drafted** in `Documents/network-topology/` | Star-tree hybrid · section 3.6.1 |
 | Infrastructure as Code | **Done in Documents/** | Review / paste into manuscript |
 | CI/CD Pipeline | Done by team ✓ | Align labels with Hostinger deploy |
 | Data Flow Diagram (Microservices) | **Done in Documents/** | Review / paste into manuscript |

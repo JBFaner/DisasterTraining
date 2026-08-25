@@ -3,7 +3,7 @@
 **Project:** Disaster Preparedness Training & Simulation Platform  
 **Pilot:** Barangay San Agustin, Quezon City  
 **Product flow:** Approved Campaign → Exercise Plan → Use Template → Readiness → Publish → Monitoring  
-**Last updated:** 2026-08-12
+**Last updated:** 2026-08-13
 
 ---
 
@@ -18,9 +18,8 @@
 - Thesis diagram polish by groupmates (BPA, ERD, DFD, Use Case, Sequence, Sprint chart captions)
 
 ## IN PROGRESS
-- Capstone documentation pack (BPMN, IaC, microservices DFD/comms guidelines)
+- Capstone documentation pack — groupmate polish (ERD, Use Case, Sequence, Sprint chart captions)
 - Defense prep: backlog/increment alignment with production demo
-- Role migration on prod: promote ops users from Assistant (`LGU_TRAINER`) → Lead Trainer where needed
 
 ## DONE
 - Secure auth (participant + admin OTP / centralized login)
@@ -42,6 +41,11 @@
 - Backup / recovery admin tools
 - CI/CD & Hostinger production deploy path
 - Docker Compose local stack (MySQL, Adminer, Mailpit)
+- Role access matrix deployed to production (Lead / Assistant / Evaluator probe verified)
+- Per-module DFD L0–L2 pack (8 internal modules: Training → Hazard) — `Documents/dfd-*`
+- Overall system DFD Level 0 + Level 1 — `Documents/dfd-overall/`
+- Capstone diagram drafts: BPMN AS-IS/TO-BE, IaC, microservices DFD/comms, CI/CD & architecture PNGs, BPA, diagram guidelines
+- Week 4 IT Auditing risk case study (answered, table format) — `Documents/Week4_Risk_Management_Case_Study_ANSWERED.docx`
 
 ---
 

@@ -1,0 +1,1676 @@
+3.4 Scrum Artifacts
+3.4.1 Product Backlog
+User
+Story
+No.
+Features/ Task User Stories Priority Status
+MODULE 1
+USER MANAGEMENT
+F1 Resident
+registration
+As a resident, I
+can register with
+Barangay Culiat
+street address,
+contact details,
+and optional Valid
+ID so only eligible
+residents sign up.
+Low Done
+F2 Email verification As a resident, I
+must verify my
+email before full
+system access.
+Low Done
+F3 Login with OTP As a resident, I log
+in with
+Low Done
+
+-- 60 of 227 --
+
+45
+email/password
+and complete
+email OTP
+verification.
+F4 TOTP (Google
+Authenticator)
+As a resident, I
+can enable TOTP
+for stronger login
+security and
+recover via email if
+device is lost.
+Medium Done
+F5 Password reset As a user, I can
+reset my password
+through a secure
+emailed token.
+Low Done
+F6 Session & abuse
+controls
+As the system, I
+enforce CSRF
+protection, session
+timeout, login
+lockout, and
+Low Done
+
+-- 61 of 227 --
+
+46
+registration rate
+limits.
+F7 Profile
+management
+As a resident, I
+can update profile,
+address,
+geocoordinates,
+photo, and
+notification
+preferences.
+Medium Done
+F8 User directory &
+approval
+As staff/admin, I
+can search users
+and approve, deny,
+lock, or unlock
+accounts.
+Low Done
+F9 ID verification
+queue
+As staff/admin, I
+can verify
+uploaded Valid IDs
+from a dedicated
+queue tab.
+Low Done
+
+-- 62 of 227 --
+
+47
+F10 Data Privacy
+export
+As a resident, I
+can export my
+personal data (RA
+10173 JSON
+export).
+Medium Done
+MODULE 2
+PUBLIC PORTAL AND FACILITY MANAGEMENT
+F11 Public home
+page
+As a visitor, I can
+view featured
+facilities and latest
+announcements on
+the landing page.
+Low Done
+F12 Facilities listing As a visitor, I can
+browse public
+facility listings with
+images.
+Low Done
+F13 Facility details As a visitor, I can
+view facility specs,
+Low Done
+
+-- 63 of 227 --
+
+48
+hours, and
+calendar snapshot.
+F14 Facility CRUD As staff/admin, I
+can create, edit,
+and manage
+facility records.
+Low Done
+F15 Images &
+citations
+As staff/admin, I
+can upload facility
+images with
+attribution/citation.
+Medium Done
+F16 Hours &
+geocoding
+As staff/admin, I
+can set operating
+hours and geocode
+facility location.
+Medium Done
+F17 Blackout dates As staff/admin, I
+can block dates
+(single or range) to
+prevent bookings.
+Low Done
+
+-- 64 of 227 --
+
+49
+F18 Facility QR poster As staff/admin, I
+can generate and
+print facility check-
+in QR posters.
+Medium Done
+F19 Announcements
+archive
+As a visitor, I can
+read public
+announcements
+with search and
+categories.
+Medium Done
+F20 Contact inquiries As a visitor, I can
+submit a contact
+form; staff manage
+inquiries in admin
+inbox.
+Medium Done
+MODULE 3
+BOOKING AND RESERVATIONS
+F21 Book a facility As a resident, I
+can submit a
+Low Done
+
+-- 65 of 227 --
+
+50
+reservation (date,
+time, purpose,
+attendees,
+documents).
+F22 AI conflict
+detection
+As a resident, I
+see real-time
+conflict warnings
+and alternative
+time slots.
+Low Done
+F23 AI
+recommendations
+As a resident, I
+receive facility
+recommendations
+with distance and
+purpose scoring.
+Low Done
+F24 Auto-approval
+engine
+As the system, I
+auto-approve
+bookings when all
+eight rule checks
+pass.
+Low Done
+
+-- 66 of 227 --
+
+51
+F25 Approval queue
+tabs
+As staff/admin, I
+manage pending
+and approved
+reservations in
+separate tabs with
+filters.
+Low Done
+F26 Staff decisions As staff/admin, I
+can approve, deny,
+postpone, hold,
+modify, or cancel
+with reasons.
+Low Done
+F27 My Reservations As a resident, I
+view my bookings
+in calendar and list
+views.
+Low Done
+F28 Reschedule /
+cancel
+As a resident, I
+can reschedule or
+cancel per system
+Medium Done
+
+-- 67 of 227 --
+
+52
+rules (advance
+notice, limits).
+F29 Walk-in booking As staff, I can
+book on behalf of a
+resident at the
+barangay desk.
+Medium Done
+F30 Booking limits As the system, I
+enforce ≤3
+active/30 days,
+≤60-day advance,
+≤1 booking/day.
+Low Done
+MODULE 4
+F31 Manual check-
+in/out
+As a user, I can
+manually check in
+and out with
+optional photo
+proof.
+Low Done
+
+-- 68 of 227 --
+
+53
+F32 QR check-in/out As a user, I can
+scan the facility
+QR to check in/out
+for today’s
+approved booking.
+Low Done
+F33 Occupancy
+monitor
+As staff, I see live
+occupancy status
+and can apply
+overrides.
+Low Done
+F34 Smart Scheduler
+& chatbot
+As a user, I use
+the Smart
+Scheduler and
+Gemini AI assistant
+(with ML fallback).
+Medium Done
+F35 Calendar & iCal As a user, I view
+month/week/day
+calendar and
+export to iCal.
+Low Done
+
+-- 69 of 227 --
+
+54
+F36 Reports & export As staff/admin, I
+view KPI charts
+and export
+CSV/PDF reports.
+Medium Done
+F37 CIMM
+maintenance
+sync
+As staff, I sync
+CIMM schedules to
+facility
+status/blackouts;
+system auto-
+announces.
+Low Done
+F38 Integration
+dashboards
+As staff, I view
+Infrastructure (Brgy
+Culiat) and UMAN
+utility integration
+pages.
+Low Done
+F39 Audit &
+documents
+As admin, I
+manage audit trail,
+document
+Medium Done
+
+-- 70 of 227 --
+
+55
+retention, and
+archival cron.
+F40 Notifications As a user, I
+receive in-app,
+email, and SMS
+(opt-in)
+notifications on key
+events.
+Low Done
+Table no. 3 Product Backlog
+3.4.2 Product Backlog for EIS Information
+Security
+EIS
+No.
+EIS User Stories EIS IS
+Priority
+Revision
+Priority
+Status
+IS-1 As the system, I hash
+passwords with bcrypt and
+enforce password complexity
+on registration and reset.
+Low Low Done
+
+-- 71 of 227 --
+
+56
+IS-2 As the system, I validate CSRF
+tokens on all state-changing
+forms and API actions.
+Low Low Done
+IS-3 As the system, I rate-limit login
+and registration attempts and
+lock accounts after repeated
+failures.
+Low Low Done
+IS-4 As a user, I complete email
+OTP on login; I may enable
+TOTP (Google Authenticator)
+with email recovery.
+Low Medium Done
+IS-5 As the system, I present
+Cloudflare Turnstile captcha on
+registration when enabled.
+Medium Medium Done
+IS-6 As the system, I store
+uploaded IDs and permits
+outside web root with role-
+based download access.
+Low Low Done
+
+-- 72 of 227 --
+
+57
+IS-7 As admin, I can query audit
+logs for user, reservation, and
+configuration actions.
+Low Medium Done
+IS-8 As a resident, I can export my
+personal data; registration
+requires Terms and Privacy
+acceptance.
+Low Medium Done
+IS-9 As the system, I regenerate
+session IDs, enforce timeout,
+and use secure cookie flags.
+Low Low Done
+IS-
+10
+As admin, I can lock users with
+documented reason and email
+notification.
+Medium High Done
+Table no. 4 Product Backlog for EIS Information Security
+3.4.3 Product Backlog for EIS Standards
+EIS
+Standard
+No.
+EIS Standard User Stories EIS
+Standard
+Priority
+Revision
+Priority
+Status
+
+-- 73 of 227 --
+
+58
+STD-1 As a developer, I follow a
+single-entry modular
+monolith routed through
+index.php with views under
+resources/views/.
+Low Low Done
+STD-2 As a developer, I use
+MySQL with normalized
+schema
+(database/schema.sql) and
+versioned migrations.
+Low Low Done
+STD-3 As the system, I enforce
+role-based access
+(Resident, Staff, Admin) via
+config/permissions.php.
+Low Low Done
+STD-4 As a developer, I configure
+secrets and integrations
+through. env (never
+committed).
+Low Low Done
+
+-- 74 of 227 --
+
+59
+STD-5 As a developer, I run
+PHPUnit smoke tests in
+GitHub Actions CI on push.
+Medium Medium Done
+STD-6 As an operator, I run
+documented cron jobs for
+reminders, CIMM sync,
+archival, and auto-decline.
+Medium Medium Done
+Table no. 5 Product Backlog for EIS Standards
+3.4.3.1 UI/UX (Icons, Color, etc…)
+EIS
+Standard
+No.
+EIS Standard User Stories EIS
+Standard
+Priority
+Revision
+Priority
+Status
+UI-1 As a user, I can use the
+system on mobile without
+horizontal scrolling on core
+booking flows.
+Low Low Done
+UI-2 As a user, I see consistent
+status badges (pending,
+approved, denied,
+Low Low Done
+
+-- 75 of 227 --
+
+60
+maintenance) with semantic
+colors.
+UI-3 As a user, I can enable dark
+mode on dashboard pages.
+Medium Medium Done
+UI-4 As a user, I confirm
+destructive actions (cancel,
+delete) through modal
+dialogs.
+Low Medium Done
+UI-5 As a user, I receive inline
+validation messages on
+forms (registration, booking,
+profile).
+Low Low Done
+UI-6 As a visitor, I see a modern
+public landing design with
+high-contrast cards and
+facility imagery.
+Medium High Done
+UI-7 As a user, I navigate
+grouped sidebar sections
+Medium High Done
+
+-- 76 of 227 --
+
+61
+with collapsible state
+persistence.
+UI-8 As a visitor, I see image
+citations/attribution on
+facility photos where
+required.
+High High Done
+UI-9 As a user, I use the
+redesigned Reservations
+Management page with
+tabbed pending/approved
+queues.
+Low Low Done
+UI-10 As a resident, I see
+upcoming CIMM
+maintenance chips on the
+booking calendar before
+maintenance starts.
+Medium Medium Done
+Table no. 6 UI/UX (Icons, Color, etc…)
+
+-- 77 of 227 --
+
+62
+3.4.4 Product Backlog for EIS Integration
+EIS
+Integrati
+on No.
+EIS Integration User
+Stories
+EIS
+Integration
+Priority
+Revision
+Priority
+Status
+INT-1 As staff, I pull CIMM
+maintenance schedules,
+update facility
+status/blackouts, and
+postpone conflicts.
+Low Low Done
+INT-2 As staff, I view QC
+Infrastructure planned
+construction reports
+filtered to Barangay
+Culiat.
+Low Medium Conne
+cted
+INT-3 As staff, I assign UMAN
+utility assets to facilities
+when UMAN API is
+configured.
+Medium Medium Done
+
+-- 78 of 227 --
+
+63
+INT-4 As the system, I use
+Google Gemini for
+chatbot replies and auto-
+written public
+maintenance/blackout
+announcements.
+Low Low Done
+INT-5 As a resident, I can pay
+via PayMongo when
+payments are enabled
+for a facility.
+High High Option
+al
+Done
+INT-6 As the system, I send
+transactional email
+(SMTP) and SMS (opt-
+in) for OTP, approvals,
+and reminders.
+Low Low Done
+INT-7 As the system, I expose
+public availability API for
+guest assistant widget
+Medium Medium Done
+
+-- 79 of 227 --
+
+64
+(/api/public/availabil
+ity).
+INT-8 As an external system,
+I POST to unified
+/api/integrations/*
+gateway.
+High High Done
+Table no. 7 Product Backlog for EIS Integration
+3.4.5 Product Backlog for Analytics
+3.4.5.1 Application System Analytics
+ASA No. EIS Integration User
+Stories
+EIS
+Integration
+Priority
+Revision
+Priority
+Status
+ASA-1 As staff/admin, I view
+dashboard KPI charts
+with date-range filters.
+Low Low Done
+ASA-2 As staff/admin, I
+generate reservation
+reports by status, facility,
+and date range.
+Low Low Done
+
+-- 80 of 227 --
+
+65
+ASA-3 As staff/admin, I export
+filtered report data to
+CSV.
+Low Medium Done
+ASA-4 As staff/admin, I print or
+save PDF views of
+reports.
+Medium Medium Done
+ASA-5 As staff, I monitor live
+occupancy from check-in
+state on the occupancy
+dashboard.
+Low Low Done
+ASA-6 As staff/admin, I view
+calendar aggregates
+(month/week/day) for
+booking density.
+Medium Medium Done
+ASA-7 As admin/dev, I use AI
+Model Lab to test ML
+models and demo
+scenarios.
+High High Done
+
+-- 81 of 227 --
+
+66
+ASA-8 As staff, I see full
+demand-forecasting
+dashboard in Reports.
+Medium Medium Done
+Table no. 8 Application System Analytics
+3.4.5.2 EIS Analytics
+EIS
+Analytics
+No.
+EIS Analytics
+Stories
+EIS
+Analytics
+Priority
+Revision
+Priority
+Status
+EA-1 As admin, I query
+and export audit
+trail to PDF for
+compliance
+reviews.
+Low Low Done
+EA-2 As staff/admin, I
+view per-user
+violation history for
+governance
+decisions.
+Low Medium Done
+
+-- 82 of 227 --
+
+67
+EA-3 As staff, I infer
+facility utilization
+trends from
+reservation and
+check-in data.
+Medium Medium Done
+EA-4 As admin, I view
+integration health
+and sync status on
+system settings
+pages.
+Medium Medium Done
+EA-5 As staff, I track
+CIMM sync
+statistics (last run,
+records updated)
+on maintenance
+page.
+Medium Medium Done
+EA-6 As admin, I use
+unified health-
+check endpoint
+High High Done
+
+-- 83 of 227 --
+
+68
+(DB, mail, ML,
+CIMM).
+Table no. 9 EIS Analytics
+3.4.6 Sprint Backlog (User Stories)
+Tas
+k
+No.
+User
+Stor
+y No.
+User Stories Tasks Timeli
+ne
+Respon
+sible
+Team
+Membe
+r/s
+SPRINT 1 — Dec 12–Dec 25, 2025 · Authentication & Security
+Foundation
+S1_
+1
+IS-1,
+IS-3,
+F6
+Enforce password
+policy, login lockout,
+and registration rate
+limits
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+12–18
+L.
+Follero,
+G.
+Tablac
+Jr.
+S1_
+2
+F1,
+F2
+Resident registration
+with Barangay Culiat
+PLANNING
+· DESIGN ·
+CODE ·
+Dec
+12–18
+L.
+Follero
+
+-- 84 of 227 --
+
+69
+addresses and email
+verification
+DOCUMEN
+TATION
+S1_
+3
+F3,
+IS-4
+Email OTP login flow
+and OTP email
+templates
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+12–18
+L.
+Follero,
+G.
+Tablac
+Jr.
+S1_
+4
+F5 Forgot/reset password
+with secure token
+emails
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+19–25
+G.
+Tablac
+Jr.
+S1_
+5
+IS-2,
+IS-9
+CSRF protection,
+session timeout,
+secure cookies
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+19–25
+L.
+Follero
+
+-- 85 of 227 --
+
+70
+Task
+No.
+User
+Story
+No.
+User Stories Tasks Timeline Respo
+nsible
+Team
+Memb
+er/s
+SPRINT 2 — Dec 26, 2025–Jan 8, 2026 · Profile, Documents &
+Facilities
+S2_1 F7,
+IS-
+6
+Profile geocoding,
+document upload
+validation, secure
+storage
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+26–Jan
+1
+L.
+Follero,
+G. Tablac
+Jr.
+S2_2 F8,
+F9
+User management
+directory, approval
+workflow, ID
+verification tab
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Dec
+26–Jan
+1
+L. Follero
+
+-- 86 of 227 --
+
+71
+S2_3 F11
+–
+F13
+Public home,
+facilities listing,
+facility details
+pages
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Jan 2–
+8
+G. Tablac
+Jr., H. Gili
+S2_4 F14
+–
+F16
+Facility CRUD,
+images, hours,
+geocoding
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Jan 2–
+8
+L. Follero
+S2_5 UI-
+1,
+UI-
+6
+Responsive public
+UI polish and
+landing design
+PLANNING
+· DESIGN ·
+CODE ·
+DOCUMEN
+TATION
+Jan 2–
+8
+G. Tablac
+Jr., D.
+Parcia
+
+-- 87 of 227 --
+
+72
+Task
+No.
+User
+Story
+No.
+User Stories Tasks Timel
+ine
+Respon
+sible
+Team
+Membe
+r/s
+SPRINT 3 — Jan 9–Jan 22, 2026 · Booking, AI & Approvals
+S3_
+1
+F21,
+F30
+Core booking
+form, limits, and
+validation rules
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+9–14
+L.
+Follero
+S3_
+2
+F22,
+F23
+AI conflict
+detection and
+facility
+recommendatio
+ns APIs
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+9–14
+L.
+Follero,
+J.
+Azuela
+S3_
+3
+F24 Eight-condition
+auto-approval
+engine
+PLANNING ·
+DESIGN · CODE ·
+Jan
+9–14
+L.
+Follero
+
+-- 88 of 227 --
+
+73
+DOCUMENTATIO
+N
+S3_
+4
+F25,
+F26
+Staff approval
+queue,
+pending/approv
+ed tabs,
+decision actions
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+15–
+22
+L.
+Follero,
+G.
+Tablac
+Jr.
+S3_
+5
+F27,
+F28
+My
+Reservations,
+reschedule,
+cancel flows
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATIO
+N
+Jan
+15–
+22
+G.
+Tablac
+Jr.
+Task
+No.
+User
+Story
+No.
+User
+Stories
+Tasks Timeline Responsibl
+e Team
+Member/s
+SPRINT 4 — Jan 23–Feb 28, 2026 · Attendance, Calendar & Reports
+
+-- 89 of 227 --
+
+74
+S4_
+1
+F31,
+F32
+Manual and
+QR facility
+check-in/out
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Jan
+23–31
+L.
+Follero
+S4_
+2
+F33 Live
+occupancy
+monitor and
+no-show
+processing
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Jan
+23–31
+G.
+Tablac
+Jr.
+S4_
+3
+F35 Calendar
+views and
+iCal export
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Feb
+1–14
+G.
+Tablac
+Jr.
+S4_
+4
+F36,
+ASA
+-1–
+ASA
+-4
+Reports
+page, KPI
+filters,
+CSV/PDF
+export
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Feb
+1–14
+L.
+Follero,
+D.
+Parcia
+
+-- 90 of 227 --
+
+75
+S4_
+5
+F34 Smart
+Scheduler
+page and
+Python ML
+service
+integration
+PLANNING ·
+DESIGN · CODE ·
+DOCUMENTATION
+Feb
+15–28
+L.
+Follero,
+J.
+Azuela
+Tas
+k
+No.
+User
+Stor
+y
+No.
+User Stories Tasks Timelin
+e
+Responsib
+le Team
+Member/s
+SPRINT 5 — Mar–Jul 2026 · Integrations, Compliance & Polish
+S5_
+1
+INT
+-1,
+F37
+CIMM sync,
+blackout
+dates, Gemini
+auto-
+announcemen
+ts
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+Mar–
+Apr
+L. Follero
+
+-- 91 of 227 --
+
+76
+S5_
+2
+INT
+-4
+Gemini
+chatbot with
+ML/rules
+fallback and
+booking prefill
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+Apr–
+May
+L. Follero
+S5_
+3
+F39
+,
+EA-
+1
+Audit trail,
+document
+archival cron,
+DPA export
+(F10)
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+May G. Tablac
+Jr., H. Gili
+S5_
+4
+INT
+-2,
+INT
+-3,
+F38
+Infrastructure
+and UMAN
+integration
+dashboards
+PLANNING ·
+DESIGN ·
+CODE ·
+DOCUMENTATI
+ON
+May–
+Jun
+J. Azuela,
+D. Parcia
+S5_
+5
+UI-
+9,
+UI-
+Reservations
+UI redesign,
+blackout
+announcemen
+PLANNING ·
+DESIGN ·
+CODE ·
+Jun–
+Jul
+L. Follero,
+G. Tablac
+Jr.
+
+-- 92 of 227 --
+
+77
+10,
+F17
+ts,
+maintenance
+calendar chips
+DOCUMENTATI
+ON
+Table no. 10 Sprint Backlog (User Stories)
+3.4.6.1 Sprint Burndown Chart
+Figure no. 5 Sprint Burndown Chart
+This chart illustrates the remaining work versus time during the
+sprint. It helps track progress, showing whether the team is on pace to
+complete all tasks before the sprint deadline. A downward trend indicates
+47
+38.5
+18.5
+8.5
+2.5 1 0
+DAY 1 DAY 2 DAY 3 DAY 4 DAY 5 DAY 6 DAY 7
+Story Points
+Sprint 1 Burndown Chart
+Remaining Points
+
+-- 93 of 227 --
+
+78
+tasks being completed, while deviations highlight potential delays or scope
+changes.
+3.4.6.2 Sprint Velocity Chart (Target vs Completed)
+Figure no. 6 Sprint Velocity Chart
+This chart shows the amount of work completed in each sprint. It
+helps measure the team’s productivity and consistency over time,
+indicating whether the team can maintain or improve its delivery pace
+across multiple sprints.
+66 56
+73 74 75
+44
+57 66 60
+46
+66 56
+73 74 75
+44
+57 66 60
+46
+SPRINT 1SPRINT 2SPRINT 3SPRINT 4SPRINT 5SPRINT 6SPRINT 7SPRINT 8SPRINT 9 SPRINT
+10
+Story Points
+Overall Project Velocity (Target vs
+Completed)
+Total Story Points Completed Points
+
+-- 94 of 227 --
+
+79
+3.4.6.3 Cumulative Flow Diagram
+Figure no. 7 Cumulative Flow Diagram
+This diagram visualizes the flow of work items across different
+stages (e.g., To Do, In Progress, Done) over time. It helps monitor
+progress, identify bottlenecks, and ensure a steady workflow by showing
+how tasks accumulate or move through each phase.
+3.4.7. Increment
+Spr
+int
+No.
+Increment /
+Feature
+Delivered
+User
+Story /
+Backlog
+Referen
+ce
+Definition of
+Done (DoD)
+Criteria
+Statu
+s
+Remar
+ks
+0
+2
+4
+6
+8
+10
+12
+SPRINT
+1
+SPRINT
+2
+SPRINT
+3
+SPRINT
+4
+SPRINT
+5
+SPRINT
+6
+SPRINT
+7
+SPRINT
+8
+SPRINT
+9
+SPRINT
+10
+Cumulative Flow Diagram (Task
+Distributions)
+To Do Tasks In Progress Tasks Done Tasks
+
+-- 95 of 227 --
+
+80
+Spr
+int
+1
+Secure
+registration
+and login
+module
+F1–F3,
+F5–F6,
+IS-1–
+IS-4,
+IS-9
+Code complete ·
+Unit/smoke
+tested · DB
+integrated · Docs
+updated
+Done OTP
+login
+and
+lockout
+workin
+g
+Spr
+int
+1
+Password
+reset and
+session
+hardening
+F5, IS-
+2, IS-9
+Token emails
+delivered · CSRF
+on forms ·
+Session timeout
+verified
+Done Produc
+tion
+email
+via
+SMTP
+Spr
+int
+2
+User profile
+and
+document
+handling
+F7, IS-
+6, F8
+Upload validation
+· Secure paths ·
+Admin review in
+User
+Management
+Done PDF/J
+PG/PN
+G/Web
+P
+support
+ed
+
+-- 96 of 227 --
+
+81
+Spr
+int
+2
+Public portal
+and facility
+management
+F11–
+F16, UI-
+1, UI-6
+Public pages live
+· Facility CRUD ·
+Geocoding on
+map
+Done OpenS
+treetM
+ap
+integrat
+ion
+Spr
+int
+2
+ID
+verification
+queue
+F9 Dedicated tab ·
+Verify/redo
+workflow ·
+Booking gate for
+unverified IDs
+Done July
+2026
+enhanc
+ement
+Spr
+int
+3
+Booking and
+AI
+scheduling
+core
+F21–
+F24,
+F30
+Book form ·
+Conflict API ·
+Recommendatio
+ns · Auto-
+approval
+Done Python
+ML +
+PHP
+orchest
+ration
+Spr
+int
+3
+Staff
+approval
+operations
+F25–
+F28
+Pending/approve
+d tabs ·
+Approve/deny/m
+Done Tabbed
+UI
+redesig
+
+-- 97 of 227 --
+
+82
+odify · My
+Reservations
+n Jul
+2026
+Spr
+int
+4
+Attendance
+and
+occupancy
+F31–
+F33
+Manual + QR
+check-in ·
+Occupancy strip
+· No-show
+violations
+Done Facility
+QR
+posters
+Spr
+int
+4
+Calendar
+and analytics
+F35–
+F36,
+ASA-1–
+ASA-4
+iCal export ·
+Reports
+CSV/PDF ·
+Dashboard KPI
+filters
+Done Print-
+ready
+CSS
+Spr
+int
+4
+Smart
+Scheduler &
+chatbot
+foundation
+F34 Smart Scheduler
+page · ML
+risk/purpose ·
+Chat widget shell
+Done Gemini
+added
+Sprint
+5
+
+-- 98 of 227 --
+
+83
+Spr
+int
+5
+CIMM
+integration &
+auto-
+announceme
+nts
+F37,
+INT-1,
+INT-4
+CIMM pull sync ·
+Blackout sync ·
+Gemini public
+posts
+Done Cron +
+manual
+sync
+page
+Spr
+int
+5
+CPRF
+blackout
+Gemini
+announceme
+nts
+F17,
+INT-4
+Manual blackout
+→ auto public
+notification with
+facility photo
+Done July
+2026
+Spr
+int
+5
+Infrastructure
+& UMAN
+dashboards
+F38,
+INT-2,
+INT-3
+Integration pages
+· Brgy Culiat
+scope · UMAN
+asset assign
+Conn
+ecte
+d†
+Auto-
+blacko
+ut not
+implem
+ented
+Spr
+int
+5
+Compliance
+and admin
+tools
+F39,
+F10,
+EA-1
+Audit export ·
+Document
+archival cron ·
+Done Retenti
+on
+policy
+
+-- 99 of 227 --
+
+84
+DPA JSON
+export
+in
+admin
+Spr
+int
+5
+Notifications
+and
+communicati
+ons
+F40,
+INT-6
+In-app · Email ·
+SMS opt-in ·
+Booking
+reminders cron
+Done Brevo/
+SMTP
+configu
+rable
+Spr
+int
+5
+Optional
+PayMongo
+payments
+INT-5 Checkout
+session ·
+Webhook ·
+Payment return
+page
+Optio
+nal
+Disable
+d by
+default
+— Filipino UI /
+PWA / health
+endpoint
+UI-11,
+UI-12,
+EA-6,
+INT-8
+— Plan
+ned
+Future
+backlo
+g
+Table no. 11 Increment
+
+-- 100 of 227 --
+
+85

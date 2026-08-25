@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="bpmn-haz" name="8 · Hazard Assessment">
+    <mxGraphModel dx="892" dy="566" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="890" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=14;strokeColor=#1e3a5f;" value="BPMN — Hazard Assessment Profile&amp;nbsp;" vertex="1">
+          <mxGeometry height="40" width="810" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="sub" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f1f8;fontColor=#1e3a5f;fontSize=10;strokeColor=#94a3b8;align=left;spacingLeft=10;" value="San Agustin profile + hazards + docs → intelligence for Training, AI, and Simulation." vertex="1">
+          <mxGeometry height="28" width="810" x="40" y="56" as="geometry" />
+        </mxCell>
+        <mxCell id="pool" parent="1" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;startSize=0;collapsible=0;" value="" vertex="1">
+          <mxGeometry height="910" width="810" x="40" y="92" as="geometry" />
+        </mxCell>
+        <mxCell id="L1" parent="pool" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;strokeColor=#64748b;fontStyle=1;startSize=36;fontSize=11;fillColor=#fff7ed;" value="1 · Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="910" width="270" as="geometry" />
+        </mxCell>
+        <mxCell id="s" parent="L1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#22c55e;fontColor=#fff;strokeColor=#15803d;fontStyle=1;fontSize=10;" value="Start" vertex="1">
+          <mxGeometry height="60" width="60" x="105" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" parent="L1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="Create / update barangay profile" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" parent="L1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="Capture hazard records" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" parent="L1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="Upload supporting documents" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="L2" parent="pool" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;strokeColor=#64748b;fontStyle=1;startSize=36;fontSize=11;fillColor=#f0fdf4;" value="2 · Platform" vertex="1">
+          <mxGeometry height="910" width="270" x="270" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" parent="L2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="Save profile / hazards / docs" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="L2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="Build intelligence package" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="e" parent="L2" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#3b82f6;fontColor=#fff;strokeColor=#1d4ed8;fontStyle=1;fontSize=10;" value="End" vertex="1">
+          <mxGeometry height="60" width="60" x="105" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="L3" parent="pool" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;strokeColor=#64748b;fontStyle=1;startSize=36;fontSize=11;fillColor=#eff6ff;" value="3 · Consuming Modules" vertex="1">
+          <mxGeometry height="910" width="270" x="540" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" parent="L3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="Training: recommended modules" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" parent="L3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="AI: hazard context for scenarios" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" parent="L3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=10;" value="Simulation: exercise context" vertex="1">
+          <mxGeometry height="48" width="170" x="50" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="a1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="a2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="a3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="a3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="p1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="p2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="c1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="c1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="c2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="c2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="c3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="c3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=1.5;strokeColor=#0f172a;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

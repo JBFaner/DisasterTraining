@@ -1,0 +1,347 @@
+
+IT AUDIT: EVIDENCE, CONTROL TESTING, AND AUDITOR JUDGMENT
+ONLINE  PERFORMANCE ACTIVITY
+Topics 4–5: Develop an IT Audit Checklist / Conduct an IT Audit
+Time
+2 Hours
+Total
+100 Points
+Type
+Individual Online Activity
+Difficulty
+HARD / Higher-Order Thinking
+MAIN CHALLENGE
+You are not being asked to simply identify what is wrong. Think like an auditor. You will be given conflicting statements, incomplete evidence, technical records, and management explanations. Decide what evidence is reliable, what needs to be tested, what constitutes a finding, and what recommendation is defensible.
+PART A — AUDIT CHECKLIST DESIGN
+20 Points | 20 Minutes
+Case Situation
+You are the lead auditor assigned to review the IT environment of Prime University.
+The university operates:
+Student Information System
+Learning Management System
+Online payment system
+Faculty portal
+Campus Wi-Fi
+Central database
+Email system
+Management: “We already have IT policies, so most controls should be considered compliant.”
+Audit supervisor: “A policy is not evidence that a control is actually operating.”
+Question 1 – Create an IT Audit Checklist (20 points)
+Create 12 audit questions using this table:
+#
+Audit Area
+Audit Question
+Expected Control
+Evidence
+Test Procedure
+Possible Result
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+Cover: User Access; Administrator Privileges; Password Security; Backup and Recovery; System Logs; Network Security; Data Protection; Physical Security; Incident Management; Employee Termination; IT Policies; Change Management.
+HARD REQUIREMENT: At least five questions must explain how the control will be tested, not merely what document will be requested.
+NOTE: Items 1–5 and 10–12 include how the control will be tested (sample, inspect, compare, reconcile), not only what document to request.
+PART B — MAJOR CASE STUDY
+30 Points | 35 Minutes
+THE UNIVERSITY THAT PASSED ITS AUDIT
+Prime University received an “IT Controls Satisfactory” rating in its previous internal audit. Six months later, a new audit team begins a follow-up review.
+CIO: “Nothing has changed since the previous audit. You can use the previous audit results.” The team verifies the claim.
+EVIDENCE 1 — USER ACCOUNTS
+1,850 active student accounts
+420 faculty accounts
+110 administrative accounts
+14 system administrator accounts
+6 accounts belong to employees who resigned.
+3 administrator accounts have no documented owner.
+2 faculty accounts have administrator-level access.
+1 account has been inactive for 14 months but remains enabled.
+IT administrator: “Those accounts are probably still needed.” No documentation supports the explanation.
+EVIDENCE 2 — PASSWORD CONFIGURATION
+Policy: minimum 12 characters
+Policy: expiration every 90 days
+Policy: MFA required for administrators
+Actual: minimum 8 characters
+Actual: expiration every 180 days
+MFA enabled for 11 of 14 administrators
+IT manager: “The difference is not a serious problem because employees still have passwords.”
+EVIDENCE 3 — BACKUP
+Backup jobs run nightly.
+4 backup jobs failed in the last 30 days.
+Nobody investigated the failures.
+No restoration test has been documented for 10 months.
+Most recent successful restoration test was 11 months ago.
+Backup administrator: “We don't need to test restoration unless we lose data.”
+EVIDENCE 4 — LOG MONITORING
+Security officer says logs are checked regularly.
+No log-review records were provided for the last three months.
+Security officer: “We don't document every review because we're busy.”
+EVIDENCE 5 — EMPLOYEE TERMINATION
+HR provided the previous year's termination list.
+6 former employees still have active accounts.
+IT: “HR does not always inform us immediately.”
+HR: “IT receives the termination notices through email.”
+Neither department can provide a formal reconciliation report.
+Question 2 – Identify Control Weaknesses (10 points)
+Identify at least SIX weaknesses.
+Finding
+Evidence
+Expected Control
+Actual Condition
+Risk
+Do not write “This is bad because it is insecure.” Describe a realistic consequence.
+Question 3 – Evidence Reliability (5 points)
+ 
+ANSWER:
+Strongest to weakest:
+1. System configuration
+2. Backup logs
+3. User account report
+4. HR termination records
+5. System log-review documentation
+6. Security policy
+7. Employee interview
+8. IT manager verbal statement
+
+Explanation:
+System settings, logs, and account reports are stronger because they come from the system itself and can be checked again. HR records are useful but may be incomplete. A policy only shows what should happen, not what is really happening. Interviews and verbal statements are the weakest because people can be wrong, forget details, or try to defend their work without proof.
+Rank strongest to weakest: Employee interview; System configuration; User account report; Security policy; Backup logs; IT manager verbal statement; HR termination records; System log-review documentation. Explain the ranking.
+Question 4 – The Trap (5 points)
+ 
+ANSWER (~270 words):
+I disagree with the CIO. A previous audit that said “Satisfactory” only shows the situation at that time. Controls can get weaker after six months. People resign, settings change, and monitoring may stop. So the old result cannot automatically clear today’s findings.
+
+Also, saying there was no known security breach does not mean controls are working. Some incidents are never reported, or the school simply has not discovered them yet. An auditor looks at whether controls are operating now, not only whether something bad already happened.
+
+In this case, the evidence already shows real problems: former employees still have accounts, some admin accounts have no owner, password and MFA settings are weaker than policy, backups failed and were not investigated, and there are no log-review records. These are based on documents and system data, not guesses.
+
+As an auditor, I should still report the findings if the evidence supports them. Management may not like the findings, but auditor judgment should follow the facts. The recommendation should explain the risk and what to fix. Ignoring findings because “nothing bad happened yet” is dangerous, especially for a university that holds student and payment information.
+CIO: “The previous audit found no major problems, and we have not experienced a security breach. Therefore, there is insufficient justification for reporting these findings.”
+Write 250–300 words discussing previous audit results, absence of known incidents, actual control operation, objective evidence, control testing, and auditor judgment.
+Question 5 – Risk Prioritization (5 points)
+ 
+ANSWER (1 = Most Critical, 6 = Least Critical):
+1. Former employees with active accounts — easy to exploit if passwords are still known; high impact on student/email data
+2. Problem admin accounts (no owner / excess rights / long unused) — high impact if misused
+3. Password and MFA weaker than policy — makes accounts easier to break
+4. Backup failures and no restore test — big problem if a disaster happens
+5. Missing log-review evidence — harder to detect attacks early
+6. Relying only on the previous audit rating — process issue that can hide other problems
+
+I ranked them using likelihood, impact, how exposed the systems are, how sensitive the data is, how easy it is to abuse the weakness, and whether there are strong compensating controls (in this case, there are not).
+Rank the six findings from 1 = Most Critical to 6 = Least Critical. Justify using likelihood, impact, exposure, sensitivity, ease of exploitation, and existing controls.
+Question 6 – Management Response (5 points)
+ 
+ANSWER — Two highest-risk findings:
+
+Finding 1: Former employees still have active accounts
+Risk: Unauthorized access to SIS, email, LMS, or payment-related data.
+Recommended Action: Disable the 6 accounts now. Make a clear process so HR informs IT on the last day. Do weekly HR–IT account checks for the next 90 days.
+Responsible Person/Department: IT Security / Account Management and HR.
+Required Evidence of Completion: Disable logs, updated user list, signed reconciliation report.
+Follow-up Test: Compare active accounts again with the latest HR resignation list; no resigned employee should still be active.
+
+Finding 2: Admin accounts without proper control
+Risk: Someone with high privilege can change systems or hide activity.
+Recommended Action: Assign owners or disable unused/orphan admin accounts. Remove admin rights from faculty who should not have them. Require MFA for all admins and do monthly admin reviews.
+Responsible Person/Department: IT Infrastructure / Network Admin, with CIO approval.
+Required Evidence of Completion: Updated admin list with owners, change tickets, monthly review checklist.
+Follow-up Test: Recheck the admin list for owners, unused accounts, and full MFA coverage.
+For the two highest-risk findings, provide: Finding; Risk; Recommended Action; Responsible Person/Department; Required Evidence of Completion; Follow-up Test.
+PART C — CASE SCENARIO
+20 Points | 25 Minutes
+SCENARIO 1 — THE AUDITOR CANNOT TRUST THE INTERVIEW
+Network Administrator: “Yes. We check administrator accounts every month.”
+When asked for monthly review records: “We don't keep records because this is a routine task.”
+The account list shows 14 administrator accounts, 3 without identified owners, 2 belonging to former employees, and 1 unused for 9 months.
+Administrator: “Those are probably old accounts. They aren't being used.”
+Question 7 – Auditor Response (5 points)
+ 
+ANSWER:
+I should not just believe the interview. Next steps:
+1. Treat the statement as a claim only, not as proof.
+2. Get the full list of administrator accounts with last login and owner details.
+3. Compare the list with HR active and resigned employees.
+4. For the 3 accounts with no owner, 2 former employees, and 1 unused for 9 months, ask for written explanation or request that they be disabled.
+5. Look for any tickets, emails, or checklists that show monthly reviews in the last 6 months.
+6. If there is still no proof, document this as a finding with evidence.
+7. Discuss with the auditee, then include it in the report.
+Reporting comes after gathering enough evidence, not before.
+What should the auditor do next? Explain the audit actions; do not simply say “Report it.”
+Question 8 – Control Testing (5 points)
+ 
+ANSWER — Three tests:
+
+Test 1
+Test Objective: Check if monthly admin account reviews really happen.
+Procedure: Ask for review records for the last 6 months. If none are given, the control is not operating.
+Evidence: Tickets, checklists, or emails.
+Expected Result: Dated reviews that cover all admin accounts.
+
+Test 2
+Test Objective: Confirm resigned employees do not keep admin access.
+Procedure: Match the admin list with the HR termination list.
+Evidence: HR list and system account extract.
+Expected Result: Zero resigned users with admin rights.
+
+Test 3
+Test Objective: Confirm unused admin accounts are disabled.
+Procedure: Find accounts with no login for a long time (example: more than 90 days) and check if they are disabled.
+Evidence: Last-login report.
+Expected Result: Old unused accounts are disabled or formally approved to remain.
+Design three tests using: Test Objective → Procedure → Evidence → Expected Result.
+SCENARIO 2 — BACKUP ILLUSION
+Backup administrator: “We have 100% backup compliance.” Dashboard: “Backup Job Completed: YES.”
+However: the backup file is incomplete; no restoration test exists; storage has only 8% remaining capacity; two previous jobs failed; no incident ticket was created.
+Question 9 – Backup Control Effectiveness (5 points)
+ 
+ANSWER:
+No. The auditor cannot conclude that the backup control is effective. A dashboard that only says “Backup Job Completed: YES” is not enough. The backup file is incomplete, there is no restoration test, storage is almost full (8% left), earlier jobs failed, and no incident ticket was made. Effective backup means the data can really be restored when needed. Right now, that is not proven.
+Can the auditor conclude that the backup control is effective? Explain.
+Question 10 – Evidence vs. Assumption (5 points)
+ 
+ANSWER:
+A. What the organization claims: They have 100% backup compliance and backups are complete.
+B. What the evidence actually proves: There is a completion flag on the dashboard, some past jobs failed, storage space is very low, and there is no restore-test document.
+C. What the evidence does NOT prove: That backup files are complete and usable, that recovery time goals can be met, that failed jobs were handled, or that important data can be restored.
+D. What additional test is necessary: Do a controlled restore of an important system (example: sample SIS data) in a test environment, check if the restored files are complete, and review tickets/alerts for failed backups and low storage.
+A. What the organization claims
+B. What the evidence actually proves
+C. What the evidence does NOT prove
+D. What additional test is necessary
+PART D — AUDIT FINDING CONSTRUCTION
+15 Points | 20 Minutes
+Question 11 – Prepare a Formal Audit Finding (15 points)
+ 
+ANSWER — Chosen issue: Former employees with active accounts
+
+CONDITION: Six accounts belonging to resigned employees are still enabled. HR and IT could not show a formal reconciliation report. IT said HR does not always inform them quickly, while HR said notices are sent by email, but there is no clear proof that access was always removed on time.
+
+CRITERIA: Access should be removed when employment ends. HR and IT should compare resignation lists with active system accounts.
+
+CAUSE: The process depends on informal email only. There is no clear deadline, no automatic disable step, and no regular reconciliation.
+
+EFFECT/RISK: A former employee, or anyone who still knows the password, may still access student records, email, or related systems. This can lead to data leakage, unauthorized changes, and damage to the university’s reputation.
+
+RECOMMENDATION: Disable the six accounts within 24 hours. Create a same-day disable process. Require an official ticket from HR for every resignation. Do weekly reconciliation for 90 days, then monthly. Report the results to the CIO.
+
+Evidence Reference: User account extract (Evidence 1); HR termination list and interviews (Evidence 5)
+Risk Rating: High
+Management Response: Management may say they will disable the accounts and improve coordination between HR and IT.
+Auditor Rebuttal: The plan is noted, but the risk remains until the accounts are disabled and a reconciliation report is shown and retested. A previous clean audit does not remove this current finding.
+Choose ONE major issue and prepare:
+CONDITION — What did you discover?
+CRITERIA — What should have happened?
+CAUSE — Why did it occur?
+EFFECT/RISK — What could happen?
+RECOMMENDATION — What should management do?
+Also include: Evidence Reference; Risk Rating (Critical/High/Medium/Low); Management Response; Auditor Rebuttal.
+PART E —  CRITICAL THINKING ESSAY
+15 Points | 20 Minutes
+Question 12 – When Compliance on Paper Is Not Compliance in Practice (15 points)
+ 
+ANSWER (~650 words):
+An auditor should still examine and test controls even if an organization already has policies, procedures, employees who say everything is fine, and a previous audit that was satisfactory. Paper compliance is not the same as real compliance. Policies only describe what should happen. They do not automatically prove that the control is working every day.
+
+First is policy versus practice. A university may have a password policy that requires 12 characters, 90-day expiration, and MFA for administrators. But if the system is set to 8 characters, 180 days, and MFA is missing for some admins, then practice does not match the policy. If the auditor only reads the policy and believes management, the audit conclusion will be wrong. The same idea applies to backups. A written backup procedure means little if failed jobs are ignored and restore testing has not been done for almost a year.
+
+Second is interview versus evidence. Interviews are useful because they give explanations and context. But interviews are weak if they stand alone. People may honestly believe a process is happening, or they may avoid admitting problems. In the case, the network administrator said monthly admin reviews are done, but there were no records. The security officer said logs are checked regularly, but also said reviews are not documented. When words and records do not match, the auditor should trust the evidence more than the interview.
+
+This is why control testing is important. Control testing means the auditor checks how the control really operates. Examples are comparing system configuration with policy, matching resigned employees with active accounts, reviewing backup logs, and asking for restore-test documents. Without testing, the auditor is only collecting opinions.
+
+Auditors should also use different types of evidence. Documentary evidence includes policies, tickets, and reports. Technical evidence includes system settings, account extracts, and logs. Observational evidence includes seeing physical controls like a locked server room. Interview evidence includes explanations from staff. All can be useful, but when they conflict, technical and documentary evidence are usually stronger.
+
+Another reason to keep testing is that risk can exist even when no incident is known. The absence of a reported breach does not mean the school is safe. An unused admin account can sit quietly for months until someone abuses it. A backup may look successful on a dashboard until the day the school needs to restore and discovers the file is incomplete. Waiting for an incident before reporting a weakness is already too late.
+
+Professional judgment also matters. Management may pressure the auditor to rely on the previous “Satisfactory” rating or to avoid findings because it looks bad. The auditor should stay independent. Findings should be based on evidence: what was found (condition), what should have happened (criteria), why it happened (cause), what could go wrong (effect), and what should be fixed (recommendation).
+
+In short, policies, confident interviews, and old audit ratings are not enough. An auditor must still independently examine and test controls to know if they are really working. For a university handling student information and online payments, this careful approach is necessary to protect the school and its users.
+Write 600–700 words responding to: “An organization has policies, procedures, employees who claim that controls are working, and a previous audit showing satisfactory results. Why should an auditor still independently examine and test controls?”
+Your essay must address:
+Policy vs. Practice
+Interview vs. Evidence
+Control Testing
+Documentary, technical, observational, and interview evidence
+Risk even when no incident is known
+Professional Judgment
+Evidence-based Audit Findings
+Management Pressure
+FINAL CHALLENGE — YOU ARE THE LEAD AUDITOR
++10 BONUS
+Question 13 – Risk-Based Audit Strategy (10 points)
+ 
+ANSWER:
+A. Three issues to investigate immediately:
+1. Former employees with active accounts
+2. Administrator accounts with no owner / former-employee admins
+3. Failed backup jobs and missing restore testing
+
+B. Three issues to defer:
+1. Deep password-policy review beyond the MFA gaps already seen
+2. Very detailed historical log sampling after confirming records are missing
+3. Broad Wi-Fi/network testing not directly tied to the urgent identity and backup issues
+
+C. Evidence to request:
+Current user/admin account extract, HR resignation list, MFA status for admins, 30-day backup logs, latest restore-test document, and tickets for failed backups.
+
+D. Tests to perform:
+Compare resigned staff with active accounts; check admin owners and last login; confirm MFA for all admins; review failed backup handling; if time allows, request a sample restore test.
+
+E. Findings expected:
+Active accounts of former employees; orphaned or unused admin accounts; recoverability not assured; possible MFA exceptions.
+
+F. One issue for immediate escalation:
+An active privileged account belonging to a former employee, or proof that a terminated account was recently used.
+
+G. Why this prioritization:
+With only four hours left, I should focus on issues with high impact and easier exploitation (identity and admin access) and issues that can stop recovery during a disaster (backups). Other issues can still be reported using the evidence already available, but they do not need the same urgent deep testing before the closing meeting.
+You have four hours remaining before the closing meeting. You discovered: former employees with active accounts; administrator accounts without owners; password configuration inconsistent with policy; untested backups; failed backup jobs; missing log-review evidence. You cannot investigate everything.
+A. THREE issues you will investigate immediately
+B. THREE issues you will defer
+C. Evidence you will request
+D. Tests you will perform
+E. Findings you expect
+F. One issue that would cause immediate escalation
+G. Explain your prioritization
+SUBMISSION REQUIREMENTS
+Audit Checklist
+Case Study Analysis
+Evidence Reliability Analysis
+Scenario Investigation
+Control Testing Procedures
+Audit Finding
+Critical Thinking Essay
+Final Risk-Based Audit Strategy
+Suggested file name: Lastname_IT_Audit_Hard_Activity.docx/pdf
+GRADING RUBRIC
+Component
+Points
+Part A – Audit Checklist
+20
+Part B – Major Case Study
+30
+Part C – Case Scenario
+20
+Part D – Audit Finding
+15
+Part E – Critical Thinking Essay
+15
+TOTAL
+100
+Lead Auditor Challenge
++10
+PERFORMANCE STANDARD
+90–100 – Excellent: Evidence-based conclusions, strong control testing, sophisticated risk prioritization, defensible findings, and practical recommendations.
+80–89 – Very Good: Strong analysis with minor gaps in evidence evaluation or audit reasoning.
+75–79 – Satisfactory: Adequate understanding but limited depth or weak justification.
+60–74 – Needs Improvement: Relies heavily on general statements and incomplete evidence analysis.
+Below 60 – Unsatisfactory: Does not demonstrate sufficient understanding of evidence-based IT auditing.
+END OF ACTIVITY

@@ -1,0 +1,67 @@
+<mxfile host="app.diagrams.net" agent="Cursor">
+  <diagram id="uc-cert" name="7 · Certification Issuance">
+    <mxGraphModel dx="1522" dy="966" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cert_title" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e3a5f;fontColor=#ffffff;fontStyle=1;fontSize=13;strokeColor=#1e3a5f;" value="Use Case — Certification Issuance" vertex="1">
+          <mxGeometry height="40" width="840" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_sys" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;horizontal=1;startSize=36;collapsible=0;resizeParent=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1e3a5f;fontSize=12;" value="Certification Issuance" vertex="1">
+          <mxGeometry height="500" width="520" x="220" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_u1" parent="cert_sys" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontSize=10;" value="Manage Certificate Templates" vertex="1">
+          <mxGeometry height="44" width="220" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_u2" parent="cert_sys" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontSize=10;" value="Check Eligibility" vertex="1">
+          <mxGeometry height="44" width="220" x="40" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_u3" parent="cert_sys" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontSize=10;" value="Issue Certificate" vertex="1">
+          <mxGeometry height="44" width="220" x="40" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_u4" parent="cert_sys" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontSize=10;" value="Revoke / Reissue Certificate" vertex="1">
+          <mxGeometry height="44" width="220" x="40" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_u5" parent="cert_sys" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontSize=10;" value="View / Email Certificate" vertex="1">
+          <mxGeometry height="44" width="220" x="40" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_u6" parent="cert_sys" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontSize=10;" value="Verify Certificate (Public)" vertex="1">
+          <mxGeometry height="44" width="220" x="40" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_a1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#fff7ed;strokeColor=#334155;fontSize=10;fontStyle=1;" value="Lead Trainer / Admin" vertex="1">
+          <mxGeometry height="70" width="40" x="60" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_a2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#fff7ed;strokeColor=#334155;fontSize=10;fontStyle=1;" value="Participant" vertex="1">
+          <mxGeometry height="70" width="40" x="60" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_e1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#faf5ff;strokeColor=#334155;fontStyle=1;fontSize=9;" value="Public Verifier (QR / token)" vertex="1">
+          <mxGeometry height="50" width="130" x="760" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_l1" edge="1" parent="1" source="cert_a1" style="endArrow=none;html=1;strokeWidth=1.2;strokeColor=#0f172a;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="cert_u1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_l2" edge="1" parent="1" source="cert_a1" style="endArrow=none;html=1;strokeWidth=1.2;strokeColor=#0f172a;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="cert_u2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_l3" edge="1" parent="1" source="cert_a1" style="endArrow=none;html=1;strokeWidth=1.2;strokeColor=#0f172a;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="cert_u3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_l4" edge="1" parent="1" source="cert_a1" style="endArrow=none;html=1;strokeWidth=1.2;strokeColor=#0f172a;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="cert_u4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_l5" edge="1" parent="1" source="cert_a2" style="endArrow=none;html=1;strokeWidth=1.2;strokeColor=#0f172a;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="cert_u5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_r1" edge="1" parent="1" source="cert_e1" style="endArrow=none;html=1;strokeWidth=1.2;strokeColor=#0f172a;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="cert_u6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_i1" edge="1" parent="1" source="cert_u3" style="endArrow=open;html=1;dashed=1;dashPattern=8 4;strokeWidth=1.2;strokeColor=#64748b;fontSize=8;fontColor=#64748b;" target="cert_u2" value="&lt;&lt;include&gt;&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cert_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=10;align=left;spacingLeft=8;" value="Internal issuance. External certification authority API is future / optional." vertex="1">
+          <mxGeometry height="40" width="850" x="40" y="600" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
