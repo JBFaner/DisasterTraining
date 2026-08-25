@@ -20,6 +20,10 @@ class UpdateTrainingModuleRequest extends FormRequest
                 'target_audience' => TargetAudience::normalize($this->input('target_audience')),
             ]);
         }
+
+        if (! $this->filled('visibility')) {
+            $this->merge(['visibility' => 'all']);
+        }
     }
 
     public function rules(): array
@@ -72,13 +76,6 @@ class UpdateTrainingModuleRequest extends FormRequest
             'learning_objectives.required' => 'At least one learning objective is required.',
             'target_audience.*.in' => 'Please select a valid target audience from the list.',
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if (! $this->filled('visibility')) {
-            $this->merge(['visibility' => 'all']);
-        }
     }
 
     public function withValidator(Validator $validator): void
