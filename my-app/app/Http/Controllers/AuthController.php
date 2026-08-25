@@ -984,22 +984,15 @@ class AuthController extends Controller
                 ->withErrors(['email' => 'Your login session has expired. Please log in again.']);
         }
 
-        $showDevSection = app()->environment('local') || config('app.debug');
-        $devOtp = $showDevSection ? ($otpData['otp'] ?? null) : null;
-
         $user = User::find($otpData['user_id']);
-        $loginEmail = $user?->email;
-        $maskedEmail = MaskedEmail::mask($loginEmail);
+        $maskedEmail = MaskedEmail::mask($user?->email);
         $expiresAt = (int) ($otpData['expires_at'] ?? 0);
         $isExpired = now()->getTimestamp() > $expiresAt;
 
         return view('auth.admin-login-verify', compact(
-            'devOtp',
-            'loginEmail',
             'maskedEmail',
             'expiresAt',
             'isExpired',
-            'showDevSection',
         ));
     }
 
@@ -1155,12 +1148,9 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             \Log::error('Failed to send admin login OTP: '.$e->getMessage());
 
-            if (app()->environment('local') || config('app.debug')) {
+            // Never expose OTP in the UI (local or production). Log only in local for debugging.
+            if (app()->environment('local')) {
                 \Log::info("Admin login OTP for {$user->email}: {$otp}");
-
-                return redirect('/admin/login/verify')
-                    ->with('mail_delivery_failed', true)
-                    ->with('status', 'Email delivery failed in local development. Use the verification code shown below.');
             }
 
             AuditLogger::log([
