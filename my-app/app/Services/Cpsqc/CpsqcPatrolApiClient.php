@@ -404,10 +404,8 @@ class CpsqcPatrolApiClient
     private function transportError(string $raw): string
     {
         if (stripos($raw, 'cURL error 60') !== false || stripos($raw, 'SSL') !== false) {
-            return 'Unable to reach CPSQC (SSL certificate mismatch on surveillance.alertaraqc.com). '
-                .'Our client allows this partner host when CPSQC_API_VERIFY_SSL=false. '
-                .'Ask CPSQC to install a certificate that includes surveillance.alertaraqc.com. '
-                .'Details: '.$raw;
+            return 'Unable to reach CPSQC (SSL error). Check CPSQC_API_BASE_URL is https://policy.alertaraqc.com '
+                .'and CPSQC_API_VERIFY_SSL=true. Details: '.$raw;
         }
 
         return 'Unable to reach CPSQC: '.$raw;
