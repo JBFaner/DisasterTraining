@@ -29,14 +29,23 @@ class BackfillEvaluationResults extends Command
             $this->info(sprintf('Found %d completed attempt(s) without evaluation records.', $attempts->count()));
 
             foreach ($attempts as $attempt) {
+                if (! \App\Models\User::query()->whereKey($attempt->user_id)->exists()) {
+                    $this->warn("Skipped attempt #{$attempt->id} — participant user #{$attempt->user_id} no longer exists.");
+                    continue;
+                }
+
                 if ($dryRun) {
                     $this->line("Would backfill attempt #{$attempt->id} (user {$attempt->user_id})");
                     continue;
                 }
 
-                $scoringService->createFromAttempt($attempt);
-                $created++;
-                $this->line("Created evaluation for attempt #{$attempt->id}");
+                try {
+                    $scoringService->createFromAttempt($attempt);
+                    $created++;
+                    $this->line("Created evaluation for attempt #{$attempt->id}");
+                } catch (\Throwable $e) {
+                    $this->error("Failed attempt #{$attempt->id}: {$e->getMessage()}");
+                }
             }
         } else {
             $this->info('No completed attempts need backfilling.');

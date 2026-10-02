@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal.admin' => \App\Http\Middleware\EnsureAdminPortal::class,
             'portal.participant' => \App\Http\Middleware\EnsureParticipantPortal::class,
             'group6.api' => \App\Http\Middleware\VerifyGroup6ApiKey::class,
+            'dashboard.api' => \App\Http\Middleware\VerifyPartnerDashboardApiKey::class,
             'resource_allocation.api' => \App\Http\Middleware\VerifyResourceAllocationApiKey::class,
         ]);
     })

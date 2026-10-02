@@ -106,40 +106,90 @@ class ResourceApiController
 
     public function movements(Request $request): JsonResponse
     {
-        $limit = max(10, min(200, (int) $request->query('limit', 50)));
+        $perPage = max(10, min(100, (int) $request->query('per_page', 10)));
+        $page = max(1, (int) $request->query('page', 1));
 
-        $rows = ResourceMovement::query()
+        $query = ResourceMovement::query()
             ->with(['resource:id,name', 'simulationEvent:id,title'])
-            ->orderByDesc('created_at')
-            ->limit($limit)
-            ->get()
-            ->map(function (ResourceMovement $movement) {
-                return [
-                    'id' => $movement->id,
-                    'date' => $movement->created_at?->toDateString(),
-                    'created_at' => $movement->created_at?->toIso8601String(),
-                    'equipment' => $movement->resource?->name,
-                    'resource_id' => $movement->resource_id,
-                    'simulation_event' => $movement->simulationEvent?->title,
-                    'simulation_event_id' => $movement->simulation_event_id,
-                    'requested_by' => $movement->requested_by,
-                    'quantity' => (int) $movement->quantity,
-                    'status' => $movement->status,
-                    'source_module' => $movement->source_module,
-                    'notes' => $movement->notes,
-                ];
-            })
-            ->values()
-            ->all();
+            ->orderByDesc('created_at');
 
-        return response()->json(['movements' => $rows]);
+        if ($request->filled('search')) {
+            $search = (string) $request->query('search');
+            $query->where(function ($builder) use ($search) {
+                $builder->where('requested_by', 'like', "%{$search}%")
+                    ->orWhere('source_module', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('resource', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('simulationEvent', fn ($q) => $q->where('title', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($request->filled('status') && $request->query('status') !== 'all') {
+            $query->where('status', $request->query('status'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->query('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->query('date_to'));
+        }
+
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        $rows = collect($paginator->items())->map(function (ResourceMovement $movement) {
+            return [
+                'id' => $movement->id,
+                'date' => $movement->created_at?->toDateString(),
+                'created_at' => $movement->created_at?->toIso8601String(),
+                'equipment' => $movement->resource?->name,
+                'resource_id' => $movement->resource_id,
+                'simulation_event' => $movement->simulationEvent?->title,
+                'simulation_event_id' => $movement->simulation_event_id,
+                'requested_by' => $movement->requested_by,
+                'quantity' => (int) $movement->quantity,
+                'status' => $movement->status,
+                'source_module' => $movement->source_module,
+                'notes' => $movement->notes,
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'movements' => $rows,
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'from' => $paginator->firstItem() ?? 0,
+                'to' => $paginator->lastItem() ?? 0,
+            ],
+        ]);
     }
 
-    public function reports(): JsonResponse
+    public function reports(Request $request): JsonResponse
     {
-        $mostUsed = ResourceMovement::query()
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+        $category = $request->query('category');
+        $maintenancePerPage = max(10, min(100, (int) $request->query('maintenance_per_page', 10)));
+        $maintenancePage = max(1, (int) $request->query('maintenance_page', 1));
+
+        $movementScope = ResourceMovement::query();
+        if ($dateFrom) {
+            $movementScope->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $movementScope->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $mostUsed = (clone $movementScope)
             ->selectRaw('resource_id, SUM(quantity) as total_allocated, COUNT(*) as movement_count')
             ->whereIn('status', ['Reserved', 'In Use', 'Returned', 'Needs Repair'])
+            ->when($category && $category !== 'all', function ($query) use ($category) {
+                $query->whereHas('resource', fn ($q) => $q->where('category', $category));
+            })
             ->groupBy('resource_id')
             ->with('resource:id,name,category')
             ->orderByDesc('total_allocated')
@@ -156,6 +206,7 @@ class ResourceApiController
             ->all();
 
         $currentReservations = Resource::query()
+            ->when($category && $category !== 'all', fn ($q) => $q->where('category', $category))
             ->where('reserved_quantity', '>', 0)
             ->orderByDesc('reserved_quantity')
             ->get(['id', 'name', 'category', 'reserved_quantity', 'available', 'status', 'location'])
@@ -172,6 +223,7 @@ class ResourceApiController
             ->all();
 
         $utilization = Resource::query()
+            ->when($category && $category !== 'all', fn ($q) => $q->where('category', $category))
             ->get(['id', 'name', 'quantity', 'reserved_quantity', 'in_use_quantity', 'needs_repair_quantity'])
             ->map(function (Resource $resource) {
                 $total = max(0, (int) ($resource->quantity ?? 0));
@@ -194,6 +246,7 @@ class ResourceApiController
             ->all();
 
         $damagedSummary = Resource::query()
+            ->when($category && $category !== 'all', fn ($q) => $q->where('category', $category))
             ->where(function ($query) {
                 $query->where('needs_repair_quantity', '>', 0)
                     ->orWhere('condition', 'Needs Repair')
@@ -214,11 +267,22 @@ class ResourceApiController
             ->values()
             ->all();
 
-        $maintenanceHistory = ResourceMaintenanceLog::query()
+        $maintenanceQuery = ResourceMaintenanceLog::query()
             ->with('resource:id,name')
-            ->orderByDesc('created_at')
-            ->limit(50)
-            ->get()
+            ->orderByDesc('created_at');
+
+        if ($dateFrom) {
+            $maintenanceQuery->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $maintenanceQuery->whereDate('created_at', '<=', $dateTo);
+        }
+        if ($category && $category !== 'all') {
+            $maintenanceQuery->whereHas('resource', fn ($q) => $q->where('category', $category));
+        }
+
+        $maintenancePaginator = $maintenanceQuery->paginate($maintenancePerPage, ['*'], 'maintenance_page', $maintenancePage);
+        $maintenanceHistory = collect($maintenancePaginator->items())
             ->map(fn (ResourceMaintenanceLog $log) => [
                 'id' => $log->id,
                 'date' => $log->created_at?->toDateString(),
@@ -236,6 +300,14 @@ class ResourceApiController
             'equipment_utilization' => $utilization,
             'damaged_equipment_summary' => $damagedSummary,
             'maintenance_history' => $maintenanceHistory,
+            'maintenance_pagination' => [
+                'current_page' => $maintenancePaginator->currentPage(),
+                'last_page' => $maintenancePaginator->lastPage(),
+                'per_page' => $maintenancePaginator->perPage(),
+                'total' => $maintenancePaginator->total(),
+                'from' => $maintenancePaginator->firstItem() ?? 0,
+                'to' => $maintenancePaginator->lastItem() ?? 0,
+            ],
         ]);
     }
 

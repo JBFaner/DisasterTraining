@@ -8744,7 +8744,7 @@ function CertificationModule({
         formData.append('_token', csrf);
         formData.append('reason', reason || '');
         try {
-            const res = await fetch(`/certificates/${certId}/revoke`, { method: 'POST', body: formData });
+            const res = await fetch(`/admin/certificates/${certId}/revoke`, { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) { Swal.fire({ icon: 'success', text: data.message }); window.location.href = '/admin/certification'; }
         } catch (_) { Swal.fire({ icon: 'error', text: 'Failed to revoke.' }); }
@@ -9106,6 +9106,17 @@ function CertificationModule({
                                 </span>
                             ),
                         },
+                        {
+                            key: 'issued_at',
+                            label: 'Issue Date',
+                            render: (row) => (
+                                <span className="text-sm text-slate-700">
+                                    {row.certificate_issued && row.issued_at
+                                        ? formatDateTime(row.issued_at)
+                                        : '—'}
+                                </span>
+                            ),
+                        },
                     ]}
                     data={filteredEligible}
                     rowKey={(row) => `${row.user_id}-${row.event_id}`}
@@ -9119,7 +9130,7 @@ function CertificationModule({
                             {row.certificate_issued ? (
                                 row.certificate_id ? (
                                     <AdminTableActionButton
-                                        href={`/certificates/${row.certificate_id}/view`}
+                                        href={`/admin/certificates/${row.certificate_id}/view`}
                                         icon={Eye}
                                         title={`View certificate — ${row.user_name || 'participant'}`}
                                         variant="view"
@@ -9246,7 +9257,7 @@ function CertificationModule({
                     renderActions={(row) => (
                         <>
                             <AdminTableActionButton
-                                href={`/certificates/${row.id}/view`}
+                                href={`/admin/certificates/${row.id}/view`}
                                 icon={FileText}
                                 title="View / Print PDF"
                                 variant="view"

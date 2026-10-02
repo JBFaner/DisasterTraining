@@ -277,9 +277,11 @@ class CampaignRegistrationService
     {
         $hasCertificate = Certificate::query()
             ->where('user_id', $user->id)
-            ->where('training_module_id', $moduleId)
-            ->whereNull('simulation_event_id')
             ->whereNull('revoked_at')
+            ->where(function ($query) use ($moduleId) {
+                $query->where('training_module_id', $moduleId)
+                    ->orWhereHas('simulationEvent', fn ($event) => $event->where('training_module_id', $moduleId));
+            })
             ->exists();
 
         return $hasCertificate ? 'Issued' : 'Not Issued';

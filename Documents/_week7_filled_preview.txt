@@ -1,0 +1,210 @@
+WEEK 7 – CONDUCTING THE IT AUDIT
+2-HOUR ONLINE ACTIVITY
+Topics 1–5 | Total Time: 120 Minutes | Total: 100 Points
+Activity Overview
+Activity
+Time
+Points
+Activity 1 – Individual Online Activity
+30 min
+20
+Activity 2 – Case Study
+30 min
+25
+Activity 3 – Case Scenario
+30 min
+25
+Activity 4 – Individual Essay
+30 min
+30
+TOTAL
+120 min
+100
+ACTIVITY 1 – INDIVIDUAL ONLINE ACTIVITY
+Title: “IT Audit Process and Techniques” | Time: 30 minutes | 20 points
+Part A – Identify the Audit Phase
+Choices: Planning • Risk Assessment • Fieldwork • Analysis & Evaluation • Reporting • Follow-Up
+1. Identifying the scope and objectives of the audit. Answer: Planning
+2. Identifying threats and vulnerabilities associated with the IT process. Answer: Risk Assessment
+3. Collecting audit evidence through interviews, inspection, observation, and testing. Answer: Fieldwork
+4. Examining evidence to identify exceptions and weaknesses. Answer: Analysis & Evaluation
+5. Communicating findings, risks, and recommendations to management. Answer: Reporting
+6. Checking whether management implemented corrective actions. Answer: Follow-Up
+Part B – Select the Appropriate Audit Technique
+Choices: Interview • Inquiry • Observation • Inspection • Walkthrough • Testing • Sampling • Data Analysis
+1. An auditor asks the system administrator how user accounts are created. Technique: Interview
+2. An auditor watches an employee perform the login process. Technique: Observation
+3. An auditor examines the organization's access-control policy. Technique: Inspection
+4. An auditor follows one transaction from beginning to end. Technique: Walkthrough
+5. An auditor checks whether selected user accounts actually have the appropriate access. Technique: Testing
+6. An auditor examines a selected group of transactions instead of every transaction. Technique: Sampling
+7. An auditor examines thousands of login records to identify unusual activity. Technique: Data Analysis
+Part C – Short Answer
+Answer each question in 2–3 sentences.
+1. Why is audit evidence important?
+Audit evidence is important because it supports the auditor’s conclusions and recommendations. Without enough reliable evidence, findings can be challenged and may be incorrect. Evidence also shows that the auditor followed a proper and professional audit process.
+ 
+2. Why should an auditor use more than one audit technique when appropriate?
+Using more than one technique makes the results stronger and more reliable. One method alone may be incomplete, biased, or based only on what people say. Combining techniques such as interview, inspection, and testing helps confirm whether a control is really working.
+ 
+3. Why should an auditor investigate an anomaly before declaring it a confirmed finding?
+An anomaly is only an unusual item and may still have a valid explanation, such as a timing difference or an approved exception. Investigating first helps the auditor avoid false findings and protects credibility. A confirmed finding should be reported only after the auditor verifies that a control really failed or is weak.
+ 
+ACTIVITY 2 – CASE STUDY
+Title: “University Student Information System Audit” | Time: 30 minutes | 25 points
+Case
+A university conducts an IT audit of its Student Information System (SIS). The system contains student grades, personal information, enrollment records, and academic histories.
+Policy: “Only authorized employees should have access to student records.”
+• The system administrator reports that terminated employees are immediately removed.
+• The auditor inspects the current user-access list.
+• Several accounts belonging to former employees remain active.
+• Login logs show that some of these accounts were used after the employees left the university.
+• The auditor finds several duplicate user records.
+• Management has no documented evidence showing that access reviews are performed regularly.
+Questions
+1. Audit Objective – What should be the primary objective of this IT audit? (5 points)
+Primary objective: To determine whether access to the Student Information System (SIS) is limited to authorized employees only, and whether account termination, access review, and related controls are operating effectively to protect student grades and personal data.
+The audit should also check if login activity and user records support compliance with the university’s access policy.
+ 
+2. Audit Risk – Identify two risks associated with the situation. (5 points)
+Risk 1: Unauthorized access — former employees still have active accounts, and some accounts were used after they left, so confidential student records may be viewed or changed without authority.
+Risk 2: Weak access governance — duplicate user records and no documented regular access reviews increase the chance of excess privileges, identity errors, and undetected misuse.
+ 
+3. Audit Techniques – Identify at least four audit techniques and explain why each is appropriate. (5 points)
+1) Interview/Inquiry — ask IT how accounts are created and removed. 2) Inspection — review the access-control policy and current user-access list. 3) Testing — compare terminated employees with still-active accounts.
+4) Data Analysis — examine login logs for activity after termination and identify duplicate user records. These techniques fit because the case involves policy claims, system lists, and log evidence.
+ 
+4. Audit Evidence – Identify four pieces of evidence that the auditor should collect. (5 points)
+1) Current user-access list from the SIS/directory. 2) HR termination/resignation list with leave dates. 3) Login logs showing use of former-employee accounts.
+4) Access-control policy and any records (or lack of records) of periodic access reviews; also the duplicate-user report found by the auditor.
+ 
+5. Control Weakness – What control weakness appears to exist? What corrective action would you recommend? (5 points)
+Control weakness: The employee termination and periodic access-review controls are not operating effectively. Former employees remain active, some accounts were used after exit, and management cannot show regular access reviews.
+Corrective action: Immediately disable former-employee accounts and investigate post-termination logins. Implement a same-day offboarding process between HR and IT, remove duplicate accounts, and require documented periodic access reviews with evidence retained.
+ 
+ACTIVITY 3 – CASE SCENARIO
+Title: “You Are the IT Auditor” | Time: 30 minutes | 25 points
+You have been assigned to audit the IT environment of a college. During the initial audit, you receive the following information:
+Evidence
+Observation
+User accounts
+10 former employees still have active accounts
+Login logs
+Some inactive accounts were used recently
+Password policy
+Password changes are required every 180 days
+Access review
+No documented monthly review
+Backup records
+Two scheduled backups failed last month
+Transaction records
+Several duplicate transactions were detected
+Part A – Audit Planning
+1. Audit Objective:
+Audit objective: To evaluate whether the college’s IT controls for user access, password security, backups, and transaction integrity are designed and operating effectively to protect college systems and data.
+ 
+2. Major Risks: a. Unauthorized access / account misuse b. Data loss from failed backups
+Other related risks: weak password settings (180 days) and integrity issues from duplicate transactions.
+ 
+3. Expected Controls: a. Disable accounts on termination + monthly access review b. Monitored successful backups / restore testing
+Also expected: enforced password policy aligned with best practice, and controls to prevent/detect duplicate transactions.
+ 
+Part B – Select Audit Techniques
+Issue
+Audit Technique
+Reason
+Former employee accounts
+Inspection / Testing
+Compare active accounts with HR termination list; check recent logins
+Failed backups
+Inspection / Testing
+Review backup logs, failure tickets, and restore-test records
+Duplicate transactions
+Data Analysis / Testing
+Use CAATs to match duplicate IDs, amounts, or timestamps
+Password policy
+Inspection
+Compare system password settings with the written policy
+Part C – Analyze the Evidence
+1. Which evidence requires immediate investigation?
+Immediate investigation: active accounts of former employees AND login logs showing that inactive/former accounts were used recently. This shows possible unauthorized access right now.
+Failed backups and duplicate transactions are also important, but the live access issue should be handled first because the risk is ongoing.
+2. Which audit-data analysis technique could be used to identify duplicate transactions?
+Duplicate detection / matching analysis (audit data analysis / CAAT). The auditor can sort and match records by transaction ID, amount, date/time, and user to find exact or near duplicates.
+Exception reports from the system can also be used to list repeated transactions for further testing.
+3. How could login logs be analyzed to identify unusual activity?
+Filter login logs by account status, termination date, unusual time-of-day, failed vs successful logins, and unusual IP/location. Focus on accounts marked inactive or belonging to former employees.
+Compare spikes in activity and logins after the employee’s last day to spot misuse quickly.
+4. What additional evidence would you collect before reaching a conclusion?
+Collect: HR termination list with exact leave dates; full current user-access extract; written password policy and system password configuration; backup job logs and tickets for the two failures; restore-test evidence;
+and management explanation/records for monthly access reviews and how duplicate transactions are prevented or corrected.
+Part D – Recommendation
+Recommendation 1:
+Recommendation 1: Immediately disable the 10 former-employee accounts and investigate all recent logins on those accounts. Implement a same-day HR–IT offboarding process and document monthly access reviews with retained evidence.
+ 
+Recommendation 2:
+Recommendation 2: Investigate the two failed backups, fix monitoring/alerting, and perform a documented restore test. Strengthen password settings (shorter than 180 days where policy requires) and analyze/correct duplicate transactions with preventive controls.
+ 
+ACTIVITY 4 – INDIVIDUAL ESSAY
+Title: “The Importance of a Systematic IT Audit” | Time: 30 minutes | 30 points
+Essay Question
+Why is it important to follow a systematic process when conducting an IT audit? Explain how the different audit phases, audit techniques, data analysis, and audit reporting work together to produce reliable audit results.
+Instructions
+Write 300–400 words. Your essay should discuss:
+• The purpose of an IT audit.
+• The major phases of an IT audit.
+• The importance of collecting reliable audit evidence.
+• At least three IT audit techniques.
+• The role of audit-data analysis.
+• The difference between an anomaly and a confirmed finding.
+• The importance of findings, risks, causes, and recommendations.
+• The importance of communicating audit results professionally.
+Essay Writing Space
+Essay Title: The Importance of a Systematic IT Audit Process
+An IT audit is conducted to determine whether information systems and related controls protect the confidentiality, integrity, and availability of data. In schools and organizations, this matters because systems hold grades, personal information, finances, and other sensitive records. A systematic process is important because it keeps the auditor focused, consistent, and fair. Without a clear process, the audit may miss high risks, rely on assumptions, or produce conclusions that cannot be supported.
+The major phases of an IT audit usually include planning, risk assessment, fieldwork, analysis and evaluation, reporting, and follow-up. Planning defines the scope and objectives. Risk assessment identifies threats and vulnerabilities so testing time is used well. Fieldwork is where evidence is collected through interviews, inspection, observation, walkthroughs, testing, sampling, and data analysis. Analysis and evaluation turn that evidence into exceptions and control weaknesses. Reporting communicates findings, risks, causes, and recommendations to management. Follow-up checks whether corrective actions were really implemented.
+Reliable audit evidence is the foundation of trustworthy results. Evidence should be sufficient, relevant, and competent. System lists, logs, and configuration settings are usually stronger than verbal claims alone. That is why auditors should use more than one technique when appropriate. For example, an interview can explain how accounts are created, inspection can confirm the written policy, and testing can prove whether selected accounts actually have the correct access. Data analysis is especially useful for large volumes of records, such as login history or duplicate transactions, because it can quickly highlight unusual patterns.
+Auditors must also separate an anomaly from a confirmed finding. An anomaly is an unusual item that needs investigation. It becomes a confirmed finding only after the auditor verifies that a control failed or is weak and that the issue has real risk. Reporting too early can create false findings; waiting without investigation can allow real problems to continue.
+Finally, professional communication is essential. A good audit report clearly states the finding, the related risk, the likely cause, and practical recommendations. This helps management understand what to fix and allows follow-up to verify improvement. When phases, techniques, evidence, analysis, and reporting work together, the IT audit produces reliable and useful results instead of opinions based on incomplete information.
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ONLINE SUBMISSION
+Submit ONE Word or PDF file containing Activities 1–4.
+Name: Reymon S.A. Brogada
+Section: IT Audit
+Date: September 10, 2026
+GRADING RUBRIC – 100 POINTS
+Component
+Points
+Individual Online Activity
+20
+Case Study
+25
+Case Scenario
+25
+Individual Essay
+30
+TOTAL
+100
+Essay Rubric – 30 Points
+Criteria
+Points
+Understanding of IT audit concepts
+8
+Explanation of audit phases and techniques
+7
+Application to a real-world situation
+6
+Analysis and logical reasoning
+5
+Organization, clarity, and grammar
+4
+TOTAL
+30
+Expected Learning Outcome
+After completing the 2-hour online activity, students should be able to explain the phases of an IT audit, select appropriate audit techniques, apply those techniques to a scenario, analyze audit evidence to identify issues, and develop clear findings and recommendations for an IT audit report.

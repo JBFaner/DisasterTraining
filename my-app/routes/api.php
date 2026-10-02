@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Group6SimulationPlanningController;
 use App\Http\Controllers\Api\Group6InboundController;
 use App\Http\Controllers\Api\Group6CampaignPlanningController;
 use App\Http\Controllers\Api\ResourceAllocationInventoryController;
+use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Models\Resource;
 
 // Public API endpoints
@@ -67,6 +68,20 @@ Route::prefix('integrations/group6')
         Route::get('/simulation-planning/approved-campaigns', [Group6SimulationPlanningController::class, 'index'])->name('simulation-planning.approved-campaigns.index');
         Route::get('/simulation-planning/approved-campaigns/{campaignRequest}', [Group6SimulationPlanningController::class, 'show'])->name('simulation-planning.approved-campaigns.show');
         Route::get('/simulation-planning/approved-campaigns/{campaignRequest}/training-summary', [Group6SimulationPlanningController::class, 'trainingSummary'])->name('simulation-planning.approved-campaigns.training-summary');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Partner dashboard analytics (any external group — read-only KPIs/charts)
+|--------------------------------------------------------------------------
+| Auth: X-Dashboard-Api-Key header (or Bearer token).
+| Not tied to Group 6 campaign integration.
+*/
+Route::prefix('integrations/dashboard')
+    ->middleware('dashboard.api')
+    ->name('api.integrations.dashboard.')
+    ->group(function () {
+        Route::get('/analytics', [DashboardAnalyticsController::class, 'index'])->name('analytics');
     });
 
 /*

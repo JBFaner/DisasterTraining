@@ -26,11 +26,12 @@ import {
     AdminPageHeader,
     AdminCollapsibleFilterBar,
     AdminFilterSelect,
+    AdminFilterInput,
     AdminPrimaryButton,
     AdminSecondaryButton,
     adminInputClass,
 } from '../components/admin/AdminLayout';
-import { AdminDataTable, AdminTableActionButton } from '../components/admin/AdminDataTable';
+import { AdminDataTable, AdminTableActionButton, AdminTablePagination } from '../components/admin/AdminDataTable';
 import { buildPrintTableDocument, printHtmlDocument } from '../utils/printHtml';
 
 // Pagination Component
@@ -133,7 +134,31 @@ export function ResourceInventory({ role = null }) {
     const [events, setEvents] = useState([]);
     const [completedEventsWithResources, setCompletedEventsWithResources] = useState([]);
     const [movementHistory, setMovementHistory] = useState([]);
+    const [movementSearch, setMovementSearch] = useState('');
+    const [movementStatusFilter, setMovementStatusFilter] = useState('all');
+    const [movementDateFrom, setMovementDateFrom] = useState('');
+    const [movementDateTo, setMovementDateTo] = useState('');
+    const [movementPagination, setMovementPagination] = useState({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0,
+        from: 0,
+        to: 0,
+    });
     const [selectedResourceHistory, setSelectedResourceHistory] = useState(null);
+    const [reportCategoryFilter, setReportCategoryFilter] = useState('all');
+    const [reportDateFrom, setReportDateFrom] = useState('');
+    const [reportDateTo, setReportDateTo] = useState('');
+    const [maintenancePage, setMaintenancePage] = useState(1);
+    const [maintenancePagination, setMaintenancePagination] = useState({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0,
+        from: 0,
+        to: 0,
+    });
     const [reportData, setReportData] = useState({
         most_used_equipment: [],
         current_reservations: [],
@@ -211,21 +236,47 @@ export function ResourceInventory({ role = null }) {
         }
     };
 
-    const fetchMovementHistory = async () => {
+    const fetchMovementHistory = async (page = movementPage) => {
         try {
-            const response = await fetch('/admin/api/resource-movements?limit=100');
-            if (!response.ok) return;
+            const params = new URLSearchParams({
+                page: String(page),
+                per_page: String(itemsPerPage),
+            });
+            if (movementSearch.trim()) params.set('search', movementSearch.trim());
+            if (movementStatusFilter !== 'all') params.set('status', movementStatusFilter);
+            if (movementDateFrom) params.set('date_from', movementDateFrom);
+            if (movementDateTo) params.set('date_to', movementDateTo);
+
+            const response = await fetch(`/admin/api/resource-movements?${params.toString()}`);
+            if (!response.ok) throw new Error('Failed to fetch movement history');
             const data = await response.json().catch(() => ({}));
             setMovementHistory(Array.isArray(data.movements) ? data.movements : []);
+            setMovementPagination(data.pagination || {
+                current_page: 1,
+                last_page: 1,
+                per_page: itemsPerPage,
+                total: 0,
+                from: 0,
+                to: 0,
+            });
         } catch (error) {
             console.error('Error fetching movement history:', error);
+            Swal.fire('Error', 'Failed to load movement history.', 'error');
         }
     };
 
-    const fetchReportData = async () => {
+    const fetchReportData = async (page = maintenancePage) => {
         try {
-            const response = await fetch('/admin/api/resource-reports');
-            if (!response.ok) return;
+            const params = new URLSearchParams({
+                maintenance_page: String(page),
+                maintenance_per_page: String(itemsPerPage),
+            });
+            if (reportCategoryFilter !== 'all') params.set('category', reportCategoryFilter);
+            if (reportDateFrom) params.set('date_from', reportDateFrom);
+            if (reportDateTo) params.set('date_to', reportDateTo);
+
+            const response = await fetch(`/admin/api/resource-reports?${params.toString()}`);
+            if (!response.ok) throw new Error('Failed to fetch reports');
             const data = await response.json().catch(() => ({}));
             setReportData({
                 most_used_equipment: Array.isArray(data.most_used_equipment) ? data.most_used_equipment : [],
@@ -234,8 +285,17 @@ export function ResourceInventory({ role = null }) {
                 damaged_equipment_summary: Array.isArray(data.damaged_equipment_summary) ? data.damaged_equipment_summary : [],
                 maintenance_history: Array.isArray(data.maintenance_history) ? data.maintenance_history : [],
             });
+            setMaintenancePagination(data.maintenance_pagination || {
+                current_page: 1,
+                last_page: 1,
+                per_page: itemsPerPage,
+                total: 0,
+                from: 0,
+                to: 0,
+            });
         } catch (error) {
             console.error('Error fetching report data:', error);
+            Swal.fire('Error', 'Failed to load resource reports.', 'error');
         }
     };
 
@@ -355,13 +415,101 @@ export function ResourceInventory({ role = null }) {
 
     useEffect(() => {
         setMovementPage(1);
-    }, [movementHistory]);
+    }, [movementSearch, movementStatusFilter, movementDateFrom, movementDateTo]);
 
-    const movementTotalPages = Math.max(1, Math.ceil(movementHistory.length / itemsPerPage) || 1);
-    const paginatedMovements = movementHistory.slice(
-        (movementPage - 1) * itemsPerPage,
-        movementPage * itemsPerPage,
-    );
+    useEffect(() => {
+        if (activeTab === 'usage_tracking') {
+            fetchMovementHistory(movementPage);
+        }
+    }, [activeTab, movementPage, movementSearch, movementStatusFilter, movementDateFrom, movementDateTo]);
+
+    useEffect(() => {
+        setMaintenancePage(1);
+    }, [reportCategoryFilter, reportDateFrom, reportDateTo]);
+
+    useEffect(() => {
+        if (activeTab === 'reports') {
+            fetchReportData(maintenancePage);
+        }
+    }, [activeTab, maintenancePage, reportCategoryFilter, reportDateFrom, reportDateTo]);
+
+    const applyMovementFilters = (e) => {
+        e?.preventDefault();
+        setMovementPage(1);
+        fetchMovementHistory(1);
+    };
+
+    const resetMovementFilters = () => {
+        setMovementSearch('');
+        setMovementStatusFilter('all');
+        setMovementDateFrom('');
+        setMovementDateTo('');
+        setMovementPage(1);
+    };
+
+    const applyReportFilters = (e) => {
+        e?.preventDefault();
+        setMaintenancePage(1);
+        fetchReportData(1);
+    };
+
+    const resetReportFilters = () => {
+        setReportCategoryFilter('all');
+        setReportDateFrom('');
+        setReportDateTo('');
+        setMaintenancePage(1);
+    };
+
+    const handlePrintMovementHistory = () => {
+        const rows = movementHistory.map((row) => [
+            row.date || '—',
+            row.equipment || '—',
+            row.simulation_event || '—',
+            row.requested_by || row.source_module || '—',
+            String(row.quantity ?? 0),
+            row.status || '—',
+        ]);
+        const filterBits = [
+            movementSearch ? `search="${movementSearch}"` : null,
+            movementStatusFilter !== 'all' ? `status=${movementStatusFilter}` : null,
+            movementDateFrom ? `from=${movementDateFrom}` : null,
+            movementDateTo ? `to=${movementDateTo}` : null,
+        ].filter(Boolean);
+        const html = buildPrintTableDocument({
+            title: 'Equipment Movement History',
+            subtitle: `Printed ${new Date().toLocaleString()} · Page ${movementPagination.current_page} of ${movementPagination.last_page}${filterBits.length ? ` · Filters: ${filterBits.join(', ')}` : ''}`,
+            headers: ['Date', 'Equipment', 'Simulation Event', 'Requested By', 'Allocated Qty', 'Status'],
+            rows,
+            emptyMessage: 'No movement records match the current filters.',
+        });
+        if (!printHtmlDocument(html, 'Movement History')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    };
+
+    const handlePrintReports = () => {
+        const rows = reportData.maintenance_history.map((row) => [
+            row.date || '—',
+            row.resource || '—',
+            row.action || '—',
+            row.notes || '—',
+        ]);
+        const filterBits = [
+            reportCategoryFilter !== 'all' ? `category=${reportCategoryFilter}` : null,
+            reportDateFrom ? `from=${reportDateFrom}` : null,
+            reportDateTo ? `to=${reportDateTo}` : null,
+        ].filter(Boolean);
+        const html = buildPrintTableDocument({
+            title: 'Resource Reports — Maintenance History',
+            subtitle: `Printed ${new Date().toLocaleString()}${filterBits.length ? ` · Filters: ${filterBits.join(', ')}` : ''}`,
+            headers: ['Date', 'Resource', 'Action', 'Notes'],
+            rows,
+            emptyMessage: 'No maintenance records match the current filters.',
+        });
+        if (!printHtmlDocument(html, 'Resource Reports')) {
+            Swal.fire('Unable to print', 'Could not prepare the print view. Please try again.', 'warning');
+        }
+    };
 
     const handlePrintResources = () => {
         const rows = filteredResources.map((resource) => {
@@ -1166,42 +1314,45 @@ export function ResourceInventory({ role = null }) {
                 title="Resource & Equipment Inventory"
                 description="Manage materials, equipment, and tools for disaster training."
                 actions={
-                    <>
-                        <AdminPrimaryButton
-                            onClick={handlePrintResources}
-                            disabled={filteredResources.length === 0}
-                            title="Print filtered resources"
-                        >
-                            <Printer className="w-4 h-4" />
-                            Print
-                        </AdminPrimaryButton>
-                        <AdminSecondaryButton onClick={handleExportReport}>
-                            <Download className="w-4 h-4" />
-                            Export
-                        </AdminSecondaryButton>
-                        {canAddDirect && (
-                            <>
+                    activeTab === 'resources' ? (
+                        <>
+                            <AdminPrimaryButton
+                                onClick={handlePrintResources}
+                                disabled={filteredResources.length === 0}
+                                title="Print filtered resources"
+                            >
+                                <Printer className="w-4 h-4" />
+                                Print
+                            </AdminPrimaryButton>
+                            <AdminSecondaryButton onClick={handleExportReport}>
+                                <Download className="w-4 h-4" />
+                                Export
+                            </AdminSecondaryButton>
+                            {canAddDirect && (
+                                <>
+                                    <AdminPrimaryButton onClick={() => handleRequestPurchase()}>
+                                        <Wallet className="w-4 h-4" />
+                                        Request purchase / restock
+                                    </AdminPrimaryButton>
+                                    <AdminPrimaryButton onClick={handleAddResource}>
+                                        <Plus className="w-4 h-4" />
+                                        Add New Resource
+                                    </AdminPrimaryButton>
+                                </>
+                            )}
+                            {!canAddDirect && canRequestPurchase && (
                                 <AdminPrimaryButton onClick={() => handleRequestPurchase()}>
                                     <Wallet className="w-4 h-4" />
                                     Request purchase / restock
                                 </AdminPrimaryButton>
-                                <AdminPrimaryButton onClick={handleAddResource}>
-                                    <Plus className="w-4 h-4" />
-                                    Add New Resource
-                                </AdminPrimaryButton>
-                            </>
-                        )}
-                        {!canAddDirect && canRequestPurchase && (
-                            <AdminPrimaryButton onClick={() => handleRequestPurchase()}>
-                                <Wallet className="w-4 h-4" />
-                                Request purchase / restock
-                            </AdminPrimaryButton>
-                        )}
-                    </>
+                            )}
+                        </>
+                    ) : null
                 }
             />
 
-            {/* Summary Cards - Certification style (premium KPI cards) */}
+            {/* Summary Cards — Resources tab only */}
+            {activeTab === 'resources' && (
             <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6">
                 <div
                     className={`bg-white rounded-xl border shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-250 cursor-pointer ${statusFilter === 'all' && resourceTypeFilter === 'all' && conditionFilter === 'all' ? 'border-slate-300 ring-2 ring-emerald-500/30' : 'border-slate-200'}`}
@@ -1270,6 +1421,7 @@ export function ResourceInventory({ role = null }) {
                     <p className="text-xs text-slate-500 mt-1">{stats.needsRepair === 0 ? 'No issues' : 'Need attention'}</p>
                 </div>
             </div>
+            )}
 
             {/* Tabs - Certification style (green active pill) */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 w-fit">
@@ -1525,15 +1677,58 @@ export function ResourceInventory({ role = null }) {
 
             {activeTab === 'usage_tracking' && (
                 <div className="space-y-4">
+                    <AdminCollapsibleFilterBar
+                        hasActiveFilters={Boolean(movementSearch || movementStatusFilter !== 'all' || movementDateFrom || movementDateTo)}
+                        onClearFilters={resetMovementFilters}
+                        defaultOpen
+                    >
+                        <AdminFilterInput
+                            label="Search"
+                            value={movementSearch}
+                            onChange={(e) => setMovementSearch(e.target.value)}
+                            placeholder="Equipment, event, requester…"
+                        />
+                        <AdminFilterSelect
+                            label="Status"
+                            value={movementStatusFilter}
+                            onChange={(e) => setMovementStatusFilter(e.target.value)}
+                        >
+                            <option value="all">All statuses</option>
+                            <option value="Reserved">Reserved</option>
+                            <option value="In Use">In Use</option>
+                            <option value="Returned">Returned</option>
+                            <option value="Needs Repair">Needs Repair</option>
+                        </AdminFilterSelect>
+                        <AdminFilterInput
+                            label="Date from"
+                            type="date"
+                            value={movementDateFrom}
+                            onChange={(e) => setMovementDateFrom(e.target.value)}
+                        />
+                        <AdminFilterInput
+                            label="Date to"
+                            type="date"
+                            value={movementDateTo}
+                            onChange={(e) => setMovementDateTo(e.target.value)}
+                        />
+                    </AdminCollapsibleFilterBar>
+
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                             <div>
                                 <h2 className="text-lg font-semibold text-slate-900">Equipment Movement History</h2>
                                 <p className="text-sm text-slate-600 mt-1">Tracks Reserved → In Use → Returned → Available / Needs Repair.</p>
                             </div>
-                            <AdminSecondaryButton onClick={() => fetchMovementHistory()}>
-                                Refresh
-                            </AdminSecondaryButton>
+                            <div className="flex items-center gap-2">
+                                <AdminSecondaryButton onClick={handlePrintMovementHistory}>
+                                    <Printer className="w-4 h-4" />
+                                    Print
+                                </AdminSecondaryButton>
+                                <AdminSecondaryButton onClick={() => fetchMovementHistory(movementPage)}>
+                                    <RotateCcw className="w-4 h-4" />
+                                    Refresh
+                                </AdminSecondaryButton>
+                            </div>
                         </div>
                     </div>
 
@@ -1590,16 +1785,16 @@ export function ResourceInventory({ role = null }) {
                                 ),
                             },
                         ]}
-                        data={paginatedMovements}
+                        data={movementHistory}
                         emptyTitle="No movement records yet"
                         emptyDescription="Equipment movement will appear here after allocations."
                         pagination={{
-                            current_page: movementPage,
-                            last_page: Math.max(1, movementTotalPages),
-                            per_page: itemsPerPage,
-                            total: movementHistory.length,
-                            from: movementHistory.length === 0 ? 0 : (movementPage - 1) * itemsPerPage + 1,
-                            to: Math.min(movementPage * itemsPerPage, movementHistory.length),
+                            current_page: movementPagination.current_page,
+                            last_page: Math.max(1, movementPagination.last_page),
+                            per_page: movementPagination.per_page,
+                            total: movementPagination.total,
+                            from: movementPagination.from,
+                            to: movementPagination.to,
                         }}
                         onPageChange={setMovementPage}
                     />
@@ -1751,40 +1946,49 @@ export function ResourceInventory({ role = null }) {
 
             {activeTab === 'reports' && (
                 <div className="space-y-6">
+                    <AdminCollapsibleFilterBar
+                        hasActiveFilters={Boolean(reportCategoryFilter !== 'all' || reportDateFrom || reportDateTo)}
+                        onClearFilters={resetReportFilters}
+                        defaultOpen
+                    >
+                        <AdminFilterSelect
+                            label="Category"
+                            value={reportCategoryFilter}
+                            onChange={(e) => setReportCategoryFilter(e.target.value)}
+                        >
+                            <option value="all">All categories</option>
+                            {resourceTypes.map((type) => (
+                                <option key={type} value={type}>{type}</option>
+                            ))}
+                        </AdminFilterSelect>
+                        <AdminFilterInput
+                            label="Date from"
+                            type="date"
+                            value={reportDateFrom}
+                            onChange={(e) => setReportDateFrom(e.target.value)}
+                        />
+                        <AdminFilterInput
+                            label="Date to"
+                            type="date"
+                            value={reportDateTo}
+                            onChange={(e) => setReportDateTo(e.target.value)}
+                        />
+                    </AdminCollapsibleFilterBar>
+
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                         <div>
                             <h2 className="text-xl font-semibold text-slate-900">Resource Reports</h2>
                             <p className="text-slate-600 mt-1 text-sm">Most Used, Reservations, Utilization, Damaged Summary, and Maintenance History.</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <AdminSecondaryButton onClick={fetchReportData}>Refresh</AdminSecondaryButton>
-                            <AdminSecondaryButton onClick={handleExportReport}>
-                                <Download className="w-4 h-4" />
-                                Export
+                            <AdminSecondaryButton onClick={handlePrintReports}>
+                                <Printer className="w-4 h-4" />
+                                Print
                             </AdminSecondaryButton>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                            <p className="text-xs font-semibold text-slate-500 uppercase">Most Used Equipment</p>
-                            <p className="text-2xl font-bold text-slate-900 mt-1">{reportData.most_used_equipment.length}</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                            <p className="text-xs font-semibold text-slate-500 uppercase">Current Reservations</p>
-                            <p className="text-2xl font-bold text-violet-700 mt-1">{reportData.current_reservations.length}</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                            <p className="text-xs font-semibold text-slate-500 uppercase">Equipment Utilization</p>
-                            <p className="text-2xl font-bold text-blue-700 mt-1">{reportData.equipment_utilization.length}</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                            <p className="text-xs font-semibold text-slate-500 uppercase">Damaged Summary</p>
-                            <p className="text-2xl font-bold text-amber-700 mt-1">{reportData.damaged_equipment_summary.length}</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                            <p className="text-xs font-semibold text-slate-500 uppercase">Maintenance History</p>
-                            <p className="text-2xl font-bold text-emerald-700 mt-1">{reportData.maintenance_history.length}</p>
+                            <AdminSecondaryButton onClick={() => fetchReportData(maintenancePage)}>
+                                <RotateCcw className="w-4 h-4" />
+                                Refresh
+                            </AdminSecondaryButton>
                         </div>
                     </div>
 
@@ -1867,11 +2071,12 @@ export function ResourceInventory({ role = null }) {
                     </div>
 
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="px-5 py-4 border-b border-slate-200">
+                        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
                             <h3 className="font-semibold text-slate-900">Maintenance History</h3>
+                            <span className="text-xs text-slate-500">{maintenancePagination.total} record(s)</span>
                         </div>
                         <div className="divide-y divide-slate-100">
-                            {reportData.maintenance_history.slice(0, 12).map((row) => (
+                            {reportData.maintenance_history.map((row) => (
                                 <div key={row.id} className="px-5 py-3 grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
                                     <p className="text-slate-700">{row.date || '—'}</p>
                                     <p className="font-medium text-slate-900">{row.resource}</p>
@@ -1881,6 +2086,12 @@ export function ResourceInventory({ role = null }) {
                             ))}
                             {reportData.maintenance_history.length === 0 && <div className="px-5 py-8 text-sm text-slate-500 text-center">No maintenance records found.</div>}
                         </div>
+                        {maintenancePagination.total > 0 && (
+                            <AdminTablePagination
+                                pagination={maintenancePagination}
+                                onPageChange={setMaintenancePage}
+                            />
+                        )}
                     </div>
                 </div>
             )}

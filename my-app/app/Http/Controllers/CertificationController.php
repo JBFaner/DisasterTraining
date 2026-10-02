@@ -10,6 +10,7 @@ use App\Models\ParticipantEvaluation;
 use App\Models\SimulationEvent;
 use App\Models\TrainingModule;
 use App\Services\CertificateDesignRenderer;
+use App\Services\CertificateRegistrationSyncService;
 use App\Services\CertificationEligibleParticipantsService;
 use App\Services\DatabaseBackupService;
 use App\Services\AuditLogger;
@@ -291,6 +292,8 @@ class CertificationController extends Controller
 
         app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
 
+        app(CertificateRegistrationSyncService::class)->syncAfterIssue($cert);
+
         AuditLogger::log([
             'action' => 'Certificate issued',
             'module' => 'Certification',
@@ -348,6 +351,8 @@ class CertificationController extends Controller
         if ($certificate->user) {
             $this->notificationFactory->certificateRevoked($certificate->user, $certificate, $reason);
         }
+
+        app(CertificateRegistrationSyncService::class)->syncAfterRevoke($certificate);
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Certificate revoked.']);

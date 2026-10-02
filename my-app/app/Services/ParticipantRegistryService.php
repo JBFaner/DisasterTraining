@@ -2,18 +2,19 @@
 
 namespace App\Services;
 
-use App\Models\AiScenarioAttempt;
 use App\Models\CampaignRegistration;
 use App\Models\CampaignRequest;
 use App\Models\Certificate;
-use App\Models\EvaluationResult;
-use App\Models\LessonCompletion;
 use App\Models\TrainingModule;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
 class ParticipantRegistryService
 {
+    public function __construct(
+        protected ParticipantTrainingSummaryService $trainingSummary,
+    ) {}
+
     public function enrichParticipant(User $user): User
     {
         $statuses = $this->computeStatuses($user);
@@ -40,25 +41,6 @@ class ParticipantRegistryService
             return $collection;
         }
 
-        $lessonCounts = LessonCompletion::query()
-            ->whereIn('user_id', $ids)
-            ->selectRaw('user_id, COUNT(*) as total')
-            ->groupBy('user_id')
-            ->pluck('total', 'user_id');
-
-        $aiCompletedCounts = AiScenarioAttempt::query()
-            ->whereIn('user_id', $ids)
-            ->where('status', AiScenarioAttempt::STATUS_COMPLETED)
-            ->selectRaw('user_id, COUNT(*) as total')
-            ->groupBy('user_id')
-            ->pluck('total', 'user_id');
-
-        $evaluationCounts = EvaluationResult::query()
-            ->whereIn('participant_id', $ids)
-            ->selectRaw('participant_id, COUNT(*) as total')
-            ->groupBy('participant_id')
-            ->pluck('total', 'participant_id');
-
         $certificateCounts = Certificate::query()
             ->whereIn('user_id', $ids)
             ->whereNull('revoked_at')
@@ -75,9 +57,6 @@ class ParticipantRegistryService
             ->groupBy('user_id');
 
         return $collection->map(function (User $user) use (
-            $lessonCounts,
-            $aiCompletedCounts,
-            $evaluationCounts,
             $certificateCounts,
             $registrationsByUser,
         ) {
@@ -91,14 +70,9 @@ class ParticipantRegistryService
                 ->values()
                 ->all();
 
-            $user->training_status = $this->resolveTrainingStatus(
-                (int) ($lessonCounts[$user->id] ?? 0),
-                (int) ($aiCompletedCounts[$user->id] ?? 0),
-            );
+            $user->training_status = $this->trainingSummary->resolveTrainingStatus((int) $user->id);
             $user->attendance_status = $this->resolveAttendanceStatus($user);
-            $user->evaluation_status = ((int) ($evaluationCounts[$user->id] ?? 0)) > 0
-                ? 'Completed'
-                : 'Not Evaluated';
+            $user->evaluation_status = $this->trainingSummary->resolveEvaluationStatus((int) $user->id);
             $user->certificate_status = ((int) ($certificateCounts[$user->id] ?? 0)) > 0
                 ? 'Issued'
                 : 'None';
@@ -112,17 +86,12 @@ class ParticipantRegistryService
      */
     public function computeStatuses(User $user): array
     {
-        $lessonCount = LessonCompletion::where('user_id', $user->id)->count();
-        $aiCompleted = AiScenarioAttempt::where('user_id', $user->id)
-            ->where('status', AiScenarioAttempt::STATUS_COMPLETED)
-            ->count();
-        $evaluationCount = EvaluationResult::where('participant_id', $user->id)->count();
         $certificateCount = Certificate::where('user_id', $user->id)->whereNull('revoked_at')->count();
 
         return [
-            'training_status' => $this->resolveTrainingStatus($lessonCount, $aiCompleted),
+            'training_status' => $this->trainingSummary->resolveTrainingStatus((int) $user->id),
             'attendance_status' => $this->resolveAttendanceStatus($user),
-            'evaluation_status' => $evaluationCount > 0 ? 'Completed' : 'Not Evaluated',
+            'evaluation_status' => $this->trainingSummary->resolveEvaluationStatus((int) $user->id),
             'certificate_status' => $certificateCount > 0 ? 'Issued' : 'None',
         ];
     }
@@ -234,18 +203,6 @@ class ParticipantRegistryService
         ];
     }
 
-    protected function resolveTrainingStatus(int $lessonCount, int $aiCompleted): string
-    {
-        if ($lessonCount === 0 && $aiCompleted === 0) {
-            return 'Not Started';
-        }
-
-        if ($aiCompleted > 0 || $lessonCount >= 3) {
-            return 'Completed';
-        }
-
-        return 'In Progress';
-    }
 
     protected function resolveAttendanceStatus(User $user): string
     {

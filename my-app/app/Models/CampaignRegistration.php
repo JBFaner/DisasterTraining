@@ -17,6 +17,8 @@ class CampaignRegistration extends Model
 
     public const CERTIFICATE_NOT_ISSUED = 'not_issued';
 
+    public const CERTIFICATE_ISSUED = 'issued';
+
     protected $fillable = [
         'user_id',
         'campaign_request_id',

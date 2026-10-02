@@ -1,0 +1,241 @@
+WEEK 7 – CONDUCTING THE IT AUDIT
+2-HOUR ONLINE ACTIVITY
+Topics 1–5 | Total Time: 120 Minutes | Total: 100 Points
+Activity Overview
+Activity
+ | Time
+ | Points
+ | 
+Activity 1 – Individual Online Activity
+ | 30 min
+ | 20
+ | 
+Activity 2 – Case Study
+ | 30 min
+ | 25
+ | 
+Activity 3 – Case Scenario
+ | 30 min
+ | 25
+ | 
+Activity 4 – Individual Essay
+ | 30 min
+ | 30
+ | 
+TOTAL
+ | 120 min
+ | 100
+ | 
+ACTIVITY 1 – INDIVIDUAL ONLINE ACTIVITY
+Title: “IT Audit Process and Techniques” | Time: 30 minutes | 20 points
+Part A – Identify the Audit Phase
+Choices: Planning • Risk Assessment • Fieldwork • Analysis & Evaluation • Reporting • Follow-Up
+1. Identifying the scope and objectives of the audit. Answer: __Planning ___________________
+2. Identifying threats and vulnerabilities associated with the IT process. Answer: ______________________________
+3. Collecting audit evidence through interviews, inspection, observation, and testing. Answer: ______________________________
+4. Examining evidence to identify exceptions and weaknesses. Answer: ______________________________
+5. Communicating findings, risks, and recommendations to management. Answer: ______________________________
+6. Checking whether management implemented corrective actions. Answer: ______________________________
+Part B – Select the Appropriate Audit Technique
+Choices: Interview • Inquiry • Observation • Inspection • Walkthrough • Testing • Sampling • Data Analysis
+1. An auditor asks the system administrator how user accounts are created. Technique: __________________
+2. An auditor watches an employee perform the login process. Technique: __________________
+3. An auditor examines the organization's access-control policy. Technique: __________________
+4. An auditor follows one transaction from beginning to end. Technique: __________________
+5. An auditor checks whether selected user accounts actually have the appropriate access. Technique: __________________
+6. An auditor examines a selected group of transactions instead of every transaction. Technique: __________________
+7. An auditor examines thousands of login records to identify unusual activity. Technique: __________________
+Part C – Short Answer
+Answer each question in 2–3 sentences.
+1. Why is audit evidence important?
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+2. Why should an auditor use more than one audit technique when appropriate?
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+3. Why should an auditor investigate an anomaly before declaring it a confirmed finding?
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+ACTIVITY 2 – CASE STUDY
+Title: “University Student Information System Audit” | Time: 30 minutes | 25 points
+Case
+A university conducts an IT audit of its Student Information System (SIS). The system contains student grades, personal information, enrollment records, and academic histories.
+Policy: “Only authorized employees should have access to student records.”
+• The system administrator reports that terminated employees are immediately removed.
+• The auditor inspects the current user-access list.
+• Several accounts belonging to former employees remain active.
+• Login logs show that some of these accounts were used after the employees left the university.
+• The auditor finds several duplicate user records.
+• Management has no documented evidence showing that access reviews are performed regularly.
+Questions
+1. Audit Objective – What should be the primary objective of this IT audit? (5 points)
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+2. Audit Risk – Identify two risks associated with the situation. (5 points)
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+3. Audit Techniques – Identify at least four audit techniques and explain why each is appropriate. (5 points)
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+4. Audit Evidence – Identify four pieces of evidence that the auditor should collect. (5 points)
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+5. Control Weakness – What control weakness appears to exist? What corrective action would you recommend? (5 points)
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+ACTIVITY 3 – CASE SCENARIO
+Title: “You Are the IT Auditor” | Time: 30 minutes | 25 points
+You have been assigned to audit the IT environment of a college. During the initial audit, you receive the following information:
+Evidence
+ | Observation
+ | 
+User accounts
+ | 10 former employees still have active accounts
+ | 
+Login logs
+ | Some inactive accounts were used recently
+ | 
+Password policy
+ | Password changes are required every 180 days
+ | 
+Access review
+ | No documented monthly review
+ | 
+Backup records
+ | Two scheduled backups failed last month
+ | 
+Transaction records
+ | Several duplicate transactions were detected
+ | 
+Part A – Audit Planning
+1. Audit Objective:
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+2. Major Risks: a. __________________  b. __________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+3. Expected Controls: a. __________________  b. __________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+Part B – Select Audit Techniques
+Issue
+ | Audit Technique
+ | Reason
+ | 
+Former employee accounts
+ | ________________
+ | ________________
+ | 
+Failed backups
+ | ________________
+ | ________________
+ | 
+Duplicate transactions
+ | ________________
+ | ________________
+ | 
+Password policy
+ | ________________
+ | ________________
+ | 
+Part C – Analyze the Evidence
+1. Which evidence requires immediate investigation?
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+2. Which audit-data analysis technique could be used to identify duplicate transactions?
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+3. How could login logs be analyzed to identify unusual activity?
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+4. What additional evidence would you collect before reaching a conclusion?
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+Part D – Recommendation
+Recommendation 1:
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+Recommendation 2:
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+ACTIVITY 4 – INDIVIDUAL ESSAY
+Title: “The Importance of a Systematic IT Audit” | Time: 30 minutes | 30 points
+Essay Question
+Why is it important to follow a systematic process when conducting an IT audit? Explain how the different audit phases, audit techniques, data analysis, and audit reporting work together to produce reliable audit results.
+Instructions
+Write 300–400 words. Your essay should discuss:
+• The purpose of an IT audit.
+• The major phases of an IT audit.
+• The importance of collecting reliable audit evidence.
+• At least three IT audit techniques.
+• The role of audit-data analysis.
+• The difference between an anomaly and a confirmed finding.
+• The importance of findings, risks, causes, and recommendations.
+• The importance of communicating audit results professionally.
+Essay Writing Space
+Essay Title: ______________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+____________________________________________________________________________________________________
+ONLINE SUBMISSION
+Submit ONE Word or PDF file containing Activities 1–4.
+Name: ______________________________________________
+Section: _____________________________________________
+Date: ________________________________________________
+GRADING RUBRIC – 100 POINTS
+Component
+ | Points
+ | 
+Individual Online Activity
+ | 20
+ | 
+Case Study
+ | 25
+ | 
+Case Scenario
+ | 25
+ | 
+Individual Essay
+ | 30
+ | 
+TOTAL
+ | 100
+ | 
+Essay Rubric – 30 Points
+Criteria
+ | Points
+ | 
+Understanding of IT audit concepts
+ | 8
+ | 
+Explanation of audit phases and techniques
+ | 7
+ | 
+Application to a real-world situation
+ | 6
+ | 
+Analysis and logical reasoning
+ | 5
+ | 
+Organization, clarity, and grammar
+ | 4
+ | 
+TOTAL
+ | 30
+ | 
+Expected Learning Outcome
+After completing the 2-hour online activity, students should be able to explain the phases of an IT audit, select appropriate audit techniques, apply those techniques to a scenario, analyze audit evidence to identify issues, and develop clear findings and recommendations for an IT audit report.

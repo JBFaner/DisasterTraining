@@ -1,0 +1,57 @@
+services:
+  disaster-db:
+    image: mysql:8.0
+    container_name: disaster-training-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: disaster_training
+      MYSQL_USER: disaster_user
+      MYSQL_PASSWORD: ${DT_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DT_DB_ROOT_PASSWORD}
+    volumes:
+      - disaster_db_data:/var/lib/mysql
+    networks:
+      - traefik
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  disaster-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: disaster-training-web
+    restart: unless-stopped
+    depends_on:
+      disaster-db:
+        condition: service_healthy
+    volumes:
+      - /var/www/html/disaster_training_alertaraqc/my-app:/var/www/html:rw
+    environment:
+      APP_ENV: production
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.disaster-http.rule=Host(`disaster-training.alertaraqc.com`)
+      - traefik.http.routers.disaster-http.entrypoints=web
+      - traefik.http.routers.disaster-http.middlewares=disaster-https-redirect
+      - traefik.http.middlewares.disaster-https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.disaster-https-redirect.redirectscheme.permanent=true
+      - traefik.http.routers.disaster-https.rule=Host(`disaster-training.alertaraqc.com`)
+      - traefik.http.routers.disaster-https.entrypoints=websecure
+      - traefik.http.routers.disaster-https.tls=true
+      - traefik.http.routers.disaster-https.tls.certresolver=letsencrypt
+      - traefik.http.services.disaster.loadbalancer.server.port=80
+
+networks:
+  traefik:
+    external: true
+    name: dokploy-network
+
+volumes:
+  disaster_db_data:

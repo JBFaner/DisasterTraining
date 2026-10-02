@@ -58,6 +58,7 @@ class TrainingCertificateService
                 ]);
 
                 app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
+                app(CertificateRegistrationSyncService::class)->syncAfterIssue($existing);
             }
 
             return $existing;
@@ -100,6 +101,8 @@ class TrainingCertificateService
         $template->update(['last_used_at' => now()]);
 
         app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
+
+        app(CertificateRegistrationSyncService::class)->syncAfterIssue($certificate);
 
         if ($attempt->user) {
             $this->notificationFactory->certificateIssued($attempt->user, $certificate);
@@ -168,6 +171,7 @@ class TrainingCertificateService
 
         $template->update(['last_used_at' => now()]);
         app(DatabaseBackupService::class)->queueAfterCommit('certificate_issued');
+        app(CertificateRegistrationSyncService::class)->syncAfterIssue($certificate);
         $this->notificationFactory->certificateIssued($user, $certificate);
 
         return $certificate;

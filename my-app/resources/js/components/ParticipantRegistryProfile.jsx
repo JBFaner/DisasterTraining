@@ -137,6 +137,14 @@ export function ParticipantRegistryProfile({ participant }) {
     const evaluationResults = profile.evaluation_results || record.evaluation_results || [];
     const certificates = profile.certificates || record.certificates || [];
     const attendanceSummary = profile.attendance_summary || {};
+    const moduleTrainingProgress = profile.module_training_progress || [];
+
+    const completedLessonCount = React.useMemo(() => {
+        if (moduleTrainingProgress.length > 0) {
+            return moduleTrainingProgress.reduce((sum, mod) => sum + (mod.lessons_completed || 0), 0);
+        }
+        return lessonCompletions.length;
+    }, [moduleTrainingProgress, lessonCompletions.length]);
 
     const attemptModules = React.useMemo(() => {
         const map = new Map();
@@ -279,11 +287,56 @@ export function ParticipantRegistryProfile({ participant }) {
                         <h3 className="text-sm font-semibold text-slate-900 mb-4">Training Progress</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                             <DetailItem label="Training Status" value={<RegistryStatusBadge label={record.training_status || statuses.training_status} />} />
-                            <DetailItem label="Lessons Completed" value={lessonCompletions.length} />
+                            <DetailItem label="Lessons Completed" value={completedLessonCount} />
                             <DetailItem label="AI Scenario Attempts" value={aiAttempts.length} />
                         </div>
 
-                        <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Lesson Progress</h4>
+                        <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Module Progress</h4>
+                        {moduleTrainingProgress.length > 0 ? (
+                            <div className="space-y-4 mb-6">
+                                {moduleTrainingProgress.map((mod) => (
+                                    <div key={mod.training_module_id} className="rounded-xl border border-slate-200 overflow-hidden">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-4 py-3 border-b border-slate-200">
+                                            <div>
+                                                <p className="font-semibold text-slate-900">{mod.module_title}</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    {mod.lessons_completed || 0} / {mod.lessons_total || 0} lessons complete
+                                                </p>
+                                            </div>
+                                            <RegistryStatusBadge label={mod.status} />
+                                        </div>
+                                        {mod.lessons?.length > 0 ? (
+                                            <ul className="divide-y divide-slate-100">
+                                                {mod.lessons.map((lesson) => {
+                                                    const lessonLabel = lesson.status === 'completed'
+                                                        ? 'Completed'
+                                                        : lesson.status === 'in_progress'
+                                                            ? 'In Progress'
+                                                            : 'Not Started';
+                                                    return (
+                                                        <li key={lesson.id} className="px-4 py-2.5 text-sm flex flex-wrap items-center justify-between gap-2">
+                                                            <span className="text-slate-800">{lesson.title}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                {lesson.score != null && (
+                                                                    <span className="text-xs text-slate-500">{lesson.score}%</span>
+                                                                )}
+                                                                <RegistryStatusBadge label={lessonLabel} />
+                                                            </div>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        ) : (
+                                            <p className="px-4 py-3 text-sm text-slate-500">No lessons in this module.</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-500 mb-6">No registered training modules yet.</p>
+                        )}
+
+                        <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Lesson Completions (recorded)</h4>
                         {lessonCompletions.length > 0 ? (
                             <ul className="space-y-2 mb-6">
                                 {lessonCompletions.map((item) => (
@@ -422,15 +475,45 @@ export function ParticipantRegistryProfile({ participant }) {
 
             {activeTab === 'certificates' && (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Certificate Status</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Issued Certificates</h3>
                     {certificates.length > 0 ? (
-                        <ul className="space-y-2">
+                        <ul className="space-y-3">
                             {certificates.map((cert) => (
-                                <li key={cert.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm">
-                                    <span className="font-medium text-slate-900">{cert.simulation_event?.title || cert.training_module?.title || 'Certificate'}</span>
-                                    <span className="block text-xs text-slate-500 mt-0.5">
-                                        {cert.certificate_number || '—'} • Issued {formatDate(cert.issued_at)}
-                                    </span>
+                                <li key={cert.id} className="rounded-lg border border-slate-200 px-4 py-3 text-sm">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div>
+                                            <span className="font-medium text-slate-900">
+                                                {cert.simulation_event?.title || cert.training_module?.title || cert.training_type || 'Certificate'}
+                                            </span>
+                                            <span className="block text-xs text-slate-500 mt-1">
+                                                Certificate No. {cert.certificate_number || '—'}
+                                            </span>
+                                        </div>
+                                        {cert.id && (
+                                            <a
+                                                href={`/admin/certificates/${cert.id}/view`}
+                                                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                                            >
+                                                View
+                                            </a>
+                                        )}
+                                    </div>
+                                    <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                                        <div>
+                                            <dt className="text-slate-500 uppercase tracking-wide">Issue Date</dt>
+                                            <dd className="text-slate-900 font-medium mt-0.5">{formatDateTime(cert.issued_at)}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-slate-500 uppercase tracking-wide">Completion Date</dt>
+                                            <dd className="text-slate-900 font-medium mt-0.5">{formatDate(cert.completion_date)}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-slate-500 uppercase tracking-wide">Final Score</dt>
+                                            <dd className="text-slate-900 font-medium mt-0.5">
+                                                {cert.final_score != null ? `${cert.final_score}%` : '—'}
+                                            </dd>
+                                        </div>
+                                    </dl>
                                 </li>
                             ))}
                         </ul>

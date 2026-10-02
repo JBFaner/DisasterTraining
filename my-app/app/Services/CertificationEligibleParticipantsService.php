@@ -83,6 +83,8 @@ class CertificationEligibleParticipantsService
                     'participant_evaluation_id' => $pe?->id,
                     'certificate_issued' => $existingCert !== null,
                     'certificate_id' => $existingCert?->id,
+                    'certificate_number' => $existingCert?->certificate_number,
+                    'issued_at' => $existingCert?->issued_at?->toIso8601String(),
                 ];
             }
         }

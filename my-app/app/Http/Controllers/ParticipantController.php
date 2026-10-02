@@ -10,6 +10,7 @@ use App\Services\AuditLogger;
 use App\Services\Group6\ParticipantSyncService;
 use App\Services\ParticipantUpsertService;
 use App\Services\ParticipantRegistryService;
+use App\Services\ParticipantTrainingSummaryService;
 use App\Services\TrainingResetService;
 use App\Support\PortalAuth;
 use Illuminate\Http\Request;
@@ -346,16 +347,25 @@ class ParticipantController extends Controller
             'lessonCompletions.lesson',
             'aiScenarioAttempts.trainingModule',
             'evaluationResults.trainingModule',
-            'certificates.simulationEvent',
-            'certificates.trainingModule',
         ]);
 
+        $user->setRelation(
+            'certificates',
+            $user->certificates()
+                ->whereNull('revoked_at')
+                ->with(['simulationEvent', 'trainingModule'])
+                ->orderByDesc('issued_at')
+                ->get()
+        );
+
         $this->registry->enrichParticipant($user);
+        $moduleProgress = app(ParticipantTrainingSummaryService::class)->buildModuleProgress((int) $user->id);
         $user->registry_profile = [
             'statuses' => $this->registry->computeStatuses($user),
             'lesson_completions' => $user->lessonCompletions,
             'ai_scenario_attempts' => $user->aiScenarioAttempts,
             'evaluation_results' => $user->evaluationResults,
+            'module_training_progress' => $moduleProgress,
             'certificates' => $user->certificates,
             'attendance_summary' => [
                 'total' => $user->attendances->count(),

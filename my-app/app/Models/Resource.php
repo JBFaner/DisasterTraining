@@ -303,6 +303,21 @@ class Resource extends Model
                 'recorded_by' => portal_id(),
             ]);
 
+            $handlerName = $handler?->name;
+            if (! $handlerName && portal_id()) {
+                $handlerName = User::query()->whereKey(portal_id())->value('name');
+            }
+
+            ResourceMovement::create([
+                'resource_id' => $this->id,
+                'simulation_event_id' => $event->id,
+                'requested_by' => $handlerName ?: 'Inventory Admin',
+                'source_module' => 'Resource Inventory',
+                'quantity' => $quantity,
+                'status' => 'In Use',
+                'notes' => "Assigned to event: {$event->title}",
+            ]);
+
             return true;
         });
     }
@@ -310,8 +325,12 @@ class Resource extends Model
     /**
      * Return resource from a specific event
      */
-    public function returnFromEvent(?string $condition = null, ?string $damageReport = null): bool
-    {
+    public function returnFromEvent(
+        ?string $condition = null,
+        ?string $damageReport = null,
+        ?int $eventId = null,
+        ?int $quantity = null,
+    ): bool {
         $this->refreshAvailabilityFromAssignments();
         if ($condition !== null || $damageReport !== null) {
             $this->update([
@@ -334,6 +353,20 @@ class Resource extends Model
                 'recorded_by' => portal_id(),
             ]);
         }
+
+        $returnedBy = portal_id()
+            ? User::query()->whereKey(portal_id())->value('name')
+            : null;
+
+        ResourceMovement::create([
+            'resource_id' => $this->id,
+            'simulation_event_id' => $eventId,
+            'requested_by' => $returnedBy ?: 'Inventory Admin',
+            'source_module' => 'Resource Inventory',
+            'quantity' => max(1, (int) ($quantity ?? 1)),
+            'status' => $damageReport ? 'Needs Repair' : 'Returned',
+            'notes' => $damageReport ?: 'Returned from event',
+        ]);
 
         return true;
     }

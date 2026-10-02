@@ -331,7 +331,9 @@ class ResourceController extends Controller
         // Call the model's returnFromEvent method
         $resource->returnFromEvent(
             $validated['condition'] ?? null,
-            $validated['damage_report'] ?? null
+            $validated['damage_report'] ?? null,
+            $eventId,
+            $quantity,
         );
 
         AuditLogger::log([
